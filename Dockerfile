@@ -1,4 +1,22 @@
-# 최종 Playwright 버전 - Playwright가 자동으로 의존성 설치
+# Multi-stage build for Next.js + Python Crawler
+FROM node:20-slim AS frontend-builder
+
+WORKDIR /app
+
+# Next.js 앱 빌드
+COPY package.json package-lock.json* ./
+RUN npm ci
+
+COPY app ./app
+COPY components ./components
+COPY lib ./lib
+COPY public ./public
+COPY styles ./styles
+COPY next.config.ts tsconfig.json tailwind.config.ts postcss.config.mjs ./
+
+RUN npm run build
+
+# Python + Next.js 런타임
 FROM python:3.11-slim
 
 # 환경변수 설정
@@ -60,11 +78,42 @@ RUN apt-get update && \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# 애플리케이션 파일 복사
-COPY . .
+# Node.js 설치 (Next.js 실행용)
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    nodejs \
+    npm \
+    curl \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Node.js 20 설치
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
+    apt-get install -y nodejs && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+# Frontend 빌드 파일 복사
+COPY --from=frontend-builder /app/.next ./.next
+COPY --from=frontend-builder /app/node_modules ./node_modules
+COPY --from=frontend-builder /app/package.json ./package.json
+
+# Python 크롤러 파일 복사
+COPY logic ./logic
+COPY config.env ./
+
+# Next.js 정적 파일 복사
+COPY app ./app
+COPY components ./components
+COPY public ./public
+COPY next.config.ts tsconfig.json ./
 
 # 필요한 디렉토리 생성
 RUN mkdir -p crawled_data logs && \
-    chmod +x nas_playwright_crawler.py
+    chmod +x logic/nas_playwright_crawler.py
 
-CMD ["python", "nas_playwright_crawler.py"]
+# 포트 노출
+EXPOSE 3000
+
+# Next.js 서버 시작
+CMD ["npm", "start"]

@@ -15,7 +15,7 @@ docker run --rm \
     -v "$(pwd)/crawled_data:/app/crawled_data" \
     -v "$(pwd)/logs:/app/logs" \
     naver-crawler:latest \
-    python nas_playwright_crawler.py "$COMPLEX_NO"
+    python logic/nas_playwright_crawler.py "$COMPLEX_NO"
 
 # 결과 확인
 if [ $? -eq 0 ]; then

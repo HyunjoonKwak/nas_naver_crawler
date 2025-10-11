@@ -1,26 +1,31 @@
 version: '3.8'
 
 services:
-  naver-realestate-crawler:
+  # Next.js 웹 애플리케이션
+  web:
     build: .
-    container_name: naver-realestate-crawler
+    container_name: naver-crawler-web
     restart: unless-stopped
     
     # 환경변수 파일 사용
     env_file:
       - config.env
     
-    # 볼륨 마운트 (데이터 저장 및 설정)
+    # 볼륨 마운트
     volumes:
       - ./crawled_data:/app/crawled_data
-      - ./config.env:/app/config.env:ro
       - ./logs:/app/logs
+      - /var/run/docker.sock:/var/run/docker.sock  # Docker 명령어 실행용
+    
+    # 포트 설정 (웹 인터페이스)
+    ports:
+      - "3000:3000"
     
     # 네트워크 설정
     networks:
       - crawler-network
     
-    # 리소스 제한 (NAS 환경에 맞게 조정)
+    # 리소스 제한
     deploy:
       resources:
         limits:
@@ -30,41 +35,13 @@ services:
           memory: 512M
           cpus: '0.5'
     
-    # 포트 설정 (선택사항 - 웹 인터페이스용)
-    ports:
-      - "8080:8080"
-    
-    # 헬스체크 설정
+    # 헬스체크
     healthcheck:
-      test: ["CMD", "python", "-c", "import os; exit(0 if os.path.exists('/app/crawled_data') else 1)"]
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/status"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
-
-  # 스케줄러 서비스 (선택사항)
-  crawler-scheduler:
-    build: .
-    container_name: naver-crawler-scheduler
-    restart: unless-stopped
-    
-    env_file:
-      - config.env
-    
-    volumes:
-      - ./crawled_data:/app/crawled_data
-      - ./config.env:/app/config.env:ro
-      - ./logs:/app/logs
-      - ./scheduler.py:/app/scheduler.py
-    
-    networks:
-      - crawler-network
-    
-    # 스케줄러만 실행
-    command: ["python", "scheduler.py"]
-    
-    depends_on:
-      - naver-realestate-crawler
 
 networks:
   crawler-network:

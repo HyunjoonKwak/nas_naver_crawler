@@ -1,144 +1,155 @@
-# 네이버 부동산 크롤러 (NAS 환경용)
+# 🏠 네이버 부동산 크롤러
 
-스크린이 없는 NAS 환경에서 헤드리스 모드로 동작하는 네이버 부동산 크롤러입니다.
+NAS 환경용 헤드리스 부동산 크롤러 with Next.js 웹 UI
+
+![License](https://img.shields.io/badge/license-MIT-blue.svg)
+![Python](https://img.shields.io/badge/python-3.11-blue.svg)
+![Next.js](https://img.shields.io/badge/next.js-15-black.svg)
+
+---
+
+## ✨ 주요 기능
+
+- 🌐 **웹 UI**: 사용자 친화적인 Next.js 인터페이스
+- 🎭 **Playwright**: 헤드리스 브라우저로 429 에러 회피
+- 📊 **실시간 모니터링**: 크롤링 상태 및 히스토리 관리
+- 🐳 **Docker**: NAS 환경 최적화
+- 📱 **반응형**: 모바일, 태블릿, 데스크톱 지원
+
+---
 
 ## 🚀 빠른 시작
 
+### 관리 메뉴 (가장 쉬운 방법)
 ```bash
-# 1. 빌드
-./build.sh
-
-# 2. 실행
-./crawl.sh
-
-# 3. 다른 단지
-./crawl.sh 12345
+./manage.sh
 ```
 
-자세한 내용은 [QUICKSTART.md](QUICKSTART.md)를 참고하세요.
+### 또는 직접 실행
+```bash
+# 시작
+./scripts/start.sh
 
-## 📋 주요 기능
-
-- ✅ **헤드리스 모드**: 스크린이 없는 NAS에서 동작
-- ✅ **Playwright 지원**: 실제 브라우저로 429 에러 회피
-- ✅ **Docker 지원**: 의존성 문제 해결 및 쉬운 배포
-- ✅ **스케줄링**: 정기적인 크롤링 자동화
-- ✅ **다중 단지 지원**: 여러 단지를 한 번에 크롤링
-- ✅ **데이터 저장**: JSON, CSV 형식으로 결과 저장
-
-## 📁 파일 구조
-
-```
-property_manager/
-├── Dockerfile              # Docker 이미지 정의
-├── docker-compose.yml      # Docker Compose 설정
-├── requirements.txt        # Python 패키지 의존성
-├── config.env             # 환경설정 파일
-├── build.sh               # 빌드 스크립트
-├── crawl.sh               # 실행 스크립트
-├── setup_dirs.sh          # 디렉토리 설정
-├── install.sh             # 전체 설치 스크립트
-├── nas_playwright_crawler.py  # Playwright 크롤러
-├── simple_crawler.py      # 간단한 크롤러 (백업용)
-├── scheduler.py           # 스케줄러
-├── README.md              # 이 파일
-├── QUICKSTART.md          # 빠른 시작 가이드
-└── README_NAS.md          # 상세 설명서
+# 종료  
+./scripts/stop.sh
 ```
 
-## 🛠️ 시스템 요구사항
+### 브라우저 접속
+```
+http://localhost:3000
+```
 
-- **Docker**: 버전 20.10 이상
-- **Docker Compose**: 버전 2.0 이상
-- **CPU**: 최소 2코어 (권장: 4코어)
-- **RAM**: 최소 4GB (권장: 8GB)
-- **저장공간**: 최소 2GB
+---
 
 ## 📖 문서
 
-- [QUICKSTART.md](QUICKSTART.md) - 5분 안에 시작하기
-- [README_NAS.md](README_NAS.md) - 상세 설명 및 문제 해결
+| 문서 | 설명 |
+|------|------|
+| [👉 START_HERE.md](docs/START_HERE.md) | **여기서 시작하세요!** |
+| [🌐 WEB_UI_GUIDE.md](docs/WEB_UI_GUIDE.md) | 웹 UI 사용 가이드 |
+| [📁 STRUCTURE.md](docs/STRUCTURE.md) | 프로젝트 구조 |
+| [🎉 FINAL_SUMMARY.md](docs/FINAL_SUMMARY.md) | 완성 요약 |
+| [🔧 README_NAS.md](docs/README_NAS.md) | NAS 환경 설정 |
+| [📊 PROJECT_SUMMARY.md](docs/PROJECT_SUMMARY.md) | 기술 문서 |
 
-## 🎯 사용 예시
+---
 
-### 기본 사용
-```bash
-# 기본 단지 (22065) 크롤링
-./crawl.sh
+## 🛠️ 시스템 요구사항
 
-# 특정 단지 크롤링
-./crawl.sh 12345
+- Docker 20.10+
+- Docker Compose 2.0+
+- CPU 2코어+ (권장: 4코어)
+- RAM 4GB+ (권장: 8GB)
+
+---
+
+## 📁 프로젝트 구조
+
+```
+property_manager/
+├── ⚙️ manage.sh          # 관리 메뉴 (시작/종료/재시작/상태/로그)
+├── 📄 README.md          # 메인 문서
+│
+├── 📂 app/               # Next.js 앱 (API + 페이지)
+├── 📂 components/        # React 컴포넌트
+├── 📂 logic/             # Python 크롤링 엔진
+├── 📂 scripts/           # 실행 스크립트 (start, stop, build 등)
+├── 📂 docs/              # 프로젝트 문서
+│
+├── 🐳 Dockerfile
+├── 🐳 docker-compose.yml
+└── ⚙️ config.env
 ```
 
-### 여러 단지 크롤링
+---
+
+## 🎯 사용 방법
+
+### 관리 메뉴 (권장)
 ```bash
-docker run --rm \
-    --env-file config.env \
-    -v $(pwd)/crawled_data:/app/crawled_data \
-    -v $(pwd)/logs:/app/logs \
-    naver-crawler:latest \
-    python nas_playwright_crawler.py "22065,12345,67890"
+./manage.sh
+```
+모든 기능을 메뉴에서 선택할 수 있습니다.
+
+### 직접 실행
+```bash
+# 웹 UI 시작
+./scripts/start.sh
+
+# 웹 UI 종료
+./scripts/stop.sh
+
+# CLI 크롤링
+./scripts/crawl.sh 22065
+
+# 개발 환경
+./scripts/dev.sh
 ```
 
-### 정기 실행 (Cron)
-```bash
-# 매일 오전 9시에 실행
-0 9 * * * cd /path/to/property_manager && ./crawl.sh >> logs/cron.log 2>&1
-```
+---
 
 ## 📊 출력 데이터
 
-### 저장 위치
-- **경로**: `./crawled_data/`
+- **위치**: `./crawled_data/`
 - **형식**: JSON, CSV
-- **파일명**: `complexes_[개수]_[날짜시간].json/csv`
+- **내용**: 단지 정보, 매물 목록, 가격 정보
 
-### 데이터 구조
-```json
-{
-  "crawling_info": {
-    "complex_no": "22065",
-    "crawling_date": "2025-01-31T10:30:00"
-  },
-  "overview": {
-    "complexName": "동탄시범다은마을월드메르디앙반도유보라",
-    "totalHouseHoldCount": 1473,
-    "totalDongCount": 18,
-    "minArea": 81.49,
-    "maxArea": 116.49
-  }
-}
-```
+---
 
-## ⚙️ 설정
+## 🔧 관리 명령어
 
-`config.env` 파일을 수정하여 설정을 변경할 수 있습니다:
-
+### 관리 메뉴 사용 (권장)
 ```bash
-OUTPUT_DIR=./crawled_data    # 출력 디렉토리
-REQUEST_DELAY=2.0            # 요청 간격 (초)
-TIMEOUT=30000                # 타임아웃 (밀리초)
-HEADLESS=true                # 헤드리스 모드
+./manage.sh
 ```
 
-## 🔧 문제 해결
+**메뉴 옵션:**
+- 1️⃣ 웹서버 시작
+- 2️⃣ 웹서버 종료
+- 3️⃣ 웹서버 재시작
+- 4️⃣ 상태 확인
+- 5️⃣ 로그 확인
+- 6️⃣ 빌드
+- 7️⃣ 데이터 정리
 
-자세한 문제 해결 방법은 [README_NAS.md](README_NAS.md)를 참고하세요.
+### 직접 명령어
+```bash
+# 서비스 시작
+./scripts/start.sh
 
-### 일반적인 문제
+# 서비스 중지
+./scripts/stop.sh
 
-1. **429 에러**: REQUEST_DELAY를 늘리거나 시간이 지난 후 재시도
-2. **Docker 빌드 실패**: `docker system prune -f` 후 재시도
-3. **디렉토리 마운트 오류**: `mkdir -p crawled_data logs` 실행
+# 로그 확인
+docker-compose logs -f web
+```
 
-## 📄 라이선스
+---
 
-MIT License
+## 📝 라이선스
 
-## 👤 작성자
+MIT License - 교육 및 연구 목적으로 사용하세요.
 
-Special Risk
+---
 
-## 🙏 감사의 말
-
-이 프로젝트는 교육 및 연구 목적으로 제작되었습니다. 네이버의 이용약관을 준수하여 사용하시기 바랍니다.
+**Made with ❤️ for NAS users**
