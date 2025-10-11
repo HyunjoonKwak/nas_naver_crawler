@@ -4,7 +4,7 @@ import path from 'path';
 
 export async function GET(request: NextRequest) {
   try {
-    const crawledDataDir = path.join(process.cwd(), 'crawled_data');
+    const crawledDataDir = path.join('/app', 'crawled_data');
     
     // 디렉토리 존재 확인
     try {

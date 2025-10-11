@@ -13,7 +13,6 @@ services:
     volumes:
       - ./crawled_data:/app/crawled_data
       - ./logs:/app/logs
-      - /var/run/docker.sock:/var/run/docker.sock  # Docker 명령어 실행용
     
     # 포트 설정 (웹 인터페이스)
     ports:

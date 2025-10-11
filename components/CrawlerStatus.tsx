@@ -3,10 +3,10 @@
 import { useEffect, useState } from "react";
 
 interface StatusData {
-  docker: {
-    imageExists: boolean;
-    runningContainers: number;
-    containerNames: string[];
+  crawler: {
+    scriptExists: boolean;
+    playwrightReady: boolean;
+    ready: boolean;
   };
   data: {
     crawledFilesCount: number;
@@ -56,26 +56,30 @@ export default function CrawlerStatus() {
       </h2>
 
       <div className="space-y-4">
-        {/* Docker Status */}
+        {/* Crawler Status */}
         <div className="border-l-4 border-blue-500 pl-4">
           <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-            Docker
+            크롤러
           </h3>
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600 dark:text-gray-400">이미지</span>
+              <span className="text-sm text-gray-600 dark:text-gray-400">스크립트</span>
               <span className={`text-sm font-semibold ${
-                status?.docker.imageExists 
+                status?.crawler.scriptExists 
                   ? 'text-green-600 dark:text-green-400' 
                   : 'text-red-600 dark:text-red-400'
               }`}>
-                {status?.docker.imageExists ? '✅ 준비됨' : '❌ 없음'}
+                {status?.crawler.scriptExists ? '✅ 준비됨' : '❌ 없음'}
               </span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600 dark:text-gray-400">실행 중</span>
-              <span className="text-sm font-semibold text-blue-600 dark:text-blue-400">
-                {status?.docker.runningContainers || 0}개
+              <span className="text-sm text-gray-600 dark:text-gray-400">Playwright</span>
+              <span className={`text-sm font-semibold ${
+                status?.crawler.playwrightReady 
+                  ? 'text-green-600 dark:text-green-400' 
+                  : 'text-red-600 dark:text-red-400'
+              }`}>
+                {status?.crawler.playwrightReady ? '✅ 준비됨' : '❌ 설치 필요'}
               </span>
             </div>
           </div>
@@ -110,21 +114,6 @@ export default function CrawlerStatus() {
           </div>
         </div>
 
-        {/* Running Containers */}
-        {status && status.docker.runningContainers > 0 && (
-          <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
-            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-              실행 중인 컨테이너
-            </h3>
-            <div className="space-y-1">
-              {status.docker.containerNames.map((name, index) => (
-                <div key={index} className="text-xs bg-blue-50 dark:bg-blue-900/20 px-2 py-1 rounded">
-                  {name}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Refresh Info */}

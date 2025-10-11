@@ -20,17 +20,13 @@ export async function POST(request: NextRequest) {
       ? complexNumbers.join(',') 
       : complexNumbers;
 
-    // Docker 컨테이너로 크롤링 실행
-    const command = `docker run --rm \
-      --env-file config.env \
-      -v $(pwd)/crawled_data:/app/crawled_data \
-      -v $(pwd)/logs:/app/logs \
-      naver-crawler:latest \
-      python logic/nas_playwright_crawler.py "${complexNos}"`;
+    // 컨테이너 내부에서 직접 Python 크롤러 실행
+    const command = `python3 logic/nas_playwright_crawler.py "${complexNos}"`;
 
     const { stdout, stderr } = await execAsync(command, {
-      cwd: process.cwd(),
+      cwd: '/app',
       maxBuffer: 10 * 1024 * 1024, // 10MB
+      timeout: 300000, // 5분 타임아웃
     });
 
     return NextResponse.json({
