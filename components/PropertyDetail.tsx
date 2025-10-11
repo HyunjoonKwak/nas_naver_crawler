@@ -36,20 +36,20 @@ export default function PropertyDetail({ data, onClose }: PropertyDetailProps) {
     return types[tradeType] || tradeType;
   };
 
-  // 가격 포맷
-  const formatPrice = (price: number, tradeType: string) => {
-    if (!price) return '-';
+  // 가격 포맷 (만원 단위 → 억/만원 표시)
+  const formatPrice = (price: number | string | null | undefined) => {
+    if (!price || price === 0 || isNaN(Number(price))) return '-';
     
-    if (tradeType === 'A1') {
-      // 매매: 억 단위
-      const uk = Math.floor(price / 10000);
-      const man = price % 10000;
-      return man > 0 ? `${uk}억 ${man}만` : `${uk}억`;
+    const priceNum = Number(price);
+    const uk = Math.floor(priceNum / 10000);
+    const man = priceNum % 10000;
+    
+    if (uk === 0) {
+      return `${man}만`;
+    } else if (man === 0) {
+      return `${uk}억`;
     } else {
-      // 전월세: 억 단위
-      const uk = Math.floor(price / 10000);
-      const man = price % 10000;
-      return man > 0 ? `${uk}억 ${man}만` : `${uk}억`;
+      return `${uk}억 ${man}만`;
     }
   };
 
@@ -59,6 +59,19 @@ export default function PropertyDetail({ data, onClose }: PropertyDetailProps) {
     const pyeong = (area / 3.3058).toFixed(1);
     return `${area}㎡ (${pyeong}평)`;
   };
+
+  // 거래 유형별 통계
+  const tradeStats = articles.reduce((acc: any, article: any) => {
+    const type = article.tradeType;
+    acc[type] = (acc[type] || 0) + 1;
+    return acc;
+  }, {});
+
+  const statsText = [
+    tradeStats['A1'] ? `매매 ${tradeStats['A1']}` : null,
+    tradeStats['B1'] ? `전세 ${tradeStats['B1']}` : null,
+    tradeStats['B2'] ? `월세 ${tradeStats['B2']}` : null,
+  ].filter(Boolean).join(' | ');
 
   return (
     <div 
@@ -107,7 +120,14 @@ export default function PropertyDetail({ data, onClose }: PropertyDetailProps) {
                 : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
             }`}
           >
-            🏘️ 매물 목록 ({articles.length})
+            <div>
+              🏘️ 매물 목록 ({articles.length})
+              {statsText && (
+                <div className="text-xs mt-0.5 opacity-80">
+                  {statsText}
+                </div>
+              )}
+            </div>
           </button>
         </div>
 
@@ -131,11 +151,11 @@ export default function PropertyDetail({ data, onClose }: PropertyDetailProps) {
               <InfoCard title="가격 정보">
                 <InfoRow 
                   label="최저가" 
-                  value={overview.minPrice ? formatPrice(overview.minPrice, 'A1') : '-'} 
+                  value={formatPrice(overview.minPrice)} 
                 />
                 <InfoRow 
                   label="최고가" 
-                  value={overview.maxPrice ? formatPrice(overview.maxPrice, 'A1') : '-'} 
+                  value={formatPrice(overview.maxPrice)} 
                 />
               </InfoCard>
 
@@ -172,7 +192,7 @@ export default function PropertyDetail({ data, onClose }: PropertyDetailProps) {
                         방향
                       </th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                        등록일
+                        매물확인일
                       </th>
                     </tr>
                   </thead>
@@ -181,9 +201,9 @@ export default function PropertyDetail({ data, onClose }: PropertyDetailProps) {
                       <tr key={index} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
                         <td className="px-4 py-4 whitespace-nowrap">
                           <span className={`px-2 py-1 rounded text-xs font-semibold ${
-                            article.tradeTypeName === '매매' 
+                            article.tradeType === 'A1' 
                               ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
-                              : article.tradeTypeName === '전세'
+                              : article.tradeType === 'B1'
                               ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
                               : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
                           }`}>
@@ -194,11 +214,15 @@ export default function PropertyDetail({ data, onClose }: PropertyDetailProps) {
                           {article.tradeType === 'B2' ? (
                             // 월세: 보증금/월세
                             <div>
-                              <div>{formatPrice(article.dealOrWarrantPrc, article.tradeType)}</div>
-                              <div className="text-xs text-gray-500">/ {formatPrice(article.rentPrc, article.tradeType)}</div>
+                              <div className="text-gray-700 dark:text-gray-300">
+                                보증금 {formatPrice(article.dealOrWarrantPrc)}
+                              </div>
+                              <div className="text-blue-600 dark:text-blue-400 font-semibold">
+                                월세 {formatPrice(article.rentPrc)}
+                              </div>
                             </div>
                           ) : (
-                            formatPrice(article.dealOrWarrantPrc, article.tradeType)
+                            formatPrice(article.dealOrWarrantPrc)
                           )}
                         </td>
                         <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">
