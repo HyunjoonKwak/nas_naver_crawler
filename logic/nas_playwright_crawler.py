@@ -163,8 +163,8 @@ class NASNaverRealEstateCrawler:
             # 응답 핸들러 등록
             self.page.on('response', handle_articles_response)
             
-            # 단지 페이지로 이동 (이미 방문했지만 매물 탭 클릭을 위해)
-            url = f"https://new.land.naver.com/complexes/{complex_no}"
+            # 단지 페이지로 이동 (페이지 번호 포함)
+            url = f"https://new.land.naver.com/complexes/{complex_no}?ms={complex_no}&m=apt&a=APT&b=A1:A2&e=RETAIL&page={page_num}"
             
             try:
                 # 페이지 이동
@@ -245,12 +245,43 @@ class NASNaverRealEstateCrawler:
             # 요청 간격 조절
             await asyncio.sleep(self.request_delay)
             
-            # 2. 매물 목록
-            articles = await self.crawl_complex_articles(complex_no, 1)
-            if articles:
-                complex_data['articles'] = articles
-                article_count = len(articles.get('articleList', []))
-                print(f"매물 수: {article_count}개")
+            # 2. 매물 목록 (페이지네이션)
+            all_articles = []
+            page = 1
+            max_pages = 50  # 안전을 위한 최대 페이지 제한
+            
+            while page <= max_pages:
+                print(f"매물 목록 페이지 {page} 크롤링 중...")
+                articles_data = await self.crawl_complex_articles(complex_no, page)
+                
+                if articles_data:
+                    article_list = articles_data.get('articleList', [])
+                    all_articles.extend(article_list)
+                    print(f"페이지 {page}: {len(article_list)}개 매물 수집 (누적: {len(all_articles)}개)")
+                    
+                    # 다음 페이지가 있는지 확인
+                    is_more_data = articles_data.get('isMoreData', False)
+                    if not is_more_data:
+                        print(f"모든 매물 수집 완료: 총 {len(all_articles)}개")
+                        break
+                    
+                    # 마지막 수집 데이터 저장 (메타데이터 포함)
+                    final_articles_data = articles_data.copy()
+                    
+                    page += 1
+                    await asyncio.sleep(self.request_delay)  # 페이지 간 딜레이
+                else:
+                    print(f"페이지 {page} 크롤링 실패, 중단")
+                    break
+            
+            # 모든 매물을 하나로 합치기
+            if all_articles:
+                complex_data['articles'] = {
+                    'articleList': all_articles,
+                    'totalCount': len(all_articles),
+                    'isMoreData': False
+                }
+                print(f"매물 수: {len(all_articles)}개 (총 {page}페이지)")
             
             print(f"단지 {complex_no} 크롤링 완료")
             
