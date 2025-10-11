@@ -30,6 +30,16 @@ export async function POST(request: NextRequest) {
       timeout: 300000, // 5분 타임아웃
     });
 
+    // Python 출력을 Docker 로그에 표시
+    if (stdout) {
+      console.log('=== Python Crawler Output ===');
+      console.log(stdout);
+    }
+    if (stderr) {
+      console.error('=== Python Crawler Errors ===');
+      console.error(stderr);
+    }
+
     return NextResponse.json({
       success: true,
       message: '크롤링이 완료되었습니다.',
