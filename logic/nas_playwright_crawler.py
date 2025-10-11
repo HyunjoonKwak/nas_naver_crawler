@@ -147,36 +147,24 @@ class NASNaverRealEstateCrawler:
             
             # 매물 목록 API 응답을 캐치하기 위한 변수
             articles_data = None
+            api_call_detected = False
             
             async def handle_articles_response(response):
-                nonlocal articles_data
+                nonlocal articles_data, api_call_detected
                 # 매물 목록 API 응답 감지
                 if f'/api/articles/complex/{complex_no}' in response.url:
+                    api_call_detected = True
                     print(f"[DEBUG] API 호출 감지: {response.url[:150]}")
                     
-                    # page 파라미터 확인 (더 관대하게)
-                    url_lower = response.url.lower()
-                    should_capture = False
-                    
-                    if page_num == 1:
-                        # 첫 페이지는 page 파라미터가 없거나 page=1
-                        should_capture = 'page=' not in url_lower or 'page=1' in url_lower
-                    else:
-                        # 2페이지 이상은 정확한 페이지 번호 확인
-                        should_capture = f'page={page_num}' in url_lower
-                    
-                    print(f"[DEBUG] 페이지 {page_num} 요청, should_capture: {should_capture}")
-                    
-                    if should_capture:
-                        try:
-                            data = await response.json()
-                            articles_data = data
-                            article_count = len(data.get('articleList', []))
-                            print(f"매물 목록 API 응답 캐치됨 (페이지 {page_num}): {article_count}개 매물")
-                        except Exception as e:
-                            print(f"매물 API 응답 파싱 실패: {e}")
-                    else:
-                        print(f"[DEBUG] 페이지 불일치로 스킵")
+                    # 페이지 필터링 없이 모든 응답 캐치
+                    try:
+                        data = await response.json()
+                        # 데이터가 이미 있으면 덮어쓰기
+                        articles_data = data
+                        article_count = len(data.get('articleList', []))
+                        print(f"매물 목록 API 응답 캐치됨: {article_count}개 매물")
+                    except Exception as e:
+                        print(f"매물 API 응답 파싱 실패: {e}")
             
             # 응답 핸들러 등록
             self.page.on('response', handle_articles_response)
@@ -269,7 +257,10 @@ class NASNaverRealEstateCrawler:
             if articles_data:
                 return articles_data
             else:
-                print("매물 목록 API 응답을 캐치하지 못했습니다.")
+                if not api_call_detected:
+                    print("⚠️  API 호출이 감지되지 않음 - 페이지네이션이 작동하지 않는 것 같습니다.")
+                else:
+                    print("매물 목록 API 응답을 캐치하지 못했습니다.")
                 return None
                 
         except Exception as e:
@@ -318,18 +309,29 @@ class NASNaverRealEstateCrawler:
                     
                     # 다음 페이지가 있는지 확인
                     is_more_data = articles_data.get('isMoreData', False)
-                    if not is_more_data:
+                    
+                    # 페이지 2 이상에서 실패하면 페이지네이션이 작동하지 않는 것으로 판단
+                    if page > 1 and not is_more_data:
                         print(f"모든 매물 수집 완료: 총 {len(all_articles)}개")
                         break
-                    
-                    # 마지막 수집 데이터 저장 (메타데이터 포함)
-                    final_articles_data = articles_data.copy()
-                    
-                    page += 1
-                    await asyncio.sleep(self.request_delay)  # 페이지 간 딜레이
+                    elif page == 1 and is_more_data:
+                        print(f"⚠️  isMoreData=true 이지만 페이지네이션 시도 중...")
+                        page += 1
+                        await asyncio.sleep(self.request_delay)
+                    elif page == 1 and not is_more_data:
+                        print(f"모든 매물 수집 완료: 총 {len(all_articles)}개 (페이지네이션 없음)")
+                        break
+                    else:
+                        page += 1
+                        await asyncio.sleep(self.request_delay)
                 else:
-                    print(f"페이지 {page} 크롤링 실패, 중단")
-                    break
+                    print(f"페이지 {page} 크롤링 실패")
+                    if page == 1:
+                        print(f"첫 페이지 실패 - 중단")
+                        break
+                    else:
+                        print(f"⚠️  페이지네이션 작동 안 함 - 수집 가능한 매물: {len(all_articles)}개")
+                        break
             
             # 모든 매물을 하나로 합치기
             if all_articles:
