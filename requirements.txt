@@ -1,0 +1,39 @@
+# NAS 환경용 네이버 부동산 크롤러 의존성 패키지
+
+# 웹 크롤링
+playwright==1.40.0
+
+# 데이터 처리
+pandas==2.1.4
+numpy==1.25.2
+
+# 환경설정 관리
+python-dotenv==1.0.0
+
+# HTTP 요청 (백업용)
+requests==2.31.0
+
+# 비동기 처리
+aiohttp==3.9.1
+
+# 로깅
+loguru==0.7.2
+
+# 스케줄링
+schedule==1.2.0
+APScheduler==3.10.4
+
+# 알림 기능
+smtplib-ssl==1.0.0
+webhook-sender==0.1.0
+
+# 데이터 검증
+pydantic==2.5.0
+
+# 유틸리티
+python-dateutil==2.8.2
+pytz==2023.3
+
+# 개발 및 테스트 도구
+pytest==7.4.3
+pytest-asyncio==0.21.1
