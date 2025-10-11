@@ -227,94 +227,90 @@ class NASNaverRealEstateCrawler:
                 initial_count = len(all_articles)
                 print(f"초기 매물 수: {initial_count}개")
                 
-                # 5. "더보기" 버튼 또는 스크롤로 데이터 수집
-                print("추가 매물 수집 시작...")
+                # 5. 점진적 스크롤로 데이터 수집 (crawler_service.py 방식)
+                print("추가 매물 수집 시작 (점진적 스크롤)...")
                 scroll_attempts = 0
-                max_scroll_attempts = 50  # 최대 시도 횟수
-                no_new_data_count = 0
-                max_no_new_data = 3  # 3번 연속 새 데이터 없으면 중단
+                max_scroll_attempts = 100  # 최대 100회
+                scroll_end_count = 0  # 스크롤이 안 움직이는 횟수
+                max_scroll_end = 5  # 5회 연속 스크롤 안 되면 종료
                 
                 while scroll_attempts < max_scroll_attempts:
                     prev_count = len(all_articles)
                     
-                    # 좌측 매물 목록 패널 스크롤 - 리스트 아이템 기반
+                    # 네이버 실제 컨테이너로 점진적 스크롤 (500px씩)
                     scroll_result = await self.page.evaluate('''
                         () => {
-                            // 1. 매물 리스트 아이템 찾기
-                            const itemSelectors = [
-                                'div[class*="list_contents"] > div',
-                                'div[class*="article_list"] > div',
-                                'div[class*="item"]',
-                                '[class*="list"] > div[class*="article"]'
+                            // 네이버가 실제로 사용하는 셀렉터들
+                            const selectors = [
+                                '.item_list',  // ✅ crawler_service.py에서 사용
+                                'div[class*="list_contents"]',
+                                'div[class*="item_list"]',
+                                'div[class*="article_list"]'
                             ];
                             
-                            let items = [];
-                            for (const selector of itemSelectors) {
-                                items = Array.from(document.querySelectorAll(selector));
-                                if (items.length > 5) break;  // 충분한 아이템이 있으면 사용
+                            let container = null;
+                            for (const selector of selectors) {
+                                container = document.querySelector(selector);
+                                if (container && container.scrollHeight > container.clientHeight) {
+                                    break;
+                                }
                             }
                             
-                            if (items.length === 0) {
-                                return { scrolled: false, reason: 'no items found' };
+                            if (!container) {
+                                return { found: false, reason: 'container not found' };
                             }
                             
-                            // 2. 마지막 아이템으로 스크롤
-                            const lastItem = items[items.length - 1];
-                            const beforeScroll = lastItem.getBoundingClientRect().top;
+                            // 점진적 스크롤 (500px씩)
+                            const before = container.scrollTop;
+                            container.scrollTop += 500;  // ✅ 한 번에 끝까지 가지 않음
+                            const after = container.scrollTop;
                             
-                            // scrollIntoView 사용 (더 확실함)
-                            lastItem.scrollIntoView({ behavior: 'auto', block: 'end' });
-                            
-                            const afterScroll = lastItem.getBoundingClientRect().top;
-                            
-                            // 3. 부모 컨테이너 정보
-                            let container = lastItem.parentElement;
-                            while (container && container.scrollHeight <= container.clientHeight) {
-                                container = container.parentElement;
-                            }
+                            const items = container.querySelectorAll('.item_link, .item_inner, [class*="item"]');
                             
                             return {
-                                scrolled: true,
+                                found: true,
+                                moved: after > before,  // ✅ 실제로 스크롤되었는지
+                                scrollBefore: before,
+                                scrollAfter: after,
+                                scrollDelta: after - before,
+                                scrollHeight: container.scrollHeight,
+                                clientHeight: container.clientHeight,
                                 itemCount: items.length,
-                                lastItemMoved: Math.abs(beforeScroll - afterScroll) > 10,
-                                beforeTop: beforeScroll,
-                                afterTop: afterScroll,
-                                container: container ? {
-                                    className: container.className.substring(0, 50),
-                                    scrollHeight: container.scrollHeight,
-                                    clientHeight: container.clientHeight,
-                                    scrollTop: container.scrollTop
-                                } : null
+                                containerClass: container.className
                             };
                         }
                     ''')
                         
                     if scroll_attempts == 0:
-                        if scroll_result.get('scrolled'):
-                            print(f"[DEBUG] 매물 아이템 {scroll_result.get('itemCount', 0)}개 발견")
-                            print(f"  마지막 아이템 스크롤: {scroll_result.get('lastItemMoved', False)}")
-                            if scroll_result.get('container'):
-                                print(f"  컨테이너: {scroll_result['container']}")
+                        if scroll_result.get('found'):
+                            print(f"[DEBUG] 컨테이너 발견: .{scroll_result.get('containerClass', 'unknown')}")
+                            print(f"  매물 아이템: {scroll_result.get('itemCount', 0)}개")
+                            print(f"  스크롤 높이: {scroll_result.get('scrollHeight')} / {scroll_result.get('clientHeight')}")
                         else:
-                            print(f"[DEBUG] 매물 아이템을 찾지 못함: {scroll_result.get('reason', 'unknown')}")
+                            print(f"[DEBUG] 컨테이너를 찾지 못함: {scroll_result.get('reason', 'unknown')}")
                     
-                    await asyncio.sleep(5)  # API 호출 대기 (증가)
+                    await asyncio.sleep(1.5)  # ✅ 봇 감지 회피 (crawler_service.py 방식)
                     
                     current_count = len(all_articles)
                     new_items = current_count - prev_count
                     
                     scroll_attempts += 1
                     
-                    if new_items > 0:
-                        no_new_data_count = 0
-                        print(f"시도 {scroll_attempts}회: {new_items}개 추가 (총 {current_count}개)")
-                    else:
-                        no_new_data_count += 1
-                        print(f"시도 {scroll_attempts}회: 스크롤했지만 새 데이터 없음 ({no_new_data_count}/{max_no_new_data})")
+                    # 스크롤 종료 감지
+                    if scroll_result.get('found') and not scroll_result.get('moved'):
+                        scroll_end_count += 1
+                        print(f"시도 {scroll_attempts}회: 스크롤 끝 감지 ({scroll_end_count}/{max_scroll_end}) - 총 {current_count}개")
                         
-                        if no_new_data_count >= max_no_new_data:
-                            print(f"✅ 수집 완료 - {max_no_new_data}회 연속 새 데이터 없음")
+                        if scroll_end_count >= max_scroll_end:
+                            print(f"⏹️  스크롤 끝 도달 - 수집 완료")
                             break
+                    else:
+                        scroll_end_count = 0  # 스크롤이 움직이면 리셋
+                        
+                        if new_items > 0:
+                            print(f"시도 {scroll_attempts}회: +{scroll_result.get('scrollDelta', 0)}px 스크롤 → {new_items}개 추가 (총 {current_count}개)")
+                        else:
+                            print(f"시도 {scroll_attempts}회: +{scroll_result.get('scrollDelta', 0)}px 스크롤 중... (총 {current_count}개)")
                 
                 if len(all_articles) > initial_count:
                     print(f"🎉 수집 완료: 초기 {initial_count}개 → 최종 {len(all_articles)}개 (총 {scroll_attempts}회 시도)")
