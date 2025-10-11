@@ -237,9 +237,42 @@ class NASNaverRealEstateCrawler:
                 while scroll_attempts < max_scroll_attempts:
                     prev_count = len(all_articles)
                     
-                    # 페이지 맨 아래로 스크롤
-                    await self.page.evaluate('window.scrollTo(0, document.body.scrollHeight)')
-                    await asyncio.sleep(2)  # API 호출 대기
+                    # 스크롤 가능한 컨테이너 찾아서 스크롤
+                    scrolled = False
+                    
+                    # 방법 1: 특정 클래스의 컨테이너 스크롤
+                    scroll_scripts = [
+                        # 매물 목록 컨테이너 스크롤
+                        '''
+                        const containers = document.querySelectorAll('[class*="article"], [class*="list"], [class*="item"]');
+                        for (const container of containers) {
+                            if (container.scrollHeight > container.clientHeight) {
+                                container.scrollTop = container.scrollHeight;
+                                break;
+                            }
+                        }
+                        ''',
+                        # 오버플로우 스크롤 요소 찾기
+                        '''
+                        const scrollable = document.querySelector('[style*="overflow"]');
+                        if (scrollable) scrollable.scrollTop = scrollable.scrollHeight;
+                        ''',
+                        # 페이지 전체 스크롤
+                        'window.scrollTo(0, document.body.scrollHeight);',
+                    ]
+                    
+                    for script in scroll_scripts:
+                        try:
+                            await self.page.evaluate(script)
+                            scrolled = True
+                        except:
+                            pass
+                    
+                    if not scrolled:
+                        print("⚠️  스크롤 실패")
+                        break
+                    
+                    await asyncio.sleep(3)  # API 호출 대기 시간 증가
                     
                     current_count = len(all_articles)
                     new_items = current_count - prev_count
@@ -251,11 +284,12 @@ class NASNaverRealEstateCrawler:
                         print(f"스크롤 {scroll_attempts}회: {new_items}개 추가 (총 {current_count}개)")
                     else:
                         no_new_data_count += 1
+                        print(f"스크롤 {scroll_attempts}회: 새 데이터 없음 ({no_new_data_count}/{max_no_new_data})")
                         if no_new_data_count >= max_no_new_data:
                             print(f"더 이상 새 데이터 없음 - 스크롤 종료")
                             break
                 
-                print(f"스크롤 완료: 총 {len(all_articles)}개 매물 수집")
+                print(f"스크롤 완료: 총 {len(all_articles)}개 매물 수집 ({scroll_attempts}회 시도)")
                 
             except Exception as e:
                 print(f"스크롤 크롤링 중 오류: {e}")
