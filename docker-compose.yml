@@ -9,6 +9,9 @@ services:
     env_file:
       - config.env
     
+    environment:
+      - PYTHONUNBUFFERED=1
+    
     # 볼륨 마운트
     volumes:
       - ./crawled_data:/app/crawled_data

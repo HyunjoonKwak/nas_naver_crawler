@@ -12,6 +12,7 @@ services:
     
     environment:
       - NODE_ENV=development
+      - PYTHONUNBUFFERED=1
     
     # 소스 코드 마운트 (실시간 반영)
     volumes:
