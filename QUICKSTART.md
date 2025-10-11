@@ -4,7 +4,7 @@
 
 ### 1. 빌드 (처음 한 번만)
 ```bash
-./quick_simple_build.sh
+./build.sh
 ```
 
 ### 2. 디렉토리 설정
@@ -14,14 +14,11 @@
 
 ### 3. 크롤링 실행
 ```bash
-# 간단한 방법
+# 기본 실행
 ./crawl.sh
 
 # 다른 단지 번호로
 ./crawl.sh 12345
-
-# 또는 전체 테스트
-./run_test.sh
 ```
 
 ## 📝 NAS에서 실행하는 방법
@@ -55,7 +52,7 @@ EOF
 
 ### 5. 크롤링 실행
 ```bash
-# 간단한 실행
+# 기본 실행
 ./crawl.sh
 
 # 다른 단지 번호
@@ -66,8 +63,8 @@ docker run --rm \
     --env-file config.env \
     -v $(pwd)/crawled_data:/app/crawled_data \
     -v $(pwd)/logs:/app/logs \
-    naver-crawler-simple:latest \
-    python simple_crawler.py 22065
+    naver-crawler:latest \
+    python nas_playwright_crawler.py 22065
 ```
 
 ## 📊 결과 확인
@@ -170,7 +167,9 @@ REQUEST_DELAY=5.0
 docker run --rm \
     --env-file config.env \
     -v $(pwd)/crawled_data:/app/crawled_data \
-    naver-crawler-simple:latest 22065,12345,67890
+    -v $(pwd)/logs:/app/logs \
+    naver-crawler:latest \
+    python nas_playwright_crawler.py "22065,12345,67890"
 ```
 
 ### 백그라운드 실행
@@ -179,7 +178,9 @@ docker run -d \
     --name naver-crawler \
     --env-file config.env \
     -v $(pwd)/crawled_data:/app/crawled_data \
-    naver-crawler-simple:latest 22065
+    -v $(pwd)/logs:/app/logs \
+    naver-crawler:latest \
+    python nas_playwright_crawler.py 22065
 ```
 
 ### 로그 실시간 확인
@@ -189,14 +190,9 @@ docker logs -f naver-crawler
 
 ## 📞 도움말
 
-### 명령어 확인
-```bash
-docker run --rm naver-crawler-simple:latest --help
-```
-
 ### 이미지 정보
 ```bash
-docker images naver-crawler-simple:latest
+docker images naver-crawler:latest
 ```
 
 ### 실행 중인 컨테이너 확인
