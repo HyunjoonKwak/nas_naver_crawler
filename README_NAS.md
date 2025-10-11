@@ -153,6 +153,23 @@ crontab -e
 
 ### 일반적인 문제들
 
+#### 0. Docker 빌드 시 debconf 오류
+```bash
+# 오류: debconf: unable to initialize frontend: Dialog
+# 해결방법 1: 최소 버전 사용
+./build_nas.sh
+# 선택: 1 (최소 버전)
+
+# 해결방법 2: 환경변수 설정
+export DEBIAN_FRONTEND=noninteractive
+docker build -f Dockerfile.minimal -t naver-crawler-minimal .
+
+# 해결방법 3: 기존 이미지 정리 후 빌드
+docker system prune -f
+./build_nas.sh
+# 선택: 3 (정리 후 빌드)
+```
+
 #### 1. 메모리 부족 오류
 ```bash
 # Docker 리소스 제한 조정
