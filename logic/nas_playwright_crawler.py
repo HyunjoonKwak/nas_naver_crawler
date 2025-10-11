@@ -152,8 +152,22 @@ class NASNaverRealEstateCrawler:
                 nonlocal articles_data
                 # 매물 목록 API 응답 감지
                 if f'/api/articles/complex/{complex_no}' in response.url:
-                    # page 파라미터 확인
-                    if f'page={page_num}' in response.url or (page_num == 1 and 'page=' not in response.url):
+                    print(f"[DEBUG] API 호출 감지: {response.url[:150]}")
+                    
+                    # page 파라미터 확인 (더 관대하게)
+                    url_lower = response.url.lower()
+                    should_capture = False
+                    
+                    if page_num == 1:
+                        # 첫 페이지는 page 파라미터가 없거나 page=1
+                        should_capture = 'page=' not in url_lower or 'page=1' in url_lower
+                    else:
+                        # 2페이지 이상은 정확한 페이지 번호 확인
+                        should_capture = f'page={page_num}' in url_lower
+                    
+                    print(f"[DEBUG] 페이지 {page_num} 요청, should_capture: {should_capture}")
+                    
+                    if should_capture:
                         try:
                             data = await response.json()
                             articles_data = data
@@ -161,6 +175,8 @@ class NASNaverRealEstateCrawler:
                             print(f"매물 목록 API 응답 캐치됨 (페이지 {page_num}): {article_count}개 매물")
                         except Exception as e:
                             print(f"매물 API 응답 파싱 실패: {e}")
+                    else:
+                        print(f"[DEBUG] 페이지 불일치로 스킵")
             
             # 응답 핸들러 등록
             self.page.on('response', handle_articles_response)
@@ -239,6 +255,10 @@ class NASNaverRealEstateCrawler:
                     
                     if not clicked:
                         print(f"페이지 {page_num} 버튼을 찾을 수 없음")
+                    else:
+                        # 버튼 클릭 후 추가 대기
+                        print(f"API 응답 대기 중... (5초)")
+                        await asyncio.sleep(5)
                     
             except Exception as e:
                 print(f"페이지 이동 중 오류: {e}")
