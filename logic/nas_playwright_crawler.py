@@ -145,49 +145,74 @@ class NASNaverRealEstateCrawler:
         try:
             print(f"매물 목록 크롤링 시작: {complex_no}, 페이지 {page_num}")
             
-            # 매물 목록 API URL
-            articles_url = f"https://new.land.naver.com/api/articles/complex/{complex_no}"
-            params = {
-                'realEstateType': 'APT:PRE:ABYG:JGC',
-                'tradeType': '',
-                'tag': '::::::::',
-                'rentPriceMin': '0',
-                'rentPriceMax': '900000000',
-                'priceMin': '0',
-                'priceMax': '900000000',
-                'areaMin': '0',
-                'areaMax': '900000000',
-                'oldBuildYears': '',
-                'recentlyBuildYears': '',
-                'minHouseHoldCount': '',
-                'maxHouseHoldCount': '',
-                'showArticle': 'false',
-                'sameAddressGroup': 'false',
-                'minMaintenanceCost': '',
-                'maxMaintenanceCost': '',
-                'priceType': 'RETAIL',
-                'directions': '',
-                'page': str(page_num),
-                'complexNo': complex_no,
-                'buildingNos': '',
-                'areaNos': '',
-                'type': 'list',
-                'order': 'rank'
-            }
+            # 매물 목록 API 응답을 캐치하기 위한 변수
+            articles_data = None
             
-            # 쿼리 파라미터를 URL에 추가
-            query_string = '&'.join([f"{k}={v}" for k, v in params.items()])
-            full_url = f"{articles_url}?{query_string}"
+            async def handle_articles_response(response):
+                nonlocal articles_data
+                # 매물 목록 API 응답 감지
+                if f'/api/articles/complex/{complex_no}' in response.url:
+                    try:
+                        data = await response.json()
+                        articles_data = data
+                        article_count = len(data.get('articleList', []))
+                        print(f"매물 목록 API 응답 캐치됨: {article_count}개 매물")
+                    except Exception as e:
+                        print(f"매물 API 응답 파싱 실패: {e}")
             
-            # API 직접 호출
-            response = await self.page.request.get(full_url)
+            # 응답 핸들러 등록
+            self.page.on('response', handle_articles_response)
             
-            if response.status == 200:
-                data = await response.json()
-                print(f"매물 목록 API 호출 성공: {len(data.get('articleList', []))}개 매물")
-                return data
+            # 단지 페이지로 이동 (이미 방문했지만 매물 탭 클릭을 위해)
+            url = f"https://new.land.naver.com/complexes/{complex_no}"
+            
+            try:
+                # 페이지 이동
+                await self.page.goto(url, wait_until='networkidle')
+                await asyncio.sleep(2)
+                
+                # 매물 탭 클릭 시도
+                try:
+                    # 매물 탭 버튼 찾기 (여러 선택자 시도)
+                    selectors = [
+                        'a[href*="article"]',
+                        'button:has-text("매물")',
+                        '[class*="article"]',
+                    ]
+                    
+                    for selector in selectors:
+                        try:
+                            element = await self.page.wait_for_selector(selector, timeout=5000)
+                            if element:
+                                await element.click()
+                                print(f"매물 탭 클릭 성공")
+                                await asyncio.sleep(3)  # API 응답 대기
+                                break
+                        except:
+                            continue
+                    
+                    # 클릭이 안 됐을 경우 페이지 새로고침으로 API 트리거
+                    if not articles_data:
+                        print("매물 탭 클릭 실패, 페이지 새로고침 시도")
+                        await self.page.reload(wait_until='networkidle')
+                        await asyncio.sleep(3)
+                        
+                except Exception as e:
+                    print(f"매물 탭 클릭 중 오류: {e}")
+                    # 새로고침으로 재시도
+                    await self.page.reload(wait_until='networkidle')
+                    await asyncio.sleep(3)
+                    
+            except Exception as e:
+                print(f"페이지 이동 중 오류: {e}")
+            
+            # 응답 핸들러 제거
+            self.page.remove_listener('response', handle_articles_response)
+            
+            if articles_data:
+                return articles_data
             else:
-                print(f"매물 목록 API 호출 실패: {response.status}")
+                print("매물 목록 API 응답을 캐치하지 못했습니다.")
                 return None
                 
         except Exception as e:
