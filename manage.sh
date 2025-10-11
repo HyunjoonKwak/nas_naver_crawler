@@ -76,8 +76,8 @@ check_status() {
     log_info "시스템 상태 확인 중..."
     echo ""
     
-    # 프로덕션/개발 모드 확인
-    if docker ps | grep -q "naver-crawler-web-dev"; then
+    # 프로덕션/개발 모드 확인 (개발 모드를 먼저 체크)
+    if docker ps --format "{{.Names}}" | grep -q "^naver-crawler-web-dev$"; then
         log_blue "🔧 개발 모드 실행 중"
         echo ""
         echo "=== 개발 모드 컨테이너 상태 ==="
@@ -85,7 +85,7 @@ check_status() {
         echo ""
         echo "=== 리소스 사용량 ==="
         docker stats --no-stream naver-crawler-web-dev 2>/dev/null
-    elif docker ps | grep -q "naver-crawler-web"; then
+    elif docker ps --format "{{.Names}}" | grep -q "^naver-crawler-web$"; then
         log_blue "🚀 프로덕션 모드 실행 중"
         echo ""
         echo "=== 프로덕션 컨테이너 상태 ==="
@@ -114,12 +114,12 @@ view_logs() {
     log_info "로그 확인 중..."
     echo ""
     
-    # 개발/프로덕션 모드 확인
-    if docker ps | grep -q "naver-crawler-web-dev"; then
+    # 개발/프로덕션 모드 확인 (개발 모드를 먼저 체크)
+    if docker ps --format "{{.Names}}" | grep -q "^naver-crawler-web-dev$"; then
         log_blue "개발 모드 로그를 확인합니다. (Ctrl+C로 종료)"
         sleep 2
         docker-compose -f docker-compose.dev.yml logs -f web
-    elif docker ps | grep -q "naver-crawler-web"; then
+    elif docker ps --format "{{.Names}}" | grep -q "^naver-crawler-web$"; then
         log_blue "프로덕션 모드 로그를 확인합니다. (Ctrl+C로 종료)"
         sleep 2
         docker-compose logs -f web
@@ -144,8 +144,16 @@ start_dev_mode() {
     echo "  - Hot reload 지원"
     echo ""
     
-    # 기존 프로덕션 컨테이너 확인
-    if docker ps | grep -q "naver-crawler-web"; then
+    # 기존 개발 모드 컨테이너 확인 (재시작인 경우)
+    if docker ps | grep -q "naver-crawler-web-dev"; then
+        log_info "개발 모드 컨테이너가 이미 실행 중입니다. 재시작합니다..."
+        docker-compose -f docker-compose.dev.yml restart
+        log_info "✅ 개발 모드 재시작 완료!"
+        return 0
+    fi
+    
+    # 기존 프로덕션 컨테이너 확인 (정확한 이름 매칭)
+    if docker ps --format "{{.Names}}" | grep -q "^naver-crawler-web$"; then
         log_warn "프로덕션 컨테이너가 실행 중입니다. 종료하시겠습니까? (y/N)"
         read -p "> " confirm
         if [[ $confirm =~ ^[Yy]$ ]]; then
