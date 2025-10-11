@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 interface PropertyDetailProps {
   data: any;
@@ -9,6 +9,8 @@ interface PropertyDetailProps {
 
 export default function PropertyDetail({ data, onClose }: PropertyDetailProps) {
   const [activeTab, setActiveTab] = useState<'overview' | 'articles'>('overview');
+  const [addressInfo, setAddressInfo] = useState<any>(null);
+  const [loadingAddress, setLoadingAddress] = useState(false);
 
   // 디버깅: 데이터 구조 확인
   console.log('PropertyDetail data:', data);
@@ -24,6 +26,29 @@ export default function PropertyDetail({ data, onClose }: PropertyDetailProps) {
   const overview = complexData?.overview || {};
   const articles = complexData?.articles?.articleList || [];
   const crawlingInfo = complexData?.crawling_info || {};
+
+  // 위도/경도로 주소 조회
+  useEffect(() => {
+    const fetchAddress = async () => {
+      if (overview.latitude && overview.longitude) {
+        setLoadingAddress(true);
+        try {
+          const response = await fetch(
+            `/api/geocode?latitude=${overview.latitude}&longitude=${overview.longitude}`
+          );
+          if (response.ok) {
+            const result = await response.json();
+            setAddressInfo(result.address);
+          }
+        } catch (error) {
+          console.error('Failed to fetch address:', error);
+        } finally {
+          setLoadingAddress(false);
+        }
+      }
+    };
+    fetchAddress();
+  }, [overview.latitude, overview.longitude]);
 
   // 거래 유형 변환
   const getTradeTypeLabel = (tradeType: string) => {
@@ -169,6 +194,34 @@ export default function PropertyDetail({ data, onClose }: PropertyDetailProps) {
               <InfoCard title="위치 정보">
                 <InfoRow label="위도" value={overview.latitude} />
                 <InfoRow label="경도" value={overview.longitude} />
+                {loadingAddress ? (
+                  <div className="text-sm text-gray-500 dark:text-gray-400 py-2">
+                    📍 주소 조회 중...
+                  </div>
+                ) : addressInfo ? (
+                  <div className="space-y-2 mt-2">
+                    {addressInfo.fullAddress && (
+                      <div className="p-2 bg-gray-50 dark:bg-gray-700/50 rounded text-sm">
+                        <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">주소</div>
+                        <div className="text-gray-900 dark:text-white">{addressInfo.fullAddress}</div>
+                      </div>
+                    )}
+                    {(addressInfo.beopjungdong || addressInfo.haengjeongdong) && (
+                      <div className="flex gap-2 flex-wrap">
+                        {addressInfo.beopjungdong && (
+                          <span className="px-2 py-1 text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded">
+                            법정동: {addressInfo.beopjungdong}
+                          </span>
+                        )}
+                        {addressInfo.haengjeongdong && addressInfo.haengjeongdong !== addressInfo.beopjungdong && (
+                          <span className="px-2 py-1 text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded">
+                            행정동: {addressInfo.haengjeongdong}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ) : null}
               </InfoCard>
             </div>
           ) : (

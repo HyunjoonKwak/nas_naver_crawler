@@ -431,6 +431,31 @@ function ComplexDetailModal({
 }) {
   const overview = data.overview || {};
   const articles = data.articles?.articleList || [];
+  const [addressInfo, setAddressInfo] = useState<any>(null);
+  const [loadingAddress, setLoadingAddress] = useState(false);
+
+  // 위도/경도로 주소 조회
+  useEffect(() => {
+    const fetchAddress = async () => {
+      if (overview.latitude && overview.longitude) {
+        setLoadingAddress(true);
+        try {
+          const response = await fetch(
+            `/api/geocode?latitude=${overview.latitude}&longitude=${overview.longitude}`
+          );
+          if (response.ok) {
+            const result = await response.json();
+            setAddressInfo(result.address);
+          }
+        } catch (error) {
+          console.error('Failed to fetch address:', error);
+        } finally {
+          setLoadingAddress(false);
+        }
+      }
+    };
+    fetchAddress();
+  }, [overview.latitude, overview.longitude]);
 
   const formatPrice = (price: number | string | null | undefined) => {
     if (!price || price === 0) return '-';
@@ -468,13 +493,43 @@ function ComplexDetailModal({
       >
         {/* Header */}
         <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-6 flex items-center justify-between z-10">
-          <div>
+          <div className="flex-1">
             <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
               {overview.complexName || `단지 ${complexNo}`}
             </h2>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-              단지번호: {complexNo}
-            </p>
+            <div className="mt-2 space-y-1">
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                단지번호: {complexNo}
+              </p>
+              {loadingAddress ? (
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  📍 주소 조회 중...
+                </p>
+              ) : addressInfo ? (
+                <div className="text-sm text-gray-600 dark:text-gray-300 space-y-0.5">
+                  {addressInfo.fullAddress && (
+                    <p className="flex items-start gap-1">
+                      <span className="text-gray-400">📍</span>
+                      <span>{addressInfo.fullAddress}</span>
+                    </p>
+                  )}
+                  {(addressInfo.beopjungdong || addressInfo.haengjeongdong) && (
+                    <p className="flex items-center gap-2 text-xs">
+                      {addressInfo.beopjungdong && (
+                        <span className="px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded">
+                          법정동: {addressInfo.beopjungdong}
+                        </span>
+                      )}
+                      {addressInfo.haengjeongdong && addressInfo.haengjeongdong !== addressInfo.beopjungdong && (
+                        <span className="px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded">
+                          행정동: {addressInfo.haengjeongdong}
+                        </span>
+                      )}
+                    </p>
+                  )}
+                </div>
+              ) : null}
+            </div>
           </div>
           <button
             onClick={onClose}
