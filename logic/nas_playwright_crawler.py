@@ -227,52 +227,87 @@ class NASNaverRealEstateCrawler:
                 initial_count = len(all_articles)
                 print(f"초기 매물 수: {initial_count}개")
                 
-                # 5. 스크롤하며 데이터 수집
-                print("스크롤 시작...")
+                # 5. "더보기" 버튼 또는 스크롤로 데이터 수집
+                print("추가 매물 수집 시작...")
                 scroll_attempts = 0
-                max_scroll_attempts = 100  # 최대 스크롤 횟수
+                max_scroll_attempts = 50  # 최대 시도 횟수
                 no_new_data_count = 0
-                max_no_new_data = 5  # 5번 연속 새 데이터 없으면 중단
+                max_no_new_data = 3  # 3번 연속 새 데이터 없으면 중단
                 
                 while scroll_attempts < max_scroll_attempts:
                     prev_count = len(all_articles)
                     
-                    # 스크롤 가능한 컨테이너 찾아서 스크롤
-                    scrolled = False
-                    
-                    # 방법 1: 특정 클래스의 컨테이너 스크롤
-                    scroll_scripts = [
-                        # 매물 목록 컨테이너 스크롤
-                        '''
-                        const containers = document.querySelectorAll('[class*="article"], [class*="list"], [class*="item"]');
-                        for (const container of containers) {
-                            if (container.scrollHeight > container.clientHeight) {
-                                container.scrollTop = container.scrollHeight;
-                                break;
-                            }
-                        }
-                        ''',
-                        # 오버플로우 스크롤 요소 찾기
-                        '''
-                        const scrollable = document.querySelector('[style*="overflow"]');
-                        if (scrollable) scrollable.scrollTop = scrollable.scrollHeight;
-                        ''',
-                        # 페이지 전체 스크롤
-                        'window.scrollTo(0, document.body.scrollHeight);',
+                    # 전략 1: "더보기" 또는 "다음" 버튼 클릭
+                    button_clicked = False
+                    more_button_selectors = [
+                        'button:has-text("더보기")',
+                        'button:has-text("더 보기")',
+                        'button:has-text("MORE")',
+                        'a:has-text("더보기")',
+                        '[class*="more"]',
+                        '[class*="load"]',
+                        'button[class*="more"]',
+                        'button[class*="load"]',
                     ]
                     
-                    for script in scroll_scripts:
+                    for selector in more_button_selectors:
                         try:
-                            await self.page.evaluate(script)
-                            scrolled = True
+                            button = await self.page.wait_for_selector(selector, timeout=1000)
+                            if button:
+                                # 버튼이 보이고 클릭 가능한지 확인
+                                is_visible = await button.is_visible()
+                                if is_visible:
+                                    await button.click()
+                                    print(f"[DEBUG] '더보기' 버튼 클릭 성공: {selector}")
+                                    button_clicked = True
+                                    await asyncio.sleep(3)
+                                    break
                         except:
-                            pass
+                            continue
                     
-                    if not scrolled:
-                        print("⚠️  스크롤 실패")
-                        break
+                    # 전략 2: 스크롤 (더보기 버튼이 없으면)
+                    if not button_clicked:
+                        # 디버그: 스크롤 가능한 요소 찾기
+                        scroll_info = await self.page.evaluate('''
+                            () => {
+                                const containers = document.querySelectorAll('[class*="article"], [class*="list"]');
+                                const results = [];
+                                for (const el of containers) {
+                                    if (el.scrollHeight > el.clientHeight) {
+                                        results.push({
+                                            tag: el.tagName,
+                                            class: el.className,
+                                            scrollHeight: el.scrollHeight,
+                                            clientHeight: el.clientHeight,
+                                            scrollTop: el.scrollTop
+                                        });
+                                    }
+                                }
+                                return results;
+                            }
+                        ''')
+                        
+                        if scroll_attempts == 0 and scroll_info:
+                            print(f"[DEBUG] 스크롤 가능한 컨테이너: {len(scroll_info)}개")
+                            for info in scroll_info[:2]:  # 처음 2개만 출력
+                                print(f"  - {info}")
+                        
+                        # 스크롤 실행
+                        await self.page.evaluate('''
+                            () => {
+                                // 모든 스크롤 가능한 요소 스크롤
+                                const containers = document.querySelectorAll('[class*="article"], [class*="list"]');
+                                for (const el of containers) {
+                                    if (el.scrollHeight > el.clientHeight) {
+                                        el.scrollTop = el.scrollHeight;
+                                    }
+                                }
+                                // 페이지 전체도 스크롤
+                                window.scrollTo(0, document.body.scrollHeight);
+                            }
+                        ''')
                     
-                    await asyncio.sleep(3)  # API 호출 대기 시간 증가
+                    await asyncio.sleep(3)  # API 호출 대기
                     
                     current_count = len(all_articles)
                     new_items = current_count - prev_count
@@ -281,15 +316,23 @@ class NASNaverRealEstateCrawler:
                     
                     if new_items > 0:
                         no_new_data_count = 0
-                        print(f"스크롤 {scroll_attempts}회: {new_items}개 추가 (총 {current_count}개)")
+                        print(f"시도 {scroll_attempts}회: {new_items}개 추가 (총 {current_count}개)")
                     else:
                         no_new_data_count += 1
-                        print(f"스크롤 {scroll_attempts}회: 새 데이터 없음 ({no_new_data_count}/{max_no_new_data})")
+                        if button_clicked:
+                            print(f"시도 {scroll_attempts}회: 버튼 클릭했지만 새 데이터 없음 ({no_new_data_count}/{max_no_new_data})")
+                        else:
+                            print(f"시도 {scroll_attempts}회: 스크롤했지만 새 데이터 없음 ({no_new_data_count}/{max_no_new_data})")
+                        
                         if no_new_data_count >= max_no_new_data:
-                            print(f"더 이상 새 데이터 없음 - 스크롤 종료")
+                            print(f"✅ 수집 완료 - {max_no_new_data}회 연속 새 데이터 없음")
                             break
                 
-                print(f"스크롤 완료: 총 {len(all_articles)}개 매물 수집 ({scroll_attempts}회 시도)")
+                if len(all_articles) > initial_count:
+                    print(f"🎉 수집 완료: 초기 {initial_count}개 → 최종 {len(all_articles)}개 (총 {scroll_attempts}회 시도)")
+                else:
+                    print(f"⚠️  추가 수집 실패: {initial_count}개에서 변화 없음 (총 {scroll_attempts}회 시도)")
+                    print(f"   → 실제로 {initial_count}개만 있거나, 스크롤/버튼이 작동하지 않음")
                 
             except Exception as e:
                 print(f"스크롤 크롤링 중 오류: {e}")
