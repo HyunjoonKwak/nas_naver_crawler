@@ -153,10 +153,18 @@ class NASNaverRealEstateCrawler:
             async def handle_articles_response(response):
                 # 매물 목록 API 응답 감지
                 if f'/api/articles/complex/{complex_no}' in response.url:
-                    print(f"[DEBUG] API 호출 감지")
+                    # 동일매물 묶기 적용 여부 확인
+                    same_group = 'sameAddressGroup=true' in response.url or 'sameAddressGroup=Y' in response.url
+                    group_status = "✅ ON" if same_group else "❌ OFF"
+                    
+                    print(f"[DEBUG] API 호출 감지 (동일매물묶기: {group_status})")
+                    if len(all_articles) == 0:  # 첫 API 호출만 로그
+                        print(f"[DEBUG] API URL: {response.url[:100]}...")
+                    
                     try:
                         data = await response.json()
                         article_list = data.get('articleList', [])
+                        total_count = data.get('totalCount', 0)
                         
                         # 중복 제거하며 추가
                         new_count = 0
@@ -168,7 +176,8 @@ class NASNaverRealEstateCrawler:
                                 new_count += 1
                         
                         if new_count > 0:
-                            print(f"  → {new_count}개 새 매물 추가 (총 {len(all_articles)}개)")
+                            total_info = f", 전체: {total_count}건" if total_count > 0 else ""
+                            print(f"  → {new_count}개 새 매물 추가 (총 {len(all_articles)}개{total_info})")
                     except Exception as e:
                         print(f"매물 API 응답 파싱 실패: {e}")
             
@@ -176,23 +185,24 @@ class NASNaverRealEstateCrawler:
             self.page.on('response', handle_articles_response)
             
             try:
-                # 1. 단지 페이지로 이동
+                # 1. 메인 페이지에서 localStorage 설정 (중요!)
+                print("🔧 동일매물 묶기 설정 준비 중...")
+                await self.page.goto("https://new.land.naver.com", wait_until='domcontentloaded')
+                
+                await self.page.evaluate('''
+                    () => {
+                        localStorage.setItem('sameAddrYn', 'true');
+                        localStorage.setItem('sameAddressGroup', 'true');
+                        console.log('[LocalStorage] 동일매물 묶기 설정 완료');
+                    }
+                ''')
+                print("✅ localStorage 설정 완료")
+                await asyncio.sleep(1)
+                
+                # 2. 단지 페이지로 이동 (localStorage 값이 자동 적용됨)
                 url = f"https://new.land.naver.com/complexes/{complex_no}"
                 print(f"URL 접속: {url}")
                 await self.page.goto(url, wait_until='networkidle')
-                
-                # 1-1. localStorage 설정 (동일매물 묶기 ON)
-                await self.page.evaluate('''
-                    () => {
-                        localStorage.setItem('markUpLevyRate', '0');
-                        console.log('동일매물 묶기 설정 완료');
-                    }
-                ''')
-                print("동일매물 묶기 활성화")
-                
-                # 1-2. 설정 반영을 위해 페이지 새로고침
-                print("설정 적용을 위해 페이지 새로고침...")
-                await self.page.reload(wait_until='networkidle')
                 await asyncio.sleep(3)
                 
                 # 2. 매물 탭 클릭
@@ -217,7 +227,69 @@ class NASNaverRealEstateCrawler:
                 except Exception as e:
                     print(f"매물 탭 클릭 중 오류: {e}")
                 
-                # 3. 매물 목록 컨테이너 찾기
+                # 3. localStorage 및 체크박스 상태 검증
+                print("동일매물 묶기 상태 검증 중...")
+                storage_check = await self.page.evaluate('''
+                    () => {
+                        const sameAddrYn = localStorage.getItem('sameAddrYn');
+                        const sameAddressGroup = localStorage.getItem('sameAddressGroup');
+                        
+                        // 체크박스 상태 확인
+                        const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+                        let checkboxState = null;
+                        
+                        for (const checkbox of checkboxes) {
+                            const label = checkbox.closest('label') || checkbox.nextElementSibling;
+                            const text = label ? (label.textContent || label.innerText || '') : '';
+                            if (text.includes('동일매물')) {
+                                checkboxState = {
+                                    checked: checkbox.checked,
+                                    labelText: text
+                                };
+                                break;
+                            }
+                        }
+                        
+                        return {
+                            sameAddrYn,
+                            sameAddressGroup,
+                            checkboxState
+                        };
+                    }
+                ''')
+                print(f"[DEBUG] localStorage 상태: sameAddrYn={storage_check.get('sameAddrYn')}, sameAddressGroup={storage_check.get('sameAddressGroup')}")
+                if storage_check.get('checkboxState'):
+                    print(f"[DEBUG] 체크박스 상태: checked={storage_check['checkboxState'].get('checked')}")
+                
+                # 4. 체크박스가 체크되지 않았으면 클릭
+                if storage_check.get('checkboxState') and not storage_check['checkboxState'].get('checked'):
+                    print("🔘 체크박스 클릭 중...")
+                    clicked = await self.page.evaluate('''
+                        () => {
+                            const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+                            for (const checkbox of checkboxes) {
+                                const label = checkbox.closest('label') || checkbox.nextElementSibling;
+                                const text = label ? (label.textContent || label.innerText || '') : '';
+                                if (text.includes('동일매물')) {
+                                    checkbox.click();
+                                    console.log('[Checkbox] 클릭 완료');
+                                    return true;
+                                }
+                            }
+                            return false;
+                        }
+                    ''')
+                    
+                    if clicked:
+                        print("[DEBUG] 체크박스 클릭 완료, 데이터 재로딩 대기...")
+                        await asyncio.sleep(3)
+                        print("✅ 동일매물 묶기 활성화 완료")
+                    else:
+                        print("[DEBUG] 체크박스를 찾지 못함")
+                else:
+                    print("✅ 동일매물 묶기 이미 활성화됨")
+                
+                # 5. 매물 목록 컨테이너 찾기
                 print("매물 목록 컨테이너 찾는 중...")
                 list_container = None
                 container_selectors = [
