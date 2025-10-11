@@ -157,9 +157,9 @@ class NASNaverRealEstateCrawler:
                     same_group = 'sameAddressGroup=true' in response.url or 'sameAddressGroup=Y' in response.url
                     group_status = "✅ ON" if same_group else "❌ OFF"
                     
-                    print(f"[DEBUG] API 호출 감지 (동일매물묶기: {group_status})")
-                    if len(all_articles) == 0:  # 첫 API 호출만 로그
-                        print(f"[DEBUG] API URL: {response.url[:100]}...")
+                    print(f"[API] 호출 감지 #{len(all_articles)//20 + 1} (동일매물묶기: {group_status})")
+                    if len(all_articles) == 0:  # 첫 API 호출만 전체 URL 로그
+                        print(f"[API] URL: {response.url[:120]}...")
                     
                     try:
                         data = await response.json()
@@ -314,10 +314,11 @@ class NASNaverRealEstateCrawler:
                 
                 # 5. 점진적 스크롤로 데이터 수집 (crawler_service.py 방식)
                 print("추가 매물 수집 시작 (점진적 스크롤)...")
+                print(f"[설정] 최대 시도: 100회, API 대기: 2.5초, 종료 조건: 8회 연속 변화 없음")
                 scroll_attempts = 0
                 max_scroll_attempts = 100  # 최대 100회
                 scroll_end_count = 0  # 스크롤이 안 움직이는 횟수
-                max_scroll_end = 5  # 5회 연속 스크롤 안 되면 종료
+                max_scroll_end = 8  # 8회 연속 스크롤 안 되면 종료 (5→8 완화)
                 
                 while scroll_attempts < max_scroll_attempts:
                     prev_count = len(all_articles)
@@ -369,12 +370,13 @@ class NASNaverRealEstateCrawler:
                     if scroll_attempts == 0:
                         if scroll_result.get('found'):
                             print(f"[DEBUG] 컨테이너 발견: .{scroll_result.get('containerClass', 'unknown')}")
-                            print(f"  매물 아이템: {scroll_result.get('itemCount', 0)}개")
+                            print(f"  DOM 아이템: {scroll_result.get('itemCount', 0)}개")
                             print(f"  스크롤 높이: {scroll_result.get('scrollHeight')} / {scroll_result.get('clientHeight')}")
                         else:
                             print(f"[DEBUG] 컨테이너를 찾지 못함: {scroll_result.get('reason', 'unknown')}")
                     
-                    await asyncio.sleep(1.5)  # ✅ 봇 감지 회피 (crawler_service.py 방식)
+                    # API 호출 대기 (1.5초 → 2.5초로 증가)
+                    await asyncio.sleep(2.5)  # ✅ API 응답 충분히 대기
                     
                     current_count = len(all_articles)
                     new_items = current_count - prev_count
@@ -385,17 +387,19 @@ class NASNaverRealEstateCrawler:
                     if scroll_result.get('found') and not scroll_result.get('moved'):
                         scroll_end_count += 1
                         print(f"시도 {scroll_attempts}회: 스크롤 끝 감지 ({scroll_end_count}/{max_scroll_end}) - 총 {current_count}개")
+                        print(f"  → 스크롤 위치: {scroll_result.get('scrollAfter')} / {scroll_result.get('scrollHeight')}")
                         
                         if scroll_end_count >= max_scroll_end:
-                            print(f"⏹️  스크롤 끝 도달 - 수집 완료")
+                            print(f"⏹️  스크롤 끝 도달 ({max_scroll_end}회 연속) - 수집 완료")
+                            print(f"📊 최종 수집: {current_count}개 (DOM: {scroll_result.get('itemCount', 0)}개)")
                             break
                     else:
                         scroll_end_count = 0  # 스크롤이 움직이면 리셋
                         
                         if new_items > 0:
-                            print(f"시도 {scroll_attempts}회: +{scroll_result.get('scrollDelta', 0)}px 스크롤 → {new_items}개 추가 (총 {current_count}개)")
+                            print(f"시도 {scroll_attempts}회: +{scroll_result.get('scrollDelta', 0)}px 스크롤 → 🎉 {new_items}개 추가 (총 {current_count}개)")
                         else:
-                            print(f"시도 {scroll_attempts}회: +{scroll_result.get('scrollDelta', 0)}px 스크롤 중... (총 {current_count}개)")
+                            print(f"시도 {scroll_attempts}회: +{scroll_result.get('scrollDelta', 0)}px 스크롤 중... (총 {current_count}개, 대기 중)")
                 
                 if len(all_articles) > initial_count:
                     print(f"🎉 수집 완료: 초기 {initial_count}개 → 최종 {len(all_articles)}개 (총 {scroll_attempts}회 시도)")

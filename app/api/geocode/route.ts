@@ -76,7 +76,9 @@ export async function GET(request: NextRequest) {
     const coords = `${longitude},${latitude}`;
     const apiUrl = `https://naveropenapi.apigw.ntruss.com/map-reversegeocode/v2/gc?coords=${coords}&output=json&orders=roadaddr,addr`;
 
-    console.log(`[Geocoding] API 호출: ${coords}`);
+    console.log(`[Geocoding] 🗺️  API 호출 시작`);
+    console.log(`[Geocoding]   좌표: ${coords}`);
+    console.log(`[Geocoding]   URL: ${apiUrl}`);
 
     const response = await fetch(apiUrl, {
       headers: {
@@ -87,7 +89,8 @@ export async function GET(request: NextRequest) {
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('[Geocoding] API 오류:', response.status, errorText);
+      console.error('[Geocoding] ❌ API 오류:', response.status);
+      console.error('[Geocoding]   응답:', errorText);
       return NextResponse.json(
         { 
           error: 'Naver Maps API 호출 실패',
@@ -99,9 +102,12 @@ export async function GET(request: NextRequest) {
     }
 
     const data: NaverGeocodingResponse = await response.json();
+    console.log(`[Geocoding] ✅ API 응답 수신`);
+    console.log(`[Geocoding]   상태 코드: ${data.status.code}`);
+    console.log(`[Geocoding]   결과 개수: ${data.results?.length || 0}`);
 
     if (data.status.code !== 0) {
-      console.error('[Geocoding] API 상태 오류:', data.status);
+      console.error('[Geocoding] ❌ API 상태 오류:', data.status);
       return NextResponse.json(
         { error: 'Geocoding 실패', details: data.status },
         { status: 400 }
@@ -167,11 +173,12 @@ export async function GET(request: NextRequest) {
       addressInfo.fullAddress = addressInfo.roadAddress || addressInfo.jibunAddress;
     }
 
-    console.log('[Geocoding] 변환 성공:', {
-      coords,
-      beopjungdong: addressInfo.beopjungdong,
-      haengjeongdong: addressInfo.haengjeongdong,
-    });
+    console.log('[Geocoding] 🎯 변환 성공:');
+    console.log('[Geocoding]   도로명: ', addressInfo.roadAddress || '-');
+    console.log('[Geocoding]   지번: ', addressInfo.jibunAddress || '-');
+    console.log('[Geocoding]   법정동: ', addressInfo.beopjungdong || '-');
+    console.log('[Geocoding]   행정동: ', addressInfo.haengjeongdong || '-');
+    console.log('[Geocoding]   전체주소: ', addressInfo.fullAddress || '-');
 
     return NextResponse.json({
       success: true,
