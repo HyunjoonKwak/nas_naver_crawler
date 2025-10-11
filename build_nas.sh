@@ -28,33 +28,40 @@ log_error() {
 # Docker 빌드 옵션 선택
 echo ""
 echo "Docker 빌드 옵션을 선택하세요:"
-echo "1) 최소 버전 (빠른 빌드, 기본 기능만)"
-echo "2) 전체 버전 (모든 기능 포함)"
-echo "3) 기존 이미지 정리 후 빌드"
+echo "1) NAS 최적화 버전 (systemd 문제 해결, 권장)"
+echo "2) 최소 버전 (빠른 빌드, 기본 기능만)"
+echo "3) 전체 버전 (모든 기능 포함)"
+echo "4) 기존 이미지 정리 후 NAS 버전 빌드"
 echo ""
 
-read -p "선택 (1-3): " choice
+read -p "선택 (1-4): " choice
 
 case $choice in
     1)
+        log_info "NAS 최적화 버전으로 빌드 시작..."
+        DOCKERFILE="Dockerfile.nas"
+        REQUIREMENTS="requirements.nas.txt"
+        TAG="naver-crawler-nas"
+        ;;
+    2)
         log_info "최소 버전으로 빌드 시작..."
         DOCKERFILE="Dockerfile.minimal"
         REQUIREMENTS="requirements.minimal.txt"
         TAG="naver-crawler-minimal"
         ;;
-    2)
+    3)
         log_info "전체 버전으로 빌드 시작..."
         DOCKERFILE="Dockerfile"
         REQUIREMENTS="requirements.txt"
         TAG="naver-crawler-full"
         ;;
-    3)
-        log_info "기존 이미지 정리 후 빌드..."
+    4)
+        log_info "기존 이미지 정리 후 NAS 버전 빌드..."
         docker system prune -f
         docker image prune -f
-        DOCKERFILE="Dockerfile"
-        REQUIREMENTS="requirements.txt"
-        TAG="naver-crawler-full"
+        DOCKERFILE="Dockerfile.nas"
+        REQUIREMENTS="requirements.nas.txt"
+        TAG="naver-crawler-nas"
         ;;
     *)
         log_error "잘못된 선택입니다."
