@@ -9,9 +9,7 @@ RUN npm ci
 
 COPY app ./app
 COPY components ./components
-COPY lib ./lib
 COPY public ./public
-COPY styles ./styles
 COPY next.config.ts tsconfig.json tailwind.config.ts postcss.config.mjs ./
 
 RUN npm run build
