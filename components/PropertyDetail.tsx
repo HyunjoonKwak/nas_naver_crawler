@@ -10,9 +10,20 @@ interface PropertyDetailProps {
 export default function PropertyDetail({ data, onClose }: PropertyDetailProps) {
   const [activeTab, setActiveTab] = useState<'overview' | 'articles'>('overview');
 
+  // 디버깅: 데이터 구조 확인
+  console.log('PropertyDetail data:', data);
+  console.log('Is Array?', Array.isArray(data));
+  
+  // 데이터가 배열인 경우 첫 번째 요소 사용
+  const complexData = Array.isArray(data) ? data[0] : data;
+  
+  console.log('complexData:', complexData);
+  console.log('overview:', complexData?.overview);
+  
   // 단지 개요 정보 추출
-  const overview = data.overview || {};
-  const articles = data.articles?.articleList || [];
+  const overview = complexData?.overview || {};
+  const articles = complexData?.articles?.articleList || [];
+  const crawlingInfo = complexData?.crawling_info || {};
 
   // 거래 유형 변환
   const getTradeTypeLabel = (tradeType: string) => {
@@ -65,7 +76,7 @@ export default function PropertyDetail({ data, onClose }: PropertyDetailProps) {
               {overview.complexName || '단지 정보'}
             </h2>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-              단지번호: {data.crawling_info?.complex_no} | 크롤링: {new Date(data.crawling_info?.crawling_date).toLocaleString('ko-KR')}
+              단지번호: {crawlingInfo.complex_no || '-'} | 크롤링: {crawlingInfo.crawling_date ? new Date(crawlingInfo.crawling_date).toLocaleString('ko-KR') : '-'}
             </p>
           </div>
           <button
