@@ -36,10 +36,17 @@ export default function PropertyDetail({ data, onClose }: PropertyDetailProps) {
     return types[tradeType] || tradeType;
   };
 
-  // 가격 포맷 (만원 단위 → 억/만원 표시)
+  // 가격 표시 (이미 포맷된 문자열 또는 숫자 처리)
   const formatPrice = (price: number | string | null | undefined) => {
-    if (!price || price === 0 || isNaN(Number(price))) return '-';
+    if (!price || price === 0) return '-';
     
+    // 이미 "X억 X,XXX" 형식의 문자열이면 그대로 반환
+    if (typeof price === 'string') {
+      return price;
+    }
+    
+    // 숫자인 경우 포맷팅
+    if (isNaN(Number(price))) return '-';
     const priceNum = Number(price);
     const uk = Math.floor(priceNum / 10000);
     const man = priceNum % 10000;
@@ -62,7 +69,7 @@ export default function PropertyDetail({ data, onClose }: PropertyDetailProps) {
 
   // 거래 유형별 통계
   const tradeStats = articles.reduce((acc: any, article: any) => {
-    const type = article.tradeType;
+    const type = article.tradeTypeCode || article.tradeType;
     acc[type] = (acc[type] || 0) + 1;
     return acc;
   }, {});
@@ -201,17 +208,17 @@ export default function PropertyDetail({ data, onClose }: PropertyDetailProps) {
                       <tr key={index} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
                         <td className="px-4 py-4 whitespace-nowrap">
                           <span className={`px-2 py-1 rounded text-xs font-semibold ${
-                            article.tradeType === 'A1' 
+                            (article.tradeTypeCode || article.tradeType) === 'A1' 
                               ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
-                              : article.tradeType === 'B1'
+                              : (article.tradeTypeCode || article.tradeType) === 'B1'
                               ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
                               : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
                           }`}>
-                            {getTradeTypeLabel(article.tradeType)}
+                            {getTradeTypeLabel(article.tradeTypeCode || article.tradeType)}
                           </span>
                         </td>
                         <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
-                          {article.tradeType === 'B2' ? (
+                          {(article.tradeTypeCode || article.tradeType) === 'B2' ? (
                             // 월세: 보증금/월세
                             <div>
                               <div className="text-gray-700 dark:text-gray-300">
@@ -235,9 +242,12 @@ export default function PropertyDetail({ data, onClose }: PropertyDetailProps) {
                           {article.direction || '-'}
                         </td>
                         <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                          {article.cfmYmd ? 
-                            `${article.cfmYmd.substring(0,4)}.${article.cfmYmd.substring(4,6)}.${article.cfmYmd.substring(6,8)}` 
-                            : '-'}
+                          {(() => {
+                            const date = article.articleConfirmYmd || article.cfmYmd;
+                            return date ? 
+                              `${date.toString().substring(0,4)}.${date.toString().substring(4,6)}.${date.toString().substring(6,8)}` 
+                              : '-';
+                          })()}
                         </td>
                       </tr>
                     ))}
