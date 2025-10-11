@@ -1,9 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 
 interface CrawlerFormProps {
   onCrawlComplete: () => void;
+}
+
+interface CrawlStatus {
+  status: 'idle' | 'running' | 'completed' | 'error';
+  progress: number;
+  total: number;
+  percent: number;
+  current_complex: string;
+  message: string;
+  timestamp: string;
 }
 
 export default function CrawlerForm({ onCrawlComplete }: CrawlerFormProps) {
@@ -11,15 +21,72 @@ export default function CrawlerForm({ onCrawlComplete }: CrawlerFormProps) {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [crawlStatus, setCrawlStatus] = useState<CrawlStatus | null>(null);
+  const statusIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  // 크롤링 상태 폴링
+  const startStatusPolling = () => {
+    if (statusIntervalRef.current) {
+      clearInterval(statusIntervalRef.current);
+    }
+
+    statusIntervalRef.current = setInterval(async () => {
+      try {
+        const response = await fetch('/api/crawl-status');
+        const data = await response.json();
+        
+        if (data.status === 'idle') {
+          setCrawlStatus(null);
+          stopStatusPolling();
+        } else {
+          setCrawlStatus(data);
+          
+          // 완료 또는 에러 상태면 폴링 중지
+          if (data.status === 'completed' || data.status === 'error') {
+            stopStatusPolling();
+            
+            if (data.status === 'completed') {
+              setMessage(data.message || '✅ 크롤링 완료!');
+              onCrawlComplete();
+            } else {
+              setError(data.message || '❌ 크롤링 실패');
+            }
+            
+            setLoading(false);
+          }
+        }
+      } catch (err) {
+        console.error('상태 확인 중 오류:', err);
+      }
+    }, 1000); // 1초마다 폴링
+  };
+
+  const stopStatusPolling = () => {
+    if (statusIntervalRef.current) {
+      clearInterval(statusIntervalRef.current);
+      statusIntervalRef.current = null;
+    }
+  };
+
+  // 컴포넌트 언마운트 시 폴링 중지
+  useEffect(() => {
+    return () => {
+      stopStatusPolling();
+    };
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setMessage("");
     setError("");
+    setCrawlStatus(null);
 
     try {
       const numbers = complexNumbers.split(',').map(n => n.trim()).filter(Boolean);
+      
+      // 크롤링 시작과 동시에 상태 폴링 시작
+      startStatusPolling();
       
       const response = await fetch('/api/crawl', {
         method: 'POST',
@@ -32,16 +99,18 @@ export default function CrawlerForm({ onCrawlComplete }: CrawlerFormProps) {
       const data = await response.json();
 
       if (response.ok) {
-        setMessage(`✅ 크롤링 완료! ${numbers.length}개 단지 처리됨`);
+        // 폴링에서 처리하므로 여기서는 아무것도 안 함
+        // setMessage는 폴링에서 설정됨
         setComplexNumbers("");
-        onCrawlComplete();
       } else {
         setError(data.error || '크롤링 실패');
+        setLoading(false);
+        stopStatusPolling();
       }
     } catch (err: any) {
       setError(`오류 발생: ${err.message}`);
-    } finally {
       setLoading(false);
+      stopStatusPolling();
     }
   };
 
@@ -106,6 +175,43 @@ export default function CrawlerForm({ onCrawlComplete }: CrawlerFormProps) {
             '🚀 크롤링 시작'
           )}
         </button>
+
+        {/* 실시간 진행 상태 표시 */}
+        {crawlStatus && crawlStatus.status === 'running' && (
+          <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg space-y-3">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-blue-900 dark:text-blue-300 font-medium">
+                {crawlStatus.message}
+              </span>
+              <span className="text-blue-700 dark:text-blue-400 font-semibold">
+                {crawlStatus.percent.toFixed(1)}%
+              </span>
+            </div>
+            
+            {/* 프로그레스 바 */}
+            <div className="w-full bg-blue-100 dark:bg-blue-900/30 rounded-full h-3 overflow-hidden">
+              <div 
+                className="bg-blue-600 dark:bg-blue-500 h-full rounded-full transition-all duration-300 ease-out relative overflow-hidden"
+                style={{ width: `${crawlStatus.percent}%` }}
+              >
+                {/* 애니메이션 효과 */}
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shimmer"></div>
+              </div>
+            </div>
+
+            {/* 상세 정보 */}
+            <div className="flex items-center justify-between text-xs text-blue-700 dark:text-blue-400">
+              <span>
+                {crawlStatus.progress} / {crawlStatus.total} 단지
+              </span>
+              {crawlStatus.current_complex && (
+                <span className="font-mono">
+                  단지 #{crawlStatus.current_complex}
+                </span>
+              )}
+            </div>
+          </div>
+        )}
       </form>
 
       {/* Success Message */}

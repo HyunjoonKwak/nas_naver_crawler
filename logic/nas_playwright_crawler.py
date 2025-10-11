@@ -28,6 +28,7 @@ class NASNaverRealEstateCrawler:
         self.browser: Optional[Browser] = None
         self.context: Optional[BrowserContext] = None
         self.page: Optional[Page] = None
+        self.status_file = None  # 진행 상태 파일
         self.results = []
         self.output_dir = Path(os.getenv('OUTPUT_DIR', './crawled_data'))
         self.output_dir.mkdir(exist_ok=True)
@@ -42,6 +43,27 @@ class NASNaverRealEstateCrawler:
         print(f"- 요청 간격: {self.request_delay}초")
         print(f"- 헤드리스 모드: {self.headless}")
         print(f"- 타임아웃: {self.timeout}ms")
+    
+    def update_status(self, status: str, progress: int, total: int, current_complex: str = "", message: str = ""):
+        """진행 상태를 파일로 저장"""
+        if not self.status_file:
+            return
+        
+        status_data = {
+            "status": status,  # "running", "completed", "error"
+            "progress": progress,
+            "total": total,
+            "percent": round((progress / total * 100) if total > 0 else 0, 1),
+            "current_complex": current_complex,
+            "message": message,
+            "timestamp": datetime.now().isoformat()
+        }
+        
+        try:
+            with open(self.status_file, 'w', encoding='utf-8') as f:
+                json.dump(status_data, f, ensure_ascii=False, indent=2)
+        except Exception as e:
+            print(f"[WARNING] 상태 파일 업데이트 실패: {e}")
 
     async def setup_browser(self):
         """브라우저 설정 및 초기화"""
@@ -323,6 +345,16 @@ class NASNaverRealEstateCrawler:
                 while scroll_attempts < max_scroll_attempts:
                     prev_count = len(all_articles)
                     
+                    # 매물 스크롤 진행 상태 업데이트
+                    if scroll_attempts % 3 == 0:  # 3회마다 업데이트 (너무 자주 업데이트하면 부하)
+                        self.update_status(
+                            status="running",
+                            progress=len(all_articles),
+                            total=100,  # 예상 총 매물 수 (실제는 알 수 없음)
+                            current_complex=complex_no,
+                            message=f"🔄 매물 스크롤 중... (시도 {scroll_attempts}회, 수집 {len(all_articles)}개)"
+                        )
+                    
                     # 네이버 실제 컨테이너로 점진적 스크롤 (500px씩)
                     scroll_result = await self.page.evaluate('''
                         () => {
@@ -462,7 +494,8 @@ class NASNaverRealEstateCrawler:
             overview = await self.crawl_complex_overview(complex_no)
             if overview:
                 complex_data['overview'] = overview
-                print(f"단지명: {overview.get('complexName', 'Unknown')}")
+                complex_name = overview.get('complexName', 'Unknown')
+                print(f"단지명: {complex_name}")
                 print(f"세대수: {overview.get('totalHouseHoldCount', 'Unknown')}")
                 print(f"동수: {overview.get('totalDongCount', 'Unknown')}")
             
@@ -487,16 +520,39 @@ class NASNaverRealEstateCrawler:
     async def crawl_multiple_complexes(self, complex_numbers: List[str]) -> List[Dict]:
         """여러 단지 크롤링"""
         results = []
+        total = len(complex_numbers)
         
         for i, complex_no in enumerate(complex_numbers, 1):
-            print(f"\n진행률: {i}/{len(complex_numbers)}")
+            print(f"\n진행률: {i}/{total}")
+            
+            # 단지 개요 수집 전 상태 업데이트
+            self.update_status(
+                status="running",
+                progress=i - 1,
+                total=total,
+                current_complex=complex_no,
+                message=f"📋 단지 정보 수집 중... ({i}/{total})"
+            )
             
             try:
                 complex_data = await self.crawl_complex_data(complex_no)
                 results.append(complex_data)
                 
+                # 크롤링 완료 후 상태 업데이트
+                article_count = 0
+                if 'articles' in complex_data and 'articleList' in complex_data['articles']:
+                    article_count = len(complex_data['articles']['articleList'])
+                
+                self.update_status(
+                    status="running",
+                    progress=i,
+                    total=total,
+                    current_complex=complex_no,
+                    message=f"✅ 완료: {complex_data.get('overview', {}).get('complexName', complex_no)} ({article_count}개 매물)"
+                )
+                
                 # 단지 간 요청 간격 조절
-                if i < len(complex_numbers):
+                if i < total:
                     await asyncio.sleep(self.request_delay * 2)
                     
             except Exception as e:
@@ -506,6 +562,15 @@ class NASNaverRealEstateCrawler:
                     'error': str(e),
                     'crawling_date': datetime.now().isoformat()
                 })
+                
+                # 실패 시에도 상태 업데이트
+                self.update_status(
+                    status="running",
+                    progress=i,
+                    total=total,
+                    current_complex=complex_no,
+                    message=f"❌ 실패: {complex_no} - {str(e)[:50]}"
+                )
         
         return results
 
@@ -553,9 +618,21 @@ class NASNaverRealEstateCrawler:
 
     async def run_crawling(self, complex_numbers: List[str]):
         """크롤링 실행"""
+        # 상태 파일 설정
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        self.status_file = self.output_dir / f"crawl_status_{timestamp}.json"
+        
         try:
             # 브라우저 설정
             await self.setup_browser()
+            
+            # 크롤링 시작 상태 업데이트
+            self.update_status(
+                status="running",
+                progress=0,
+                total=len(complex_numbers),
+                message="🚀 크롤링 시작 중..."
+            )
             
             # 크롤링 실행
             if len(complex_numbers) == 1:
@@ -577,10 +654,27 @@ class NASNaverRealEstateCrawler:
             error_count = len([r for r in results if 'error' in r])
             print(f"성공: {success_count}개, 실패: {error_count}개")
             
+            # 크롤링 완료 상태 업데이트
+            self.update_status(
+                status="completed",
+                progress=len(complex_numbers),
+                total=len(complex_numbers),
+                message=f"✅ 크롤링 완료! 성공: {success_count}, 실패: {error_count}"
+            )
+            
             return results
             
         except Exception as e:
             print(f"크롤링 실행 중 오류: {e}")
+            
+            # 에러 상태 업데이트
+            self.update_status(
+                status="error",
+                progress=0,
+                total=len(complex_numbers),
+                message=f"❌ 오류 발생: {str(e)[:100]}"
+            )
+            
             raise
         finally:
             await self.close_browser()
