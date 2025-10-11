@@ -237,84 +237,66 @@ class NASNaverRealEstateCrawler:
                 while scroll_attempts < max_scroll_attempts:
                     prev_count = len(all_articles)
                     
-                    # 좌측 매물 목록 패널 스크롤 (더보기 버튼은 무시)
-                    # 디버그: 좌측 패널 찾기
+                    # 좌측 매물 목록 패널 스크롤 - 리스트 아이템 기반
                     scroll_result = await self.page.evaluate('''
                         () => {
-                            // 좌측 패널 선택자들 (네이버 부동산 구조)
-                            const selectors = [
-                                    'div[class*="complex_list"]',
-                                    'div[class*="list_contents"]',
-                                    'div[class*="article_list"]',
-                                    'div[class*="article_info"]',
-                                    'div[class*="ComplexArticleList"]',
-                                    '[class*="article"] > div[class*="scroll"]',
-                                    '[class*="list"] > div[class*="scroll"]'
-                                ];
-                                
-                                let scrolled = false;
-                                let scrolledElement = null;
-                                
-                                // 모든 선택자 시도
-                                for (const selector of selectors) {
-                                    try {
-                                        const el = document.querySelector(selector);
-                                        if (el && el.scrollHeight > el.clientHeight) {
-                                            const oldScrollTop = el.scrollTop;
-                                            el.scrollTop = el.scrollHeight;
-                                            scrolled = true;
-                                            scrolledElement = {
-                                                selector: selector,
-                                                tag: el.tagName,
-                                                className: el.className.substring(0, 50),
-                                                scrollHeight: el.scrollHeight,
-                                                clientHeight: el.clientHeight,
-                                                oldScrollTop: oldScrollTop,
-                                                newScrollTop: el.scrollTop
-                                            };
-                                            break;
-                                        }
-                                    } catch (e) {}
-                                }
-                                
-                                // 선택자가 안 먹히면 모든 div 검사
-                                if (!scrolled) {
-                                    const allDivs = document.querySelectorAll('div');
-                                    for (const div of allDivs) {
-                                        // 좌측에 있고, 스크롤 가능하고, 적당한 크기인 div 찾기
-                                        const rect = div.getBoundingClientRect();
-                                        if (rect.left < 500 && 
-                                            rect.width > 200 && 
-                                            div.scrollHeight > div.clientHeight &&
-                                            div.scrollHeight > 1000) {  // 충분히 긴 리스트
-                                            const oldScrollTop = div.scrollTop;
-                                            div.scrollTop = div.scrollHeight;
-                                            scrolled = true;
-                                            scrolledElement = {
-                                                selector: 'auto-detected',
-                                                tag: div.tagName,
-                                                className: div.className.substring(0, 50),
-                                                scrollHeight: div.scrollHeight,
-                                                clientHeight: div.clientHeight,
-                                                oldScrollTop: oldScrollTop,
-                                                newScrollTop: div.scrollTop,
-                                                position: `left=${rect.left}, width=${rect.width}`
-                                            };
-                                            break;
-                                        }
-                                    }
-                                }
-                                
-                                return { scrolled, element: scrolledElement };
+                            // 1. 매물 리스트 아이템 찾기
+                            const itemSelectors = [
+                                'div[class*="list_contents"] > div',
+                                'div[class*="article_list"] > div',
+                                'div[class*="item"]',
+                                '[class*="list"] > div[class*="article"]'
+                            ];
+                            
+                            let items = [];
+                            for (const selector of itemSelectors) {
+                                items = Array.from(document.querySelectorAll(selector));
+                                if (items.length > 5) break;  // 충분한 아이템이 있으면 사용
                             }
-                        ''')
+                            
+                            if (items.length === 0) {
+                                return { scrolled: false, reason: 'no items found' };
+                            }
+                            
+                            // 2. 마지막 아이템으로 스크롤
+                            const lastItem = items[items.length - 1];
+                            const beforeScroll = lastItem.getBoundingClientRect().top;
+                            
+                            // scrollIntoView 사용 (더 확실함)
+                            lastItem.scrollIntoView({ behavior: 'auto', block: 'end' });
+                            
+                            const afterScroll = lastItem.getBoundingClientRect().top;
+                            
+                            // 3. 부모 컨테이너 정보
+                            let container = lastItem.parentElement;
+                            while (container && container.scrollHeight <= container.clientHeight) {
+                                container = container.parentElement;
+                            }
+                            
+                            return {
+                                scrolled: true,
+                                itemCount: items.length,
+                                lastItemMoved: Math.abs(beforeScroll - afterScroll) > 10,
+                                beforeTop: beforeScroll,
+                                afterTop: afterScroll,
+                                container: container ? {
+                                    className: container.className.substring(0, 50),
+                                    scrollHeight: container.scrollHeight,
+                                    clientHeight: container.clientHeight,
+                                    scrollTop: container.scrollTop
+                                } : null
+                            };
+                        }
+                    ''')
                         
                     if scroll_attempts == 0:
-                        if scroll_result['scrolled']:
-                            print(f"[DEBUG] 좌측 패널 발견 및 스크롤:")
-                            print(f"  {scroll_result['element']}")
+                        if scroll_result.get('scrolled'):
+                            print(f"[DEBUG] 매물 아이템 {scroll_result.get('itemCount', 0)}개 발견")
+                            print(f"  마지막 아이템 스크롤: {scroll_result.get('lastItemMoved', False)}")
+                            if scroll_result.get('container'):
+                                print(f"  컨테이너: {scroll_result['container']}")
                         else:
-                            print(f"[DEBUG] 좌측 매물 목록 패널을 찾지 못함")
+                            print(f"[DEBUG] 매물 아이템을 찾지 못함: {scroll_result.get('reason', 'unknown')}")
                     
                     await asyncio.sleep(5)  # API 호출 대기 (증가)
                     
