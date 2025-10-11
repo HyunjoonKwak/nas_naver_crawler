@@ -96,7 +96,7 @@ export default function PropertyDetail({ data, onClose }: PropertyDetailProps) {
               {overview.complexName || '단지 정보'}
             </h2>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-              단지번호: {crawlingInfo.complex_no || '-'} | 크롤링: {crawlingInfo.crawling_date ? new Date(crawlingInfo.crawling_date).toLocaleString('ko-KR') : '-'}
+              단지번호: {crawlingInfo.complex_no || '-'} | 크롤링: {crawlingInfo.crawling_date ? new Date(crawlingInfo.crawling_date).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' }) : '-'}
             </p>
           </div>
           <button
@@ -193,6 +193,9 @@ export default function PropertyDetail({ data, onClose }: PropertyDetailProps) {
                         면적
                       </th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        동
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                         층
                       </th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
@@ -234,6 +237,9 @@ export default function PropertyDetail({ data, onClose }: PropertyDetailProps) {
                         </td>
                         <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">
                           {formatArea(article.area1)}
+                        </td>
+                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">
+                          {article.buildingName || '-'}
                         </td>
                         <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">
                           {article.floorInfo || '-'}
