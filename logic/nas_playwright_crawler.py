@@ -237,41 +237,12 @@ class NASNaverRealEstateCrawler:
                 while scroll_attempts < max_scroll_attempts:
                     prev_count = len(all_articles)
                     
-                    # 전략 1: "더보기" 또는 "다음" 버튼 클릭
-                    button_clicked = False
-                    more_button_selectors = [
-                        'button:has-text("더보기")',
-                        'button:has-text("더 보기")',
-                        'button:has-text("MORE")',
-                        'a:has-text("더보기")',
-                        '[class*="more"]',
-                        '[class*="load"]',
-                        'button[class*="more"]',
-                        'button[class*="load"]',
-                    ]
-                    
-                    for selector in more_button_selectors:
-                        try:
-                            button = await self.page.wait_for_selector(selector, timeout=1000)
-                            if button:
-                                # 버튼이 보이고 클릭 가능한지 확인
-                                is_visible = await button.is_visible()
-                                if is_visible:
-                                    await button.click()
-                                    print(f"[DEBUG] '더보기' 버튼 클릭 성공: {selector}")
-                                    button_clicked = True
-                                    await asyncio.sleep(3)
-                                    break
-                        except:
-                            continue
-                    
-                    # 전략 2: 좌측 매물 목록 패널 스크롤
-                    if not button_clicked:
-                        # 디버그: 좌측 패널 찾기
-                        scroll_result = await self.page.evaluate('''
-                            () => {
-                                // 좌측 패널 선택자들 (네이버 부동산 구조)
-                                const selectors = [
+                    # 좌측 매물 목록 패널 스크롤 (더보기 버튼은 무시)
+                    # 디버그: 좌측 패널 찾기
+                    scroll_result = await self.page.evaluate('''
+                        () => {
+                            // 좌측 패널 선택자들 (네이버 부동산 구조)
+                            const selectors = [
                                     'div[class*="complex_list"]',
                                     'div[class*="list_contents"]',
                                     'div[class*="article_list"]',
@@ -338,14 +309,14 @@ class NASNaverRealEstateCrawler:
                             }
                         ''')
                         
-                        if scroll_attempts == 0:
-                            if scroll_result['scrolled']:
-                                print(f"[DEBUG] 좌측 패널 발견 및 스크롤:")
-                                print(f"  {scroll_result['element']}")
-                            else:
-                                print(f"[DEBUG] 좌측 매물 목록 패널을 찾지 못함")
+                    if scroll_attempts == 0:
+                        if scroll_result['scrolled']:
+                            print(f"[DEBUG] 좌측 패널 발견 및 스크롤:")
+                            print(f"  {scroll_result['element']}")
+                        else:
+                            print(f"[DEBUG] 좌측 매물 목록 패널을 찾지 못함")
                     
-                    await asyncio.sleep(3)  # API 호출 대기
+                    await asyncio.sleep(5)  # API 호출 대기 (증가)
                     
                     current_count = len(all_articles)
                     new_items = current_count - prev_count
@@ -357,10 +328,7 @@ class NASNaverRealEstateCrawler:
                         print(f"시도 {scroll_attempts}회: {new_items}개 추가 (총 {current_count}개)")
                     else:
                         no_new_data_count += 1
-                        if button_clicked:
-                            print(f"시도 {scroll_attempts}회: 버튼 클릭했지만 새 데이터 없음 ({no_new_data_count}/{max_no_new_data})")
-                        else:
-                            print(f"시도 {scroll_attempts}회: 스크롤했지만 새 데이터 없음 ({no_new_data_count}/{max_no_new_data})")
+                        print(f"시도 {scroll_attempts}회: 스크롤했지만 새 데이터 없음 ({no_new_data_count}/{max_no_new_data})")
                         
                         if no_new_data_count >= max_no_new_data:
                             print(f"✅ 수집 완료 - {max_no_new_data}회 연속 새 데이터 없음")
