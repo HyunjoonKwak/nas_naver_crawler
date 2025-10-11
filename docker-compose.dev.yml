@@ -1,0 +1,55 @@
+services:
+  # 개발 모드: 빌드 없이 소스 마운트
+  web:
+    image: node:20-slim
+    container_name: naver-crawler-web-dev
+    restart: unless-stopped
+    working_dir: /app
+    
+    # 환경변수 파일 사용
+    env_file:
+      - config.env
+    
+    environment:
+      - NODE_ENV=development
+    
+    # 소스 코드 마운트 (실시간 반영)
+    volumes:
+      - ./app:/app/app
+      - ./components:/app/components
+      - ./public:/app/public
+      - ./logic:/app/logic
+      - ./crawled_data:/app/crawled_data
+      - ./logs:/app/logs
+      - ./package.json:/app/package.json
+      - ./next.config.js:/app/next.config.js
+      - ./tailwind.config.js:/app/tailwind.config.js
+      - ./postcss.config.js:/app/postcss.config.js
+      - ./tsconfig.json:/app/tsconfig.json
+    
+    # 포트 설정
+    ports:
+      - "3000:3000"
+    
+    # 네트워크 설정
+    networks:
+      - crawler-network
+    
+    # 리소스 제한 (NAS 호환)
+    mem_limit: 2g
+    memswap_limit: 2g
+    
+    # 개발 서버 실행
+    command: >
+      sh -c "
+      apt-get update && apt-get install -y python3 python3-pip curl &&
+      pip3 install playwright pandas python-dotenv aiohttp loguru &&
+      playwright install chromium &&
+      npm install &&
+      npm run dev
+      "
+
+networks:
+  crawler-network:
+    driver: bridge
+
