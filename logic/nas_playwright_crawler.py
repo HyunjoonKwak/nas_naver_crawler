@@ -29,6 +29,7 @@ class NASNaverRealEstateCrawler:
         self.context: Optional[BrowserContext] = None
         self.page: Optional[Page] = None
         self.status_file = None  # 진행 상태 파일
+        self.start_time = None  # 크롤링 시작 시간
         self.results = []
         self.output_dir = Path(os.getenv('OUTPUT_DIR', './crawled_data'))
         self.output_dir.mkdir(exist_ok=True)
@@ -44,10 +45,27 @@ class NASNaverRealEstateCrawler:
         print(f"- 헤드리스 모드: {self.headless}")
         print(f"- 타임아웃: {self.timeout}ms")
     
-    def update_status(self, status: str, progress: int, total: int, current_complex: str = "", message: str = ""):
+    def update_status(self, status: str, progress: int, total: int, current_complex: str = "", message: str = "", items_collected: int = 0):
         """진행 상태를 파일로 저장"""
         if not self.status_file:
             return
+        
+        # 경과 시간 계산
+        elapsed_seconds = 0
+        speed = 0.0
+        estimated_total_seconds = 0
+        
+        if self.start_time:
+            elapsed_seconds = int((datetime.now() - self.start_time).total_seconds())
+            
+            # 속도 계산 (매물/초)
+            if elapsed_seconds > 0 and items_collected > 0:
+                speed = round(items_collected / elapsed_seconds, 2)
+            
+            # 예상 총 소요 시간 계산 (단지 기준)
+            if progress > 0 and total > 0:
+                avg_time_per_complex = elapsed_seconds / progress
+                estimated_total_seconds = int(avg_time_per_complex * total)
         
         status_data = {
             "status": status,  # "running", "completed", "error"
@@ -56,7 +74,13 @@ class NASNaverRealEstateCrawler:
             "percent": round((progress / total * 100) if total > 0 else 0, 1),
             "current_complex": current_complex,
             "message": message,
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
+            # 시간 정보
+            "elapsed_seconds": elapsed_seconds,
+            "estimated_total_seconds": estimated_total_seconds,
+            # 속도 정보
+            "items_collected": items_collected,
+            "speed": speed  # 매물/초
         }
         
         try:
@@ -352,7 +376,8 @@ class NASNaverRealEstateCrawler:
                             progress=len(all_articles),
                             total=100,  # 예상 총 매물 수 (실제는 알 수 없음)
                             current_complex=complex_no,
-                            message=f"🔄 매물 스크롤 중... (시도 {scroll_attempts}회, 수집 {len(all_articles)}개)"
+                            message=f"🔄 매물 스크롤 중... (시도 {scroll_attempts}회, 수집 {len(all_articles)}개)",
+                            items_collected=len(all_articles)
                         )
                     
                     # 네이버 실제 컨테이너로 점진적 스크롤 (500px씩)
@@ -525,13 +550,20 @@ class NASNaverRealEstateCrawler:
         for i, complex_no in enumerate(complex_numbers, 1):
             print(f"\n진행률: {i}/{total}")
             
+            # 현재까지 수집된 전체 매물 수 계산
+            total_items_so_far = 0
+            for r in results:
+                if 'articles' in r and 'articleList' in r['articles']:
+                    total_items_so_far += len(r['articles']['articleList'])
+            
             # 단지 개요 수집 전 상태 업데이트
             self.update_status(
                 status="running",
                 progress=i - 1,
                 total=total,
                 current_complex=complex_no,
-                message=f"📋 단지 정보 수집 중... ({i}/{total})"
+                message=f"📋 단지 정보 수집 중... ({i}/{total})",
+                items_collected=total_items_so_far
             )
             
             try:
@@ -543,12 +575,19 @@ class NASNaverRealEstateCrawler:
                 if 'articles' in complex_data and 'articleList' in complex_data['articles']:
                     article_count = len(complex_data['articles']['articleList'])
                 
+                # 전체 매물 수 재계산
+                total_items_so_far = 0
+                for r in results:
+                    if 'articles' in r and 'articleList' in r['articles']:
+                        total_items_so_far += len(r['articles']['articleList'])
+                
                 self.update_status(
                     status="running",
                     progress=i,
                     total=total,
                     current_complex=complex_no,
-                    message=f"✅ 완료: {complex_data.get('overview', {}).get('complexName', complex_no)} ({article_count}개 매물)"
+                    message=f"✅ 완료: {complex_data.get('overview', {}).get('complexName', complex_no)} ({article_count}개 매물)",
+                    items_collected=total_items_so_far
                 )
                 
                 # 단지 간 요청 간격 조절
@@ -563,13 +602,20 @@ class NASNaverRealEstateCrawler:
                     'crawling_date': datetime.now().isoformat()
                 })
                 
+                # 실패 시에도 전체 매물 수 계산
+                total_items_so_far = 0
+                for r in results:
+                    if 'articles' in r and 'articleList' in r['articles']:
+                        total_items_so_far += len(r['articles']['articleList'])
+                
                 # 실패 시에도 상태 업데이트
                 self.update_status(
                     status="running",
                     progress=i,
                     total=total,
                     current_complex=complex_no,
-                    message=f"❌ 실패: {complex_no} - {str(e)[:50]}"
+                    message=f"❌ 실패: {complex_no} - {str(e)[:50]}",
+                    items_collected=total_items_so_far
                 )
         
         return results
@@ -618,9 +664,10 @@ class NASNaverRealEstateCrawler:
 
     async def run_crawling(self, complex_numbers: List[str]):
         """크롤링 실행"""
-        # 상태 파일 설정
+        # 상태 파일 및 시작 시간 설정
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         self.status_file = self.output_dir / f"crawl_status_{timestamp}.json"
+        self.start_time = datetime.now()  # 시작 시간 기록
         
         try:
             # 브라우저 설정
@@ -631,7 +678,8 @@ class NASNaverRealEstateCrawler:
                 status="running",
                 progress=0,
                 total=len(complex_numbers),
-                message="🚀 크롤링 시작 중..."
+                message="🚀 크롤링 시작 중...",
+                items_collected=0
             )
             
             # 크롤링 실행
@@ -654,12 +702,19 @@ class NASNaverRealEstateCrawler:
             error_count = len([r for r in results if 'error' in r])
             print(f"성공: {success_count}개, 실패: {error_count}개")
             
+            # 전체 수집된 매물 수 계산
+            total_items = 0
+            for r in results:
+                if 'articles' in r and 'articleList' in r['articles']:
+                    total_items += len(r['articles']['articleList'])
+            
             # 크롤링 완료 상태 업데이트
             self.update_status(
                 status="completed",
                 progress=len(complex_numbers),
                 total=len(complex_numbers),
-                message=f"✅ 크롤링 완료! 성공: {success_count}, 실패: {error_count}"
+                message=f"✅ 크롤링 완료! 성공: {success_count}, 실패: {error_count}",
+                items_collected=total_items
             )
             
             return results
@@ -672,7 +727,8 @@ class NASNaverRealEstateCrawler:
                 status="error",
                 progress=0,
                 total=len(complex_numbers),
-                message=f"❌ 오류 발생: {str(e)[:100]}"
+                message=f"❌ 오류 발생: {str(e)[:100]}",
+                items_collected=0
             )
             
             raise

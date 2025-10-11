@@ -14,6 +14,10 @@ interface CrawlStatus {
   current_complex: string;
   message: string;
   timestamp: string;
+  elapsed_seconds: number;
+  estimated_total_seconds: number;
+  items_collected: number;
+  speed: number;
 }
 
 export default function CrawlerForm({ onCrawlComplete }: CrawlerFormProps) {
@@ -23,6 +27,13 @@ export default function CrawlerForm({ onCrawlComplete }: CrawlerFormProps) {
   const [error, setError] = useState("");
   const [crawlStatus, setCrawlStatus] = useState<CrawlStatus | null>(null);
   const statusIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  // 시간을 MM:SS 형식으로 변환
+  const formatTime = (seconds: number): string => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
 
   // 크롤링 상태 폴링
   const startStatusPolling = () => {
@@ -209,6 +220,44 @@ export default function CrawlerForm({ onCrawlComplete }: CrawlerFormProps) {
                   단지 #{crawlStatus.current_complex}
                 </span>
               )}
+            </div>
+
+            {/* 경과 시간 및 속도 정보 */}
+            <div className="pt-3 border-t border-blue-200 dark:border-blue-700 grid grid-cols-2 gap-3">
+              {/* 경과 시간 */}
+              <div className="bg-white dark:bg-gray-800/50 rounded-lg p-2.5">
+                <div className="text-xs text-gray-500 dark:text-gray-400 mb-0.5">⏱️ 경과 시간</div>
+                <div className="text-sm font-bold text-blue-600 dark:text-blue-400">
+                  {formatTime(crawlStatus.elapsed_seconds)}
+                  {crawlStatus.estimated_total_seconds > 0 && (
+                    <span className="text-xs font-normal text-gray-500 dark:text-gray-400 ml-1">
+                      / {formatTime(crawlStatus.estimated_total_seconds)}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* 수집 속도 */}
+              <div className="bg-white dark:bg-gray-800/50 rounded-lg p-2.5">
+                <div className="text-xs text-gray-500 dark:text-gray-400 mb-0.5">🚀 수집 속도</div>
+                <div className="text-sm font-bold text-green-600 dark:text-green-400">
+                  {crawlStatus.speed > 0 ? (
+                    <>
+                      {crawlStatus.speed.toFixed(1)} <span className="text-xs font-normal">매물/초</span>
+                    </>
+                  ) : (
+                    <span className="text-xs font-normal text-gray-400">계산 중...</span>
+                  )}
+                </div>
+              </div>
+
+              {/* 수집 매물 수 */}
+              <div className="bg-white dark:bg-gray-800/50 rounded-lg p-2.5 col-span-2">
+                <div className="text-xs text-gray-500 dark:text-gray-400 mb-0.5">📊 수집 매물</div>
+                <div className="text-sm font-bold text-purple-600 dark:text-purple-400">
+                  {crawlStatus.items_collected.toLocaleString()} <span className="text-xs font-normal">개</span>
+                </div>
+              </div>
             </div>
           </div>
         )}
