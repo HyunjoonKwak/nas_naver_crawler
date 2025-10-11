@@ -65,3 +65,77 @@ export async function GET(request: NextRequest) {
   }
 }
 
+export async function DELETE(request: NextRequest) {
+  try {
+    // 환경에 따라 경로 결정
+    const baseDir = process.env.NODE_ENV === 'production' ? '/app' : process.cwd();
+    const crawledDataDir = path.join(baseDir, 'crawled_data');
+    
+    // 쿼리 파라미터에서 파일명 가져오기
+    const { searchParams } = new URL(request.url);
+    const filename = searchParams.get('filename');
+    
+    if (!filename) {
+      return NextResponse.json(
+        { error: '파일명이 제공되지 않았습니다.' },
+        { status: 400 }
+      );
+    }
+    
+    // 보안: 경로 탐색 공격 방지
+    if (filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
+      return NextResponse.json(
+        { error: '유효하지 않은 파일명입니다.' },
+        { status: 400 }
+      );
+    }
+    
+    // JSON 파일만 삭제 가능
+    if (!filename.endsWith('.json')) {
+      return NextResponse.json(
+        { error: 'JSON 파일만 삭제할 수 있습니다.' },
+        { status: 400 }
+      );
+    }
+    
+    // 파일 경로 생성
+    const filePath = path.join(crawledDataDir, filename);
+    
+    // 파일 존재 확인
+    try {
+      await fs.access(filePath);
+    } catch {
+      return NextResponse.json(
+        { error: '파일을 찾을 수 없습니다.' },
+        { status: 404 }
+      );
+    }
+    
+    // JSON 파일 삭제
+    await fs.unlink(filePath);
+    
+    // 같은 이름의 CSV 파일도 삭제 (있다면)
+    const csvFilename = filename.replace('.json', '.csv');
+    const csvFilePath = path.join(crawledDataDir, csvFilename);
+    try {
+      await fs.access(csvFilePath);
+      await fs.unlink(csvFilePath);
+    } catch {
+      // CSV 파일이 없어도 무시
+    }
+    
+    return NextResponse.json({
+      success: true,
+      message: '파일이 삭제되었습니다.',
+      filename,
+    });
+    
+  } catch (error: any) {
+    console.error('File delete error:', error);
+    return NextResponse.json(
+      { error: '파일 삭제 중 오류가 발생했습니다.', details: error.message },
+      { status: 500 }
+    );
+  }
+}
+
