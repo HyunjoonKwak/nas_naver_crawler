@@ -32,12 +32,19 @@ show_menu() {
     echo "  네이버 부동산 크롤러 관리 메뉴"
     echo "=========================================="
     echo ""
+    echo "=== 프로덕션 모드 ==="
     echo "1) 🚀 웹서버 시작"
     echo "2) 🛑 웹서버 종료"
     echo "3) 🔄 웹서버 재시작"
+    echo "6) 🔧 빌드"
+    echo ""
+    echo "=== 개발 모드 (빠른 테스트) ==="
+    echo "8) ⚡ 개발 모드 시작 (빌드 불필요)"
+    echo "9) 🛑 개발 모드 종료"
+    echo ""
+    echo "=== 공통 ==="
     echo "4) 📊 상태 확인"
     echo "5) 📝 로그 확인"
-    echo "6) 🔧 빌드"
     echo "7) 🗑️  데이터 정리"
     echo "0) 🚪 종료"
     echo ""
@@ -69,14 +76,26 @@ check_status() {
     log_info "시스템 상태 확인 중..."
     echo ""
     
-    # Docker 컨테이너 상태
-    echo "=== Docker 컨테이너 상태 ==="
-    docker-compose ps
-    echo ""
-    
-    # 리소스 사용량
-    echo "=== 리소스 사용량 ==="
-    docker stats --no-stream naver-crawler-web 2>/dev/null || echo "웹서버가 실행 중이 아닙니다."
+    # 프로덕션/개발 모드 확인
+    if docker ps | grep -q "naver-crawler-web-dev"; then
+        log_blue "🔧 개발 모드 실행 중"
+        echo ""
+        echo "=== 개발 모드 컨테이너 상태 ==="
+        docker-compose -f docker-compose.dev.yml ps
+        echo ""
+        echo "=== 리소스 사용량 ==="
+        docker stats --no-stream naver-crawler-web-dev 2>/dev/null
+    elif docker ps | grep -q "naver-crawler-web"; then
+        log_blue "🚀 프로덕션 모드 실행 중"
+        echo ""
+        echo "=== 프로덕션 컨테이너 상태 ==="
+        docker-compose ps
+        echo ""
+        echo "=== 리소스 사용량 ==="
+        docker stats --no-stream naver-crawler-web 2>/dev/null
+    else
+        log_warn "웹서버가 실행 중이 아닙니다."
+    fi
     echo ""
     
     # 크롤링된 파일 개수
@@ -94,16 +113,73 @@ check_status() {
 view_logs() {
     log_info "로그 확인 중..."
     echo ""
-    echo "로그를 확인합니다. (Ctrl+C로 종료)"
-    sleep 2
     
-    docker-compose logs -f web
+    # 개발/프로덕션 모드 확인
+    if docker ps | grep -q "naver-crawler-web-dev"; then
+        log_blue "개발 모드 로그를 확인합니다. (Ctrl+C로 종료)"
+        sleep 2
+        docker-compose -f docker-compose.dev.yml logs -f web
+    elif docker ps | grep -q "naver-crawler-web"; then
+        log_blue "프로덕션 모드 로그를 확인합니다. (Ctrl+C로 종료)"
+        sleep 2
+        docker-compose logs -f web
+    else
+        log_error "실행 중인 웹서버가 없습니다."
+    fi
 }
 
 build_image() {
     log_info "Docker 이미지 빌드 중..."
     
     ./scripts/build.sh
+}
+
+start_dev_mode() {
+    log_info "개발 모드 시작 중..."
+    echo ""
+    log_blue "ℹ️  개발 모드 특징:"
+    echo "  - Docker 이미지 빌드 불필요"
+    echo "  - 소스 코드 실시간 반영"
+    echo "  - 첫 실행 시 패키지 설치 (5-10분)"
+    echo "  - Hot reload 지원"
+    echo ""
+    
+    # 기존 프로덕션 컨테이너 확인
+    if docker ps | grep -q "naver-crawler-web"; then
+        log_warn "프로덕션 컨테이너가 실행 중입니다. 종료하시겠습니까? (y/N)"
+        read -p "> " confirm
+        if [[ $confirm =~ ^[Yy]$ ]]; then
+            docker-compose down
+        else
+            log_error "개발 모드 시작 취소"
+            return 1
+        fi
+    fi
+    
+    docker-compose -f docker-compose.dev.yml up -d
+    
+    if [ $? -eq 0 ]; then
+        log_info "✅ 개발 모드 시작 완료!"
+        echo ""
+        log_blue "📝 로그 확인: 메뉴에서 5번 선택"
+        log_blue "🌐 접속: http://localhost:3000 또는 http://[NAS-IP]:3000"
+    else
+        log_error "❌ 개발 모드 시작 실패!"
+        return 1
+    fi
+}
+
+stop_dev_mode() {
+    log_info "개발 모드 종료 중..."
+    
+    docker-compose -f docker-compose.dev.yml down
+    
+    if [ $? -eq 0 ]; then
+        log_info "✅ 개발 모드 종료 완료!"
+    else
+        log_error "❌ 개발 모드 종료 실패!"
+        return 1
+    fi
 }
 
 clean_data() {
@@ -177,6 +253,12 @@ while true; do
             ;;
         7)
             clean_data
+            ;;
+        8)
+            start_dev_mode
+            ;;
+        9)
+            stop_dev_mode
             ;;
         0)
             log_info "프로그램을 종료합니다."
