@@ -4,7 +4,9 @@ import path from 'path';
 
 export async function GET(request: NextRequest) {
   try {
-    const crawledDataDir = path.join('/app', 'crawled_data');
+    // 환경에 따라 경로 결정
+    const baseDir = process.env.NODE_ENV === 'production' ? '/app' : process.cwd();
+    const crawledDataDir = path.join(baseDir, 'crawled_data');
     
     // 디렉토리 존재 확인
     try {

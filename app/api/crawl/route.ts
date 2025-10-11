@@ -21,10 +21,11 @@ export async function POST(request: NextRequest) {
       : complexNumbers;
 
     // 컨테이너 내부에서 직접 Python 크롤러 실행
-    const command = `python3 logic/nas_playwright_crawler.py "${complexNos}"`;
+    const baseDir = process.env.NODE_ENV === 'production' ? '/app' : process.cwd();
+    const command = `python3 ${baseDir}/logic/nas_playwright_crawler.py "${complexNos}"`;
 
     const { stdout, stderr } = await execAsync(command, {
-      cwd: '/app',
+      cwd: baseDir,
       maxBuffer: 10 * 1024 * 1024, // 10MB
       timeout: 300000, // 5분 타임아웃
     });

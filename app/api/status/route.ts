@@ -6,10 +6,12 @@ const execAsync = promisify(exec);
 
 export async function GET() {
   try {
+    const baseDir = process.env.NODE_ENV === 'production' ? '/app' : process.cwd();
+    
     // Python 크롤러 존재 확인
     let crawlerExists = false;
     try {
-      const { stdout } = await execAsync('test -f /app/logic/nas_playwright_crawler.py && echo "exists"');
+      const { stdout } = await execAsync(`test -f ${baseDir}/logic/nas_playwright_crawler.py && echo "exists"`);
       crawlerExists = stdout.trim() === 'exists';
     } catch {
       crawlerExists = false;
@@ -27,7 +29,7 @@ export async function GET() {
     // 크롤링된 데이터 개수 확인
     let crawledDataCount = 0;
     try {
-      const { stdout } = await execAsync('ls -1 /app/crawled_data/*.json 2>/dev/null | wc -l');
+      const { stdout } = await execAsync(`ls -1 ${baseDir}/crawled_data/*.json 2>/dev/null | wc -l`);
       crawledDataCount = parseInt(stdout.trim()) || 0;
     } catch {
       crawledDataCount = 0;
