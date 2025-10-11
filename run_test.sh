@@ -43,7 +43,8 @@ docker run --rm \
     --env-file config.env \
     -v "$(pwd)/crawled_data:/app/crawled_data" \
     -v "$(pwd)/logs:/app/logs" \
-    naver-crawler-simple:latest $COMPLEX_NO
+    naver-crawler-simple:latest \
+    python simple_crawler.py $COMPLEX_NO
 
 # 결과 확인
 if [ $? -eq 0 ]; then

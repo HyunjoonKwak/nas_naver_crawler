@@ -301,9 +301,14 @@ async def main():
     crawler = SimpleNaverRealEstateCrawler()
     
     # 명령행 인자 처리
-    if len(sys.argv) > 1:
+    if len(sys.argv) > 1 and sys.argv[1] not in ['--help', '-h']:
         complex_numbers = sys.argv[1].split(',')
         complex_numbers = [num.strip() for num in complex_numbers if num.strip()]
+    elif len(sys.argv) > 1 and sys.argv[1] in ['--help', '-h']:
+        print("사용법: python simple_crawler.py [단지번호]")
+        print("예시: python simple_crawler.py 22065")
+        print("예시: python simple_crawler.py 22065,12345,67890")
+        return
     else:
         # 기본값: 동탄시범다은마을월드메르디앙반도유보라
         complex_numbers = ['22065']

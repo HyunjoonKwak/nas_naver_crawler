@@ -14,9 +14,14 @@
 
 ### 3. 크롤링 실행
 ```bash
+# 간단한 방법
+./crawl.sh
+
+# 다른 단지 번호로
+./crawl.sh 12345
+
+# 또는 전체 테스트
 ./run_test.sh
-# 또는 다른 단지 번호로
-./run_test.sh 12345
 ```
 
 ## 📝 NAS에서 실행하는 방법
@@ -50,15 +55,19 @@ EOF
 
 ### 5. 크롤링 실행
 ```bash
-# 테스트 실행
-./run_test.sh
+# 간단한 실행
+./crawl.sh
+
+# 다른 단지 번호
+./crawl.sh 12345
 
 # 또는 직접 실행
 docker run --rm \
     --env-file config.env \
     -v $(pwd)/crawled_data:/app/crawled_data \
     -v $(pwd)/logs:/app/logs \
-    naver-crawler-simple:latest 22065
+    naver-crawler-simple:latest \
+    python simple_crawler.py 22065
 ```
 
 ## 📊 결과 확인
