@@ -370,8 +370,9 @@ class NASNaverRealEstateCrawler:
                     if scroll_attempts == 0:
                         if scroll_result.get('found'):
                             print(f"[DEBUG] 컨테이너 발견: .{scroll_result.get('containerClass', 'unknown')}")
-                            print(f"  DOM 아이템: {scroll_result.get('itemCount', 0)}개")
+                            print(f"  DOM 아이템: {scroll_result.get('itemCount', 0)}개 (동일매물묶기 이전, 참고용)")
                             print(f"  스크롤 높이: {scroll_result.get('scrollHeight')} / {scroll_result.get('clientHeight')}")
+                            print(f"  💡 실제 수집 개수는 API 응답 기준 (동일매물묶기 이후)")
                         else:
                             print(f"[DEBUG] 컨테이너를 찾지 못함: {scroll_result.get('reason', 'unknown')}")
                     
@@ -383,22 +384,29 @@ class NASNaverRealEstateCrawler:
                     
                     scroll_attempts += 1
                     
-                    # 스크롤 종료 감지
-                    if scroll_result.get('found') and not scroll_result.get('moved'):
+                    # 종료 조건: 스크롤 끝 + 데이터 증가 없음 (둘 다 충족해야 함)
+                    scroll_ended = scroll_result.get('found') and not scroll_result.get('moved')
+                    no_new_data = new_items == 0
+                    
+                    if scroll_ended and no_new_data:
                         scroll_end_count += 1
-                        print(f"시도 {scroll_attempts}회: 스크롤 끝 감지 ({scroll_end_count}/{max_scroll_end}) - 총 {current_count}개")
-                        print(f"  → 스크롤 위치: {scroll_result.get('scrollAfter')} / {scroll_result.get('scrollHeight')}")
+                        print(f"시도 {scroll_attempts}회: 스크롤 끝 & 데이터 없음 ({scroll_end_count}/{max_scroll_end}) - 총 {current_count}개")
+                        print(f"  → 스크롤: {scroll_result.get('scrollAfter')} / {scroll_result.get('scrollHeight')}")
                         
                         if scroll_end_count >= max_scroll_end:
-                            print(f"⏹️  스크롤 끝 도달 ({max_scroll_end}회 연속) - 수집 완료")
-                            print(f"📊 최종 수집: {current_count}개 (DOM: {scroll_result.get('itemCount', 0)}개)")
+                            print(f"⏹️  수집 종료 ({max_scroll_end}회 연속 변화 없음)")
+                            print(f"📊 최종: {current_count}개 수집 (DOM: {scroll_result.get('itemCount', 0)}개는 동일매물묶기 이전)")
                             break
                     else:
-                        scroll_end_count = 0  # 스크롤이 움직이면 리셋
-                        
+                        # 스크롤이 끝이어도 데이터가 증가하면 계속 시도
                         if new_items > 0:
+                            scroll_end_count = 0  # 데이터 증가하면 리셋
                             print(f"시도 {scroll_attempts}회: +{scroll_result.get('scrollDelta', 0)}px 스크롤 → 🎉 {new_items}개 추가 (총 {current_count}개)")
+                        elif scroll_ended:
+                            # 스크롤 끝이지만 데이터 증가 대기 중
+                            print(f"시도 {scroll_attempts}회: 스크롤 끝 도달, API 응답 대기 중... (총 {current_count}개)")
                         else:
+                            scroll_end_count = 0  # 스크롤 중이면 리셋
                             print(f"시도 {scroll_attempts}회: +{scroll_result.get('scrollDelta', 0)}px 스크롤 중... (총 {current_count}개, 대기 중)")
                 
                 if len(all_articles) > initial_count:
