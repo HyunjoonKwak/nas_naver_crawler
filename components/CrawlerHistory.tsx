@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import PropertyDetail from "./PropertyDetail";
 
 interface CrawlerHistoryProps {
   refresh: number;
@@ -138,32 +139,10 @@ export default function CrawlerHistory({ refresh }: CrawlerHistoryProps) {
 
       {/* Modal for detailed view */}
       {selectedResult && (
-        <div 
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
-          onClick={() => setSelectedResult(null)}
-        >
-          <div 
-            className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full max-h-[80vh] overflow-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-4 flex items-center justify-between">
-              <h3 className="text-xl font-bold text-gray-900 dark:text-white">
-                크롤링 결과 상세
-              </h3>
-              <button
-                onClick={() => setSelectedResult(null)}
-                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-              >
-                ✕
-              </button>
-            </div>
-            <div className="p-4">
-              <pre className="bg-gray-100 dark:bg-gray-900 p-4 rounded-lg overflow-auto text-sm">
-                {JSON.stringify(selectedResult.data, null, 2)}
-              </pre>
-            </div>
-          </div>
-        </div>
+        <PropertyDetail 
+          data={selectedResult.data}
+          onClose={() => setSelectedResult(null)}
+        />
       )}
     </div>
   );
