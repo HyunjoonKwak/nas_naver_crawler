@@ -1,0 +1,189 @@
+import { NextRequest, NextResponse } from 'next/server';
+import fs from 'fs/promises';
+import path from 'path';
+
+const FAVORITES_FILE = 'favorites.json';
+
+interface FavoriteComplex {
+  complexNo: string;
+  complexName?: string;
+  addedAt: string;
+  lastCrawledAt?: string;
+  articleCount?: number;
+}
+
+// 선호 단지 파일 경로
+const getFavoritesPath = () => {
+  const baseDir = process.env.NODE_ENV === 'production' ? '/app' : process.cwd();
+  return path.join(baseDir, 'crawled_data', FAVORITES_FILE);
+};
+
+// 선호 단지 읽기
+const readFavorites = async (): Promise<FavoriteComplex[]> => {
+  try {
+    const filePath = getFavoritesPath();
+    const content = await fs.readFile(filePath, 'utf-8');
+    const data = JSON.parse(content);
+    return data.favorites || [];
+  } catch {
+    return [];
+  }
+};
+
+// 선호 단지 저장
+const writeFavorites = async (favorites: FavoriteComplex[]) => {
+  const filePath = getFavoritesPath();
+  await fs.writeFile(filePath, JSON.stringify({ favorites }, null, 2), 'utf-8');
+};
+
+// GET: 선호 단지 목록 조회
+export async function GET(request: NextRequest) {
+  try {
+    const favorites = await readFavorites();
+    
+    return NextResponse.json({
+      favorites,
+      total: favorites.length
+    });
+  } catch (error: any) {
+    console.error('Favorites fetch error:', error);
+    return NextResponse.json(
+      { error: '선호 단지 조회 중 오류가 발생했습니다.', details: error.message },
+      { status: 500 }
+    );
+  }
+}
+
+// POST: 선호 단지 추가
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const { complexNo, complexName } = body;
+    
+    if (!complexNo) {
+      return NextResponse.json(
+        { error: '단지번호가 필요합니다.' },
+        { status: 400 }
+      );
+    }
+    
+    const favorites = await readFavorites();
+    
+    // 중복 확인
+    if (favorites.some(f => f.complexNo === complexNo)) {
+      return NextResponse.json(
+        { error: '이미 등록된 단지입니다.' },
+        { status: 400 }
+      );
+    }
+    
+    // 새 단지 추가
+    const newFavorite: FavoriteComplex = {
+      complexNo,
+      complexName: complexName || `단지 ${complexNo}`,
+      addedAt: new Date().toISOString(),
+    };
+    
+    favorites.push(newFavorite);
+    await writeFavorites(favorites);
+    
+    return NextResponse.json({
+      success: true,
+      message: '선호 단지가 추가되었습니다.',
+      favorite: newFavorite
+    });
+    
+  } catch (error: any) {
+    console.error('Favorite add error:', error);
+    return NextResponse.json(
+      { error: '선호 단지 추가 중 오류가 발생했습니다.', details: error.message },
+      { status: 500 }
+    );
+  }
+}
+
+// DELETE: 선호 단지 삭제
+export async function DELETE(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const complexNo = searchParams.get('complexNo');
+    
+    if (!complexNo) {
+      return NextResponse.json(
+        { error: '단지번호가 필요합니다.' },
+        { status: 400 }
+      );
+    }
+    
+    const favorites = await readFavorites();
+    const filtered = favorites.filter(f => f.complexNo !== complexNo);
+    
+    if (filtered.length === favorites.length) {
+      return NextResponse.json(
+        { error: '해당 단지를 찾을 수 없습니다.' },
+        { status: 404 }
+      );
+    }
+    
+    await writeFavorites(filtered);
+    
+    return NextResponse.json({
+      success: true,
+      message: '선호 단지가 삭제되었습니다.',
+      complexNo
+    });
+    
+  } catch (error: any) {
+    console.error('Favorite delete error:', error);
+    return NextResponse.json(
+      { error: '선호 단지 삭제 중 오류가 발생했습니다.', details: error.message },
+      { status: 500 }
+    );
+  }
+}
+
+// PATCH: 선호 단지 정보 업데이트 (크롤링 후)
+export async function PATCH(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const { complexNo, complexName, articleCount } = body;
+    
+    if (!complexNo) {
+      return NextResponse.json(
+        { error: '단지번호가 필요합니다.' },
+        { status: 400 }
+      );
+    }
+    
+    const favorites = await readFavorites();
+    const index = favorites.findIndex(f => f.complexNo === complexNo);
+    
+    if (index === -1) {
+      return NextResponse.json(
+        { error: '해당 단지를 찾을 수 없습니다.' },
+        { status: 404 }
+      );
+    }
+    
+    // 정보 업데이트
+    if (complexName) favorites[index].complexName = complexName;
+    if (articleCount !== undefined) favorites[index].articleCount = articleCount;
+    favorites[index].lastCrawledAt = new Date().toISOString();
+    
+    await writeFavorites(favorites);
+    
+    return NextResponse.json({
+      success: true,
+      message: '선호 단지 정보가 업데이트되었습니다.',
+      favorite: favorites[index]
+    });
+    
+  } catch (error: any) {
+    console.error('Favorite update error:', error);
+    return NextResponse.json(
+      { error: '선호 단지 정보 업데이트 중 오류가 발생했습니다.', details: error.message },
+      { status: 500 }
+    );
+  }
+}
+
