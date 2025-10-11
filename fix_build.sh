@@ -33,25 +33,37 @@ docker volume prune -f
 # 빌드 옵션 선택
 echo ""
 echo "빌드 방법을 선택하세요:"
-echo "1) systemd 완전 제거 버전 (권장)"
-echo "2) Alpine Linux 기반 (가장 가벼움)"
-echo "3) Ubuntu 기반 최소 버전"
+echo "1) 간단한 버전 (Playwright 없이, 가장 안정적)"
+echo "2) 안전한 Playwright 버전 (폰트 문제 해결)"
+echo "3) systemd 완전 제거 버전"
+echo "4) Alpine Linux 기반 (가장 가벼움)"
+echo "5) Ubuntu 기반 최소 버전"
 echo ""
 
-read -p "선택 (1-3): " choice
+read -p "선택 (1-5): " choice
 
 case $choice in
     1)
+        log_info "간단한 버전 빌드 시작 (Playwright 없이)..."
+        DOCKERFILE="Dockerfile.simple"
+        TAG="naver-crawler-simple"
+        ;;
+    2)
+        log_info "안전한 Playwright 버전 빌드 시작..."
+        DOCKERFILE="Dockerfile.safe"
+        TAG="naver-crawler-safe"
+        ;;
+    3)
         log_info "systemd 완전 제거 버전 빌드 시작..."
         DOCKERFILE="Dockerfile.no-systemd"
         TAG="naver-crawler-no-systemd"
         ;;
-    2)
+    4)
         log_info "Alpine Linux 기반 빌드 시작..."
         DOCKERFILE="Dockerfile.alpine"
         TAG="naver-crawler-alpine"
         ;;
-    3)
+    5)
         log_info "Ubuntu 기반 최소 버전 빌드 시작..."
         DOCKERFILE="Dockerfile.ubuntu-minimal"
         TAG="naver-crawler-ubuntu"

@@ -1,4 +1,4 @@
-# systemd 완전 제거 버전 - NAS 환경 최적화
+# 안전한 Playwright 설치 버전 - 폰트 문제 해결
 FROM python:3.11-slim
 
 # 환경변수 설정
@@ -9,7 +9,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
 
 WORKDIR /app
 
-# systemd를 피하고 Playwright에 필요한 패키지만 설치
+# 필요한 패키지 설치 (폰트 문제 해결)
 RUN apt-get update && \
     apt-get install -y --no-install-recommends --fix-missing \
     ca-certificates \
@@ -18,12 +18,14 @@ RUN apt-get update && \
     fonts-liberation \
     fonts-dejavu-core \
     fonts-unifont \
+    fonts-noto-color-emoji \
+    fonts-noto-cjk \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* \
     && rm -rf /tmp/* \
     && rm -rf /var/tmp/*
 
-# Python 패키지 설치 (Playwright 제외)
+# Python 패키지 설치
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir \
     pandas==2.1.4 \
@@ -31,9 +33,11 @@ RUN pip install --no-cache-dir --upgrade pip && \
     aiohttp==3.9.1 \
     loguru==0.7.2
 
-# Playwright 설치 (시스템 의존성 없이)
-RUN pip install --no-cache-dir playwright==1.40.0 && \
-    playwright install chromium
+# Playwright 설치 (단계별로)
+RUN pip install --no-cache-dir playwright==1.40.0
+
+# Playwright 브라우저 설치 (의존성 없이)
+RUN playwright install chromium
 
 # 애플리케이션 파일 복사
 COPY . .

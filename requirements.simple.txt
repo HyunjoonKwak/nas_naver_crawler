@@ -1,5 +1,5 @@
-# systemd 문제 해결용 최소 의존성
-playwright==1.40.0
+# 간단한 크롤러용 의존성 (Playwright 없이)
+requests==2.31.0
 pandas==2.1.4
 python-dotenv==1.0.0
 aiohttp==3.9.1
