@@ -10,7 +10,7 @@ RUN npm ci
 COPY app ./app
 COPY components ./components
 COPY public ./public
-COPY next.config.ts tsconfig.json tailwind.config.ts postcss.config.mjs ./
+COPY next.config.js tsconfig.json tailwind.config.js postcss.config.js ./
 
 RUN npm run build
 
@@ -104,7 +104,7 @@ COPY config.env ./
 COPY app ./app
 COPY components ./components
 COPY public ./public
-COPY next.config.ts tsconfig.json ./
+COPY next.config.js tsconfig.json ./
 
 # 필요한 디렉토리 생성
 RUN mkdir -p crawled_data logs && \

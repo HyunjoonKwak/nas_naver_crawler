@@ -16,7 +16,7 @@ export async function GET() {
     }
 
     // 실행 중인 컨테이너 확인
-    let runningContainers = [];
+    let runningContainers: string[] = [];
     try {
       const { stdout } = await execAsync('docker ps --filter "ancestor=naver-crawler:latest" --format "{{.Names}}"');
       runningContainers = stdout.trim().split('\n').filter(Boolean);
