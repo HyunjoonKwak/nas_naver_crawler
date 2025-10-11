@@ -163,43 +163,48 @@ class NASNaverRealEstateCrawler:
             # 응답 핸들러 등록
             self.page.on('response', handle_articles_response)
             
-            # 단지 페이지로 이동 (페이지 번호 포함)
-            url = f"https://new.land.naver.com/complexes/{complex_no}?ms={complex_no}&m=apt&a=APT&b=A1:A2&e=RETAIL&page={page_num}"
+            # 단지 페이지로 이동
+            if page_num == 1:
+                # 첫 페이지는 기본 URL
+                url = f"https://new.land.naver.com/complexes/{complex_no}"
+            else:
+                # 2페이지 이상은 page 파라미터만 추가
+                url = f"https://new.land.naver.com/complexes/{complex_no}?page={page_num}"
+            
+            print(f"URL 접속: {url}")
             
             try:
                 # 페이지 이동
                 await self.page.goto(url, wait_until='networkidle')
-                await asyncio.sleep(2)
+                await asyncio.sleep(3)  # API 응답 대기 시간 증가
                 
-                # 매물 탭 클릭 시도
-                try:
-                    # 매물 탭 버튼 찾기 (여러 선택자 시도)
-                    selectors = [
-                        'a[href*="article"]',
-                        'button:has-text("매물")',
-                        '[class*="article"]',
-                    ]
-                    
-                    for selector in selectors:
-                        try:
-                            element = await self.page.wait_for_selector(selector, timeout=5000)
-                            if element:
-                                await element.click()
-                                print(f"매물 탭 클릭 성공")
-                                await asyncio.sleep(3)  # API 응답 대기
-                                break
-                        except:
-                            continue
-                    
-                    # 클릭이 안 됐을 경우 페이지 새로고침으로 API 트리거
-                    if not articles_data:
-                        print("매물 탭 클릭 실패, 페이지 새로고침 시도")
-                        await self.page.reload(wait_until='networkidle')
-                        await asyncio.sleep(3)
+                # 첫 페이지인 경우에만 매물 탭 클릭 시도
+                if page_num == 1 and not articles_data:
+                    try:
+                        # 매물 탭 버튼 찾기 (여러 선택자 시도)
+                        selectors = [
+                            'a[href*="article"]',
+                            'button:has-text("매물")',
+                            '[class*="article"]',
+                        ]
                         
-                except Exception as e:
-                    print(f"매물 탭 클릭 중 오류: {e}")
-                    # 새로고침으로 재시도
+                        for selector in selectors:
+                            try:
+                                element = await self.page.wait_for_selector(selector, timeout=5000)
+                                if element:
+                                    await element.click()
+                                    print(f"매물 탭 클릭 성공")
+                                    await asyncio.sleep(3)  # API 응답 대기
+                                    break
+                            except:
+                                continue
+                            
+                    except Exception as e:
+                        print(f"매물 탭 클릭 중 오류: {e}")
+                
+                # 여전히 데이터가 없으면 새로고침
+                if not articles_data:
+                    print("API 응답 없음, 페이지 새로고침 시도")
                     await self.page.reload(wait_until='networkidle')
                     await asyncio.sleep(3)
                     
