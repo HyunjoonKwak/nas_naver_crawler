@@ -180,6 +180,19 @@ class NASNaverRealEstateCrawler:
                 url = f"https://new.land.naver.com/complexes/{complex_no}"
                 print(f"URL 접속: {url}")
                 await self.page.goto(url, wait_until='networkidle')
+                
+                # 1-1. localStorage 설정 (동일매물 묶기 ON)
+                await self.page.evaluate('''
+                    () => {
+                        localStorage.setItem('markUpLevyRate', '0');
+                        console.log('동일매물 묶기 설정 완료');
+                    }
+                ''')
+                print("동일매물 묶기 활성화")
+                
+                # 1-2. 설정 반영을 위해 페이지 새로고침
+                print("설정 적용을 위해 페이지 새로고침...")
+                await self.page.reload(wait_until='networkidle')
                 await asyncio.sleep(3)
                 
                 # 2. 매물 탭 클릭
