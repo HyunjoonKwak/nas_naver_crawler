@@ -140,29 +140,35 @@ class NASNaverRealEstateCrawler:
             print(f"단지 개요 크롤링 실패: {e}")
             return None
 
-    async def crawl_complex_articles(self, complex_no: str, page_num: int = 1) -> Optional[Dict]:
-        """단지 매물 목록 크롤링"""
+    async def crawl_complex_articles_with_scroll(self, complex_no: str) -> Optional[Dict]:
+        """무한 스크롤 방식으로 모든 매물 목록 크롤링"""
         try:
-            print(f"매물 목록 크롤링 시작: {complex_no}, 페이지 {page_num}")
+            print(f"매물 목록 크롤링 시작 (무한 스크롤): {complex_no}")
             
-            # 매물 목록 API 응답을 캐치하기 위한 변수
-            articles_data = None
-            api_call_detected = False
+            # 모든 매물을 저장할 리스트
+            all_articles = []
+            collected_article_ids = set()  # 중복 제거용
             
+            # API 응답 수집
             async def handle_articles_response(response):
-                nonlocal articles_data, api_call_detected
                 # 매물 목록 API 응답 감지
                 if f'/api/articles/complex/{complex_no}' in response.url:
-                    api_call_detected = True
-                    print(f"[DEBUG] API 호출 감지: {response.url[:150]}")
-                    
-                    # 페이지 필터링 없이 모든 응답 캐치
+                    print(f"[DEBUG] API 호출 감지")
                     try:
                         data = await response.json()
-                        # 데이터가 이미 있으면 덮어쓰기
-                        articles_data = data
-                        article_count = len(data.get('articleList', []))
-                        print(f"매물 목록 API 응답 캐치됨: {article_count}개 매물")
+                        article_list = data.get('articleList', [])
+                        
+                        # 중복 제거하며 추가
+                        new_count = 0
+                        for article in article_list:
+                            article_id = article.get('articleNo') or article.get('id')
+                            if article_id and article_id not in collected_article_ids:
+                                collected_article_ids.add(article_id)
+                                all_articles.append(article)
+                                new_count += 1
+                        
+                        if new_count > 0:
+                            print(f"  → {new_count}개 새 매물 추가 (총 {len(all_articles)}개)")
                     except Exception as e:
                         print(f"매물 API 응답 파싱 실패: {e}")
             
@@ -170,101 +176,113 @@ class NASNaverRealEstateCrawler:
             self.page.on('response', handle_articles_response)
             
             try:
-                if page_num == 1:
-                    # 첫 페이지: 기본 URL로 이동 후 매물 탭 클릭
-                    url = f"https://new.land.naver.com/complexes/{complex_no}"
-                    print(f"URL 접속: {url}")
-                    
-                    await self.page.goto(url, wait_until='networkidle')
-                    await asyncio.sleep(3)
-                    
-                    # 매물 탭 클릭 시도
-                    if not articles_data:
-                        try:
-                            selectors = [
-                                'a[href*="article"]',
-                                'button:has-text("매물")',
-                                '[class*="article"]',
-                            ]
-                            
-                            for selector in selectors:
-                                try:
-                                    element = await self.page.wait_for_selector(selector, timeout=5000)
-                                    if element:
-                                        await element.click()
-                                        print(f"매물 탭 클릭 성공")
-                                        await asyncio.sleep(3)
-                                        break
-                                except:
-                                    continue
-                        except Exception as e:
-                            print(f"매물 탭 클릭 중 오류: {e}")
-                    
-                    # 여전히 데이터가 없으면 새로고침
-                    if not articles_data:
-                        print("API 응답 없음, 페이지 새로고침 시도")
-                        await self.page.reload(wait_until='networkidle')
-                        await asyncio.sleep(3)
-                else:
-                    # 2페이지 이상: 페이지네이션 버튼 클릭
-                    print(f"페이지 {page_num} 버튼 찾는 중...")
-                    
-                    # 페이지 번호 버튼 클릭 시도
-                    page_button_selectors = [
-                        f'button:has-text("{page_num}")',
-                        f'a:has-text("{page_num}")',
-                        f'[data-page="{page_num}"]',
+                # 1. 단지 페이지로 이동
+                url = f"https://new.land.naver.com/complexes/{complex_no}"
+                print(f"URL 접속: {url}")
+                await self.page.goto(url, wait_until='networkidle')
+                await asyncio.sleep(3)
+                
+                # 2. 매물 탭 클릭
+                print("매물 탭 찾는 중...")
+                try:
+                    selectors = [
+                        'a[href*="article"]',
+                        'button:has-text("매물")',
+                        '[class*="article"]',
                     ]
                     
-                    clicked = False
-                    for selector in page_button_selectors:
+                    for selector in selectors:
                         try:
-                            button = await self.page.wait_for_selector(selector, timeout=3000)
-                            if button:
-                                await button.click()
-                                print(f"페이지 {page_num} 버튼 클릭 성공")
+                            element = await self.page.wait_for_selector(selector, timeout=5000)
+                            if element:
+                                await element.click()
+                                print(f"매물 탭 클릭 성공")
                                 await asyncio.sleep(3)
-                                clicked = True
                                 break
                         except:
                             continue
+                except Exception as e:
+                    print(f"매물 탭 클릭 중 오류: {e}")
+                
+                # 3. 매물 목록 컨테이너 찾기
+                print("매물 목록 컨테이너 찾는 중...")
+                list_container = None
+                container_selectors = [
+                    '[class*="list"]',
+                    '[class*="article"]',
+                    '[class*="item"]',
+                ]
+                
+                for selector in container_selectors:
+                    try:
+                        list_container = await self.page.wait_for_selector(selector, timeout=5000)
+                        if list_container:
+                            print(f"매물 목록 컨테이너 발견: {selector}")
+                            break
+                    except:
+                        continue
+                
+                # 4. 초기 데이터 수집 대기
+                await asyncio.sleep(3)
+                initial_count = len(all_articles)
+                print(f"초기 매물 수: {initial_count}개")
+                
+                # 5. 스크롤하며 데이터 수집
+                print("스크롤 시작...")
+                scroll_attempts = 0
+                max_scroll_attempts = 100  # 최대 스크롤 횟수
+                no_new_data_count = 0
+                max_no_new_data = 5  # 5번 연속 새 데이터 없으면 중단
+                
+                while scroll_attempts < max_scroll_attempts:
+                    prev_count = len(all_articles)
                     
-                    # 버튼을 못 찾았으면 다음 페이지 버튼("다음") 클릭
-                    if not clicked and page_num == 2:
-                        try:
-                            next_button = await self.page.wait_for_selector('[class*="pagination"] button:has-text("다음"), [class*="pagination"] a:has-text("다음"), button[aria-label*="다음"], a[aria-label*="다음"]', timeout=3000)
-                            if next_button:
-                                await next_button.click()
-                                print(f"다음 페이지 버튼 클릭 성공")
-                                await asyncio.sleep(3)
-                                clicked = True
-                        except:
-                            pass
+                    # 페이지 맨 아래로 스크롤
+                    await self.page.evaluate('window.scrollTo(0, document.body.scrollHeight)')
+                    await asyncio.sleep(2)  # API 호출 대기
                     
-                    if not clicked:
-                        print(f"페이지 {page_num} 버튼을 찾을 수 없음")
+                    current_count = len(all_articles)
+                    new_items = current_count - prev_count
+                    
+                    scroll_attempts += 1
+                    
+                    if new_items > 0:
+                        no_new_data_count = 0
+                        print(f"스크롤 {scroll_attempts}회: {new_items}개 추가 (총 {current_count}개)")
                     else:
-                        # 버튼 클릭 후 추가 대기
-                        print(f"API 응답 대기 중... (5초)")
-                        await asyncio.sleep(5)
-                    
+                        no_new_data_count += 1
+                        if no_new_data_count >= max_no_new_data:
+                            print(f"더 이상 새 데이터 없음 - 스크롤 종료")
+                            break
+                
+                print(f"스크롤 완료: 총 {len(all_articles)}개 매물 수집")
+                
             except Exception as e:
-                print(f"페이지 이동 중 오류: {e}")
+                print(f"스크롤 크롤링 중 오류: {e}")
             
             # 응답 핸들러 제거
             self.page.remove_listener('response', handle_articles_response)
             
-            if articles_data:
-                return articles_data
+            if all_articles:
+                return {
+                    'articleList': all_articles,
+                    'totalCount': len(all_articles),
+                    'isMoreData': False
+                }
             else:
-                if not api_call_detected:
-                    print("⚠️  API 호출이 감지되지 않음 - 페이지네이션이 작동하지 않는 것 같습니다.")
-                else:
-                    print("매물 목록 API 응답을 캐치하지 못했습니다.")
+                print("매물 데이터를 수집하지 못했습니다.")
                 return None
                 
         except Exception as e:
             print(f"매물 목록 크롤링 실패: {e}")
+            return None
+
+    async def crawl_complex_articles(self, complex_no: str, page_num: int = 1) -> Optional[Dict]:
+        """단지 매물 목록 크롤링"""
+        # 무한 스크롤 방식으로 모든 매물 수집
+        if page_num == 1:
+            return await self.crawl_complex_articles_with_scroll(complex_no)
+        else:
             return None
 
     async def crawl_complex_data(self, complex_no: str) -> Dict:
@@ -293,54 +311,12 @@ class NASNaverRealEstateCrawler:
             # 요청 간격 조절
             await asyncio.sleep(self.request_delay)
             
-            # 2. 매물 목록 (페이지네이션)
-            all_articles = []
-            page = 1
-            max_pages = 50  # 안전을 위한 최대 페이지 제한
-            
-            while page <= max_pages:
-                print(f"매물 목록 페이지 {page} 크롤링 중...")
-                articles_data = await self.crawl_complex_articles(complex_no, page)
-                
-                if articles_data:
-                    article_list = articles_data.get('articleList', [])
-                    all_articles.extend(article_list)
-                    print(f"페이지 {page}: {len(article_list)}개 매물 수집 (누적: {len(all_articles)}개)")
-                    
-                    # 다음 페이지가 있는지 확인
-                    is_more_data = articles_data.get('isMoreData', False)
-                    
-                    # 페이지 2 이상에서 실패하면 페이지네이션이 작동하지 않는 것으로 판단
-                    if page > 1 and not is_more_data:
-                        print(f"모든 매물 수집 완료: 총 {len(all_articles)}개")
-                        break
-                    elif page == 1 and is_more_data:
-                        print(f"⚠️  isMoreData=true 이지만 페이지네이션 시도 중...")
-                        page += 1
-                        await asyncio.sleep(self.request_delay)
-                    elif page == 1 and not is_more_data:
-                        print(f"모든 매물 수집 완료: 총 {len(all_articles)}개 (페이지네이션 없음)")
-                        break
-                    else:
-                        page += 1
-                        await asyncio.sleep(self.request_delay)
-                else:
-                    print(f"페이지 {page} 크롤링 실패")
-                    if page == 1:
-                        print(f"첫 페이지 실패 - 중단")
-                        break
-                    else:
-                        print(f"⚠️  페이지네이션 작동 안 함 - 수집 가능한 매물: {len(all_articles)}개")
-                        break
-            
-            # 모든 매물을 하나로 합치기
-            if all_articles:
-                complex_data['articles'] = {
-                    'articleList': all_articles,
-                    'totalCount': len(all_articles),
-                    'isMoreData': False
-                }
-                print(f"매물 수: {len(all_articles)}개 (총 {page}페이지)")
+            # 2. 매물 목록 (무한 스크롤 방식)
+            articles = await self.crawl_complex_articles(complex_no, 1)
+            if articles:
+                complex_data['articles'] = articles
+                article_count = len(articles.get('articleList', []))
+                print(f"매물 수: {article_count}개")
             
             print(f"단지 {complex_no} 크롤링 완료")
             
