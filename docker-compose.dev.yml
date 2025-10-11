@@ -45,6 +45,7 @@ services:
       apt-get update && apt-get install -y python3 python3-pip curl &&
       pip3 install --break-system-packages playwright pandas python-dotenv aiohttp loguru &&
       playwright install chromium &&
+      playwright install-deps chromium &&
       npm install &&
       npm run dev
       "
