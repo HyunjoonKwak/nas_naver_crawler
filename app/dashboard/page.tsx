@@ -38,8 +38,10 @@ export default function DashboardPage() {
       const response = await fetch('/api/favorites');
       const data = await response.json();
       setFavorites(data.favorites || []);
+      console.log('[Dashboard] Favorites loaded:', data.favorites?.length || 0);
     } catch (error) {
-      console.error('Failed to fetch favorites:', error);
+      console.error('[Dashboard] Failed to fetch favorites:', error);
+      setFavorites([]); // 에러 시 빈 배열로 설정
     } finally {
       setLoading(false);
     }

@@ -37,9 +37,11 @@ lerna-debug.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# Crawled data
-crawled_data/
-logs/
+# Crawled data (디렉토리는 유지, 내용물만 무시)
+crawled_data/*
+!crawled_data/.gitkeep
+logs/*
+!logs/.gitkeep
 *.bak
 
 # Python

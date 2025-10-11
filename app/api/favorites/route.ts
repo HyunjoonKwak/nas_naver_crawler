@@ -33,6 +33,15 @@ const readFavorites = async (): Promise<FavoriteComplex[]> => {
 // 선호 단지 저장
 const writeFavorites = async (favorites: FavoriteComplex[]) => {
   const filePath = getFavoritesPath();
+  const dirPath = path.dirname(filePath);
+  
+  // 디렉토리가 없으면 생성
+  try {
+    await fs.access(dirPath);
+  } catch {
+    await fs.mkdir(dirPath, { recursive: true });
+  }
+  
   await fs.writeFile(filePath, JSON.stringify({ favorites }, null, 2), 'utf-8');
 };
 
