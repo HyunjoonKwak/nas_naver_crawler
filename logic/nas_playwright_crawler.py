@@ -152,61 +152,93 @@ class NASNaverRealEstateCrawler:
                 nonlocal articles_data
                 # 매물 목록 API 응답 감지
                 if f'/api/articles/complex/{complex_no}' in response.url:
-                    try:
-                        data = await response.json()
-                        articles_data = data
-                        article_count = len(data.get('articleList', []))
-                        print(f"매물 목록 API 응답 캐치됨: {article_count}개 매물")
-                    except Exception as e:
-                        print(f"매물 API 응답 파싱 실패: {e}")
+                    # page 파라미터 확인
+                    if f'page={page_num}' in response.url or (page_num == 1 and 'page=' not in response.url):
+                        try:
+                            data = await response.json()
+                            articles_data = data
+                            article_count = len(data.get('articleList', []))
+                            print(f"매물 목록 API 응답 캐치됨 (페이지 {page_num}): {article_count}개 매물")
+                        except Exception as e:
+                            print(f"매물 API 응답 파싱 실패: {e}")
             
             # 응답 핸들러 등록
             self.page.on('response', handle_articles_response)
             
-            # 단지 페이지로 이동
-            if page_num == 1:
-                # 첫 페이지는 기본 URL
-                url = f"https://new.land.naver.com/complexes/{complex_no}"
-            else:
-                # 2페이지 이상은 page 파라미터만 추가
-                url = f"https://new.land.naver.com/complexes/{complex_no}?page={page_num}"
-            
-            print(f"URL 접속: {url}")
-            
             try:
-                # 페이지 이동
-                await self.page.goto(url, wait_until='networkidle')
-                await asyncio.sleep(3)  # API 응답 대기 시간 증가
-                
-                # 첫 페이지인 경우에만 매물 탭 클릭 시도
-                if page_num == 1 and not articles_data:
-                    try:
-                        # 매물 탭 버튼 찾기 (여러 선택자 시도)
-                        selectors = [
-                            'a[href*="article"]',
-                            'button:has-text("매물")',
-                            '[class*="article"]',
-                        ]
-                        
-                        for selector in selectors:
-                            try:
-                                element = await self.page.wait_for_selector(selector, timeout=5000)
-                                if element:
-                                    await element.click()
-                                    print(f"매물 탭 클릭 성공")
-                                    await asyncio.sleep(3)  # API 응답 대기
-                                    break
-                            except:
-                                continue
-                            
-                    except Exception as e:
-                        print(f"매물 탭 클릭 중 오류: {e}")
-                
-                # 여전히 데이터가 없으면 새로고침
-                if not articles_data:
-                    print("API 응답 없음, 페이지 새로고침 시도")
-                    await self.page.reload(wait_until='networkidle')
+                if page_num == 1:
+                    # 첫 페이지: 기본 URL로 이동 후 매물 탭 클릭
+                    url = f"https://new.land.naver.com/complexes/{complex_no}"
+                    print(f"URL 접속: {url}")
+                    
+                    await self.page.goto(url, wait_until='networkidle')
                     await asyncio.sleep(3)
+                    
+                    # 매물 탭 클릭 시도
+                    if not articles_data:
+                        try:
+                            selectors = [
+                                'a[href*="article"]',
+                                'button:has-text("매물")',
+                                '[class*="article"]',
+                            ]
+                            
+                            for selector in selectors:
+                                try:
+                                    element = await self.page.wait_for_selector(selector, timeout=5000)
+                                    if element:
+                                        await element.click()
+                                        print(f"매물 탭 클릭 성공")
+                                        await asyncio.sleep(3)
+                                        break
+                                except:
+                                    continue
+                        except Exception as e:
+                            print(f"매물 탭 클릭 중 오류: {e}")
+                    
+                    # 여전히 데이터가 없으면 새로고침
+                    if not articles_data:
+                        print("API 응답 없음, 페이지 새로고침 시도")
+                        await self.page.reload(wait_until='networkidle')
+                        await asyncio.sleep(3)
+                else:
+                    # 2페이지 이상: 페이지네이션 버튼 클릭
+                    print(f"페이지 {page_num} 버튼 찾는 중...")
+                    
+                    # 페이지 번호 버튼 클릭 시도
+                    page_button_selectors = [
+                        f'button:has-text("{page_num}")',
+                        f'a:has-text("{page_num}")',
+                        f'[data-page="{page_num}"]',
+                    ]
+                    
+                    clicked = False
+                    for selector in page_button_selectors:
+                        try:
+                            button = await self.page.wait_for_selector(selector, timeout=3000)
+                            if button:
+                                await button.click()
+                                print(f"페이지 {page_num} 버튼 클릭 성공")
+                                await asyncio.sleep(3)
+                                clicked = True
+                                break
+                        except:
+                            continue
+                    
+                    # 버튼을 못 찾았으면 다음 페이지 버튼("다음") 클릭
+                    if not clicked and page_num == 2:
+                        try:
+                            next_button = await self.page.wait_for_selector('[class*="pagination"] button:has-text("다음"), [class*="pagination"] a:has-text("다음"), button[aria-label*="다음"], a[aria-label*="다음"]', timeout=3000)
+                            if next_button:
+                                await next_button.click()
+                                print(f"다음 페이지 버튼 클릭 성공")
+                                await asyncio.sleep(3)
+                                clicked = True
+                        except:
+                            pass
+                    
+                    if not clicked:
+                        print(f"페이지 {page_num} 버튼을 찾을 수 없음")
                     
             except Exception as e:
                 print(f"페이지 이동 중 오류: {e}")

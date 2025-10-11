@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
     const { stdout, stderr } = await execAsync(command, {
       cwd: baseDir,
       maxBuffer: 10 * 1024 * 1024, // 10MB
-      timeout: 300000, // 5분 타임아웃
+      timeout: 900000, // 15분 타임아웃 (페이지네이션 대응)
     });
 
     // Python 출력을 Docker 로그에 표시
