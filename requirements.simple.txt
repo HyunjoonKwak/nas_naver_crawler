@@ -1,0 +1,6 @@
+# systemd 문제 해결용 최소 의존성
+playwright==1.40.0
+pandas==2.1.4
+python-dotenv==1.0.0
+aiohttp==3.9.1
+loguru==0.7.2

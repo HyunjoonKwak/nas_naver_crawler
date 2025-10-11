@@ -1,0 +1,42 @@
+# systemd 완전 제거 버전 - NAS 환경 최적화
+FROM python:3.11-slim
+
+# 환경변수 설정
+ENV DEBIAN_FRONTEND=noninteractive \
+    PYTHONUNBUFFERED=1 \
+    PLAYWRIGHT_BROWSERS_PATH=/ms-playwright \
+    PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=0
+
+WORKDIR /app
+
+# systemd를 피하고 최소한의 패키지만 설치
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends --fix-missing \
+    ca-certificates \
+    wget \
+    curl \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* \
+    && rm -rf /tmp/* \
+    && rm -rf /var/tmp/*
+
+# Python 패키지 설치 (Playwright 제외)
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir \
+    pandas==2.1.4 \
+    python-dotenv==1.0.0 \
+    aiohttp==3.9.1 \
+    loguru==0.7.2
+
+# Playwright 설치 (시스템 의존성과 함께)
+RUN pip install --no-cache-dir playwright==1.40.0 && \
+    playwright install chromium --with-deps
+
+# 애플리케이션 파일 복사
+COPY . .
+
+# 필요한 디렉토리 생성
+RUN mkdir -p crawled_data logs && \
+    chmod +x nas_playwright_crawler.py
+
+CMD ["python", "nas_playwright_crawler.py"]

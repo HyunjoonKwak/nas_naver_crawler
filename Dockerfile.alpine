@@ -1,0 +1,43 @@
+# Alpine Linux 기반 - systemd 없음
+FROM python:3.11-alpine
+
+# 환경변수 설정
+ENV PYTHONUNBUFFERED=1 \
+    PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+
+WORKDIR /app
+
+# Alpine 패키지 설치
+RUN apk add --no-cache \
+    chromium \
+    nss \
+    freetype \
+    freetype-dev \
+    harfbuzz \
+    ca-certificates \
+    ttf-freefont \
+    wget \
+    curl
+
+# Python 패키지 설치
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir \
+    pandas==2.1.4 \
+    python-dotenv==1.0.0 \
+    aiohttp==3.9.1 \
+    loguru==0.7.2
+
+# Playwright 설치
+RUN pip install --no-cache-dir playwright==1.40.0
+
+# Playwright 환경변수 설정 (Alpine용)
+ENV PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium-browser
+
+# 애플리케이션 파일 복사
+COPY . .
+
+# 필요한 디렉토리 생성
+RUN mkdir -p crawled_data logs && \
+    chmod +x nas_playwright_crawler.py
+
+CMD ["python", "nas_playwright_crawler.py"]
