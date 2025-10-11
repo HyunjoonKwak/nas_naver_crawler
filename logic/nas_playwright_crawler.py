@@ -265,47 +265,85 @@ class NASNaverRealEstateCrawler:
                         except:
                             continue
                     
-                    # 전략 2: 스크롤 (더보기 버튼이 없으면)
+                    # 전략 2: 좌측 매물 목록 패널 스크롤
                     if not button_clicked:
-                        # 디버그: 스크롤 가능한 요소 찾기
-                        scroll_info = await self.page.evaluate('''
+                        # 디버그: 좌측 패널 찾기
+                        scroll_result = await self.page.evaluate('''
                             () => {
-                                const containers = document.querySelectorAll('[class*="article"], [class*="list"]');
-                                const results = [];
-                                for (const el of containers) {
-                                    if (el.scrollHeight > el.clientHeight) {
-                                        results.push({
-                                            tag: el.tagName,
-                                            class: el.className,
-                                            scrollHeight: el.scrollHeight,
-                                            clientHeight: el.clientHeight,
-                                            scrollTop: el.scrollTop
-                                        });
+                                // 좌측 패널 선택자들 (네이버 부동산 구조)
+                                const selectors = [
+                                    'div[class*="complex_list"]',
+                                    'div[class*="list_contents"]',
+                                    'div[class*="article_list"]',
+                                    'div[class*="article_info"]',
+                                    'div[class*="ComplexArticleList"]',
+                                    '[class*="article"] > div[class*="scroll"]',
+                                    '[class*="list"] > div[class*="scroll"]'
+                                ];
+                                
+                                let scrolled = false;
+                                let scrolledElement = null;
+                                
+                                // 모든 선택자 시도
+                                for (const selector of selectors) {
+                                    try {
+                                        const el = document.querySelector(selector);
+                                        if (el && el.scrollHeight > el.clientHeight) {
+                                            const oldScrollTop = el.scrollTop;
+                                            el.scrollTop = el.scrollHeight;
+                                            scrolled = true;
+                                            scrolledElement = {
+                                                selector: selector,
+                                                tag: el.tagName,
+                                                className: el.className.substring(0, 50),
+                                                scrollHeight: el.scrollHeight,
+                                                clientHeight: el.clientHeight,
+                                                oldScrollTop: oldScrollTop,
+                                                newScrollTop: el.scrollTop
+                                            };
+                                            break;
+                                        }
+                                    } catch (e) {}
+                                }
+                                
+                                // 선택자가 안 먹히면 모든 div 검사
+                                if (!scrolled) {
+                                    const allDivs = document.querySelectorAll('div');
+                                    for (const div of allDivs) {
+                                        // 좌측에 있고, 스크롤 가능하고, 적당한 크기인 div 찾기
+                                        const rect = div.getBoundingClientRect();
+                                        if (rect.left < 500 && 
+                                            rect.width > 200 && 
+                                            div.scrollHeight > div.clientHeight &&
+                                            div.scrollHeight > 1000) {  // 충분히 긴 리스트
+                                            const oldScrollTop = div.scrollTop;
+                                            div.scrollTop = div.scrollHeight;
+                                            scrolled = true;
+                                            scrolledElement = {
+                                                selector: 'auto-detected',
+                                                tag: div.tagName,
+                                                className: div.className.substring(0, 50),
+                                                scrollHeight: div.scrollHeight,
+                                                clientHeight: div.clientHeight,
+                                                oldScrollTop: oldScrollTop,
+                                                newScrollTop: div.scrollTop,
+                                                position: `left=${rect.left}, width=${rect.width}`
+                                            };
+                                            break;
+                                        }
                                     }
                                 }
-                                return results;
+                                
+                                return { scrolled, element: scrolledElement };
                             }
                         ''')
                         
-                        if scroll_attempts == 0 and scroll_info:
-                            print(f"[DEBUG] 스크롤 가능한 컨테이너: {len(scroll_info)}개")
-                            for info in scroll_info[:2]:  # 처음 2개만 출력
-                                print(f"  - {info}")
-                        
-                        # 스크롤 실행
-                        await self.page.evaluate('''
-                            () => {
-                                // 모든 스크롤 가능한 요소 스크롤
-                                const containers = document.querySelectorAll('[class*="article"], [class*="list"]');
-                                for (const el of containers) {
-                                    if (el.scrollHeight > el.clientHeight) {
-                                        el.scrollTop = el.scrollHeight;
-                                    }
-                                }
-                                // 페이지 전체도 스크롤
-                                window.scrollTo(0, document.body.scrollHeight);
-                            }
-                        ''')
+                        if scroll_attempts == 0:
+                            if scroll_result['scrolled']:
+                                print(f"[DEBUG] 좌측 패널 발견 및 스크롤:")
+                                print(f"  {scroll_result['element']}")
+                            else:
+                                print(f"[DEBUG] 좌측 매물 목록 패널을 찾지 못함")
                     
                     await asyncio.sleep(3)  # API 호출 대기
                     
