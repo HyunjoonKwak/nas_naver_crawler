@@ -391,7 +391,7 @@ class NASNaverRealEstateCrawler:
                             items_collected=len(all_articles)
                         )
                     
-                    # 네이버 실제 컨테이너로 점진적 스크롤 (500px씩)
+                    # 네이버 실제 컨테이너로 최적화된 스크롤 (화면 높이 기반)
                     scroll_result = await self.page.evaluate('''
                         () => {
                             // 네이버가 실제로 사용하는 셀렉터들
@@ -401,7 +401,7 @@ class NASNaverRealEstateCrawler:
                                 'div[class*="item_list"]',
                                 'div[class*="article_list"]'
                             ];
-                            
+
                             let container = null;
                             for (const selector of selectors) {
                                 container = document.querySelector(selector);
@@ -409,24 +409,26 @@ class NASNaverRealEstateCrawler:
                                     break;
                                 }
                             }
-                            
+
                             if (!container) {
                                 return { found: false, reason: 'container not found' };
                             }
-                            
-                            // 점진적 스크롤 (500px씩)
+
+                            // 최적화된 스크롤 (컨테이너 높이의 70% 기반)
                             const before = container.scrollTop;
-                            container.scrollTop += 500;  // ✅ 한 번에 끝까지 가지 않음
+                            const scrollAmount = Math.floor(container.clientHeight * 0.7);  // 화면 높이의 70%
+                            container.scrollTop += scrollAmount;
                             const after = container.scrollTop;
-                            
+
                             const items = container.querySelectorAll('.item_link, .item_inner, [class*="item"]');
-                            
+
                             return {
                                 found: true,
                                 moved: after > before,  // ✅ 실제로 스크롤되었는지
                                 scrollBefore: before,
                                 scrollAfter: after,
                                 scrollDelta: after - before,
+                                scrollAmount: scrollAmount,  // 계산된 스크롤 양
                                 scrollHeight: container.scrollHeight,
                                 clientHeight: container.clientHeight,
                                 itemCount: items.length,
