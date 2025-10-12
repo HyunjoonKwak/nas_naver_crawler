@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import PropertyDetail from "@/components/PropertyDetail";
 
 interface FavoriteComplex {
   complexNo: string;
@@ -20,22 +19,11 @@ interface FavoriteComplex {
   order?: number;
 }
 
-interface ComplexData {
-  overview: any;
-  articles: any;
-}
-
-interface SelectedComplex {
-  complexNo: string;
-  data: ComplexData | null;
-}
-
 export default function ComplexesPage() {
   const [favorites, setFavorites] = useState<FavoriteComplex[]>([]);
   const [loading, setLoading] = useState(true);
   const [crawling, setCrawling] = useState<string | null>(null);
   const [crawlingAll, setCrawlingAll] = useState(false);
-  const [selectedComplex, setSelectedComplex] = useState<SelectedComplex | null>(null);
 
   // 단지 추가 폼
   const [showAddForm, setShowAddForm] = useState(false);
@@ -398,33 +386,9 @@ export default function ComplexesPage() {
     }
   };
 
-  const handleViewDetail = async (complexNo: string) => {
-    try {
-      const response = await fetch('/api/results');
-      const data = await response.json();
-      const results = data.results || [];
-
-      // 해당 단지의 최신 데이터 찾기
-      for (const result of results) {
-        const resultData = Array.isArray(result.data) ? result.data[0] : result.data;
-        if (resultData?.overview?.complexNo === complexNo) {
-          setSelectedComplex({
-            complexNo,
-            data: resultData
-          });
-          return;
-        }
-      }
-
-      // 크롤링 데이터가 없어도 빈 데이터로 모달 열기
-      setSelectedComplex({
-        complexNo,
-        data: null // null로 설정하여 빈 상태 표시
-      });
-    } catch (error) {
-      console.error('Failed to load complex data:', error);
-      alert('데이터 조회 중 오류가 발생했습니다.');
-    }
+  // 페이지 이동으로 변경
+  const handleViewDetail = (complexNo: string) => {
+    window.location.href = `/complex/${complexNo}`;
   };
 
   const formatDate = (dateString?: string) => {
@@ -732,10 +696,9 @@ export default function ComplexesPage() {
                 onDragStart={() => handleDragStart(index)}
                 onDragOver={(e) => handleDragOver(e, index)}
                 onDragEnd={handleDragEnd}
-                className={`bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-all cursor-move ${
+                className={`bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-all ${
                   draggedIndex === index ? 'opacity-50' : ''
                 }`}
-                onClick={() => handleViewDetail(favorite.complexNo)}
               >
                 {/* 드래그 힌트 */}
                 <div className="px-6 pt-4 pb-2">
@@ -837,22 +800,21 @@ export default function ComplexesPage() {
                   )}
 
                   {/* 상세보기 버튼 */}
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (!crawlingAll && !crawling) {
-                        handleViewDetail(favorite.complexNo);
-                      }
-                    }}
-                    disabled={crawlingAll || !!crawling}
-                    className={`w-full mt-4 px-4 py-2.5 rounded-lg transition-colors text-sm font-semibold ${
-                      crawlingAll || crawling
-                        ? 'bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed border-2 border-gray-400'
-                        : 'bg-white dark:bg-gray-700 border-2 border-blue-600 dark:border-blue-500 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20'
-                    }`}
-                  >
-                    상세보기
-                  </button>
+                  {crawlingAll || crawling ? (
+                    <button
+                      disabled
+                      className="w-full mt-4 px-4 py-2.5 rounded-lg bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed border-2 border-gray-400 text-sm font-semibold"
+                    >
+                      상세보기
+                    </button>
+                  ) : (
+                    <Link
+                      href={`/complex/${favorite.complexNo}`}
+                      className="block w-full mt-4 px-4 py-2.5 rounded-lg bg-white dark:bg-gray-700 border-2 border-blue-600 dark:border-blue-500 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors text-sm font-semibold text-center"
+                    >
+                      상세보기
+                    </Link>
+                  )}
                 </div>
               </div>
             ))}
@@ -921,17 +883,21 @@ export default function ComplexesPage() {
                       </span>
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap text-sm">
-                      <button
-                        onClick={() => handleViewDetail(favorite.complexNo)}
-                        disabled={crawlingAll || !!crawling}
-                        className={`px-3 py-1 rounded-lg transition-colors font-medium ${
-                          crawlingAll || crawling
-                            ? 'bg-gray-300 dark:bg-gray-600 text-gray-500 cursor-not-allowed'
-                            : 'bg-blue-600 hover:bg-blue-700 text-white'
-                        }`}
-                      >
-                        📋 상세보기
-                      </button>
+                      {crawlingAll || crawling ? (
+                        <button
+                          disabled
+                          className="px-3 py-1 rounded-lg bg-gray-300 dark:bg-gray-600 text-gray-500 cursor-not-allowed font-medium"
+                        >
+                          📋 상세보기
+                        </button>
+                      ) : (
+                        <Link
+                          href={`/complex/${favorite.complexNo}`}
+                          className="inline-block px-3 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors font-medium"
+                        >
+                          📋 상세보기
+                        </Link>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -940,24 +906,6 @@ export default function ComplexesPage() {
           </div>
         )}
       </main>
-
-      {/* Complex Detail Modal */}
-      {selectedComplex && (
-        <PropertyDetail
-          data={selectedComplex.data}
-          complexNo={selectedComplex.complexNo}
-          onClose={() => setSelectedComplex(null)}
-          onRefresh={async (complexNo) => {
-            await handleCrawlComplex(complexNo);
-            // 모달 새로고침
-            await handleViewDetail(complexNo);
-          }}
-          onDelete={async (complexNo) => {
-            await handleDeleteFavorite(complexNo);
-            setSelectedComplex(null);
-          }}
-        />
-      )}
     </div>
   );
 }
