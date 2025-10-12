@@ -118,7 +118,7 @@ view_logs() {
     if docker ps --format "{{.Names}}" | grep -q "^naver-crawler-web-dev$"; then
         log_blue "개발 모드 로그를 확인합니다. (Ctrl+C로 종료)"
         sleep 2
-        docker-compose -f docker-compose.dev.yml logs -f web
+        docker-compose -f docker-compose.dev.yml logs -f --tail=100 -t web
     elif docker ps --format "{{.Names}}" | grep -q "^naver-crawler-web$"; then
         log_blue "프로덕션 모드 로그를 확인합니다. (Ctrl+C로 종료)"
         sleep 2
