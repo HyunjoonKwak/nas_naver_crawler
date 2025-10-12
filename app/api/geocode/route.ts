@@ -1,35 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-interface NaverGeocodingResponse {
-  status: {
-    code: number;
-    name: string;
-    message: string;
+// SGIS API 인증 응답
+interface SGISAuthResponse {
+  errMsg: string;
+  errCd: number;
+  result: {
+    accessToken: string;
+    accessTimeout: string;
   };
-  results: Array<{
-    name: string;
-    code: {
-      id: string;
-      type: string;
-      mappingId: string;
-    };
-    region: {
-      area0: { name: string; coords: { center: { x: number; y: number } } };
-      area1: { name: string; coords: { center: { x: number; y: number } }; alias?: string };
-      area2: { name: string; coords: { center: { x: number; y: number } } };
-      area3: { name: string; coords: { center: { x: number; y: number } } };
-      area4: { name: string; coords: { center: { x: number; y: number } } };
-    };
-    land?: {
-      type: string;
-      number1: string;
-      number2: string;
-      addition0?: { type: string; value: string };
-      addition1?: { type: string; value: string };
-      addition2?: { type: string; value: string };
-      addition3?: { type: string; value: string };
-      addition4?: { type: string; value: string };
-    };
+}
+
+// SGIS Reverse Geocoding 응답
+interface SGISReverseGeocodeResponse {
+  errMsg: string;
+  errCd: number;
+  result: Array<{
+    sido_cd: string;      // 시도코드
+    sgg_cd: string;       // 시군구코드
+    emd_cd: string;       // 읍면동코드
+    ri_cd?: string;       // 리코드
+    sido_nm: string;      // 시도명
+    sgg_nm: string;       // 시군구명
+    emd_nm: string;       // 읍면동명
+    ri_nm?: string;       // 리명
+    full_nm: string;      // 전체주소
+    full_nm_eng?: string; // 전체주소(영문)
   }>;
 }
 
@@ -43,6 +38,49 @@ interface AddressInfo {
   beopjungdong?: string;  // 법정동
   haengjeongdong?: string; // 행정동
   fullAddress?: string;
+  sidoCode?: string;      // 시도코드
+  sigunguCode?: string;   // 시군구코드
+  dongCode?: string;      // 읍면동코드
+}
+
+// AccessToken 캐시 (메모리 저장)
+let cachedAccessToken: string | null = null;
+let tokenExpiryTime: number = 0;
+
+// AccessToken 발급 함수
+async function getAccessToken(serviceId: string, securityKey: string): Promise<string> {
+  const now = Date.now();
+
+  // 캐시된 토큰이 유효하면 재사용 (만료 10분 전에 갱신)
+  if (cachedAccessToken && tokenExpiryTime > now + 10 * 60 * 1000) {
+    console.log('[SGIS Auth] ✅ 캐시된 AccessToken 사용');
+    return cachedAccessToken;
+  }
+
+  // 새 AccessToken 발급
+  console.log('[SGIS Auth] 🔑 새 AccessToken 발급 시작');
+  const authUrl = `https://sgisapi.kostat.go.kr/OpenAPI3/auth/authentication.json?consumer_key=${serviceId}&consumer_secret=${securityKey}`;
+
+  const response = await fetch(authUrl);
+
+  if (!response.ok) {
+    throw new Error(`인증 실패: ${response.status} ${response.statusText}`);
+  }
+
+  const data: SGISAuthResponse = await response.json();
+
+  if (data.errCd !== 0) {
+    throw new Error(`SGIS 인증 오류: ${data.errMsg} (코드: ${data.errCd})`);
+  }
+
+  // 토큰 캐시 저장 (4시간 유효)
+  cachedAccessToken = data.result.accessToken;
+  tokenExpiryTime = now + 4 * 60 * 60 * 1000; // 4시간 후
+
+  console.log('[SGIS Auth] ✅ AccessToken 발급 완료');
+  console.log('[SGIS Auth]   만료시간:', new Date(tokenExpiryTime).toLocaleString('ko-KR'));
+
+  return cachedAccessToken;
 }
 
 export async function GET(request: NextRequest) {
@@ -58,42 +96,51 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // 환경 변수에서 API 키 가져오기
-    const clientId = process.env.NAVER_MAPS_CLIENT_ID;
-    const clientSecret = process.env.NAVER_MAPS_CLIENT_SECRET;
+    // 환경 변수에서 SGIS API 키 가져오기
+    const serviceId = process.env.SGIS_SERVICE_ID;
+    const securityKey = process.env.SGIS_SECURITY_KEY;
 
-    if (!clientId || !clientSecret) {
+    if (!serviceId || !securityKey) {
       return NextResponse.json(
-        { 
-          error: 'Naver Maps API 키가 설정되지 않았습니다.',
-          message: 'config.env 파일에서 NAVER_MAPS_CLIENT_ID와 NAVER_MAPS_CLIENT_SECRET을 설정해주세요.'
+        {
+          error: 'SGIS API 키가 설정되지 않았습니다.',
+          message: '.env 파일에서 SGIS_SERVICE_ID와 SGIS_SECURITY_KEY를 설정해주세요.'
         },
         { status: 500 }
       );
     }
 
-    // 네이버 Maps Reverse Geocoding API 호출
-    const coords = `${longitude},${latitude}`;
-    const apiUrl = `https://naveropenapi.apigw.ntruss.com/map-reversegeocode/v2/gc?coords=${coords}&output=json&orders=roadaddr,addr`;
+    // AccessToken 발급 (캐시 사용)
+    let accessToken: string;
+    try {
+      accessToken = await getAccessToken(serviceId, securityKey);
+    } catch (authError: any) {
+      console.error('[SGIS Auth] ❌ 인증 실패:', authError.message);
+      return NextResponse.json(
+        {
+          error: 'SGIS API 인증 실패',
+          details: authError.message
+        },
+        { status: 500 }
+      );
+    }
 
-    console.log(`[Geocoding] 🗺️  API 호출 시작`);
-    console.log(`[Geocoding]   좌표: ${coords}`);
-    console.log(`[Geocoding]   URL: ${apiUrl}`);
+    // SGIS Reverse Geocoding API 호출 (WGS84 좌표계)
+    const apiUrl = `https://sgisapi.kostat.go.kr/OpenAPI3/addr/rgeocodewgs84.json?accessToken=${accessToken}&x_coor=${longitude}&y_coor=${latitude}&addr_type=20`;
 
-    const response = await fetch(apiUrl, {
-      headers: {
-        'X-NCP-APIGW-API-KEY-ID': clientId,
-        'X-NCP-APIGW-API-KEY': clientSecret,
-      },
-    });
+    console.log(`[SGIS Geocoding] 🗺️  Reverse Geocoding 호출 시작`);
+    console.log(`[SGIS Geocoding]   좌표: ${latitude}, ${longitude}`);
+    console.log(`[SGIS Geocoding]   URL: ${apiUrl.replace(accessToken, '***')}`);
+
+    const response = await fetch(apiUrl);
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('[Geocoding] ❌ API 오류:', response.status);
-      console.error('[Geocoding]   응답:', errorText);
+      console.error('[SGIS Geocoding] ❌ API 오류:', response.status);
+      console.error('[SGIS Geocoding]   응답:', errorText);
       return NextResponse.json(
-        { 
-          error: 'Naver Maps API 호출 실패',
+        {
+          error: 'SGIS Reverse Geocoding API 호출 실패',
           status: response.status,
           details: errorText
         },
@@ -101,84 +148,62 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const data: NaverGeocodingResponse = await response.json();
-    console.log(`[Geocoding] ✅ API 응답 수신`);
-    console.log(`[Geocoding]   상태 코드: ${data.status.code}`);
-    console.log(`[Geocoding]   결과 개수: ${data.results?.length || 0}`);
+    const data: SGISReverseGeocodeResponse = await response.json();
 
-    if (data.status.code !== 0) {
-      console.error('[Geocoding] ❌ API 상태 오류:', data.status);
+    if (data.errCd !== 0) {
+      console.error('[SGIS Geocoding] ❌ API 응답 오류:', data.errMsg);
       return NextResponse.json(
-        { error: 'Geocoding 실패', details: data.status },
+        {
+          error: 'SGIS Reverse Geocoding 실패',
+          details: data.errMsg,
+          code: data.errCd
+        },
         { status: 400 }
       );
     }
 
+    console.log(`[SGIS Geocoding] ✅ API 응답 수신`);
+    console.log(`[SGIS Geocoding]   결과 개수: ${data.result?.length || 0}`);
+
     // 결과 파싱
     const addressInfo: AddressInfo = {};
 
-    if (data.results && data.results.length > 0) {
-      // 도로명 주소 우선
-      const roadAddr = data.results.find(r => r.name === 'roadaddr');
-      const jibunAddr = data.results.find(r => r.name === 'addr');
+    if (data.result && data.result.length > 0) {
+      const addr = data.result[0]; // 첫 번째 결과 사용
 
-      if (roadAddr) {
-        const region = roadAddr.region;
-        const land = roadAddr.land;
-        
-        addressInfo.sido = region.area1?.name || '';
-        addressInfo.sigungu = region.area2?.name || '';
-        addressInfo.dong = region.area3?.name || '';
-        addressInfo.ri = region.area4?.name || '';
-        
-        // 도로명 주소 구성
-        const roadParts = [
-          region.area1?.name,
-          region.area2?.name,
-          region.area3?.name,
-          land?.addition0?.value, // 도로명
-          land?.number1 && land?.number2 
-            ? `${land.number1}-${land.number2}`
-            : land?.number1
-        ].filter(Boolean);
-        
-        addressInfo.roadAddress = roadParts.join(' ');
-      }
+      // 행정구역 정보
+      addressInfo.sido = addr.sido_nm;
+      addressInfo.sigungu = addr.sgg_nm;
+      addressInfo.dong = addr.emd_nm;
+      addressInfo.ri = addr.ri_nm || '';
 
-      if (jibunAddr) {
-        const region = jibunAddr.region;
-        const land = jibunAddr.land;
-        
-        // 법정동 정보
-        addressInfo.beopjungdong = region.area3?.name || '';
-        
-        // 행정동 정보 (area2의 alias 또는 area3)
-        addressInfo.haengjeongdong = region.area2?.alias || region.area3?.name || '';
-        
-        // 지번 주소 구성
-        const jibunParts = [
-          region.area1?.name,
-          region.area2?.name,
-          region.area3?.name,
-          region.area4?.name,
-          land?.number1 && land?.number2 
-            ? `${land.number1}-${land.number2}`
-            : land?.number1
-        ].filter(Boolean);
-        
-        addressInfo.jibunAddress = jibunParts.join(' ');
-      }
+      // 행정구역 코드
+      addressInfo.sidoCode = addr.sido_cd;
+      addressInfo.sigunguCode = addr.sgg_cd;
+      addressInfo.dongCode = addr.emd_cd;
 
-      // 전체 주소 (도로명 우선, 없으면 지번)
-      addressInfo.fullAddress = addressInfo.roadAddress || addressInfo.jibunAddress;
+      // 법정동/행정동 (SGIS는 행정동 기준)
+      addressInfo.beopjungdong = addr.emd_nm;
+      addressInfo.haengjeongdong = addr.emd_nm;
+
+      // 전체 주소
+      addressInfo.fullAddress = addr.full_nm;
+
+      // 지번 주소 (SGIS는 행정동 기준이므로 fullAddress 사용)
+      addressInfo.jibunAddress = addr.full_nm;
+
+      // 도로명 주소는 SGIS rgeocode에서 제공하지 않음
+      addressInfo.roadAddress = addr.full_nm;
+
+      console.log('[SGIS Geocoding] 🎯 변환 성공:');
+      console.log('[SGIS Geocoding]   시도:', addressInfo.sido, `(${addressInfo.sidoCode})`);
+      console.log('[SGIS Geocoding]   시군구:', addressInfo.sigungu, `(${addressInfo.sigunguCode})`);
+      console.log('[SGIS Geocoding]   읍면동:', addressInfo.dong, `(${addressInfo.dongCode})`);
+      console.log('[SGIS Geocoding]   전체주소:', addressInfo.fullAddress);
+    } else {
+      console.warn('[SGIS Geocoding] ⚠️  결과가 없습니다');
+      addressInfo.fullAddress = '주소 정보 없음';
     }
-
-    console.log('[Geocoding] 🎯 변환 성공:');
-    console.log('[Geocoding]   도로명: ', addressInfo.roadAddress || '-');
-    console.log('[Geocoding]   지번: ', addressInfo.jibunAddress || '-');
-    console.log('[Geocoding]   법정동: ', addressInfo.beopjungdong || '-');
-    console.log('[Geocoding]   행정동: ', addressInfo.haengjeongdong || '-');
-    console.log('[Geocoding]   전체주소: ', addressInfo.fullAddress || '-');
 
     return NextResponse.json({
       success: true,
@@ -190,7 +215,7 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error: any) {
-    console.error('[Geocoding] 오류:', error);
+    console.error('[SGIS Geocoding] ❌ 오류:', error);
     return NextResponse.json(
       { error: '역지오코딩 처리 중 오류가 발생했습니다.', details: error.message },
       { status: 500 }
