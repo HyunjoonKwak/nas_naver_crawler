@@ -18,31 +18,37 @@ async function saveCrawlResultsToDB(complexNos: string[]) {
   let totalComplexes = 0;
   let errors: string[] = [];
 
-  for (const complexNo of complexNos) {
-    try {
-      // JSON 파일 찾기 (최신 파일)
-      const files = await fs.readdir(crawledDataDir);
-      const jsonFiles = files
-        .filter(f => f.includes(complexNo) && f.endsWith('.json'))
-        .sort()
-        .reverse();
+  try {
+    // 최신 크롤링 결과 파일 찾기 (complexes_N_날짜.json 형식)
+    const files = await fs.readdir(crawledDataDir);
+    const jsonFiles = files
+      .filter(f => f.startsWith('complexes_') && f.endsWith('.json'))
+      .sort()
+      .reverse();
 
-      if (jsonFiles.length === 0) {
-        console.log(`No data file found for complex ${complexNo}`);
+    if (jsonFiles.length === 0) {
+      console.log('No crawl result files found');
+      return { totalArticles: 0, totalComplexes: 0, errors: ['No data files found'] };
+    }
+
+    // 가장 최신 파일 사용
+    const latestFile = path.join(crawledDataDir, jsonFiles[0]);
+    console.log(`Processing file: ${jsonFiles[0]}`);
+
+    const rawData = await fs.readFile(latestFile, 'utf-8');
+    const crawlData = JSON.parse(rawData);
+
+    // 데이터가 배열인지 확인
+    const dataArray = Array.isArray(crawlData) ? crawlData : [crawlData];
+    console.log(`Found ${dataArray.length} complexes in file`);
+
+    for (const data of dataArray) {
+      if (!data.overview || !data.articles) {
+        console.log('Skipping item without overview or articles');
         continue;
       }
 
-      const jsonFile = path.join(crawledDataDir, jsonFiles[0]);
-      const rawData = await fs.readFile(jsonFile, 'utf-8');
-      const crawlData = JSON.parse(rawData);
-
-      // 데이터가 배열인지 확인
-      const dataArray = Array.isArray(crawlData) ? crawlData : [crawlData];
-
-      for (const data of dataArray) {
-        if (!data.overview || !data.articles) continue;
-
-        const overview = data.overview;
+      const overview = data.overview;
 
         // 1. 단지 정보 Upsert
         const complex = await prisma.complex.upsert({
@@ -116,11 +122,12 @@ async function saveCrawlResultsToDB(complexNos: string[]) {
             errors.push(`Article ${article.articleNo}: ${articleError.message}`);
           }
         }
-      }
-    } catch (error: any) {
-      console.error(`Failed to process complex ${complexNo}:`, error.message);
-      errors.push(`Complex ${complexNo}: ${error.message}`);
+
+      totalComplexes++;
     }
+  } catch (error: any) {
+    console.error('Failed to process crawl data:', error);
+    errors.push(`File processing error: ${error.message}`);
   }
 
   return { totalArticles, totalComplexes, errors };
