@@ -201,29 +201,9 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Main Grid Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-          {/* Quick Action - Crawler Form */}
-          <div className="lg:col-span-2">
-            <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
-              <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-4">
-                <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                  🚀 빠른 크롤링
-                </h3>
-                <p className="text-blue-100 text-sm mt-1">
-                  단지번호를 입력하여 즉시 매물 정보를 수집하세요
-                </p>
-              </div>
-              <div className="p-6">
-                <CrawlerForm onCrawlComplete={handleCrawlComplete} />
-              </div>
-            </div>
-          </div>
-
-          {/* System Status */}
-          <div>
-            <CrawlerStatus />
-          </div>
+        {/* System Status - Horizontal */}
+        <div className="mb-8">
+          <CrawlerStatus />
         </div>
 
         {/* Favorite Complexes with Detailed Stats */}
@@ -323,24 +303,21 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Feature Highlights */}
-        <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
-          <FeatureCard
-            icon="♾️"
-            title="무한 스크롤"
-            description="20개 → 127개 완전 수집, 중복 제거로 48% 최적화"
-          />
-          <FeatureCard
-            icon="🎭"
-            title="봇 감지 회피"
-            description="Playwright 헤드리스 브라우저로 안정적 크롤링"
-          />
-          <FeatureCard
-            icon="🗺️"
-            title="역지오코딩"
-            description="위경도를 주소로 자동 변환, 법정동/행정동 표시"
-          />
+        {/* Quick Action - Crawler Form */}
+        <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
+          <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-4">
+            <h3 className="text-xl font-bold text-white flex items-center gap-2">
+              🚀 빠른 크롤링
+            </h3>
+            <p className="text-blue-100 text-sm mt-1">
+              단지번호를 입력하여 즉시 매물 정보를 수집하세요
+            </p>
+          </div>
+          <div className="p-6">
+            <CrawlerForm onCrawlComplete={handleCrawlComplete} />
+          </div>
         </div>
+
       </div>
     </div>
   );
@@ -396,19 +373,4 @@ function StatCard({
   }
 
   return content;
-}
-
-// Feature Card Component
-function FeatureCard({ icon, title, description }: { icon: string; title: string; description: string }) {
-  return (
-    <div className="bg-white dark:bg-gray-900 rounded-xl shadow-lg border border-gray-200 dark:border-gray-800 p-6">
-      <div className="text-4xl mb-3">{icon}</div>
-      <h4 className="text-lg font-bold text-gray-900 dark:text-white mb-2">
-        {title}
-      </h4>
-      <p className="text-sm text-gray-600 dark:text-gray-400">
-        {description}
-      </p>
-    </div>
-  );
 }
