@@ -371,7 +371,7 @@ class NASNaverRealEstateCrawler:
                 
                 # 5. 점진적 스크롤로 데이터 수집 (crawler_service.py 방식)
                 print("추가 매물 수집 시작 (점진적 스크롤)...")
-                print(f"[설정] 최대 시도: 100회, 동적 대기(API감지:0.3초/미감지:1.0초), 종료: 3회 연속 변화 없음")
+                print(f"[설정] 최대 시도: 100회, 스크롤: 800px, 동적 대기(API감지:0.3초/미감지:1.0초), 종료: 3회 연속 변화 없음")
                 scroll_attempts = 0
                 max_scroll_attempts = 100  # 최대 100회
                 scroll_end_count = 0  # 스크롤이 안 움직이는 횟수
@@ -391,7 +391,7 @@ class NASNaverRealEstateCrawler:
                             items_collected=len(all_articles)
                         )
                     
-                    # 네이버 실제 컨테이너로 최적화된 스크롤 (화면 높이 기반)
+                    # 네이버 실제 컨테이너로 스크롤 (800px 고정)
                     scroll_result = await self.page.evaluate('''
                         () => {
                             // 네이버가 실제로 사용하는 셀렉터들
@@ -414,10 +414,9 @@ class NASNaverRealEstateCrawler:
                                 return { found: false, reason: 'container not found' };
                             }
 
-                            // 최적화된 스크롤 (컨테이너 높이의 70% 기반)
+                            // 점진적 스크롤 (800px씩 - 이전 500px에서 증가)
                             const before = container.scrollTop;
-                            const scrollAmount = Math.floor(container.clientHeight * 0.7);  // 화면 높이의 70%
-                            container.scrollTop += scrollAmount;
+                            container.scrollTop += 800;  // ✅ 한 번에 끝까지 가지 않음
                             const after = container.scrollTop;
 
                             const items = container.querySelectorAll('.item_link, .item_inner, [class*="item"]');
@@ -428,7 +427,6 @@ class NASNaverRealEstateCrawler:
                                 scrollBefore: before,
                                 scrollAfter: after,
                                 scrollDelta: after - before,
-                                scrollAmount: scrollAmount,  // 계산된 스크롤 양
                                 scrollHeight: container.scrollHeight,
                                 clientHeight: container.clientHeight,
                                 itemCount: items.length,
