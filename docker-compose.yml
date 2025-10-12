@@ -1,34 +1,68 @@
 services:
+  # PostgreSQL 데이터베이스
+  db:
+    image: postgres:16-alpine
+    container_name: naver-crawler-db
+    restart: unless-stopped
+
+    environment:
+      - POSTGRES_DB=naver_crawler
+      - POSTGRES_USER=crawler_user
+      - POSTGRES_PASSWORD=crawler_pass_2025
+      - POSTGRES_INITDB_ARGS=--encoding=UTF-8
+
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+    ports:
+      - "5432:5432"
+
+    networks:
+      - crawler-network
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U crawler_user -d naver_crawler"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
   # Next.js 웹 애플리케이션
   web:
     build: .
     container_name: naver-crawler-web
     restart: unless-stopped
-    
+
     # 환경변수 파일 사용
     env_file:
       - config.env
-    
+
     environment:
       - PYTHONUNBUFFERED=1
-    
+      - DATABASE_URL=postgresql://crawler_user:crawler_pass_2025@db:5432/naver_crawler
+
     # 볼륨 마운트
     volumes:
       - ./crawled_data:/app/crawled_data
       - ./logs:/app/logs
-    
+
     # 포트 설정 (웹 인터페이스)
     ports:
       - "3000:3000"
-    
+
     # 네트워크 설정
     networks:
       - crawler-network
-    
+
+    # DB가 준비될 때까지 대기
+    depends_on:
+      db:
+        condition: service_healthy
+
     # 리소스 제한 (NAS 호환)
     mem_limit: 2g
     memswap_limit: 2g
-    
+
     # 헬스체크
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3000/api/status"]
@@ -42,5 +76,6 @@ networks:
     driver: bridge
 
 volumes:
+  postgres_data:
   crawled_data:
   logs:

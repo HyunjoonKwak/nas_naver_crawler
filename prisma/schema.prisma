@@ -1,0 +1,188 @@
+// Prisma Schema for Naver Real Estate Crawler
+// Database: PostgreSQL
+// Version: 1.0.0
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// 단지 정보 테이블
+model Complex {
+  id             String    @id @default(uuid())
+  complexNo      String    @unique // 네이버 단지 번호
+  complexName    String    // 단지명
+  totalHousehold Int?      // 총 세대수
+  totalDong      Int?      // 총 동수
+  latitude       Float?    // 위도
+  longitude      Float?    // 경도
+  address        String?   // 주소
+  roadAddress    String?   // 도로명 주소
+  jibunAddress   String?   // 지번 주소
+  beopjungdong   String?   // 법정동
+  haengjeongdong String?   // 행정동
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  // 관계
+  articles  Article[]
+  favorites Favorite[]
+
+  @@index([complexNo])
+  @@index([complexName])
+  @@map("complexes")
+}
+
+// 매물 정보 테이블
+model Article {
+  id                  String   @id @default(uuid())
+  articleNo           String   @unique // 매물 번호
+  complexId           String   // 단지 FK
+  complex             Complex  @relation(fields: [complexId], references: [id], onDelete: Cascade)
+
+  // 매물 기본 정보
+  realEstateTypeName  String   // 매물 유형 (아파트, 오피스텔 등)
+  tradeTypeName       String   // 거래 유형 (매매, 전세, 월세)
+  dealOrWarrantPrc    String   // 가격 (매매가 또는 보증금)
+  rentPrc             String?  // 월세
+
+  // 면적 정보
+  area1               Float    // 전용면적 (m²)
+  area2               Float?   // 공급면적 (m²)
+
+  // 상세 정보
+  floorInfo           String?  // 층 정보 (예: "5/15")
+  direction           String?  // 방향
+  articleConfirmYmd   String?  // 매물 확인 일자
+
+  // 추가 정보 (JSON)
+  tagList             Json?    // 태그 리스트
+
+  // 타임스탬프
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@index([complexId])
+  @@index([tradeTypeName])
+  @@index([dealOrWarrantPrc])
+  @@index([articleConfirmYmd])
+  @@map("articles")
+}
+
+// 크롤링 히스토리 테이블
+model CrawlHistory {
+  id             String   @id @default(uuid())
+  complexNos     String[] // 크롤링한 단지 번호들
+  totalComplexes Int      // 크롤링한 총 단지 수
+  successCount   Int      // 성공한 단지 수
+  errorCount     Int      // 실패한 단지 수
+  totalArticles  Int      // 수집한 총 매물 수
+  duration       Int      // 소요 시간 (ms)
+  status         String   // success, partial, failed
+  errorMessage   String?  // 에러 메시지
+  createdAt      DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([status])
+  @@map("crawl_history")
+}
+
+// 즐겨찾기 테이블
+model Favorite {
+  id        String   @id @default(uuid())
+  complexId String   // 단지 FK
+  complex   Complex  @relation(fields: [complexId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([complexId])
+  @@map("favorites")
+}
+
+// 알림 설정 테이블
+model Alert {
+  id            String   @id @default(uuid())
+  name          String   // 알림 이름
+  complexIds    String[] // 관심 단지들
+  tradeTypes    String[] // 거래 유형 (매매, 전세, 월세)
+
+  // 가격 조건
+  minPrice      Int?     // 최소 가격 (만원)
+  maxPrice      Int?     // 최대 가격 (만원)
+
+  // 면적 조건
+  minArea       Float?   // 최소 면적 (m²)
+  maxArea       Float?   // 최대 면적 (m²)
+
+  // 알림 설정
+  isActive      Boolean  @default(true)
+  notifyEmail   Boolean  @default(false)
+  notifyBrowser Boolean  @default(true)
+  notifyWebhook Boolean  @default(false)
+  webhookUrl    String?  // 웹훅 URL (Slack, Discord 등)
+
+  // 타임스탬프
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // 관계
+  logs NotificationLog[]
+
+  @@index([isActive])
+  @@map("alerts")
+}
+
+// 알림 로그 테이블
+model NotificationLog {
+  id        String   @id @default(uuid())
+  alertId   String   // 알림 FK
+  alert     Alert    @relation(fields: [alertId], references: [id], onDelete: Cascade)
+  type      String   // browser, email, webhook
+  status    String   // sent, failed
+  message   String   // 알림 메시지
+  articleId String?  // 관련 매물 ID (선택)
+  sentAt    DateTime @default(now())
+
+  @@index([alertId])
+  @@index([sentAt])
+  @@map("notification_logs")
+}
+
+// 스케줄 테이블
+model Schedule {
+  id         String    @id @default(uuid())
+  name       String    // 스케줄 이름
+  complexNos String[]  // 크롤링할 단지들
+  cronExpr   String    // Cron 표현식
+  isActive   Boolean   @default(true)
+  lastRun    DateTime? // 마지막 실행 시간
+  nextRun    DateTime? // 다음 실행 시간
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  // 관계
+  logs ScheduleLog[]
+
+  @@index([isActive])
+  @@index([nextRun])
+  @@map("schedules")
+}
+
+// 스케줄 실행 로그 테이블
+model ScheduleLog {
+  id            String   @id @default(uuid())
+  scheduleId    String   // 스케줄 FK
+  schedule      Schedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  status        String   // success, failed
+  duration      Int      // 소요 시간 (ms)
+  articlesCount Int?     // 수집한 매물 수
+  errorMessage  String?  // 에러 메시지
+  executedAt    DateTime @default(now())
+
+  @@index([scheduleId])
+  @@index([executedAt])
+  @@map("schedule_logs")
+}
