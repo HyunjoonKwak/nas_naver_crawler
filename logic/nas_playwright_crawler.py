@@ -159,7 +159,7 @@ class NASNaverRealEstateCrawler:
             
             # 네이버 부동산 단지 페이지 접속
             url = f"https://new.land.naver.com/complexes/{complex_no}"
-            await self.page.goto(url, wait_until='networkidle')
+            await self.page.goto(url, wait_until='domcontentloaded', timeout=15000)
             
             # 페이지 로딩 대기
             await asyncio.sleep(3)
@@ -181,8 +181,8 @@ class NASNaverRealEstateCrawler:
             self.page.on('response', handle_response)
             
             # 페이지 새로고침하여 API 호출 트리거
-            await self.page.reload(wait_until='networkidle')
-            await asyncio.sleep(2)
+            await self.page.reload(wait_until='domcontentloaded')
+            await asyncio.sleep(1.5)
             
             # 응답 핸들러 제거
             self.page.remove_listener('response', handle_response)
@@ -255,8 +255,8 @@ class NASNaverRealEstateCrawler:
                 # 2. 단지 페이지로 이동 (localStorage 값이 자동 적용됨)
                 url = f"https://new.land.naver.com/complexes/{complex_no}"
                 print(f"URL 접속: {url}")
-                await self.page.goto(url, wait_until='networkidle')
-                await asyncio.sleep(3)
+                await self.page.goto(url, wait_until='domcontentloaded', timeout=15000)
+                await asyncio.sleep(2)
                 
                 # 2. 매물 탭 클릭
                 print("매물 탭 찾는 중...")
@@ -367,11 +367,11 @@ class NASNaverRealEstateCrawler:
                 
                 # 5. 점진적 스크롤로 데이터 수집 (crawler_service.py 방식)
                 print("추가 매물 수집 시작 (점진적 스크롤)...")
-                print(f"[설정] 최대 시도: 100회, API 대기: 2.5초, 종료 조건: 8회 연속 변화 없음")
+                print(f"[설정] 최대 시도: 100회, API 대기: 1.5초, 종료 조건: 3회 연속 변화 없음")
                 scroll_attempts = 0
                 max_scroll_attempts = 100  # 최대 100회
                 scroll_end_count = 0  # 스크롤이 안 움직이는 횟수
-                max_scroll_end = 8  # 8회 연속 스크롤 안 되면 종료 (5→8 완화)
+                max_scroll_end = 3  # 3회 연속 스크롤 안 되면 종료 (속도 개선)
                 
                 while scroll_attempts < max_scroll_attempts:
                     prev_count = len(all_articles)
@@ -440,8 +440,8 @@ class NASNaverRealEstateCrawler:
                         else:
                             print(f"[DEBUG] 컨테이너를 찾지 못함: {scroll_result.get('reason', 'unknown')}")
                     
-                    # API 호출 대기 (1.5초 → 2.5초로 증가)
-                    await asyncio.sleep(2.5)  # ✅ API 응답 충분히 대기
+                    # API 호출 대기 (속도 개선: 2.5초 → 1.5초)
+                    await asyncio.sleep(1.5)  # ✅ API 응답 대기
                     
                     current_count = len(all_articles)
                     new_items = current_count - prev_count
@@ -705,8 +705,10 @@ class NASNaverRealEstateCrawler:
             print(f"{'='*60}")
             print(f"총 {len(results)}개 단지 크롤링 완료")
             
-            success_count = len([r for r in results if 'overview' in r])
-            error_count = len([r for r in results if 'error' in r])
+            # 성공: articles가 있고 articleList에 매물이 있는 경우
+            success_count = len([r for r in results if 'articles' in r and r.get('articles', {}).get('articleList')])
+            # 실패: error가 있거나 매물이 없는 경우
+            error_count = len(results) - success_count
             print(f"성공: {success_count}개, 실패: {error_count}개")
             
             # 전체 수집된 매물 수 계산
