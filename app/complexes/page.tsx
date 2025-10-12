@@ -10,6 +10,13 @@ interface FavoriteComplex {
   addedAt: string;
   lastCrawledAt?: string;
   articleCount?: number;
+  // 크롤링 데이터가 있을 때 추가 정보
+  totalHouseHoldCount?: number;
+  totalDongCount?: number;
+  minArea?: number;
+  maxArea?: number;
+  minPrice?: number;
+  maxPrice?: number;
 }
 
 interface ComplexData {
@@ -59,7 +66,13 @@ export default function ComplexesPage() {
             body: JSON.stringify({
               complexNo: resultData.overview.complexNo,
               complexName: resultData.overview.complexName,
-              articleCount: resultData.articles?.articleList?.length || 0
+              articleCount: resultData.articles?.articleList?.length || 0,
+              totalHouseHoldCount: resultData.overview.totalHouseHoldCount,
+              totalDongCount: resultData.overview.totalDongCount,
+              minArea: resultData.overview.minArea,
+              maxArea: resultData.overview.maxArea,
+              minPrice: resultData.overview.minPrice,
+              maxPrice: resultData.overview.maxPrice,
             })
           });
         }
@@ -265,14 +278,20 @@ export default function ComplexesPage() {
       for (const result of results) {
         const resultData = Array.isArray(result.data) ? result.data[0] : result.data;
         if (resultData?.overview?.complexNo === complexNo) {
-          // 단지 정보 업데이트
+          // 단지 정보 업데이트 (overview 데이터 포함)
           await fetch('/api/favorites', {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               complexNo,
               complexName: resultData.overview.complexName,
-              articleCount: resultData.articles?.articleList?.length || 0
+              articleCount: resultData.articles?.articleList?.length || 0,
+              totalHouseHoldCount: resultData.overview.totalHouseHoldCount,
+              totalDongCount: resultData.overview.totalDongCount,
+              minArea: resultData.overview.minArea,
+              maxArea: resultData.overview.maxArea,
+              minPrice: resultData.overview.minPrice,
+              maxPrice: resultData.overview.maxPrice,
             })
           });
           break;
@@ -323,6 +342,24 @@ export default function ComplexesPage() {
       minute: '2-digit',
       timeZone: 'Asia/Seoul',
     });
+  };
+
+  // 가격 포맷 (만원 단위 → 억/만 표시)
+  const formatPrice = (price?: number) => {
+    if (!price) return '-';
+    const uk = Math.floor(price / 10000);
+    const man = price % 10000;
+
+    if (uk === 0) return `${man}만`;
+    if (man === 0) return `${uk}억`;
+    return `${uk}억 ${man}만`;
+  };
+
+  // 면적 포맷 (m² → 평)
+  const formatArea = (area?: number) => {
+    if (!area) return '-';
+    const pyeong = (area / 3.3058).toFixed(1);
+    return `${pyeong}평`;
   };
 
   // 드래그 앤 드롭 핸들러
@@ -559,6 +596,38 @@ export default function ComplexesPage() {
                       <span className="text-gray-900 dark:text-white font-medium">아파트</span>
                     </div>
 
+                    {/* 세대수 */}
+                    {favorite.totalHouseHoldCount && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-600 dark:text-gray-400">세대수</span>
+                        <span className="text-gray-900 dark:text-white font-medium">
+                          {favorite.totalHouseHoldCount.toLocaleString()}세대
+                        </span>
+                      </div>
+                    )}
+
+                    {/* 동수 */}
+                    {favorite.totalDongCount && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-600 dark:text-gray-400">동수</span>
+                        <span className="text-gray-900 dark:text-white font-medium">
+                          {favorite.totalDongCount}개동
+                        </span>
+                      </div>
+                    )}
+
+                    {/* 면적 */}
+                    {(favorite.minArea || favorite.maxArea) && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-600 dark:text-gray-400">면적</span>
+                        <span className="text-gray-900 dark:text-white font-medium">
+                          {favorite.minArea && favorite.maxArea
+                            ? `${formatArea(favorite.minArea)} ~ ${formatArea(favorite.maxArea)}`
+                            : formatArea(favorite.minArea || favorite.maxArea)}
+                        </span>
+                      </div>
+                    )}
+
                     {favorite.lastCrawledAt && (
                       <div className="flex items-center justify-between">
                         <span className="text-gray-600 dark:text-gray-400">마지막 수집</span>
@@ -568,6 +637,20 @@ export default function ComplexesPage() {
                       </div>
                     )}
                   </div>
+
+                  {/* 매매가 범위 - 크롤링 데이터가 있을 때만 */}
+                  {(favorite.minPrice || favorite.maxPrice) && (
+                    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg p-4 mb-4 border border-blue-100 dark:border-blue-800">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-gray-600 dark:text-gray-400">매매가</span>
+                        <span className="text-lg font-bold text-blue-600 dark:text-blue-400">
+                          {favorite.minPrice && favorite.maxPrice
+                            ? `${formatPrice(favorite.minPrice)} ~ ${formatPrice(favorite.maxPrice)}`
+                            : formatPrice(favorite.minPrice || favorite.maxPrice)}
+                        </span>
+                      </div>
+                    </div>
+                  )}
 
                   {/* 매물 수 - 강조 */}
                   {favorite.articleCount !== undefined && (
