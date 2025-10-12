@@ -9,7 +9,7 @@ import asyncio
 import json
 import os
 import time
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 
@@ -19,6 +19,13 @@ from dotenv import load_dotenv
 
 # 환경변수 로드
 load_dotenv()
+
+# 한국 시간대 (UTC+9)
+KST = timezone(timedelta(hours=9))
+
+def get_kst_now():
+    """한국 시간으로 현재 시각 반환"""
+    return datetime.now(KST)
 
 
 class NASNaverRealEstateCrawler:
@@ -56,7 +63,7 @@ class NASNaverRealEstateCrawler:
         estimated_total_seconds = 0
         
         if self.start_time:
-            elapsed_seconds = int((datetime.now() - self.start_time).total_seconds())
+            elapsed_seconds = int((get_kst_now() - self.start_time).total_seconds())
             
             # 속도 계산 (매물/초)
             if elapsed_seconds > 0 and items_collected > 0:
@@ -74,7 +81,7 @@ class NASNaverRealEstateCrawler:
             "percent": round((progress / total * 100) if total > 0 else 0, 1),
             "current_complex": current_complex,
             "message": message,
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": get_kst_now().isoformat(),
             # 시간 정보
             "elapsed_seconds": elapsed_seconds,
             "estimated_total_seconds": estimated_total_seconds,
@@ -509,7 +516,7 @@ class NASNaverRealEstateCrawler:
         complex_data = {
             'crawling_info': {
                 'complex_no': complex_no,
-                'crawling_date': datetime.now().isoformat(),
+                'crawling_date': get_kst_now().isoformat(),
                 'crawler_version': '1.0.0'
             }
         }
@@ -599,7 +606,7 @@ class NASNaverRealEstateCrawler:
                 results.append({
                     'complex_no': complex_no,
                     'error': str(e),
-                    'crawling_date': datetime.now().isoformat()
+                    'crawling_date': get_kst_now().isoformat()
                 })
                 
                 # 실패 시에도 전체 매물 수 계산
@@ -622,7 +629,7 @@ class NASNaverRealEstateCrawler:
 
     def save_data(self, data: Any, filename_prefix: str = "naver_complex"):
         """데이터 저장"""
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        timestamp = get_kst_now().strftime("%Y%m%d_%H%M%S")
         
         try:
             # JSON 저장
@@ -665,9 +672,9 @@ class NASNaverRealEstateCrawler:
     async def run_crawling(self, complex_numbers: List[str]):
         """크롤링 실행"""
         # 상태 파일 및 시작 시간 설정
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        timestamp = get_kst_now().strftime("%Y%m%d_%H%M%S")
         self.status_file = self.output_dir / f"crawl_status_{timestamp}.json"
-        self.start_time = datetime.now()  # 시작 시간 기록
+        self.start_time = get_kst_now()  # 시작 시간 기록
         
         try:
             # 브라우저 설정

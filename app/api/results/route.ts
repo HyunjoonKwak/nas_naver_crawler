@@ -41,8 +41,8 @@ export async function GET(request: NextRequest) {
         return {
           filename: file,
           size: stats.size,
-          createdAt: stats.birthtime,
-          modifiedAt: stats.mtime,
+          createdAt: stats.birthtime.toISOString(),
+          modifiedAt: stats.mtime.toISOString(),
           data: data,
         };
       })

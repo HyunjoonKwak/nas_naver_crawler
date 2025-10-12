@@ -515,7 +515,7 @@ export default function ComplexesPage() {
             </p>
           </div>
         ) : viewMode === 'card' ? (
-          // 카드 뷰
+          // 카드 뷰 - 네이버 부동산 스타일
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {favorites.map((favorite, index) => (
               <div
@@ -524,49 +524,73 @@ export default function ComplexesPage() {
                 onDragStart={() => handleDragStart(index)}
                 onDragOver={(e) => handleDragOver(e, index)}
                 onDragEnd={handleDragEnd}
-                className={`bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 hover:shadow-md transition-all cursor-move ${
+                className={`bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-all cursor-move ${
                   draggedIndex === index ? 'opacity-50' : ''
                 }`}
+                onClick={() => handleViewDetail(favorite.complexNo)}
               >
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex items-center gap-2 flex-1">
-                    <span className="text-xl cursor-grab active:cursor-grabbing">⋮⋮</span>
-                    <div className="flex-1">
-                      <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-1">
-                        {favorite.complexName || `단지 ${favorite.complexNo}`}
-                      </h3>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
-                        📌 {favorite.complexNo}
-                      </p>
-                    </div>
-                  </div>
+                {/* 드래그 힌트 */}
+                <div className="px-6 pt-4 pb-2">
+                  <p className="text-xs text-gray-400 dark:text-gray-500 flex items-center gap-1">
+                    <span className="cursor-grab active:cursor-grabbing">☰</span>
+                    드래그하여 순서 변경
+                  </p>
                 </div>
 
-                <div className="space-y-2 mb-4 text-sm">
-                  <div className="flex justify-between text-gray-600 dark:text-gray-400">
-                    <span>등록일:</span>
-                    <span>{formatDate(favorite.addedAt)}</span>
+                <div className="px-6 pb-6">
+                  {/* 단지명 */}
+                  <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3">
+                    {favorite.complexName || `단지 ${favorite.complexNo}`}
+                  </h3>
+
+                  {/* 단지번호 */}
+                  <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mb-4">
+                    <span>📍</span>
+                    <span>단지번호 {favorite.complexNo}</span>
                   </div>
-                  {favorite.lastCrawledAt && (
-                    <div className="flex justify-between text-gray-600 dark:text-gray-400">
-                      <span>마지막 수집:</span>
-                      <span>{formatDate(favorite.lastCrawledAt)}</span>
+
+                  {/* 구분선 */}
+                  <div className="border-t border-gray-200 dark:border-gray-700 my-4"></div>
+
+                  {/* 단지 정보 */}
+                  <div className="space-y-2.5 text-sm mb-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-600 dark:text-gray-400">유형</span>
+                      <span className="text-gray-900 dark:text-white font-medium">아파트</span>
                     </div>
-                  )}
+
+                    {favorite.lastCrawledAt && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-600 dark:text-gray-400">마지막 수집</span>
+                        <span className="text-gray-900 dark:text-white font-medium text-xs">
+                          {formatDate(favorite.lastCrawledAt)}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 매물 수 - 강조 */}
                   {favorite.articleCount !== undefined && (
-                    <div className="flex justify-between font-semibold text-blue-600 dark:text-blue-400">
-                      <span>매물 수:</span>
-                      <span>{favorite.articleCount}개</span>
+                    <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 mt-4">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-gray-600 dark:text-gray-400">매물</span>
+                        <span className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                          {favorite.articleCount}
+                          <span className="text-base font-normal ml-1">건</span>
+                        </span>
+                      </div>
                     </div>
                   )}
-                </div>
 
-                <div className="flex gap-2">
+                  {/* 상세보기 버튼 */}
                   <button
-                    onClick={() => handleViewDetail(favorite.complexNo)}
-                    className="flex-1 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm font-medium"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleViewDetail(favorite.complexNo);
+                    }}
+                    className="w-full mt-4 px-4 py-2.5 bg-white dark:bg-gray-700 border-2 border-blue-600 dark:border-blue-500 text-blue-600 dark:text-blue-400 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors text-sm font-semibold"
                   >
-                    📋 상세보기
+                    상세보기
                   </button>
                 </div>
               </div>
