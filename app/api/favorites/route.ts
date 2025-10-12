@@ -53,6 +53,8 @@ const writeFavorites = async (favorites: FavoriteComplex[]) => {
   await fs.writeFile(filePath, JSON.stringify({ favorites }, null, 2), 'utf-8');
 };
 
+export const dynamic = 'force-dynamic';
+
 // GET: 선호 단지 목록 조회
 export async function GET(request: NextRequest) {
   try {

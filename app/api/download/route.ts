@@ -4,6 +4,8 @@ import path from 'path';
 
 const CRAWLED_DATA_DIR = 'crawled_data';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);

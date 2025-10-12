@@ -104,6 +104,8 @@ function generateMockData(complexNo: string): {
   return { transactions, areaStats, chartData };
 }
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);

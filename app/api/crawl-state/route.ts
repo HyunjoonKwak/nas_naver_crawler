@@ -44,6 +44,8 @@ const writeCrawlState = async (state: CrawlState) => {
   await fs.writeFile(filePath, JSON.stringify(state, null, 2), 'utf-8');
 };
 
+export const dynamic = 'force-dynamic';
+
 // GET: 크롤링 상태 조회
 export async function GET(request: NextRequest) {
   try {
