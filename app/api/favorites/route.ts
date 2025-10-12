@@ -10,6 +10,13 @@ interface FavoriteComplex {
   addedAt: string;
   lastCrawledAt?: string;
   articleCount?: number;
+  // 크롤링 데이터가 있을 때 추가 정보
+  totalHouseHoldCount?: number;
+  totalDongCount?: number;
+  minArea?: number;
+  maxArea?: number;
+  minPrice?: number;
+  maxPrice?: number;
 }
 
 // 선호 단지 파일 경로
@@ -155,30 +162,46 @@ export async function DELETE(request: NextRequest) {
 export async function PATCH(request: NextRequest) {
   try {
     const body = await request.json();
-    const { complexNo, complexName, articleCount } = body;
-    
+    const {
+      complexNo,
+      complexName,
+      articleCount,
+      totalHouseHoldCount,
+      totalDongCount,
+      minArea,
+      maxArea,
+      minPrice,
+      maxPrice
+    } = body;
+
     if (!complexNo) {
       return NextResponse.json(
         { error: '단지번호가 필요합니다.' },
         { status: 400 }
       );
     }
-    
+
     const favorites = await readFavorites();
     const index = favorites.findIndex(f => f.complexNo === complexNo);
-    
+
     if (index === -1) {
       return NextResponse.json(
         { error: '해당 단지를 찾을 수 없습니다.' },
         { status: 404 }
       );
     }
-    
+
     // 정보 업데이트
     if (complexName) favorites[index].complexName = complexName;
     if (articleCount !== undefined) favorites[index].articleCount = articleCount;
+    if (totalHouseHoldCount !== undefined) favorites[index].totalHouseHoldCount = totalHouseHoldCount;
+    if (totalDongCount !== undefined) favorites[index].totalDongCount = totalDongCount;
+    if (minArea !== undefined) favorites[index].minArea = minArea;
+    if (maxArea !== undefined) favorites[index].maxArea = maxArea;
+    if (minPrice !== undefined) favorites[index].minPrice = minPrice;
+    if (maxPrice !== undefined) favorites[index].maxPrice = maxPrice;
     favorites[index].lastCrawledAt = new Date().toISOString();
-    
+
     await writeFavorites(favorites);
     
     return NextResponse.json({
