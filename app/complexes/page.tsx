@@ -23,11 +23,17 @@ export default function ComplexesPage() {
   const [crawling, setCrawling] = useState<string | null>(null);
   const [crawlingAll, setCrawlingAll] = useState(false);
   const [selectedComplex, setSelectedComplex] = useState<{ complexNo: string; data: ComplexData } | null>(null);
-  
+
   // 단지 추가 폼
   const [showAddForm, setShowAddForm] = useState(false);
   const [newComplexNo, setNewComplexNo] = useState("");
   const [newComplexName, setNewComplexName] = useState("");
+
+  // 뷰 모드 (card, list)
+  const [viewMode, setViewMode] = useState<'card' | 'list'>('card');
+
+  // 드래그 앤 드롭
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
 
   useEffect(() => {
     fetchFavorites();
@@ -233,6 +239,38 @@ export default function ComplexesPage() {
     });
   };
 
+  // 드래그 앤 드롭 핸들러
+  const handleDragStart = (index: number) => {
+    setDraggedIndex(index);
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    if (draggedIndex === null || draggedIndex === index) return;
+
+    const newFavorites = [...favorites];
+    const draggedItem = newFavorites[draggedIndex];
+    newFavorites.splice(draggedIndex, 1);
+    newFavorites.splice(index, 0, draggedItem);
+
+    setFavorites(newFavorites);
+    setDraggedIndex(index);
+  };
+
+  const handleDragEnd = async () => {
+    setDraggedIndex(null);
+    // 순서를 서버에 저장
+    try {
+      await fetch('/api/favorites/reorder', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ favorites: favorites.map((f, idx) => ({ ...f, order: idx })) })
+      });
+    } catch (error) {
+      console.error('Failed to save order:', error);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Header */}
@@ -302,8 +340,35 @@ export default function ComplexesPage() {
                 {crawlingAll ? '⏳ 크롤링 중...' : '🔄 전체 크롤링'}
               </button>
             </div>
-            <div className="text-sm text-gray-600 dark:text-gray-400">
-              등록된 단지: <span className="font-bold text-blue-600 dark:text-blue-400">{favorites.length}개</span>
+
+            <div className="flex items-center gap-4">
+              {/* View Mode Toggle */}
+              <div className="flex bg-gray-200 dark:bg-gray-700 rounded-lg p-1">
+                <button
+                  onClick={() => setViewMode('card')}
+                  className={`px-3 py-1 rounded-lg transition-colors ${
+                    viewMode === 'card'
+                      ? 'bg-white dark:bg-gray-600 text-blue-600 dark:text-blue-400 shadow-sm'
+                      : 'text-gray-600 dark:text-gray-400'
+                  }`}
+                >
+                  🎴 카드
+                </button>
+                <button
+                  onClick={() => setViewMode('list')}
+                  className={`px-3 py-1 rounded-lg transition-colors ${
+                    viewMode === 'list'
+                      ? 'bg-white dark:bg-gray-600 text-blue-600 dark:text-blue-400 shadow-sm'
+                      : 'text-gray-600 dark:text-gray-400'
+                  }`}
+                >
+                  📋 리스트
+                </button>
+              </div>
+
+              <div className="text-sm text-gray-600 dark:text-gray-400">
+                등록된 단지: <span className="font-bold text-blue-600 dark:text-blue-400">{favorites.length}개</span>
+              </div>
             </div>
           </div>
 
@@ -348,7 +413,7 @@ export default function ComplexesPage() {
           )}
         </div>
 
-        {/* Complex Cards */}
+        {/* Complex Cards/List */}
         {loading ? (
           <div className="flex items-center justify-center py-20">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
@@ -363,21 +428,31 @@ export default function ComplexesPage() {
               "단지 추가" 버튼을 클릭하여 관심있는 단지를 등록하세요
             </p>
           </div>
-        ) : (
+        ) : viewMode === 'card' ? (
+          // 카드 뷰
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {favorites.map((favorite) => (
+            {favorites.map((favorite, index) => (
               <div
                 key={favorite.complexNo}
-                className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 hover:shadow-md transition-shadow"
+                draggable
+                onDragStart={() => handleDragStart(index)}
+                onDragOver={(e) => handleDragOver(e, index)}
+                onDragEnd={handleDragEnd}
+                className={`bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 hover:shadow-md transition-all cursor-move ${
+                  draggedIndex === index ? 'opacity-50' : ''
+                }`}
               >
                 <div className="flex items-start justify-between mb-4">
-                  <div className="flex-1">
-                    <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-1">
-                      {favorite.complexName || `단지 ${favorite.complexNo}`}
-                    </h3>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                      📌 {favorite.complexNo}
-                    </p>
+                  <div className="flex items-center gap-2 flex-1">
+                    <span className="text-xl cursor-grab active:cursor-grabbing">⋮⋮</span>
+                    <div className="flex-1">
+                      <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-1">
+                        {favorite.complexName || `단지 ${favorite.complexNo}`}
+                      </h3>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                        📌 {favorite.complexNo}
+                      </p>
+                    </div>
                   </div>
                 </div>
 
@@ -403,30 +478,89 @@ export default function ComplexesPage() {
                 <div className="flex gap-2">
                   <button
                     onClick={() => handleViewDetail(favorite.complexNo)}
-                    className="flex-1 px-3 py-2 bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 text-blue-600 dark:text-blue-400 rounded-lg transition-colors text-sm font-medium"
+                    className="flex-1 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm font-medium"
                   >
                     📋 상세보기
-                  </button>
-                  <button
-                    onClick={() => handleCrawlComplex(favorite.complexNo)}
-                    disabled={crawling === favorite.complexNo}
-                    className={`px-3 py-2 rounded-lg transition-colors text-sm font-medium ${
-                      crawling === favorite.complexNo
-                        ? 'bg-gray-300 dark:bg-gray-600 cursor-not-allowed'
-                        : 'bg-green-100 hover:bg-green-200 dark:bg-green-900/30 dark:hover:bg-green-900/50 text-green-600 dark:text-green-400'
-                    }`}
-                  >
-                    {crawling === favorite.complexNo ? '⏳' : '🔄'}
-                  </button>
-                  <button
-                    onClick={() => handleDeleteFavorite(favorite.complexNo)}
-                    className="px-3 py-2 bg-red-100 hover:bg-red-200 dark:bg-red-900/30 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 rounded-lg transition-colors text-sm"
-                  >
-                    🗑️
                   </button>
                 </div>
               </div>
             ))}
+          </div>
+        ) : (
+          // 리스트 뷰
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+              <thead className="bg-gray-50 dark:bg-gray-900">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-10">
+                    순서
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    단지명
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    단지번호
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    등록일
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    마지막 수집
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    매물 수
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    작업
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                {favorites.map((favorite, index) => (
+                  <tr
+                    key={favorite.complexNo}
+                    draggable
+                    onDragStart={() => handleDragStart(index)}
+                    onDragOver={(e) => handleDragOver(e, index)}
+                    onDragEnd={handleDragEnd}
+                    className={`hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-move ${
+                      draggedIndex === index ? 'opacity-50' : ''
+                    }`}
+                  >
+                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                      <span className="text-lg cursor-grab active:cursor-grabbing">⋮⋮</span>
+                    </td>
+                    <td className="px-4 py-4 whitespace-nowrap">
+                      <div className="text-sm font-medium text-gray-900 dark:text-white">
+                        {favorite.complexName || `단지 ${favorite.complexNo}`}
+                      </div>
+                    </td>
+                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                      {favorite.complexNo}
+                    </td>
+                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                      {formatDate(favorite.addedAt)}
+                    </td>
+                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                      {formatDate(favorite.lastCrawledAt)}
+                    </td>
+                    <td className="px-4 py-4 whitespace-nowrap">
+                      <span className="px-2 py-1 text-xs font-semibold rounded bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                        {favorite.articleCount !== undefined ? `${favorite.articleCount}개` : '-'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-4 whitespace-nowrap text-sm">
+                      <button
+                        onClick={() => handleViewDetail(favorite.complexNo)}
+                        className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium"
+                      >
+                        📋 상세보기
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
       </main>
@@ -436,6 +570,15 @@ export default function ComplexesPage() {
         <PropertyDetail
           data={selectedComplex.data}
           onClose={() => setSelectedComplex(null)}
+          onRefresh={async (complexNo) => {
+            await handleCrawlComplex(complexNo);
+            // 모달 새로고침
+            await handleViewDetail(complexNo);
+          }}
+          onDelete={async (complexNo) => {
+            await handleDeleteFavorite(complexNo);
+            setSelectedComplex(null);
+          }}
         />
       )}
     </div>

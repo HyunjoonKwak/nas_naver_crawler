@@ -5,12 +5,14 @@ import { useState, useEffect } from "react";
 interface PropertyDetailProps {
   data: any;
   onClose: () => void;
+  onRefresh?: (complexNo: string) => void;
+  onDelete?: (complexNo: string) => void;
 }
 
-export default function PropertyDetail({ data, onClose }: PropertyDetailProps) {
-  const [activeTab, setActiveTab] = useState<'overview' | 'articles'>('overview');
+export default function PropertyDetail({ data, onClose, onRefresh, onDelete }: PropertyDetailProps) {
   const [addressInfo, setAddressInfo] = useState<any>(null);
   const [loadingAddress, setLoadingAddress] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   // 디버깅: 데이터 구조 확인
   console.log('PropertyDetail data:', data);
@@ -115,58 +117,71 @@ export default function PropertyDetail({ data, onClose }: PropertyDetailProps) {
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-6 flex items-center justify-between z-10">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-              {overview.complexName || '단지 정보'}
-            </h2>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-              단지번호: {crawlingInfo.complex_no || '-'} | 크롤링: {crawlingInfo.crawling_date ? new Date(crawlingInfo.crawling_date).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' }) : '-'}
-            </p>
-          </div>
-          <button
-            onClick={onClose}
-            className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 text-2xl"
-          >
-            ✕
-          </button>
-        </div>
-
-        {/* Tabs */}
-        <div className="flex border-b border-gray-200 dark:border-gray-700 px-6 bg-gray-50 dark:bg-gray-900">
-          <button
-            onClick={() => setActiveTab('overview')}
-            className={`px-6 py-3 font-medium transition-colors ${
-              activeTab === 'overview'
-                ? 'border-b-2 border-blue-600 text-blue-600 dark:text-blue-400'
-                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
-            }`}
-          >
-            📋 단지 정보
-          </button>
-          <button
-            onClick={() => setActiveTab('articles')}
-            className={`px-6 py-3 font-medium transition-colors ${
-              activeTab === 'articles'
-                ? 'border-b-2 border-blue-600 text-blue-600 dark:text-blue-400'
-                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
-            }`}
-          >
+        <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-6 z-10">
+          <div className="flex items-center justify-between mb-4">
             <div>
-              🏘️ 매물 목록 ({articles.length})
-              {statsText && (
-                <div className="text-xs mt-0.5 opacity-80">
-                  {statsText}
-                </div>
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+                {overview.complexName || '단지 정보'}
+              </h2>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                단지번호: {crawlingInfo.complex_no || overview.complexNo || '-'} | 크롤링: {crawlingInfo.crawling_date ? new Date(crawlingInfo.crawling_date).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' }) : '-'}
+              </p>
+            </div>
+            <button
+              onClick={onClose}
+              className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 text-2xl"
+            >
+              ✕
+            </button>
+          </div>
+
+          {/* Action Buttons */}
+          {(onRefresh || onDelete) && (
+            <div className="flex gap-3">
+              {onRefresh && (
+                <button
+                  onClick={async () => {
+                    const complexNo = crawlingInfo.complex_no || overview.complexNo;
+                    if (complexNo) {
+                      setRefreshing(true);
+                      await onRefresh(complexNo);
+                      setRefreshing(false);
+                    }
+                  }}
+                  disabled={refreshing}
+                  className={`flex-1 px-4 py-2 rounded-lg transition-colors font-medium ${
+                    refreshing
+                      ? 'bg-gray-300 dark:bg-gray-600 cursor-not-allowed'
+                      : 'bg-green-600 hover:bg-green-700 text-white'
+                  }`}
+                >
+                  {refreshing ? '⏳ 새로고침 중...' : '🔄 매물 새로고침'}
+                </button>
+              )}
+              {onDelete && (
+                <button
+                  onClick={() => {
+                    const complexNo = crawlingInfo.complex_no || overview.complexNo;
+                    if (complexNo && window.confirm('이 단지를 삭제하시겠습니까?')) {
+                      onDelete(complexNo);
+                    }
+                  }}
+                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors font-medium"
+                >
+                  🗑️ 단지 삭제
+                </button>
               )}
             </div>
-          </button>
+          )}
         </div>
 
-        {/* Content */}
-        <div className="flex-1 overflow-auto p-6">
-          {activeTab === 'overview' ? (
-            /* 단지 개요 */
+        {/* Content - 단지정보와 매물목록을 한 페이지에 표시 */}
+        <div className="flex-1 overflow-auto p-6 space-y-6">
+          {/* 단지 개요 */}
+          <div>
+            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+              📋 단지 정보
+            </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <InfoCard title="기본 정보">
                 <InfoRow label="단지명" value={overview.complexName} />
@@ -181,13 +196,13 @@ export default function PropertyDetail({ data, onClose }: PropertyDetailProps) {
               </InfoCard>
 
               <InfoCard title="가격 정보">
-                <InfoRow 
-                  label="최저가" 
-                  value={formatPrice(overview.minPrice)} 
+                <InfoRow
+                  label="최저가"
+                  value={formatPrice(overview.minPrice)}
                 />
-                <InfoRow 
-                  label="최고가" 
-                  value={formatPrice(overview.maxPrice)} 
+                <InfoRow
+                  label="최고가"
+                  value={formatPrice(overview.maxPrice)}
                 />
               </InfoCard>
 
@@ -224,8 +239,21 @@ export default function PropertyDetail({ data, onClose }: PropertyDetailProps) {
                 ) : null}
               </InfoCard>
             </div>
-          ) : (
-            /* 매물 목록 */
+          </div>
+
+          {/* 구분선 */}
+          <div className="border-t border-gray-200 dark:border-gray-700 my-6"></div>
+
+          {/* 매물 목록 */}
+          <div>
+            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
+              🏘️ 매물 목록
+            </h3>
+            {statsText && (
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                총 {articles.length}개 | {statsText}
+              </p>
+            )}
             <div className="overflow-x-auto">
               {articles.length === 0 ? (
                 <div className="text-center py-12 text-gray-500 dark:text-gray-400">
@@ -264,7 +292,7 @@ export default function PropertyDetail({ data, onClose }: PropertyDetailProps) {
                       <tr key={index} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
                         <td className="px-4 py-4 whitespace-nowrap">
                           <span className={`px-2 py-1 rounded text-xs font-semibold ${
-                            (article.tradeTypeCode || article.tradeType) === 'A1' 
+                            (article.tradeTypeCode || article.tradeType) === 'A1'
                               ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
                               : (article.tradeTypeCode || article.tradeType) === 'B1'
                               ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
@@ -303,8 +331,8 @@ export default function PropertyDetail({ data, onClose }: PropertyDetailProps) {
                         <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                           {(() => {
                             const date = article.articleConfirmYmd || article.cfmYmd;
-                            return date ? 
-                              `${date.toString().substring(0,4)}.${date.toString().substring(4,6)}.${date.toString().substring(6,8)}` 
+                            return date ?
+                              `${date.toString().substring(0,4)}.${date.toString().substring(4,6)}.${date.toString().substring(6,8)}`
                               : '-';
                           })()}
                         </td>
@@ -314,7 +342,7 @@ export default function PropertyDetail({ data, onClose }: PropertyDetailProps) {
                 </table>
               )}
             </div>
-          )}
+          </div>
         </div>
       </div>
     </div>
