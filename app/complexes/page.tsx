@@ -17,6 +17,7 @@ interface FavoriteComplex {
   maxArea?: number;
   minPrice?: number;
   maxPrice?: number;
+  order?: number;
 }
 
 interface ComplexData {

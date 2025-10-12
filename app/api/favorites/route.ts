@@ -17,6 +17,7 @@ interface FavoriteComplex {
   maxArea?: number;
   minPrice?: number;
   maxPrice?: number;
+  order?: number;
 }
 
 // 선호 단지 파일 경로
@@ -56,10 +57,19 @@ const writeFavorites = async (favorites: FavoriteComplex[]) => {
 export async function GET(request: NextRequest) {
   try {
     const favorites = await readFavorites();
-    
+
+    // order 필드로 정렬 (없으면 addedAt으로)
+    const sortedFavorites = favorites.sort((a, b) => {
+      if (a.order !== undefined && b.order !== undefined) {
+        return a.order - b.order;
+      }
+      // order가 없으면 추가된 순서대로
+      return new Date(a.addedAt).getTime() - new Date(b.addedAt).getTime();
+    });
+
     return NextResponse.json({
-      favorites,
-      total: favorites.length
+      favorites: sortedFavorites,
+      total: sortedFavorites.length
     });
   } catch (error: any) {
     console.error('Favorites fetch error:', error);
@@ -93,13 +103,14 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // 새 단지 추가
+    // 새 단지 추가 (order는 배열 끝으로)
     const newFavorite: FavoriteComplex = {
       complexNo,
       complexName: complexName || `단지 ${complexNo}`,
       addedAt: new Date().toISOString(),
+      order: favorites.length, // 현재 길이를 order로 설정
     };
-    
+
     favorites.push(newFavorite);
     await writeFavorites(favorites);
     
@@ -133,15 +144,21 @@ export async function DELETE(request: NextRequest) {
     
     const favorites = await readFavorites();
     const filtered = favorites.filter(f => f.complexNo !== complexNo);
-    
+
     if (filtered.length === favorites.length) {
       return NextResponse.json(
         { error: '해당 단지를 찾을 수 없습니다.' },
         { status: 404 }
       );
     }
-    
-    await writeFavorites(filtered);
+
+    // order 재정렬
+    const reordered = filtered.map((fav, index) => ({
+      ...fav,
+      order: index
+    }));
+
+    await writeFavorites(reordered);
     
     return NextResponse.json({
       success: true,
