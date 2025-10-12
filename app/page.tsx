@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import CrawlerForm from "@/components/CrawlerForm";
 import CrawlerHistory from "@/components/CrawlerHistory";
-import CrawlerStatus from "@/components/CrawlerStatus";
 
 interface FavoriteComplex {
   complexNo: string;
@@ -175,6 +174,12 @@ export default function Home() {
               >
                 ⏰ 스케줄러
               </Link>
+              <Link
+                href="/system"
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors font-semibold"
+              >
+                ⚙️ 시스템
+              </Link>
             </div>
           </div>
         </div>
@@ -221,11 +226,6 @@ export default function Home() {
               isTime
             />
           </div>
-        </div>
-
-        {/* System Status - Horizontal */}
-        <div className="mb-8">
-          <CrawlerStatus />
         </div>
 
         {/* Favorite Complexes with Detailed Stats */}
