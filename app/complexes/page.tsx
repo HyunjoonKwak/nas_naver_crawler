@@ -49,6 +49,20 @@ export default function ComplexesPage() {
     syncAllFavorites();
   }, []);
 
+  // 크롤링 중 페이지 이탈 경고
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (crawlingAll || crawling) {
+        e.preventDefault();
+        e.returnValue = '크롤링이 진행 중입니다. 페이지를 나가시겠습니까?';
+        return e.returnValue;
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [crawlingAll, crawling]);
+
   // 모든 선호단지 정보를 크롤링 데이터와 동기화
   const syncAllFavorites = async () => {
     try {
@@ -417,24 +431,46 @@ export default function ComplexesPage() {
               </Link>
             </div>
             <div className="flex items-center gap-3">
-              <Link
-                href="/"
-                className="px-4 py-2 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-lg transition-colors font-semibold"
-              >
-                ← 홈
-              </Link>
-              <Link
-                href="/history"
-                className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors font-semibold"
-              >
-                📚 히스토리
-              </Link>
-              <Link
-                href="/scheduler"
-                className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors font-semibold"
-              >
-                ⏰ 스케줄러
-              </Link>
+              {(crawlingAll || crawling) ? (
+                <>
+                  <button
+                    disabled
+                    className="px-4 py-2 bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400 rounded-lg cursor-not-allowed font-semibold"
+                    title="크롤링 중에는 페이지 이동이 제한됩니다"
+                  >
+                    ← 홈
+                  </button>
+                  <button
+                    disabled
+                    className="px-4 py-2 bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400 rounded-lg cursor-not-allowed font-semibold"
+                    title="크롤링 중에는 페이지 이동이 제한됩니다"
+                  >
+                    📚 히스토리
+                  </button>
+                  <button
+                    disabled
+                    className="px-4 py-2 bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400 rounded-lg cursor-not-allowed font-semibold"
+                    title="크롤링 중에는 페이지 이동이 제한됩니다"
+                  >
+                    ⏰ 스케줄러
+                  </button>
+                </>
+              ) : (
+                <>
+                  <Link
+                    href="/"
+                    className="px-4 py-2 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-lg transition-colors font-semibold"
+                  >
+                    ← 홈
+                  </Link>
+                  <Link
+                    href="/scheduler"
+                    className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors font-semibold"
+                  >
+                    ⏰ 스케줄러
+                  </Link>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -442,13 +478,43 @@ export default function ComplexesPage() {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Crawling Status Banner */}
+        {(crawlingAll || crawling) && (
+          <div className="bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20 border-2 border-yellow-400 dark:border-yellow-600 rounded-lg p-4 mb-6 shadow-lg">
+            <div className="flex items-center gap-4">
+              <div className="flex-shrink-0">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-600 dark:border-yellow-400"></div>
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-bold text-yellow-900 dark:text-yellow-200 mb-1">
+                  {crawlingAll ? '⏳ 전체 크롤링 진행 중' : '⏳ 크롤링 진행 중'}
+                </h3>
+                <p className="text-sm text-yellow-800 dark:text-yellow-300">
+                  {crawlingAll
+                    ? `${favorites.length}개 단지의 데이터를 수집하고 있습니다. 잠시만 기다려주세요.`
+                    : '데이터를 수집하고 있습니다. 잠시만 기다려주세요.'
+                  }
+                </p>
+                <p className="text-xs text-yellow-700 dark:text-yellow-400 mt-2">
+                  ⚠️ 크롤링이 완료될 때까지 페이지를 닫지 마세요.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Action Bar */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4 mb-6">
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               <button
                 onClick={() => setShowAddForm(!showAddForm)}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium"
+                disabled={crawlingAll || !!crawling}
+                className={`px-4 py-2 rounded-lg transition-colors font-medium ${
+                  crawlingAll || crawling
+                    ? 'bg-gray-300 dark:bg-gray-600 cursor-not-allowed'
+                    : 'bg-blue-600 hover:bg-blue-700 text-white'
+                }`}
               >
                 ➕ 단지 추가
               </button>
@@ -670,9 +736,16 @@ export default function ComplexesPage() {
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      handleViewDetail(favorite.complexNo);
+                      if (!crawlingAll && !crawling) {
+                        handleViewDetail(favorite.complexNo);
+                      }
                     }}
-                    className="w-full mt-4 px-4 py-2.5 bg-white dark:bg-gray-700 border-2 border-blue-600 dark:border-blue-500 text-blue-600 dark:text-blue-400 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors text-sm font-semibold"
+                    disabled={crawlingAll || !!crawling}
+                    className={`w-full mt-4 px-4 py-2.5 rounded-lg transition-colors text-sm font-semibold ${
+                      crawlingAll || crawling
+                        ? 'bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed border-2 border-gray-400'
+                        : 'bg-white dark:bg-gray-700 border-2 border-blue-600 dark:border-blue-500 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20'
+                    }`}
                   >
                     상세보기
                   </button>
@@ -746,7 +819,12 @@ export default function ComplexesPage() {
                     <td className="px-4 py-4 whitespace-nowrap text-sm">
                       <button
                         onClick={() => handleViewDetail(favorite.complexNo)}
-                        className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium"
+                        disabled={crawlingAll || !!crawling}
+                        className={`px-3 py-1 rounded-lg transition-colors font-medium ${
+                          crawlingAll || crawling
+                            ? 'bg-gray-300 dark:bg-gray-600 text-gray-500 cursor-not-allowed'
+                            : 'bg-blue-600 hover:bg-blue-700 text-white'
+                        }`}
                       >
                         📋 상세보기
                       </button>
