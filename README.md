@@ -27,8 +27,9 @@
 - 📱 **반응형 UI**: 모바일, 태블릿, 데스크톱 지원
 
 ### 🚀 고급 기능
-- **점진적 스크롤**: 500px씩 스크롤 (사람처럼 자연스럽게)
-- **봇 감지 회피**: 1.5초 대기 + localStorage 설정
+- **점진적 스크롤**: 800px씩 스크롤 (최적화됨, 이전 500px)
+- **동적 대기 시간**: API 패턴 기반 (0.3s/1.0s)
+- **봇 감지 회피**: 동적 대기 + localStorage 설정
 - **3중 안전장치**: localStorage + 체크박스 검증 + 자동 클릭
 - **API 검증**: `sameAddressGroup=true` 파라미터 확인
 - **데이터 포맷팅**: 거래유형 배지, 가격 표시, 매물확인일
@@ -36,17 +37,34 @@
 
 ---
 
-## 📊 크롤링 성능
+## 📊 크롤링 성능 (v1.1.0 - 2025-10-12)
 
-| 지표 | 값 |
-|------|-----|
-| **초기 매물** | 20개 (첫 API 응답) |
-| **무한 스크롤 후** | 127개 (6.35배 증가) |
-| **동일매물 묶기** | 66개 (48% 중복 제거) |
-| **스크롤 횟수** | ~25회 (동일매물 묶기 ON) |
-| **크롤링 시간** | ~1분 (66개 기준) |
-| **수집 속도** | 66개/분 |
-| **봇 감지 회피율** | 100% (1.5초 대기) |
+### 최적화 결과 ⚡
+```
+원본:  8분 37초 (516,854ms)
+현재:  4분 12초 (251,633ms)
+개선:  -51.3% 🚀
+```
+
+### 성능 지표
+| 지표 | 값 | 개선 |
+|------|-----|------|
+| **크롤링 시간** | 4분 12초 (5개 단지) | -51.3% |
+| **처리 속도** | 0.99 매물/초 | +106% |
+| **스크롤 효율** | 3.57 매물/스크롤 | +53% |
+| **초기 매물** | 20개 (첫 API 응답) | - |
+| **무한 스크롤 후** | 127개 (6.35배 증가) | - |
+| **동일매물 묶기** | 66개 (48% 중복 제거) | - |
+| **스크롤 횟수** | ~17회 (동일매물 묶기 ON) | -35% |
+| **봇 감지 회피율** | 100% (동적 대기) | - |
+
+### 적용된 최적화
+- ✅ **domcontentloaded 전환**: 초기 로딩 5-10초 단축
+- ✅ **동적 대기 시간**: API 패턴 기반 (0.3s/1.0s)
+- ✅ **스크롤 거리 증가**: 500px → 800px
+- ✅ **빠른 종료 조건**: 8회 → 3회
+
+**상세 문서**: [PERFORMANCE.md](docs/PERFORMANCE.md)
 
 ---
 
@@ -786,8 +804,96 @@ MIT License - 교육 및 연구 목적으로 자유롭게 사용하세요.
 
 ---
 
+## 📁 프로젝트 구조
+
+```
+nas_naver_crawler/
+├── README.md              # 프로젝트 메인 문서
+├── TODO.md                # 개발 로드맵 및 체크리스트
+├── Dockerfile             # Docker 이미지 정의
+├── docker-compose.yml     # 서비스 구성
+├── package.json           # Node.js 의존성
+├── requirements.txt       # Python 의존성
+│
+├── app/                   # Next.js 애플리케이션
+│   ├── api/              # API 라우트 (crawl, results, status)
+│   ├── complex/[complexNo]/ # 단지 상세 페이지
+│   ├── complexes/        # 단지 목록 페이지
+│   ├── layout.tsx        # 루트 레이아웃
+│   └── page.tsx          # 메인 대시보드
+│
+├── components/           # React 컴포넌트
+│   ├── CrawlerForm.tsx   # 크롤링 입력 폼
+│   ├── CrawlerHistory.tsx # 히스토리 테이블
+│   ├── CrawlerStatus.tsx # 시스템 상태 모니터링
+│   ├── ComplexTable.tsx  # 단지 목록 테이블
+│   ├── PropertyDetail.tsx # 매물 상세 정보
+│   └── RealPriceAnalysis.tsx # 실거래가 분석 차트
+│
+├── logic/                # Python 크롤링 로직
+│   ├── nas_playwright_crawler.py # Playwright 크롤러 (메인)
+│   ├── simple_crawler.py # 간단한 크롤러 (백업)
+│   └── scheduler.py      # 스케줄러 (예약)
+│
+├── scripts/              # 실행 스크립트
+│   ├── start_web.sh      # 웹 서버 시작
+│   ├── crawl.sh          # CLI 크롤링
+│   ├── build.sh          # Docker 빌드
+│   └── dev.sh            # 개발 모드
+│
+├── docs/                 # 문서
+│   ├── GETTING_STARTED.md # 🌟 시작 가이드 (필독)
+│   ├── PROJECT_SUMMARY.md # 기술 문서
+│   ├── PERFORMANCE.md    # 성능 최적화 가이드
+│   ├── CHANGELOG.md      # 변경 이력
+│   ├── README_NAS.md     # NAS 환경 설정
+│   └── QUICK_DEPLOY.md   # 빠른 배포 가이드
+│
+├── crawled_data/         # 크롤링 결과 (자동 생성)
+└── logs/                 # 로그 파일 (자동 생성)
+```
+
+### 주요 디렉토리 역할
+
+| 디렉토리 | 역할 | 주요 파일 |
+|----------|------|-----------|
+| `app/` | Next.js App Router | page.tsx, layout.tsx, API routes |
+| `components/` | UI 컴포넌트 | CrawlerForm, History, Status |
+| `logic/` | 크롤링 엔진 | nas_playwright_crawler.py |
+| `scripts/` | 실행 스크립트 | start_web.sh, crawl.sh |
+| `docs/` | 문서 | GETTING_STARTED, PERFORMANCE |
+
+---
+
+## 📚 문서 가이드
+
+### 처음 시작하시나요?
+1. **[GETTING_STARTED.md](docs/GETTING_STARTED.md)** ⭐ 필독 - 웹 UI 사용법 완벽 가이드
+2. **[README_NAS.md](docs/README_NAS.md)** - NAS 환경 설정 (Synology, QNAP)
+3. **[QUICK_DEPLOY.md](docs/QUICK_DEPLOY.md)** - 빠른 배포 (Mac → NAS, 개발 모드)
+
+### 개발자이신가요?
+1. **[TODO.md](TODO.md)** - 개발 로드맵 및 작업 계획
+2. **[PERFORMANCE.md](docs/PERFORMANCE.md)** - 성능 최적화 상세 가이드
+3. **[CHANGELOG.md](docs/CHANGELOG.md)** - 버전별 변경 이력
+4. **[PROJECT_SUMMARY.md](docs/PROJECT_SUMMARY.md)** - 기술 스택 및 아키텍처
+
+### 문서 읽는 순서
+```
+신규 사용자:
+  README.md → GETTING_STARTED.md → (웹 UI 사용)
+
+NAS 사용자:
+  README.md → README_NAS.md → GETTING_STARTED.md
+
+개발자:
+  README.md → PROJECT_SUMMARY.md → PERFORMANCE.md → TODO.md
+```
+
+---
+
 **Made with ❤️ for NAS users**
 
-**마지막 업데이트:** 2025-10-11  
-**버전:** 1.0.0  
-**상태:** ✅ 프로덕션 준비 완료
+**마지막 업데이트:** 2025-10-12
+**버전:** 1.1.0 (성능 최적화 완료)
+**상태:** ✅ 프로덕션 준비 완료 + 51.3% 속도 개선
