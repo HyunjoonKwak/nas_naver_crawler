@@ -157,7 +157,30 @@ export default function ComplexesPage() {
         await updateFavoriteInfo(complexNo);
         // UI 갱신
         await fetchFavorites();
-        alert(`${complexNo} 크롤링 완료`);
+
+        // 크롤 상태 및 시스템 상태 조회
+        const [crawlStatusResponse, systemStatusResponse] = await Promise.all([
+          fetch('/api/crawl-status'),
+          fetch('/api/status')
+        ]);
+        const crawlStatus = await crawlStatusResponse.json();
+        const systemStatus = await systemStatusResponse.json();
+
+        const complexName = favorites.find(f => f.complexNo === complexNo)?.complexName || complexNo;
+        const articleCount = crawlStatus.items_collected || 0;
+        const elapsedTime = crawlStatus.elapsed_seconds || 0;
+        const speed = crawlStatus.speed || 0;
+
+        alert(
+          `✅ 크롤링 완료!\n\n` +
+          `📌 단지: ${complexName}\n` +
+          `🏠 수집된 매물: ${articleCount}개\n` +
+          `⏱️ 소요 시간: ${elapsedTime}초\n` +
+          `⚡ 수집 속도: ${speed}개/초\n\n` +
+          `📊 시스템 상태:\n` +
+          `• 전체 크롤링 파일: ${systemStatus.crawledDataCount || 0}개\n` +
+          `• 선호 단지: ${systemStatus.favoritesCount || 0}개`
+        );
       } else {
         alert(data.error || '크롤링 실패');
       }
@@ -195,8 +218,31 @@ export default function ComplexesPage() {
         for (const complexNo of favorites.map(f => f.complexNo)) {
           await updateFavoriteInfo(complexNo);
         }
-        alert('전체 크롤링 완료');
         await fetchFavorites();
+
+        // 크롤 상태 및 시스템 상태 조회
+        const [crawlStatusResponse, systemStatusResponse] = await Promise.all([
+          fetch('/api/crawl-status'),
+          fetch('/api/status')
+        ]);
+        const crawlStatus = await crawlStatusResponse.json();
+        const systemStatus = await systemStatusResponse.json();
+
+        const totalArticles = crawlStatus.items_collected || 0;
+        const elapsedTime = crawlStatus.elapsed_seconds || 0;
+        const speed = crawlStatus.speed || 0;
+
+        alert(
+          `✅ 전체 크롤링 완료!\n\n` +
+          `📌 크롤링된 단지: ${favorites.length}개\n` +
+          `🏠 전체 매물 수: ${totalArticles}개\n` +
+          `⏱️ 소요 시간: ${elapsedTime}초\n` +
+          `⚡ 수집 속도: ${speed}개/초\n\n` +
+          `📊 시스템 상태:\n` +
+          `• 전체 크롤링 파일: ${systemStatus.crawledDataCount || 0}개\n` +
+          `• 선호 단지: ${systemStatus.favoritesCount || 0}개\n` +
+          `• 디스크 사용량: ${systemStatus.crawledDataSize || '알 수 없음'}`
+        );
       } else {
         alert(data.error || '크롤링 실패');
       }
