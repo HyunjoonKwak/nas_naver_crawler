@@ -14,6 +14,15 @@ export default function PropertyDetail({ data, onClose, onRefresh, onDelete }: P
   const [loadingAddress, setLoadingAddress] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
+  // 필터 상태
+  const [filterTradeType, setFilterTradeType] = useState<string>('all');
+  const [filterArea, setFilterArea] = useState<string>('all');
+  const [filterDong, setFilterDong] = useState<string>('all');
+
+  // 정렬 상태
+  const [sortField, setSortField] = useState<string>('');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+
   // 디버깅: 데이터 구조 확인
   console.log('PropertyDetail data:', data);
   console.log('Is Array?', Array.isArray(data));
@@ -92,6 +101,93 @@ export default function PropertyDetail({ data, onClose, onRefresh, onDelete }: P
     if (!area) return '-';
     const pyeong = (area / 3.3058).toFixed(1);
     return `${area}㎡ (${pyeong}평)`;
+  };
+
+  // 고유한 면적(평형) 리스트 추출
+  const uniqueAreas = Array.from(new Set(
+    articles.map((a: any) => {
+      const area = a.area1;
+      if (!area) return null;
+      const pyeong = Math.floor(area / 3.3058);
+      return pyeong;
+    }).filter(Boolean)
+  )).sort((a: any, b: any) => a - b);
+
+  // 고유한 동 리스트 추출
+  const uniqueDongs = Array.from(new Set(
+    articles.map((a: any) => a.buildingName).filter(Boolean)
+  )).sort();
+
+  // 필터링된 매물 목록
+  const filteredArticles = articles.filter((article: any) => {
+    // 거래 유형 필터
+    if (filterTradeType !== 'all') {
+      const tradeType = article.tradeTypeCode || article.tradeType;
+      if (tradeType !== filterTradeType) return false;
+    }
+
+    // 면적 필터
+    if (filterArea !== 'all') {
+      const area = article.area1;
+      if (!area) return false;
+      const pyeong = Math.floor(area / 3.3058);
+      if (pyeong.toString() !== filterArea) return false;
+    }
+
+    // 동 필터
+    if (filterDong !== 'all') {
+      if (article.buildingName !== filterDong) return false;
+    }
+
+    return true;
+  });
+
+  // 정렬된 매물 목록
+  const sortedArticles = [...filteredArticles].sort((a: any, b: any) => {
+    if (!sortField) return 0;
+
+    let aVal: any, bVal: any;
+
+    switch (sortField) {
+      case 'tradeType':
+        aVal = a.tradeTypeCode || a.tradeType;
+        bVal = b.tradeTypeCode || b.tradeType;
+        break;
+      case 'area':
+        aVal = a.area1 || 0;
+        bVal = b.area1 || 0;
+        break;
+      case 'dong':
+        aVal = a.buildingName || '';
+        bVal = b.buildingName || '';
+        break;
+      case 'date':
+        aVal = a.articleConfirmYmd || a.cfmYmd || 0;
+        bVal = b.articleConfirmYmd || b.cfmYmd || 0;
+        break;
+      default:
+        return 0;
+    }
+
+    if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
+    if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
+    return 0;
+  });
+
+  // 정렬 토글 핸들러
+  const handleSort = (field: string) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  // 정렬 아이콘
+  const getSortIcon = (field: string) => {
+    if (sortField !== field) return '⇅';
+    return sortDirection === 'asc' ? '↑' : '↓';
   };
 
   // 거래 유형별 통계
@@ -246,35 +342,143 @@ export default function PropertyDetail({ data, onClose, onRefresh, onDelete }: P
 
           {/* 매물 목록 */}
           <div>
-            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
-              🏘️ 매물 목록
-            </h3>
-            {statsText && (
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                총 {articles.length}개 | {statsText}
-              </p>
-            )}
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-1 flex items-center gap-2">
+                  🏘️ 매물 목록
+                </h3>
+                {statsText && (
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    총 {articles.length}개 | {statsText}
+                    {filteredArticles.length !== articles.length && (
+                      <span className="ml-2 text-blue-600 dark:text-blue-400 font-semibold">
+                        (필터링: {filteredArticles.length}개)
+                      </span>
+                    )}
+                  </p>
+                )}
+              </div>
+
+              {/* 필터 초기화 버튼 */}
+              {(filterTradeType !== 'all' || filterArea !== 'all' || filterDong !== 'all') && (
+                <button
+                  onClick={() => {
+                    setFilterTradeType('all');
+                    setFilterArea('all');
+                    setFilterDong('all');
+                  }}
+                  className="px-3 py-1 text-sm bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg transition-colors"
+                >
+                  🔄 필터 초기화
+                </button>
+              )}
+            </div>
+
+            {/* 필터 UI */}
+            <div className="mb-4 p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* 거래유형 필터 */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    거래유형
+                  </label>
+                  <select
+                    value={filterTradeType}
+                    onChange={(e) => setFilterTradeType(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="all">전체</option>
+                    {tradeStats['A1'] && <option value="A1">매매 ({tradeStats['A1']})</option>}
+                    {tradeStats['B1'] && <option value="B1">전세 ({tradeStats['B1']})</option>}
+                    {tradeStats['B2'] && <option value="B2">월세 ({tradeStats['B2']})</option>}
+                    {tradeStats['B3'] && <option value="B3">단기임대 ({tradeStats['B3']})</option>}
+                  </select>
+                </div>
+
+                {/* 평형 필터 */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    평형
+                  </label>
+                  <select
+                    value={filterArea}
+                    onChange={(e) => setFilterArea(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="all">전체</option>
+                    {uniqueAreas.map((pyeong: any) => (
+                      <option key={pyeong} value={pyeong}>
+                        {pyeong}평형
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* 동 필터 */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    동
+                  </label>
+                  <select
+                    value={filterDong}
+                    onChange={(e) => setFilterDong(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="all">전체</option>
+                    {uniqueDongs.map((dong: any) => (
+                      <option key={dong} value={dong}>
+                        {dong}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </div>
+
             <div className="overflow-x-auto">
               {articles.length === 0 ? (
                 <div className="text-center py-12 text-gray-500 dark:text-gray-400">
                   <p className="text-lg mb-2">📭 등록된 매물이 없습니다</p>
                   <p className="text-sm">현재 거래 중인 매물이 없습니다.</p>
                 </div>
+              ) : sortedArticles.length === 0 ? (
+                <div className="text-center py-12 text-gray-500 dark:text-gray-400">
+                  <p className="text-lg mb-2">🔍 필터 조건에 맞는 매물이 없습니다</p>
+                  <p className="text-sm">다른 조건으로 검색해보세요.</p>
+                </div>
               ) : (
                 <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                   <thead className="bg-gray-50 dark:bg-gray-900">
                     <tr>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                        거래유형
+                      <th
+                        className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                        onClick={() => handleSort('tradeType')}
+                      >
+                        <div className="flex items-center gap-1">
+                          거래유형
+                          <span className="text-sm">{getSortIcon('tradeType')}</span>
+                        </div>
                       </th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                         가격
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                        면적
+                      <th
+                        className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                        onClick={() => handleSort('area')}
+                      >
+                        <div className="flex items-center gap-1">
+                          면적
+                          <span className="text-sm">{getSortIcon('area')}</span>
+                        </div>
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                        동
+                      <th
+                        className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                        onClick={() => handleSort('dong')}
+                      >
+                        <div className="flex items-center gap-1">
+                          동
+                          <span className="text-sm">{getSortIcon('dong')}</span>
+                        </div>
                       </th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                         층
@@ -282,13 +486,19 @@ export default function PropertyDetail({ data, onClose, onRefresh, onDelete }: P
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                         방향
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                        매물확인일
+                      <th
+                        className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                        onClick={() => handleSort('date')}
+                      >
+                        <div className="flex items-center gap-1">
+                          매물확인일
+                          <span className="text-sm">{getSortIcon('date')}</span>
+                        </div>
                       </th>
                     </tr>
                   </thead>
                   <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                    {articles.map((article: any, index: number) => (
+                    {sortedArticles.map((article: any, index: number) => (
                       <tr key={index} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
                         <td className="px-4 py-4 whitespace-nowrap">
                           <span className={`px-2 py-1 rounded text-xs font-semibold ${
