@@ -10,7 +10,12 @@ RUN npm ci
 COPY app ./app
 COPY components ./components
 COPY public ./public
+COPY prisma ./prisma
+COPY lib ./lib
 COPY next.config.js tsconfig.json tailwind.config.js postcss.config.js ./
+
+# Prisma Client 생성
+RUN npx prisma generate
 
 RUN npm run build
 
@@ -104,6 +109,9 @@ COPY config.env ./
 COPY app ./app
 COPY components ./components
 COPY public ./public
+COPY prisma ./prisma
+COPY lib ./lib
+COPY scripts ./scripts
 COPY next.config.js tsconfig.json ./
 
 # 필요한 디렉토리 생성
