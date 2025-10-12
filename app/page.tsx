@@ -157,18 +157,6 @@ export default function Home() {
                 🏘️ 단지 목록
               </Link>
               <Link
-                href="/history"
-                className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors font-semibold"
-              >
-                📚 히스토리
-              </Link>
-              <Link
-                href="/csv"
-                className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg transition-colors font-semibold"
-              >
-                📊 CSV
-              </Link>
-              <Link
                 href="/scheduler"
                 className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors font-semibold"
               >
