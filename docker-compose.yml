@@ -15,7 +15,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
 
     ports:
-      - "5432:5432"
+      - "5433:5432"  # 외부 포트 5433으로 변경 (NAS PostgreSQL 충돌 방지)
 
     networks:
       - crawler-network

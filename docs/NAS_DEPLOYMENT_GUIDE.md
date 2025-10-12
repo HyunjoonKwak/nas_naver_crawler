@@ -145,12 +145,15 @@ docker exec -it naver-crawler-web env | grep DATABASE_URL
 
 ### 문제 4: 포트 충돌 (5432)
 ```bash
-# NAS에서 이미 PostgreSQL이 실행 중인 경우
-# docker-compose.yml에서 포트 변경:
-ports:
-  - "5433:5432"  # 외부 5433으로 변경
+# NAS에서 이미 PostgreSQL이 실행 중인 경우 (이미 해결됨!)
+# docker-compose.yml에서 외부 포트를 5433으로 변경했습니다.
+# Docker 내부 네트워크는 여전히 5432를 사용합니다.
 
-# .env 파일은 변경 불필요 (내부 네트워크는 5432 사용)
+# 확인 방법:
+docker-compose ps
+# 포트가 0.0.0.0:5433->5432/tcp 로 표시되어야 함
+
+# .env 파일은 변경 불필요 (내부 네트워크는 @db:5432 사용)
 ```
 
 ## 확인 체크리스트
