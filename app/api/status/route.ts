@@ -26,10 +26,10 @@ export async function GET() {
       playwrightReady = false;
     }
 
-    // 크롤링된 데이터 개수 확인
+    // 크롤링된 데이터 개수 확인 (favorites.json 제외)
     let crawledDataCount = 0;
     try {
-      const { stdout } = await execAsync(`ls -1 ${baseDir}/crawled_data/*.json 2>/dev/null | wc -l`);
+      const { stdout } = await execAsync(`ls -1 ${baseDir}/crawled_data/*.json 2>/dev/null | grep -v favorites.json | wc -l`);
       crawledDataCount = parseInt(stdout.trim()) || 0;
     } catch {
       crawledDataCount = 0;

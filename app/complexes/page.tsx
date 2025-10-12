@@ -255,7 +255,11 @@ export default function ComplexesPage() {
         }
       }
 
-      alert('해당 단지의 크롤링 데이터가 없습니다. 먼저 크롤링을 실행해주세요.');
+      // 크롤링 데이터가 없어도 빈 데이터로 모달 열기
+      setSelectedComplex({
+        complexNo,
+        data: null // null로 설정하여 빈 상태 표시
+      });
     } catch (error) {
       console.error('Failed to load complex data:', error);
       alert('데이터 조회 중 오류가 발생했습니다.');
@@ -605,6 +609,7 @@ export default function ComplexesPage() {
       {selectedComplex && (
         <PropertyDetail
           data={selectedComplex.data}
+          complexNo={selectedComplex.complexNo}
           onClose={() => setSelectedComplex(null)}
           onRefresh={async (complexNo) => {
             await handleCrawlComplex(complexNo);

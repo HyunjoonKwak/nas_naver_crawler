@@ -7,9 +7,10 @@ interface PropertyDetailProps {
   onClose: () => void;
   onRefresh?: (complexNo: string) => void;
   onDelete?: (complexNo: string) => void;
+  complexNo?: string; // 단지번호 직접 전달 (빈 상태 대응)
 }
 
-export default function PropertyDetail({ data, onClose, onRefresh, onDelete }: PropertyDetailProps) {
+export default function PropertyDetail({ data, onClose, onRefresh, onDelete, complexNo: propComplexNo }: PropertyDetailProps) {
   const [addressInfo, setAddressInfo] = useState<any>(null);
   const [loadingAddress, setLoadingAddress] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -26,13 +27,16 @@ export default function PropertyDetail({ data, onClose, onRefresh, onDelete }: P
   // 디버깅: 데이터 구조 확인
   console.log('PropertyDetail data:', data);
   console.log('Is Array?', Array.isArray(data));
-  
+
+  // 데이터가 null인 경우 (크롤링 데이터 없음)
+  const hasNoData = !data;
+
   // 데이터가 배열인 경우 첫 번째 요소 사용
   const complexData = Array.isArray(data) ? data[0] : data;
-  
+
   console.log('complexData:', complexData);
   console.log('overview:', complexData?.overview);
-  
+
   // 단지 개요 정보 추출
   const overview = complexData?.overview || {};
   const articles = complexData?.articles?.articleList || [];
@@ -273,8 +277,55 @@ export default function PropertyDetail({ data, onClose, onRefresh, onDelete }: P
 
         {/* Content - 단지정보와 매물목록을 한 페이지에 표시 */}
         <div className="flex-1 overflow-auto p-6 space-y-6">
-          {/* 단지 개요 */}
-          <div>
+          {hasNoData ? (
+            /* 크롤링 데이터가 없는 경우 */
+            <div className="flex flex-col items-center justify-center py-20 px-4">
+              <div className="text-center max-w-md">
+                <div className="text-8xl mb-6">📭</div>
+                <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">
+                  크롤링 데이터가 없습니다
+                </h3>
+                <p className="text-gray-600 dark:text-gray-400 mb-8">
+                  이 단지의 매물 정보를 수집하려면 크롤링을 실행해주세요.
+                </p>
+
+                {onRefresh && (
+                  <div className="space-y-4">
+                    <button
+                      onClick={async () => {
+                        const complexNo = propComplexNo || crawlingInfo.complex_no || overview.complexNo;
+                        if (complexNo && onRefresh) {
+                          setRefreshing(true);
+                          await onRefresh(complexNo);
+                          setRefreshing(false);
+                        }
+                      }}
+                      disabled={refreshing}
+                      className={`w-full max-w-xs px-6 py-4 rounded-lg transition-all font-bold text-lg ${
+                        refreshing
+                          ? 'bg-gray-300 dark:bg-gray-600 cursor-not-allowed'
+                          : 'bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white shadow-lg hover:shadow-xl transform hover:-translate-y-0.5'
+                      }`}
+                    >
+                      {refreshing ? '⏳ 크롤링 중...' : '🚀 지금 크롤링 시작'}
+                    </button>
+
+                    <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 text-sm text-left">
+                      <p className="text-blue-800 dark:text-blue-300 font-medium mb-2">
+                        💡 크롤링이란?
+                      </p>
+                      <p className="text-blue-700 dark:text-blue-400">
+                        네이버 부동산에서 해당 단지의 매물 정보(가격, 면적, 층수 등)를 자동으로 수집하는 기능입니다.
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : (
+            <>
+              {/* 단지 개요 */}
+              <div>
             <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
               📋 단지 정보
             </h3>
@@ -553,6 +604,8 @@ export default function PropertyDetail({ data, onClose, onRefresh, onDelete }: P
               )}
             </div>
           </div>
+            </>
+          )}
         </div>
       </div>
     </div>
