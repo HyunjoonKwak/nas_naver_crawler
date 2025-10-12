@@ -1,63 +1,112 @@
 import { NextRequest, NextResponse } from 'next/server';
-import fs from 'fs/promises';
-import path from 'path';
+import { prisma } from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {
-    // 환경에 따라 경로 결정
-    const baseDir = process.env.NODE_ENV === 'production' ? '/app' : process.cwd();
-    const crawledDataDir = path.join(baseDir, 'crawled_data');
-    
-    // 디렉토리 존재 확인
-    try {
-      await fs.access(crawledDataDir);
-    } catch {
-      return NextResponse.json({
-        results: [],
-        message: '크롤링 데이터가 없습니다.'
+    const { searchParams } = new URL(request.url);
+
+    // 쿼리 파라미터
+    const complexNo = searchParams.get('complexNo');
+    const tradeType = searchParams.get('tradeType');
+    const minPrice = searchParams.get('minPrice');
+    const maxPrice = searchParams.get('maxPrice');
+    const minArea = searchParams.get('minArea');
+    const maxArea = searchParams.get('maxArea');
+    const limit = parseInt(searchParams.get('limit') || '100');
+    const offset = parseInt(searchParams.get('offset') || '0');
+
+    // WHERE 조건 구성
+    const where: any = {};
+
+    if (complexNo) {
+      where.complex = {
+        complexNo: complexNo,
+      };
+    }
+
+    if (tradeType) {
+      where.tradeTypeName = tradeType;
+    }
+
+    if (minArea || maxArea) {
+      where.area1 = {};
+      if (minArea) where.area1.gte = parseFloat(minArea);
+      if (maxArea) where.area1.lte = parseFloat(maxArea);
+    }
+
+    // 가격 필터링 (문자열이므로 복잡함 - 일단 간단하게)
+    // TODO: 향후 dealOrWarrantPrc를 숫자로 변환하여 저장하는 것 고려
+
+    // 매물 조회
+    const articles = await prisma.article.findMany({
+      where,
+      include: {
+        complex: true, // 단지 정보 포함
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+      take: limit,
+      skip: offset,
+    });
+
+    // 총 개수
+    const total = await prisma.article.count({ where });
+
+    // 단지별로 그룹화
+    const complexMap = new Map();
+
+    for (const article of articles) {
+      const complexNo = article.complex.complexNo;
+
+      if (!complexMap.has(complexNo)) {
+        complexMap.set(complexNo, {
+          overview: {
+            complexNo: article.complex.complexNo,
+            complexName: article.complex.complexName,
+            totalHousehold: article.complex.totalHousehold,
+            totalDong: article.complex.totalDong,
+            location: {
+              latitude: article.complex.latitude,
+              longitude: article.complex.longitude,
+            },
+            address: article.complex.address,
+            roadAddress: article.complex.roadAddress,
+            jibunAddress: article.complex.jibunAddress,
+            beopjungdong: article.complex.beopjungdong,
+            haengjeongdong: article.complex.haengjeongdong,
+          },
+          articles: [],
+        });
+      }
+
+      complexMap.get(complexNo).articles.push({
+        articleNo: article.articleNo,
+        realEstateTypeName: article.realEstateTypeName,
+        tradeTypeName: article.tradeTypeName,
+        dealOrWarrantPrc: article.dealOrWarrantPrc,
+        rentPrc: article.rentPrc,
+        area1: article.area1.toString(),
+        area2: article.area2?.toString(),
+        floorInfo: article.floorInfo,
+        direction: article.direction,
+        articleConfirmYmd: article.articleConfirmYmd,
+        tagList: article.tagList,
+        createdAt: article.createdAt.toISOString(),
+        updatedAt: article.updatedAt.toISOString(),
       });
     }
 
-    // 모든 JSON 파일 읽기 (favorites.json 제외)
-    const files = await fs.readdir(crawledDataDir);
-    const jsonFiles = files.filter(file =>
-      file.endsWith('.json') && file !== 'favorites.json'
-    );
-
-    // 파일 정보 수집
-    const results = await Promise.all(
-      jsonFiles.map(async (file) => {
-        const filePath = path.join(crawledDataDir, file);
-        const stats = await fs.stat(filePath);
-        const content = await fs.readFile(filePath, 'utf-8');
-        
-        let data;
-        try {
-          data = JSON.parse(content);
-        } catch {
-          data = null;
-        }
-
-        return {
-          filename: file,
-          size: stats.size,
-          createdAt: stats.birthtime.toISOString(),
-          modifiedAt: stats.mtime.toISOString(),
-          data: data,
-        };
-      })
-    );
-
-    // 최신순으로 정렬
-    results.sort((a, b) => 
-      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    );
+    const results = Array.from(complexMap.values());
 
     return NextResponse.json({
       results,
-      total: results.length
+      total,
+      limit,
+      offset,
+      complexCount: results.length,
     });
 
   } catch (error: any) {
@@ -69,85 +118,59 @@ export async function GET(request: NextRequest) {
   }
 }
 
+// 매물 삭제 (개별)
 export async function DELETE(request: NextRequest) {
   try {
-    // 환경에 따라 경로 결정
-    const baseDir = process.env.NODE_ENV === 'production' ? '/app' : process.cwd();
-    const crawledDataDir = path.join(baseDir, 'crawled_data');
-    
-    // 쿼리 파라미터에서 파일명 가져오기
     const { searchParams } = new URL(request.url);
-    const filename = searchParams.get('filename');
-    
-    if (!filename) {
+    const articleNo = searchParams.get('articleNo');
+    const complexNo = searchParams.get('complexNo');
+
+    if (articleNo) {
+      // 특정 매물 삭제
+      await prisma.article.delete({
+        where: { articleNo },
+      });
+
+      return NextResponse.json({
+        success: true,
+        message: '매물이 삭제되었습니다.',
+        articleNo,
+      });
+    } else if (complexNo) {
+      // 특정 단지의 모든 매물 삭제
+      const complex = await prisma.complex.findUnique({
+        where: { complexNo },
+      });
+
+      if (!complex) {
+        return NextResponse.json(
+          { error: '단지를 찾을 수 없습니다.' },
+          { status: 404 }
+        );
+      }
+
+      const result = await prisma.article.deleteMany({
+        where: { complexId: complex.id },
+      });
+
+      return NextResponse.json({
+        success: true,
+        message: `${result.count}개의 매물이 삭제되었습니다.`,
+        complexNo,
+        deletedCount: result.count,
+      });
+    } else {
       return NextResponse.json(
-        { error: '파일명이 제공되지 않았습니다.' },
-        { status: 400 }
-      );
-    }
-    
-    // 보안: 경로 탐색 공격 방지
-    if (filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
-      return NextResponse.json(
-        { error: '유효하지 않은 파일명입니다.' },
-        { status: 400 }
-      );
-    }
-    
-    // JSON 파일만 삭제 가능
-    if (!filename.endsWith('.json')) {
-      return NextResponse.json(
-        { error: 'JSON 파일만 삭제할 수 있습니다.' },
+        { error: 'articleNo 또는 complexNo를 제공해주세요.' },
         { status: 400 }
       );
     }
 
-    // favorites.json 삭제 방지
-    if (filename === 'favorites.json') {
-      return NextResponse.json(
-        { error: '선호단지 파일은 삭제할 수 없습니다.' },
-        { status: 403 }
-      );
-    }
-    
-    // 파일 경로 생성
-    const filePath = path.join(crawledDataDir, filename);
-    
-    // 파일 존재 확인
-    try {
-      await fs.access(filePath);
-    } catch {
-      return NextResponse.json(
-        { error: '파일을 찾을 수 없습니다.' },
-        { status: 404 }
-      );
-    }
-    
-    // JSON 파일 삭제
-    await fs.unlink(filePath);
-    
-    // 같은 이름의 CSV 파일도 삭제 (있다면)
-    const csvFilename = filename.replace('.json', '.csv');
-    const csvFilePath = path.join(crawledDataDir, csvFilename);
-    try {
-      await fs.access(csvFilePath);
-      await fs.unlink(csvFilePath);
-    } catch {
-      // CSV 파일이 없어도 무시
-    }
-    
-    return NextResponse.json({
-      success: true,
-      message: '파일이 삭제되었습니다.',
-      filename,
-    });
-    
   } catch (error: any) {
-    console.error('File delete error:', error);
+    console.error('Delete error:', error);
     return NextResponse.json(
-      { error: '파일 삭제 중 오류가 발생했습니다.', details: error.message },
+      { error: '삭제 중 오류가 발생했습니다.', details: error.message },
       { status: 500 }
     );
   }
 }
-
