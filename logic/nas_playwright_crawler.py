@@ -201,24 +201,28 @@ class NASNaverRealEstateCrawler:
             # 모든 매물을 저장할 리스트
             all_articles = []
             collected_article_ids = set()  # 중복 제거용
-            
+            last_api_time = [0]  # API 마지막 감지 시간 (리스트로 클로저 회피)
+
             # API 응답 수집
             async def handle_articles_response(response):
                 # 매물 목록 API 응답 감지
                 if f'/api/articles/complex/{complex_no}' in response.url:
+                    # API 감지 시간 기록
+                    last_api_time[0] = time.time()
+
                     # 동일매물 묶기 적용 여부 확인
                     same_group = 'sameAddressGroup=true' in response.url or 'sameAddressGroup=Y' in response.url
                     group_status = "✅ ON" if same_group else "❌ OFF"
-                    
+
                     print(f"[API] 호출 감지 #{len(all_articles)//20 + 1} (동일매물묶기: {group_status})")
                     if len(all_articles) == 0:  # 첫 API 호출만 전체 URL 로그
                         print(f"[API] URL: {response.url[:120]}...")
-                    
+
                     try:
                         data = await response.json()
                         article_list = data.get('articleList', [])
                         total_count = data.get('totalCount', 0)
-                        
+
                         # 중복 제거하며 추가
                         new_count = 0
                         for article in article_list:
@@ -227,7 +231,7 @@ class NASNaverRealEstateCrawler:
                                 collected_article_ids.add(article_id)
                                 all_articles.append(article)
                                 new_count += 1
-                        
+
                         if new_count > 0:
                             total_info = f", 전체: {total_count}건" if total_count > 0 else ""
                             print(f"  → {new_count}개 새 매물 추가 (총 {len(all_articles)}개{total_info})")
@@ -367,7 +371,7 @@ class NASNaverRealEstateCrawler:
                 
                 # 5. 점진적 스크롤로 데이터 수집 (crawler_service.py 방식)
                 print("추가 매물 수집 시작 (점진적 스크롤)...")
-                print(f"[설정] 최대 시도: 100회, API 대기: 1.5초, 종료 조건: 3회 연속 변화 없음")
+                print(f"[설정] 최대 시도: 100회, 동적 대기(API감지:0.3초/미감지:1.0초), 종료: 3회 연속 변화 없음")
                 scroll_attempts = 0
                 max_scroll_attempts = 100  # 최대 100회
                 scroll_end_count = 0  # 스크롤이 안 움직이는 횟수
@@ -439,9 +443,18 @@ class NASNaverRealEstateCrawler:
                             print(f"  💡 실제 수집 개수는 API 응답 기준 (동일매물묶기 이후)")
                         else:
                             print(f"[DEBUG] 컨테이너를 찾지 못함: {scroll_result.get('reason', 'unknown')}")
-                    
-                    # API 호출 대기 (속도 개선: 2.5초 → 1.5초)
-                    await asyncio.sleep(1.5)  # ✅ API 응답 대기
+
+                    # 동적 대기 시간 (API 감지 여부에 따라)
+                    time_since_last_api = time.time() - last_api_time[0]
+
+                    if time_since_last_api < 0.5:  # 최근 0.5초 이내에 API 감지됨
+                        wait_time = 0.3
+                        # print(f"  [대기] API 최근 감지 → {wait_time}초 대기")
+                    else:  # API 감지 안됨
+                        wait_time = 1.0
+                        # print(f"  [대기] API 미감지 → {wait_time}초 대기")
+
+                    await asyncio.sleep(wait_time)
                     
                     current_count = len(all_articles)
                     new_items = current_count - prev_count
