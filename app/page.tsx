@@ -41,15 +41,31 @@ export default function Home() {
 
   const fetchDashboardData = async () => {
     try {
-      // 선호 단지 조회
-      const favResponse = await fetch('/api/favorites');
-      const favData = await favResponse.json();
-      const favList = favData.favorites || [];
-
       // 크롤링 결과 조회
       const resultResponse = await fetch('/api/results');
       const resultData = await resultResponse.json();
       const results = resultData.results || [];
+
+      // 크롤링 데이터로 favorites.json 동기화
+      for (const result of results) {
+        const data = Array.isArray(result.data) ? result.data[0] : result.data;
+        if (data?.overview?.complexNo) {
+          await fetch('/api/favorites', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              complexNo: data.overview.complexNo,
+              complexName: data.overview.complexName,
+              articleCount: data.articles?.articleList?.length || 0
+            })
+          });
+        }
+      }
+
+      // 동기화 후 선호 단지 조회
+      const favResponse = await fetch('/api/favorites');
+      const favData = await favResponse.json();
+      const favList = favData.favorites || [];
 
       // 통계 계산
       const totalArticles = results.reduce((sum: number, result: any) => {

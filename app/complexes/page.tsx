@@ -37,7 +37,41 @@ export default function ComplexesPage() {
 
   useEffect(() => {
     fetchFavorites();
+    // 페이지 로드 시 모든 단지 정보 자동 동기화
+    syncAllFavorites();
   }, []);
+
+  // 모든 선호단지 정보를 크롤링 데이터와 동기화
+  const syncAllFavorites = async () => {
+    try {
+      // 최신 크롤링 데이터 조회
+      const response = await fetch('/api/results');
+      const data = await response.json();
+      const results = data.results || [];
+
+      // 각 크롤링 결과에서 단지 정보 추출하여 업데이트
+      for (const result of results) {
+        const resultData = Array.isArray(result.data) ? result.data[0] : result.data;
+        if (resultData?.overview?.complexNo) {
+          await fetch('/api/favorites', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              complexNo: resultData.overview.complexNo,
+              complexName: resultData.overview.complexName,
+              articleCount: resultData.articles?.articleList?.length || 0
+            })
+          });
+        }
+      }
+
+      // 동기화 완료 후 UI 갱신
+      await fetchFavorites();
+      console.log('[단지목록] 모든 단지 정보 동기화 완료');
+    } catch (error) {
+      console.error('[단지목록] 동기화 실패:', error);
+    }
+  };
 
   const fetchFavorites = async () => {
     setLoading(true);
@@ -121,6 +155,8 @@ export default function ComplexesPage() {
       if (response.ok) {
         // 단지 정보 업데이트
         await updateFavoriteInfo(complexNo);
+        // UI 갱신
+        await fetchFavorites();
         alert(`${complexNo} 크롤링 완료`);
       } else {
         alert(data.error || '크롤링 실패');
