@@ -35,6 +35,8 @@ RUN apt-get update && \
     ca-certificates \
     wget \
     curl \
+    openssl \
+    libssl3 \
     fonts-liberation \
     fonts-dejavu-core \
     fonts-unifont \
