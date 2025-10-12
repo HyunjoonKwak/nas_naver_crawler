@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import fs from 'fs/promises';
+import path from 'path';
 
 const execAsync = promisify(exec);
 
@@ -35,6 +37,27 @@ export async function GET() {
       crawledDataCount = 0;
     }
 
+    // 선호 단지 개수 확인
+    let favoritesCount = 0;
+    try {
+      const favoritesPath = path.join(baseDir, 'crawled_data', 'favorites.json');
+      const fileContent = await fs.readFile(favoritesPath, 'utf-8');
+      const parsed = JSON.parse(fileContent);
+      const favorites = Array.isArray(parsed) ? parsed : (parsed.favorites || []);
+      favoritesCount = favorites.length;
+    } catch {
+      favoritesCount = 0;
+    }
+
+    // 디스크 사용량 확인
+    let crawledDataSize = '0 B';
+    try {
+      const { stdout } = await execAsync(`du -sh ${baseDir}/crawled_data 2>/dev/null | awk '{print $1}'`);
+      crawledDataSize = stdout.trim() || '0 B';
+    } catch {
+      crawledDataSize = '0 B';
+    }
+
     return NextResponse.json({
       crawler: {
         scriptExists: crawlerExists,
@@ -44,6 +67,9 @@ export async function GET() {
       data: {
         crawledFilesCount: crawledDataCount,
       },
+      crawledDataCount,
+      favoritesCount,
+      crawledDataSize,
       status: (crawlerExists && playwrightReady) ? 'ready' : 'not_ready',
     });
 

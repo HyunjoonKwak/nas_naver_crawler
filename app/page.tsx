@@ -33,10 +33,19 @@ export default function Home() {
     totalArticles: 0,
     lastCrawlTime: null as string | null,
   });
+  const [currentTime, setCurrentTime] = useState(new Date());
 
   useEffect(() => {
     fetchDashboardData();
   }, [refresh]);
+
+  // 현재 시간 업데이트 (1초마다)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   const fetchDashboardData = async () => {
     try {
@@ -130,6 +139,19 @@ export default function Home() {
     });
   };
 
+  const formatCurrentTime = () => {
+    return currentTime.toLocaleString('ko-KR', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      weekday: 'long',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      timeZone: 'Asia/Seoul',
+    });
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950">
       {/* Navigation Header */}
@@ -149,7 +171,16 @@ export default function Home() {
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-4">
+              {/* Current Date & Time */}
+              <div className="hidden lg:flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                <span className="text-blue-600 dark:text-blue-400">🕐</span>
+                <div className="text-sm">
+                  <div className="font-semibold text-gray-900 dark:text-white">
+                    {formatCurrentTime()}
+                  </div>
+                </div>
+              </div>
               <Link
                 href="/complexes"
                 className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-semibold"
