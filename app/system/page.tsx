@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import CrawlerHistory from "@/components/CrawlerHistory";
 
 interface StatusData {
   crawler: {
@@ -41,7 +42,8 @@ type FileType = CSVFile | JSONFile;
 export default function SystemPage() {
   const [status, setStatus] = useState<StatusData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeSection, setActiveSection] = useState<'status' | 'data'>('status');
+  const [activeSection, setActiveSection] = useState<'status' | 'data' | 'history'>('status');
+  const [refresh, setRefresh] = useState(0);
 
   // CSV/JSON viewer states
   const [csvFiles, setCsvFiles] = useState<CSVFile[]>([]);
@@ -337,6 +339,19 @@ export default function SystemPage() {
               <div className="flex items-center justify-center gap-2">
                 <span className="text-xl">📊</span>
                 <span>데이터 뷰어</span>
+              </div>
+            </button>
+            <button
+              onClick={() => setActiveSection('history')}
+              className={`flex-1 px-6 py-4 text-center font-semibold transition-colors ${
+                activeSection === 'history'
+                  ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white'
+                  : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
+              }`}
+            >
+              <div className="flex items-center justify-center gap-2">
+                <span className="text-xl">📚</span>
+                <span>크롤링 히스토리</span>
               </div>
             </button>
           </div>
@@ -729,6 +744,28 @@ export default function SystemPage() {
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {/* History Section */}
+        {activeSection === 'history' && (
+          <div className="space-y-6">
+            {/* Page Header */}
+            <div className="mb-8">
+              <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+                전체 크롤링 히스토리
+              </h2>
+              <p className="text-gray-600 dark:text-gray-400">
+                지금까지 수집한 모든 크롤링 데이터를 확인하세요
+              </p>
+            </div>
+
+            {/* History Content */}
+            <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
+              <div className="p-6">
+                <CrawlerHistory refresh={refresh} />
+              </div>
+            </div>
           </div>
         )}
       </main>

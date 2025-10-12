@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
     headers.set('Content-Type', 'application/json');
     headers.set('Content-Disposition', `attachment; filename="${filename}"`);
 
-    return new NextResponse(fileBuffer, {
+    return new NextResponse(fileBuffer as any, {
       status: 200,
       headers,
     });

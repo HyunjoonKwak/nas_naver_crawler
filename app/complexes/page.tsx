@@ -25,12 +25,17 @@ interface ComplexData {
   articles: any;
 }
 
+interface SelectedComplex {
+  complexNo: string;
+  data: ComplexData | null;
+}
+
 export default function ComplexesPage() {
   const [favorites, setFavorites] = useState<FavoriteComplex[]>([]);
   const [loading, setLoading] = useState(true);
   const [crawling, setCrawling] = useState<string | null>(null);
   const [crawlingAll, setCrawlingAll] = useState(false);
-  const [selectedComplex, setSelectedComplex] = useState<{ complexNo: string; data: ComplexData } | null>(null);
+  const [selectedComplex, setSelectedComplex] = useState<SelectedComplex | null>(null);
 
   // 단지 추가 폼
   const [showAddForm, setShowAddForm] = useState(false);
@@ -43,11 +48,60 @@ export default function ComplexesPage() {
   // 드래그 앤 드롭
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
 
+  // 서버 크롤링 상태
+  const [serverCrawlState, setServerCrawlState] = useState<{
+    isCrawling: boolean;
+    complexCount?: number;
+    currentComplex?: string;
+    startTime?: string;
+  } | null>(null);
+
   useEffect(() => {
     fetchFavorites();
     // 페이지 로드 시 모든 단지 정보 자동 동기화
     syncAllFavorites();
+    // 서버 크롤링 상태 확인
+    checkServerCrawlState();
   }, []);
+
+  // 서버 크롤링 상태 폴링 (5초마다)
+  useEffect(() => {
+    const interval = setInterval(checkServerCrawlState, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // 경과 시간 업데이트를 위한 리렌더링 (1초마다)
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    if (crawlingAll || crawling) {
+      const interval = setInterval(() => {
+        setTick(prev => prev + 1);
+      }, 1000);
+      return () => clearInterval(interval);
+    }
+  }, [crawlingAll, crawling]);
+
+  const checkServerCrawlState = async () => {
+    try {
+      const response = await fetch('/api/crawl-state');
+      const data = await response.json();
+      setServerCrawlState(data);
+
+      // 서버에서 크롤링 중이지만 로컬 상태가 아니면 동기화
+      if (data.isCrawling && !crawlingAll && !crawling) {
+        setCrawlingAll(true);
+      }
+      // 서버에서 크롤링 완료되었지만 로컬 상태가 크롤링 중이면 동기화
+      if (!data.isCrawling && (crawlingAll || crawling)) {
+        setCrawlingAll(false);
+        setCrawling(null);
+        // 데이터 새로고침
+        await fetchFavorites();
+      }
+    } catch (error) {
+      console.error('Failed to check server crawl state:', error);
+    }
+  };
 
   // 크롤링 중 페이지 이탈 경고
   useEffect(() => {
@@ -171,6 +225,14 @@ export default function ComplexesPage() {
 
   const handleCrawlComplex = async (complexNo: string) => {
     setCrawling(complexNo);
+
+    // 서버에 크롤링 시작 상태 저장
+    await fetch('/api/crawl-state', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ isCrawling: true, complexCount: 1, currentComplex: complexNo })
+    });
+
     try {
       const response = await fetch('/api/crawl', {
         method: 'POST',
@@ -217,6 +279,12 @@ export default function ComplexesPage() {
       alert('크롤링 중 오류가 발생했습니다.');
     } finally {
       setCrawling(null);
+      // 서버에 크롤링 완료 상태 저장
+      await fetch('/api/crawl-state', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isCrawling: false })
+      });
     }
   };
 
@@ -231,6 +299,13 @@ export default function ComplexesPage() {
 
     setCrawlingAll(true);
     const complexNos = favorites.map(f => f.complexNo).join(',');
+
+    // 서버에 크롤링 시작 상태 저장
+    await fetch('/api/crawl-state', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ isCrawling: true, complexCount: favorites.length })
+    });
 
     try {
       const response = await fetch('/api/crawl', {
@@ -279,6 +354,12 @@ export default function ComplexesPage() {
       alert('크롤링 중 오류가 발생했습니다.');
     } finally {
       setCrawlingAll(false);
+      // 서버에 크롤링 완료 상태 저장
+      await fetch('/api/crawl-state', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isCrawling: false })
+      });
     }
   };
 
@@ -490,13 +571,36 @@ export default function ComplexesPage() {
                   {crawlingAll ? '⏳ 전체 크롤링 진행 중' : '⏳ 크롤링 진행 중'}
                 </h3>
                 <p className="text-sm text-yellow-800 dark:text-yellow-300">
-                  {crawlingAll
-                    ? `${favorites.length}개 단지의 데이터를 수집하고 있습니다. 잠시만 기다려주세요.`
-                    : '데이터를 수집하고 있습니다. 잠시만 기다려주세요.'
-                  }
+                  {serverCrawlState?.isCrawling && serverCrawlState.complexCount ? (
+                    <>
+                      {serverCrawlState.complexCount}개 단지의 데이터를 수집하고 있습니다.
+                      {serverCrawlState.currentComplex && (
+                        <span className="block mt-1">
+                          현재 수집 중: <span className="font-semibold">{serverCrawlState.currentComplex}</span>
+                        </span>
+                      )}
+                      {serverCrawlState.startTime && (() => {
+                        const elapsed = Math.floor((Date.now() - new Date(serverCrawlState.startTime).getTime()) / 1000);
+                        const minutes = Math.floor(elapsed / 60);
+                        const seconds = elapsed % 60;
+                        return (
+                          <span className="block mt-1 text-xs">
+                            경과 시간: {minutes > 0 ? `${minutes}분 ` : ''}{seconds}초
+                          </span>
+                        );
+                      })()}
+                    </>
+                  ) : crawlingAll ? (
+                    `${favorites.length}개 단지의 데이터를 수집하고 있습니다. 잠시만 기다려주세요.`
+                  ) : (
+                    '데이터를 수집하고 있습니다. 잠시만 기다려주세요.'
+                  )}
                 </p>
                 <p className="text-xs text-yellow-700 dark:text-yellow-400 mt-2">
                   ⚠️ 크롤링이 완료될 때까지 페이지를 닫지 마세요.
+                  {serverCrawlState?.isCrawling && (
+                    <span className="ml-2">다른 기기에서도 크롤링 진행 상태가 표시됩니다.</span>
+                  )}
                 </p>
               </div>
             </div>
