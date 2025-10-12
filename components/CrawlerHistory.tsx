@@ -204,6 +204,14 @@ export default function CrawlerHistory({ refresh }: CrawlerHistoryProps) {
                         >
                           📋 상세보기
                         </button>
+                        <a
+                          href={`/api/download?filename=${encodeURIComponent(result.filename)}`}
+                          download
+                          onClick={(e) => e.stopPropagation()}
+                          className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors font-medium inline-block"
+                        >
+                          💾 다운로드
+                        </a>
                         <button
                           onClick={(e) => handleDelete(result.filename, e)}
                           disabled={isDeleting}

@@ -35,7 +35,9 @@ export async function POST(request: Request) {
     let existingFavorites: FavoriteComplex[] = [];
     try {
       const fileContent = await fs.readFile(favoritesFilePath, 'utf-8');
-      existingFavorites = JSON.parse(fileContent);
+      const parsed = JSON.parse(fileContent);
+      // favorites.json 파일 구조가 { favorites: [...] } 형태인 경우 처리
+      existingFavorites = Array.isArray(parsed) ? parsed : (parsed.favorites || []);
     } catch (error) {
       // 파일이 없으면 빈 배열로 시작
       existingFavorites = [];
@@ -50,10 +52,10 @@ export async function POST(request: Request) {
       };
     });
 
-    // 파일에 저장
+    // 파일에 저장 (기존 포맷 유지)
     await fs.writeFile(
       favoritesFilePath,
-      JSON.stringify(updatedFavorites, null, 2),
+      JSON.stringify({ favorites: updatedFavorites }, null, 2),
       'utf-8'
     );
 

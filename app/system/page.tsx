@@ -248,12 +248,24 @@ export default function SystemPage() {
                   </td>
                 )}
                 <td className="px-6 py-4 whitespace-nowrap text-sm">
-                  <button
-                    onClick={(e) => handleDelete(file.filename, e)}
-                    className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 font-medium"
-                  >
-                    삭제
-                  </button>
+                  <div className="flex items-center gap-2">
+                    {file.type === 'json' && (
+                      <a
+                        href={`/api/download?filename=${encodeURIComponent(file.filename)}`}
+                        download
+                        onClick={(e) => e.stopPropagation()}
+                        className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 font-medium"
+                      >
+                        다운로드
+                      </a>
+                    )}
+                    <button
+                      onClick={(e) => handleDelete(file.filename, e)}
+                      className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 font-medium"
+                    >
+                      삭제
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}
