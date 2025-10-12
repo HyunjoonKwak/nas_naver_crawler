@@ -14,17 +14,20 @@ interface FavoriteComplex {
   articleCount?: number;
 }
 
-interface CrawlResult {
-  filename: string;
-  size: number;
-  createdAt: string;
-  data: any;
+interface ArticleStats {
+  total: number;
+  A1: number; // 매매
+  B1: number; // 전세
+  B2: number; // 월세
+}
+
+interface FavoriteWithStats extends FavoriteComplex {
+  stats?: ArticleStats;
 }
 
 export default function Home() {
   const [refresh, setRefresh] = useState(0);
-  const [favorites, setFavorites] = useState<FavoriteComplex[]>([]);
-  const [recentResults, setRecentResults] = useState<CrawlResult[]>([]);
+  const [favorites, setFavorites] = useState<FavoriteWithStats[]>([]);
   const [stats, setStats] = useState({
     totalFavorites: 0,
     totalCrawls: 0,
@@ -42,19 +45,49 @@ export default function Home() {
       const favResponse = await fetch('/api/favorites');
       const favData = await favResponse.json();
       const favList = favData.favorites || [];
-      setFavorites(favList.slice(0, 3)); // 최근 3개만
 
       // 크롤링 결과 조회
       const resultResponse = await fetch('/api/results');
       const resultData = await resultResponse.json();
       const results = resultData.results || [];
-      setRecentResults(results.slice(0, 3)); // 최근 3개만
 
       // 통계 계산
-      const totalArticles = results.reduce((sum: number, result: CrawlResult) => {
+      const totalArticles = results.reduce((sum: number, result: any) => {
         const data = Array.isArray(result.data) ? result.data[0] : result.data;
         return sum + (data?.articles?.articleList?.length || 0);
       }, 0);
+
+      // 선호 단지별 상세 통계 계산
+      const favoritesWithStats = favList.map((fav: FavoriteComplex) => {
+        // 해당 단지의 최신 크롤링 데이터 찾기
+        const complexResult = results.find((result: any) => {
+          const data = Array.isArray(result.data) ? result.data[0] : result.data;
+          return data?.overview?.complexNo === fav.complexNo;
+        });
+
+        if (complexResult) {
+          const data = Array.isArray(complexResult.data) ? complexResult.data[0] : complexResult.data;
+          const articles = data?.articles?.articleList || [];
+
+          // 거래유형별 통계
+          const stats: ArticleStats = {
+            total: articles.length,
+            A1: articles.filter((a: any) => (a.tradeTypeCode || a.tradeType) === 'A1').length,
+            B1: articles.filter((a: any) => (a.tradeTypeCode || a.tradeType) === 'B1').length,
+            B2: articles.filter((a: any) => (a.tradeTypeCode || a.tradeType) === 'B2').length,
+          };
+
+          return {
+            ...fav,
+            stats,
+            complexName: data?.overview?.complexName || fav.complexName,
+          };
+        }
+
+        return fav;
+      });
+
+      setFavorites(favoritesWithStats.slice(0, 6)); // 최근 6개
 
       setStats({
         totalFavorites: favList.length,
@@ -103,10 +136,22 @@ export default function Home() {
             </div>
             <div className="flex items-center gap-3">
               <Link
-                href="/dashboard"
-                className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-lg transition-all font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+                href="/complexes"
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-semibold"
               >
-                📊 전체 대시보드
+                🏘️ 단지 목록
+              </Link>
+              <Link
+                href="/history"
+                className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors font-semibold"
+              >
+                📚 히스토리
+              </Link>
+              <Link
+                href="/scheduler"
+                className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors font-semibold"
+              >
+                ⏰ 스케줄러
               </Link>
             </div>
           </div>
@@ -132,7 +177,7 @@ export default function Home() {
               label="선호 단지"
               value={stats.totalFavorites}
               color="blue"
-              link="/dashboard"
+              link="/complexes"
             />
             <StatCard
               icon="📊"
@@ -181,141 +226,100 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Favorites Preview & Recent Crawls */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          {/* Favorite Complexes Preview */}
-          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-800">
-              <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                ⭐ 선호 단지
-              </h3>
-              <Link
-                href="/dashboard"
-                className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-semibold flex items-center gap-1"
-              >
-                전체 보기 →
-              </Link>
-            </div>
-            <div className="p-6">
-              {favorites.length === 0 ? (
-                <div className="text-center py-12">
-                  <div className="text-6xl mb-4">📭</div>
-                  <p className="text-gray-500 dark:text-gray-400 mb-4">
-                    등록된 선호 단지가 없습니다
-                  </p>
-                  <Link
-                    href="/dashboard"
-                    className="inline-block px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm font-semibold"
-                  >
-                    ➕ 단지 추가하기
-                  </Link>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {favorites.map((fav) => (
-                    <Link
-                      key={fav.complexNo}
-                      href="/dashboard"
-                      className="block p-4 bg-gray-50 dark:bg-gray-800 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors border border-gray-200 dark:border-gray-700"
-                    >
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <h4 className="font-semibold text-gray-900 dark:text-white mb-1">
-                            {fav.complexName || `단지 ${fav.complexNo}`}
-                          </h4>
-                          <p className="text-xs text-gray-500 dark:text-gray-400">
-                            📌 {fav.complexNo}
-                          </p>
-                        </div>
-                        {fav.articleCount !== undefined && (
-                          <div className="text-right">
-                            <div className="text-lg font-bold text-blue-600 dark:text-blue-400">
-                              {fav.articleCount}
-                            </div>
-                            <div className="text-xs text-gray-500 dark:text-gray-400">
-                              매물
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                      {fav.lastCrawledAt && (
-                        <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                          최근 수집: {formatDate(fav.lastCrawledAt)}
-                        </div>
-                      )}
-                    </Link>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Recent Crawls Preview */}
-          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-800">
-              <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                📋 최근 크롤링
-              </h3>
-              <button
-                onClick={() => setRefresh(prev => prev + 1)}
-                className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-semibold"
-              >
-                🔄 새로고침
-              </button>
-            </div>
-            <div className="p-6">
-              {recentResults.length === 0 ? (
-                <div className="text-center py-12">
-                  <div className="text-6xl mb-4">📭</div>
-                  <p className="text-gray-500 dark:text-gray-400 mb-2">
-                    크롤링 데이터가 없습니다
-                  </p>
-                  <p className="text-sm text-gray-400 dark:text-gray-500">
-                    위에서 크롤링을 시작하세요
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {recentResults.map((result, idx) => {
-                    const data = Array.isArray(result.data) ? result.data[0] : result.data;
-                    const complexName = data?.overview?.complexName || '알 수 없음';
-                    const articleCount = data?.articles?.articleList?.length || 0;
-
-                    return (
-                      <div
-                        key={idx}
-                        className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700"
-                      >
-                        <div className="flex items-start justify-between mb-2">
-                          <h4 className="font-semibold text-gray-900 dark:text-white">
-                            {complexName}
-                          </h4>
-                          <span className="px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs font-semibold rounded">
-                            {articleCount}개
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
-                          <span>{formatDate(result.createdAt)}</span>
-                          <span>{(result.size / 1024).toFixed(1)} KB</span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Full History Section */}
-        <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-800">
-            <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
-              📚 전체 크롤링 히스토리
+        {/* Favorite Complexes with Detailed Stats */}
+        <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-800 overflow-hidden mb-8">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-800">
+            <h3 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+              ⭐ 선호 단지
             </h3>
+            <Link
+              href="/complexes"
+              className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-semibold flex items-center gap-1"
+            >
+              전체 보기 →
+            </Link>
           </div>
           <div className="p-6">
-            <CrawlerHistory refresh={refresh} />
+            {favorites.length === 0 ? (
+              <div className="text-center py-16">
+                <div className="text-7xl mb-4">📭</div>
+                <p className="text-xl font-semibold text-gray-500 dark:text-gray-400 mb-4">
+                  등록된 선호 단지가 없습니다
+                </p>
+                <Link
+                  href="/complexes"
+                  className="inline-block px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-lg transition-all font-semibold shadow-lg"
+                >
+                  ➕ 단지 추가하기
+                </Link>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {favorites.map((fav) => (
+                  <Link
+                    key={fav.complexNo}
+                    href="/complexes"
+                    className="block bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-5 hover:shadow-lg transition-all hover:-translate-y-1"
+                  >
+                    {/* 단지명 */}
+                    <h4 className="font-bold text-lg text-gray-900 dark:text-white mb-1 line-clamp-1">
+                      {fav.complexName || `단지 ${fav.complexNo}`}
+                    </h4>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+                      📌 {fav.complexNo}
+                    </p>
+
+                    {/* 매물 통계 */}
+                    {fav.stats ? (
+                      <div className="space-y-3">
+                        {/* 전체 매물 수 */}
+                        <div className="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                            전체 매물
+                          </span>
+                          <span className="text-xl font-bold text-blue-600 dark:text-blue-400">
+                            {fav.stats.total}
+                          </span>
+                        </div>
+
+                        {/* 거래유형별 통계 */}
+                        <div className="grid grid-cols-3 gap-2">
+                          <div className="text-center p-2 bg-indigo-50 dark:bg-indigo-900/20 rounded">
+                            <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">매매</div>
+                            <div className="text-lg font-bold text-indigo-600 dark:text-indigo-400">
+                              {fav.stats.A1}
+                            </div>
+                          </div>
+                          <div className="text-center p-2 bg-green-50 dark:bg-green-900/20 rounded">
+                            <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">전세</div>
+                            <div className="text-lg font-bold text-green-600 dark:text-green-400">
+                              {fav.stats.B1}
+                            </div>
+                          </div>
+                          <div className="text-center p-2 bg-orange-50 dark:bg-orange-900/20 rounded">
+                            <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">월세</div>
+                            <div className="text-lg font-bold text-orange-600 dark:text-orange-400">
+                              {fav.stats.B2}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-center py-4 text-gray-400 dark:text-gray-600 text-sm">
+                        크롤링 데이터 없음
+                      </div>
+                    )}
+
+                    {/* 최근 수집 시간 */}
+                    {fav.lastCrawledAt && (
+                      <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700 text-xs text-gray-500 dark:text-gray-400">
+                        최근 수집: {formatDate(fav.lastCrawledAt)}
+                      </div>
+                    )}
+                  </Link>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
