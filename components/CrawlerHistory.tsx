@@ -138,69 +138,90 @@ export default function CrawlerHistory({ refresh }: CrawlerHistoryProps) {
           <p className="text-sm">위에서 단지 번호를 입력하여 크롤링을 시작하세요</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {results.map((result, index) => {
-            const info = getComplexInfo(result);
-            const isDeleting = deleting === result.filename;
-            return (
-              <div
-                key={index}
-                className="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-5 hover:shadow-lg transition-all hover:-translate-y-1"
-              >
-                <div
-                  className="cursor-pointer"
-                  onClick={() => setSelectedResult(result)}
-                >
-                  <div className="flex items-start justify-between mb-3">
-                    <h3 className="font-bold text-lg text-gray-900 dark:text-white flex-1 pr-2">
-                      {info.name}
-                    </h3>
-                    <div className="flex items-center gap-2">
-                      <span className="px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 text-sm font-bold rounded-full">
-                        {info.count}개 단지
+        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+            <thead className="bg-gray-50 dark:bg-gray-900">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  단지명
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  단지번호
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  수집일시
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  파일크기
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  단지 수
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  작업
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+              {results.map((result, index) => {
+                const info = getComplexInfo(result);
+                const isDeleting = deleting === result.filename;
+                return (
+                  <tr
+                    key={index}
+                    className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                  >
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm font-medium text-gray-900 dark:text-white">
+                        {info.name}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-600 dark:text-gray-400">
+                        {info.complexNo}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-600 dark:text-gray-400">
+                        {formatDate(result.createdAt)}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-600 dark:text-gray-400">
+                        {formatSize(result.size)}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className="px-2 py-1 text-xs font-semibold rounded bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                        {info.count}개
                       </span>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
-                    <div className="flex items-center gap-2">
-                      <span>📌</span>
-                      <span>{info.complexNo}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span>📅</span>
-                      <span>{formatDate(result.createdAt)}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span>📁</span>
-                      <span>{formatSize(result.size)}</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between">
-                  <button
-                    onClick={() => setSelectedResult(result)}
-                    className="px-4 py-2 bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 text-blue-700 dark:text-blue-300 rounded-lg transition-colors text-sm font-semibold"
-                  >
-                    📋 상세보기
-                  </button>
-                  <button
-                    onClick={(e) => handleDelete(result.filename, e)}
-                    disabled={isDeleting}
-                    className={`px-4 py-2 rounded-lg transition-colors text-sm font-semibold ${
-                      isDeleting
-                        ? 'bg-gray-300 dark:bg-gray-600 text-gray-500 cursor-not-allowed'
-                        : 'bg-red-100 hover:bg-red-200 dark:bg-red-900/30 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400'
-                    }`}
-                    title="삭제"
-                  >
-                    {isDeleting ? '⏳ 삭제 중...' : '🗑️ 삭제'}
-                  </button>
-                </div>
-              </div>
-            );
-          })}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => setSelectedResult(result)}
+                          className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium"
+                        >
+                          📋 상세보기
+                        </button>
+                        <button
+                          onClick={(e) => handleDelete(result.filename, e)}
+                          disabled={isDeleting}
+                          className={`px-3 py-1 rounded-lg transition-colors font-medium ${
+                            isDeleting
+                              ? 'bg-gray-300 dark:bg-gray-600 text-gray-500 cursor-not-allowed'
+                              : 'bg-red-600 hover:bg-red-700 text-white'
+                          }`}
+                        >
+                          {isDeleting ? '⏳' : '🗑️'}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       )}
 

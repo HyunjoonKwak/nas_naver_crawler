@@ -18,9 +18,11 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // 모든 JSON 파일 읽기
+    // 모든 JSON 파일 읽기 (favorites.json 제외)
     const files = await fs.readdir(crawledDataDir);
-    const jsonFiles = files.filter(file => file.endsWith('.json'));
+    const jsonFiles = files.filter(file =>
+      file.endsWith('.json') && file !== 'favorites.json'
+    );
 
     // 파일 정보 수집
     const results = await Promise.all(
@@ -95,6 +97,14 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json(
         { error: 'JSON 파일만 삭제할 수 있습니다.' },
         { status: 400 }
+      );
+    }
+
+    // favorites.json 삭제 방지
+    if (filename === 'favorites.json') {
+      return NextResponse.json(
+        { error: '선호단지 파일은 삭제할 수 없습니다.' },
+        { status: 403 }
       );
     }
     
