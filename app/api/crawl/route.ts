@@ -155,6 +155,8 @@ async function saveCrawlResultsToDB(crawlId: string, complexNos: string[]) {
           articleConfirmYmd: article.articleConfirmYmd,
           buildingName: article.buildingName,
           sameAddrCnt: article.sameAddrCnt ? parseInt(article.sameAddrCnt) : null,
+          realtorName: article.realtorName,
+          articleFeatureDesc: article.articleFeatureDesc,
           tagList: article.tagList || [],
         });
       }

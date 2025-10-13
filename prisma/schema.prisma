@@ -61,6 +61,8 @@ model Article {
   articleConfirmYmd   String?  // 매물 확인 일자
   buildingName        String?  // 동
   sameAddrCnt         Int?     // 중복 건수
+  realtorName         String?  // 중개소 이름
+  articleFeatureDesc  String?  // 매물 특징
 
   // 추가 정보 (JSON)
   tagList             Json?    // 태그 리스트
