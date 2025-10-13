@@ -4,6 +4,19 @@ import { promisify } from 'util';
 import { prisma } from '@/lib/prisma';
 import fs from 'fs/promises';
 import path from 'path';
+import {
+  detectArticleChanges,
+  filterChangesForAlerts,
+  getComplexInfo,
+  saveNotificationLog,
+} from '@/lib/article-tracker';
+import {
+  sendDiscordNotification,
+  createNewArticleEmbed,
+  createDeletedArticleEmbed,
+  createPriceChangedEmbed,
+  createCrawlSummaryEmbed,
+} from '@/lib/discord';
 
 const execAsync = promisify(exec);
 
@@ -224,6 +237,153 @@ async function saveCrawlResultsToDB(crawlId: string, complexNos: string[]) {
   return { totalArticles, totalComplexes, errors };
 }
 
+// 알림 발송 함수
+async function sendAlertsForChanges(complexNos: string[]) {
+  console.log('🔔 Checking for alerts...');
+
+  for (const complexNo of complexNos) {
+    try {
+      // 1. 현재 매물 데이터 조회
+      const complexInfo = await getComplexInfo(complexNo);
+      if (!complexInfo) {
+        console.log(`Complex not found: ${complexNo}`);
+        continue;
+      }
+
+      const currentArticles = await prisma.article.findMany({
+        where: { complexId: complexInfo.id },
+      });
+
+      // 2. 변경사항 감지
+      const changes = await detectArticleChanges(complexNo, currentArticles);
+
+      console.log(`📊 Changes for ${complexInfo.complexName}:`, {
+        new: changes.newArticles.length,
+        deleted: changes.deletedArticles.length,
+        priceChanged: changes.priceChangedArticles.length,
+      });
+
+      // 변경사항이 없으면 스킵
+      if (
+        changes.newArticles.length === 0 &&
+        changes.deletedArticles.length === 0 &&
+        changes.priceChangedArticles.length === 0
+      ) {
+        console.log(`No changes for ${complexInfo.complexName}, skipping alerts`);
+        continue;
+      }
+
+      // 3. 알림 조건에 맞는 변경사항 필터링
+      const alertTargets = await filterChangesForAlerts(complexNo, changes);
+
+      if (alertTargets.length === 0) {
+        console.log(`No active alerts for ${complexInfo.complexName}`);
+        continue;
+      }
+
+      console.log(`📬 Sending alerts to ${alertTargets.length} alert(s)`);
+
+      // 4. 각 알림에 대해 Discord 웹훅 전송
+      for (const target of alertTargets) {
+        if (!target.alert.webhookUrl) {
+          console.log(`No webhook URL for alert: ${target.alert.name}`);
+          continue;
+        }
+
+        try {
+          const embeds: any[] = [];
+
+          // 신규 매물 알림
+          for (const article of target.newArticles) {
+            embeds.push(
+              createNewArticleEmbed(article, complexInfo.complexName, complexNo)
+            );
+          }
+
+          // 삭제된 매물 알림
+          for (const article of target.deletedArticles) {
+            embeds.push(
+              createDeletedArticleEmbed(article, complexInfo.complexName, complexNo)
+            );
+          }
+
+          // 가격 변동 알림
+          for (const { old: oldArticle, new: newArticle } of target.priceChangedArticles) {
+            embeds.push(
+              createPriceChangedEmbed(
+                oldArticle,
+                newArticle,
+                complexInfo.complexName,
+                complexNo
+              )
+            );
+          }
+
+          // 요약 임베드 추가
+          embeds.push(
+            createCrawlSummaryEmbed({
+              complexName: complexInfo.complexName,
+              complexNo,
+              newCount: target.newArticles.length,
+              deletedCount: target.deletedArticles.length,
+              priceChangedCount: target.priceChangedArticles.length,
+              totalArticles: currentArticles.length,
+              duration: 0, // 크롤링 시간은 여기선 불필요
+            })
+          );
+
+          // Discord로 전송 (한 번에 최대 10개 embed)
+          for (let i = 0; i < embeds.length; i += 10) {
+            const batch = embeds.slice(i, i + 10);
+
+            const result = await sendDiscordNotification(target.alert.webhookUrl, {
+              username: '네이버 부동산 크롤러',
+              content:
+                i === 0
+                  ? `🔔 **${target.alert.name}** 알림\n${complexInfo.complexName}에 변경사항이 있습니다!`
+                  : undefined,
+              embeds: batch,
+            });
+
+            // 알림 로그 저장
+            await saveNotificationLog(
+              target.alertId,
+              'webhook',
+              result.success ? 'sent' : 'failed',
+              result.success
+                ? `Sent ${batch.length} notifications`
+                : result.error || 'Unknown error'
+            );
+
+            if (!result.success) {
+              console.error(`Failed to send alert: ${result.error}`);
+            } else {
+              console.log(`✅ Sent ${batch.length} notification(s) for alert: ${target.alert.name}`);
+            }
+
+            // Discord API 속도 제한 방지
+            if (i + 10 < embeds.length) {
+              await new Promise((resolve) => setTimeout(resolve, 1000));
+            }
+          }
+        } catch (error: any) {
+          console.error(`Failed to send alert for ${target.alert.name}:`, error);
+          await saveNotificationLog(
+            target.alertId,
+            'webhook',
+            'failed',
+            error.message || 'Unknown error'
+          );
+        }
+      }
+    } catch (error: any) {
+      console.error(`Failed to process alerts for ${complexNo}:`, error);
+    }
+  }
+
+  console.log('✅ Alert processing completed');
+}
+
 export async function POST(request: NextRequest) {
   const startTime = Date.now();
   let crawlId: string | null = null;
@@ -329,6 +489,11 @@ export async function POST(request: NextRequest) {
     console.log(`   - Complexes: ${dbResult.totalComplexes}`);
     console.log(`   - Articles: ${dbResult.totalArticles}`);
     console.log(`   - Duration: ${Math.floor(duration / 1000)}s`);
+
+    // 5. 알림 발송 (비동기로 실행하여 응답 지연 방지)
+    sendAlertsForChanges(complexNosArray).catch((error) => {
+      console.error('Failed to send alerts:', error);
+    });
 
     return NextResponse.json({
       success: true,

@@ -186,6 +186,12 @@ export default function Home() {
                 </div>
               )}
               <Link
+                href="/alerts"
+                className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors font-semibold"
+              >
+                🔔 알림
+              </Link>
+              <Link
                 href="/complexes"
                 className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-semibold"
               >
