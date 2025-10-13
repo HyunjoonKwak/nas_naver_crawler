@@ -32,6 +32,10 @@ export default function ComplexesPage() {
     processedArticles: number;
   } | null>(null);
 
+  // 경과 시간 추적
+  const [crawlStartTime, setCrawlStartTime] = useState<number | null>(null);
+  const [elapsedSeconds, setElapsedSeconds] = useState<number>(0);
+
   // 단지 추가 폼
   const [showAddForm, setShowAddForm] = useState(false);
   const [newComplexNo, setNewComplexNo] = useState("");
@@ -43,22 +47,42 @@ export default function ComplexesPage() {
   // 드래그 앤 드롭
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
 
+  // 시간을 MM:SS 형식으로 변환
+  const formatTime = (seconds: number): string => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
   useEffect(() => {
     fetchFavorites();
     // 페이지 로드 시 모든 단지 정보 자동 동기화
     syncAllFavorites();
   }, []);
 
-  // 경과 시간 업데이트를 위한 리렌더링 (1초마다)
-  const [, setTick] = useState(0);
+  // 경과 시간 업데이트 (1초마다)
   useEffect(() => {
+    let interval: NodeJS.Timeout | null = null;
+
     if (crawlingAll || crawling) {
-      const interval = setInterval(() => {
-        setTick(prev => prev + 1);
+      if (!crawlStartTime) {
+        setCrawlStartTime(Date.now());
+        setElapsedSeconds(0);
+      }
+
+      interval = setInterval(() => {
+        setElapsedSeconds(prev => prev + 1);
       }, 1000);
-      return () => clearInterval(interval);
+    } else {
+      // 크롤링 종료 시 타이머 리셋
+      setCrawlStartTime(null);
+      setElapsedSeconds(0);
     }
-  }, [crawlingAll, crawling]);
+
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [crawlingAll, crawling, crawlStartTime]);
 
 
   // 크롤링 중 페이지 이탈 경고
@@ -527,6 +551,25 @@ export default function ComplexesPage() {
                   </div>
                 </div>
               )}
+
+              {/* 경과 시간 및 매물 정보 */}
+              <div className="grid grid-cols-2 gap-3 pt-2">
+                {/* 경과 시간 */}
+                <div className="bg-white dark:bg-gray-800/50 rounded-lg p-2.5">
+                  <div className="text-xs text-gray-500 dark:text-gray-400 mb-0.5">⏱️ 경과 시간</div>
+                  <div className="text-sm font-bold text-blue-600 dark:text-blue-400">
+                    {formatTime(elapsedSeconds)}
+                  </div>
+                </div>
+
+                {/* 수집 매물 수 */}
+                <div className="bg-white dark:bg-gray-800/50 rounded-lg p-2.5">
+                  <div className="text-xs text-gray-500 dark:text-gray-400 mb-0.5">📊 수집 매물</div>
+                  <div className="text-sm font-bold text-purple-600 dark:text-purple-400">
+                    {crawlProgress?.processedArticles ? crawlProgress.processedArticles.toLocaleString() : '0'} <span className="text-xs font-normal">개</span>
+                  </div>
+                </div>
+              </div>
 
               <p className="text-xs text-blue-700 dark:text-blue-400">
                 ⚠️ 크롤링이 완료될 때까지 페이지를 닫지 마세요.
