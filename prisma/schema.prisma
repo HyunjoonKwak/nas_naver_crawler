@@ -87,9 +87,9 @@ model CrawlHistory {
   errorMessage      String?  // 에러 메시지
 
   // Progress tracking fields
-  currentStep       String?  // current operation step
-  processedArticles Int      @default(0) // 처리된 매물 수
-  processedComplexes Int     @default(0) // 처리된 단지 수
+  currentStep       String?  @map("current_step") // current operation step
+  processedArticles Int      @default(0) @map("processed_articles") // 처리된 매물 수
+  processedComplexes Int     @default(0) @map("processed_complexes") // 처리된 단지 수
 
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
