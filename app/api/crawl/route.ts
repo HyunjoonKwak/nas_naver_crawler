@@ -50,6 +50,9 @@ async function saveCrawlResultsToDB(complexNos: string[]) {
 
       const overview = data.overview;
 
+      // articles는 { articleList: [...] } 형태
+      const articleList = data.articles.articleList || [];
+
         // 1. 단지 정보 Upsert
         const complex = await prisma.complex.upsert({
           where: { complexNo: overview.complexNo },
@@ -83,7 +86,7 @@ async function saveCrawlResultsToDB(complexNos: string[]) {
         totalComplexes++;
 
         // 2. 매물 정보 저장
-        for (const article of data.articles) {
+        for (const article of articleList) {
           try {
             await prisma.article.upsert({
               where: { articleNo: article.articleNo },
