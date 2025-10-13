@@ -39,10 +39,37 @@ interface JSONFile {
 
 type FileType = CSVFile | JSONFile;
 
+interface DBStats {
+  database: {
+    totalComplexes: number;
+    totalArticles: number;
+    favoriteComplexes: number;
+    recentComplexes: number;
+    recentArticles: number;
+  };
+  crawling: {
+    totalCrawls: number;
+    completedCrawls: number;
+    failedCrawls: number;
+    avgDuration: number;
+    recentCrawls: Array<{
+      id: string;
+      status: string;
+      totalComplexes: number;
+      processedComplexes: number;
+      totalArticles: number;
+      processedArticles: number;
+      duration: number | null;
+      createdAt: string;
+    }>;
+  };
+  tradeTypes: Record<string, number>;
+}
+
 export default function SystemPage() {
   const [status, setStatus] = useState<StatusData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeSection, setActiveSection] = useState<'status' | 'data' | 'history'>('status');
+  const [activeSection, setActiveSection] = useState<'status' | 'data' | 'history' | 'database'>('status');
   const [refresh, setRefresh] = useState(0);
 
   // CSV/JSON viewer states
@@ -54,6 +81,10 @@ export default function SystemPage() {
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [activeTab, setActiveTab] = useState<'csv' | 'json'>('csv');
 
+  // Database stats states
+  const [dbStats, setDbStats] = useState<DBStats | null>(null);
+  const [dbLoading, setDbLoading] = useState(false);
+
   useEffect(() => {
     fetchStatus();
     const interval = setInterval(fetchStatus, 10000); // 10초마다 업데이트
@@ -63,6 +94,8 @@ export default function SystemPage() {
   useEffect(() => {
     if (activeSection === 'data') {
       fetchFiles();
+    } else if (activeSection === 'database') {
+      fetchDBStats();
     }
   }, [activeSection]);
 
@@ -89,6 +122,19 @@ export default function SystemPage() {
       console.error('Failed to fetch files:', error);
     } finally {
       setFilesLoading(false);
+    }
+  };
+
+  const fetchDBStats = async () => {
+    try {
+      setDbLoading(true);
+      const response = await fetch('/api/db-stats');
+      const data = await response.json();
+      setDbStats(data);
+    } catch (error) {
+      console.error('Failed to fetch DB stats:', error);
+    } finally {
+      setDbLoading(false);
     }
   };
 
@@ -314,10 +360,10 @@ export default function SystemPage() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Section Tabs */}
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-800 mb-6 overflow-hidden">
-          <div className="flex border-b border-gray-200 dark:border-gray-700">
+          <div className="grid grid-cols-4 border-b border-gray-200 dark:border-gray-700">
             <button
               onClick={() => setActiveSection('status')}
-              className={`flex-1 px-6 py-4 text-center font-semibold transition-colors ${
+              className={`px-4 py-4 text-center font-semibold transition-colors ${
                 activeSection === 'status'
                   ? 'bg-gradient-to-r from-green-600 to-emerald-600 text-white'
                   : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
@@ -329,21 +375,21 @@ export default function SystemPage() {
               </div>
             </button>
             <button
-              onClick={() => setActiveSection('data')}
-              className={`flex-1 px-6 py-4 text-center font-semibold transition-colors ${
-                activeSection === 'data'
-                  ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white'
+              onClick={() => setActiveSection('database')}
+              className={`px-4 py-4 text-center font-semibold transition-colors ${
+                activeSection === 'database'
+                  ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white'
                   : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
               }`}
             >
               <div className="flex items-center justify-center gap-2">
-                <span className="text-xl">📊</span>
-                <span>데이터 뷰어</span>
+                <span className="text-xl">🗄️</span>
+                <span>DB 현황</span>
               </div>
             </button>
             <button
               onClick={() => setActiveSection('history')}
-              className={`flex-1 px-6 py-4 text-center font-semibold transition-colors ${
+              className={`px-4 py-4 text-center font-semibold transition-colors ${
                 activeSection === 'history'
                   ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white'
                   : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
@@ -352,6 +398,19 @@ export default function SystemPage() {
               <div className="flex items-center justify-center gap-2">
                 <span className="text-xl">📚</span>
                 <span>크롤링 히스토리</span>
+              </div>
+            </button>
+            <button
+              onClick={() => setActiveSection('data')}
+              className={`px-4 py-4 text-center font-semibold transition-colors ${
+                activeSection === 'data'
+                  ? 'bg-gradient-to-r from-orange-600 to-amber-600 text-white'
+                  : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
+              }`}
+            >
+              <div className="flex items-center justify-center gap-2">
+                <span className="text-xl">📊</span>
+                <span>파일 뷰어</span>
               </div>
             </button>
           </div>
@@ -745,6 +804,232 @@ export default function SystemPage() {
               </div>
             )}
           </div>
+        )}
+
+        {/* Database Section */}
+        {activeSection === 'database' && (
+          dbLoading ? (
+            <div className="flex items-center justify-center py-20">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-600"></div>
+            </div>
+          ) : dbStats ? (
+            <div className="space-y-6">
+              {/* Page Header */}
+              <div className="mb-8">
+                <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+                  데이터베이스 현황
+                </h2>
+                <p className="text-gray-600 dark:text-gray-400">
+                  저장된 데이터와 크롤링 통계를 확인하세요
+                </p>
+              </div>
+
+              {/* Database Stats */}
+              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-800 p-8">
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-6">
+                  데이터 통계
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {/* Total Complexes */}
+                  <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl p-6 border border-blue-100 dark:border-blue-800">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="text-4xl">🏢</div>
+                    </div>
+                    <h4 className="text-lg font-bold text-gray-900 dark:text-white mb-2">
+                      등록 단지
+                    </h4>
+                    <div className="text-4xl font-bold text-blue-600 dark:text-blue-400 mb-2">
+                      {dbStats.database.totalComplexes.toLocaleString()}
+                    </div>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      전체 단지 수
+                    </p>
+                    <div className="mt-3 pt-3 border-t border-blue-200 dark:border-blue-700 text-xs text-gray-500 dark:text-gray-400">
+                      최근 7일: <span className="font-semibold text-blue-600 dark:text-blue-400">+{dbStats.database.recentComplexes}</span>
+                    </div>
+                  </div>
+
+                  {/* Total Articles */}
+                  <div className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-xl p-6 border border-green-100 dark:border-green-800">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="text-4xl">📋</div>
+                    </div>
+                    <h4 className="text-lg font-bold text-gray-900 dark:text-white mb-2">
+                      등록 매물
+                    </h4>
+                    <div className="text-4xl font-bold text-green-600 dark:text-green-400 mb-2">
+                      {dbStats.database.totalArticles.toLocaleString()}
+                    </div>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      전체 매물 수
+                    </p>
+                    <div className="mt-3 pt-3 border-t border-green-200 dark:border-green-700 text-xs text-gray-500 dark:text-gray-400">
+                      최근 7일: <span className="font-semibold text-green-600 dark:text-green-400">+{dbStats.database.recentArticles}</span>
+                    </div>
+                  </div>
+
+                  {/* Favorite Complexes */}
+                  <div className="bg-gradient-to-br from-pink-50 to-rose-50 dark:from-pink-900/20 dark:to-rose-900/20 rounded-xl p-6 border border-pink-100 dark:border-pink-800">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="text-4xl">⭐</div>
+                    </div>
+                    <h4 className="text-lg font-bold text-gray-900 dark:text-white mb-2">
+                      관심 단지
+                    </h4>
+                    <div className="text-4xl font-bold text-pink-600 dark:text-pink-400 mb-2">
+                      {dbStats.database.favoriteComplexes.toLocaleString()}
+                    </div>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      즐겨찾기 등록 단지
+                    </p>
+                    <div className="mt-3 pt-3 border-t border-pink-200 dark:border-pink-700 text-xs text-gray-500 dark:text-gray-400">
+                      전체의 {((dbStats.database.favoriteComplexes / dbStats.database.totalComplexes) * 100).toFixed(1)}%
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Crawling Stats */}
+              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-800 p-8">
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-6">
+                  크롤링 통계
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                  <div className="bg-gradient-to-br from-purple-50 to-violet-50 dark:from-purple-900/20 dark:to-violet-900/20 rounded-xl p-6 border border-purple-100 dark:border-purple-800">
+                    <div className="text-3xl mb-3">📊</div>
+                    <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">
+                      전체 크롤링
+                    </h4>
+                    <div className="text-3xl font-bold text-purple-600 dark:text-purple-400">
+                      {dbStats.crawling.totalCrawls}
+                    </div>
+                  </div>
+
+                  <div className="bg-gradient-to-br from-green-50 to-teal-50 dark:from-green-900/20 dark:to-teal-900/20 rounded-xl p-6 border border-green-100 dark:border-green-800">
+                    <div className="text-3xl mb-3">✅</div>
+                    <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">
+                      완료
+                    </h4>
+                    <div className="text-3xl font-bold text-green-600 dark:text-green-400">
+                      {dbStats.crawling.completedCrawls}
+                    </div>
+                  </div>
+
+                  <div className="bg-gradient-to-br from-red-50 to-orange-50 dark:from-red-900/20 dark:to-orange-900/20 rounded-xl p-6 border border-red-100 dark:border-red-800">
+                    <div className="text-3xl mb-3">❌</div>
+                    <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">
+                      실패
+                    </h4>
+                    <div className="text-3xl font-bold text-red-600 dark:text-red-400">
+                      {dbStats.crawling.failedCrawls}
+                    </div>
+                  </div>
+
+                  <div className="bg-gradient-to-br from-cyan-50 to-blue-50 dark:from-cyan-900/20 dark:to-blue-900/20 rounded-xl p-6 border border-cyan-100 dark:border-cyan-800">
+                    <div className="text-3xl mb-3">⏱️</div>
+                    <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">
+                      평균 소요시간
+                    </h4>
+                    <div className="text-2xl font-bold text-cyan-600 dark:text-cyan-400">
+                      {Math.floor(dbStats.crawling.avgDuration / 60)}분 {dbStats.crawling.avgDuration % 60}초
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Trade Type Stats */}
+              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-800 p-8">
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-6">
+                  거래 유형별 매물 분포
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {Object.entries(dbStats.tradeTypes).map(([type, count]) => {
+                    const total = Object.values(dbStats.tradeTypes).reduce((a, b) => a + b, 0);
+                    const percentage = ((count / total) * 100).toFixed(1);
+                    const colorMap: Record<string, string> = {
+                      '매매': 'from-red-50 to-rose-50 dark:from-red-900/20 dark:to-rose-900/20 border-red-100 dark:border-red-800 text-red-600 dark:text-red-400',
+                      '전세': 'from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-blue-100 dark:border-blue-800 text-blue-600 dark:text-blue-400',
+                      '월세': 'from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border-green-100 dark:border-green-800 text-green-600 dark:text-green-400',
+                    };
+                    const colorClass = colorMap[type] || 'from-gray-50 to-slate-50 dark:from-gray-900/20 dark:to-slate-900/20 border-gray-100 dark:border-gray-800 text-gray-600 dark:text-gray-400';
+
+                    return (
+                      <div key={type} className={`bg-gradient-to-br ${colorClass} rounded-xl p-6 border`}>
+                        <h4 className="text-lg font-bold text-gray-900 dark:text-white mb-2">
+                          {type}
+                        </h4>
+                        <div className={`text-4xl font-bold mb-2`}>
+                          {count.toLocaleString()}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                            <div
+                              className="h-2 rounded-full bg-current"
+                              style={{ width: `${percentage}%` }}
+                            ></div>
+                          </div>
+                          <span className="text-sm font-semibold">{percentage}%</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Recent Crawls */}
+              {dbStats.crawling.recentCrawls.length > 0 && (
+                <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-800 p-8">
+                  <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-6">
+                    최근 크롤링 기록 (최근 5개)
+                  </h3>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                      <thead className="bg-gray-50 dark:bg-gray-900">
+                        <tr>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">상태</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">시작 시간</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">단지</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">매물</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">소요시간</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                        {dbStats.crawling.recentCrawls.map((crawl) => (
+                          <tr key={crawl.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                                crawl.status === 'completed' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' :
+                                crawl.status === 'failed' ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400' :
+                                'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400'
+                              }`}>
+                                {crawl.status === 'completed' ? '✅ 완료' : crawl.status === 'failed' ? '❌ 실패' : '🔄 진행중'}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">
+                              {new Date(crawl.createdAt).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })}
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                              <span className="font-semibold">{crawl.processedComplexes}</span>
+                              <span className="text-gray-500 dark:text-gray-400"> / {crawl.totalComplexes}</span>
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                              <span className="font-semibold">{crawl.processedArticles}</span>
+                              {crawl.totalArticles > 0 && (
+                                <span className="text-gray-500 dark:text-gray-400"> / {crawl.totalArticles}</span>
+                              )}
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                              {crawl.duration ? `${Math.floor(crawl.duration / 60)}분 ${crawl.duration % 60}초` : '-'}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : null
         )}
 
         {/* History Section */}
