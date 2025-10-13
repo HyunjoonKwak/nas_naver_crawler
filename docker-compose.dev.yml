@@ -1,19 +1,48 @@
 services:
+  # PostgreSQL 데이터베이스
+  db:
+    image: postgres:16-alpine
+    container_name: naver-crawler-db-dev
+    restart: unless-stopped
+
+    environment:
+      - POSTGRES_DB=naver_crawler
+      - POSTGRES_USER=crawler_user
+      - POSTGRES_PASSWORD=crawler_pass_2025
+      - POSTGRES_INITDB_ARGS=--encoding=UTF-8
+
+    volumes:
+      - postgres_data_dev:/var/lib/postgresql/data
+
+    ports:
+      - "5434:5432"
+
+    networks:
+      - crawler-network
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U crawler_user -d naver_crawler"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
   # 개발 모드: 빌드 없이 소스 마운트
   web:
     image: node:20-slim
     container_name: naver-crawler-web-dev
     restart: unless-stopped
     working_dir: /app
-    
+
     # 환경변수 파일 사용
     env_file:
       - config.env
-    
+
     environment:
       - NODE_ENV=development
       - PYTHONUNBUFFERED=1
-    
+      - DATABASE_URL=postgresql://crawler_user:crawler_pass_2025@db:5432/naver_crawler
+
     # 소스 코드 마운트 (실시간 반영)
     volumes:
       - ./app:/app/app
@@ -29,27 +58,34 @@ services:
       - ./tailwind.config.js:/app/tailwind.config.js
       - ./postcss.config.js:/app/postcss.config.js
       - ./tsconfig.json:/app/tsconfig.json
-    
+
     # 포트 설정
     ports:
       - "3000:3000"
-    
+
     # 네트워크 설정
     networks:
       - crawler-network
-    
+
+    # DB가 준비될 때까지 대기
+    depends_on:
+      db:
+        condition: service_healthy
+
     # 리소스 제한 (NAS 호환)
     mem_limit: 2g
     memswap_limit: 2g
-    
+
     # 개발 서버 실행
     command: >
       sh -c "
-      apt-get update && apt-get install -y python3 python3-pip curl &&
-      pip3 install --break-system-packages playwright pandas python-dotenv aiohttp loguru &&
+      apt-get update && apt-get install -y python3 python3-pip curl libpq-dev &&
+      pip3 install --break-system-packages playwright pandas python-dotenv aiohttp loguru psycopg2-binary &&
       playwright install chromium &&
       playwright install-deps chromium &&
       npm install &&
+      npx prisma generate &&
+      npx prisma db push &&
       npm run dev
       "
 
@@ -57,3 +93,5 @@ networks:
   crawler-network:
     driver: bridge
 
+volumes:
+  postgres_data_dev:
