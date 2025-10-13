@@ -139,12 +139,21 @@ export default function DashboardPage() {
 
   const pollCrawlStatus = async (crawlId: string) => {
     return new Promise<void>((resolve, reject) => {
+      let pollCount = 0;
+      const maxPolls = 450; // 15분 (2초 * 450 = 900초)
+
       const interval = setInterval(async () => {
         try {
+          pollCount++;
+          console.log(`[Polling] Attempt ${pollCount}/${maxPolls} for crawlId: ${crawlId}`);
+
           const response = await fetch(`/api/crawl-status?crawlId=${crawlId}`);
           const data = await response.json();
 
+          console.log('[Polling] Status:', data.status, 'Step:', data.progress?.currentStep);
+
           if (!response.ok) {
+            console.error('[Polling] API error:', data.error);
             clearInterval(interval);
             reject(new Error(data.error || 'Failed to get status'));
             return;
@@ -161,21 +170,25 @@ export default function DashboardPage() {
 
           // 완료 또는 실패 시 폴링 중지
           if (data.status === 'success' || data.status === 'partial' || data.status === 'failed') {
+            console.log('[Polling] Completed with status:', data.status);
             clearInterval(interval);
             resolve();
+            return;
+          }
+
+          // 최대 폴링 횟수 도달 시 타임아웃
+          if (pollCount >= maxPolls) {
+            console.error('[Polling] Timeout reached');
+            clearInterval(interval);
+            reject(new Error('Crawl timeout - exceeded 15 minutes'));
+            return;
           }
         } catch (error) {
-          console.error('Polling error:', error);
+          console.error('[Polling] Error:', error);
           clearInterval(interval);
           reject(error);
         }
       }, 2000); // 2초마다 폴링
-
-      // 최대 15분 타임아웃
-      setTimeout(() => {
-        clearInterval(interval);
-        reject(new Error('Crawl timeout'));
-      }, 900000);
     });
   };
 
