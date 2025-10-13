@@ -85,21 +85,20 @@ export default function ComplexesPage() {
 
       // 각 크롤링 결과에서 단지 정보 추출하여 업데이트
       for (const result of results) {
-        const resultData = Array.isArray(result.data) ? result.data[0] : result.data;
-        if (resultData?.overview?.complexNo) {
+        if (result?.overview?.complexNo) {
           await fetch('/api/favorites', {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              complexNo: resultData.overview.complexNo,
-              complexName: resultData.overview.complexName,
-              articleCount: resultData.articles?.articleList?.length || 0,
-              totalHouseHoldCount: resultData.overview.totalHouseHoldCount,
-              totalDongCount: resultData.overview.totalDongCount,
-              minArea: resultData.overview.minArea,
-              maxArea: resultData.overview.maxArea,
-              minPrice: resultData.overview.minPrice,
-              maxPrice: resultData.overview.maxPrice,
+              complexNo: result.overview.complexNo,
+              complexName: result.overview.complexName,
+              articleCount: result.articles?.length || 0,
+              totalHouseHoldCount: result.overview.totalHouseHoldCount,
+              totalDongCount: result.overview.totalDongCount,
+              minArea: result.overview.minArea,
+              maxArea: result.overview.maxArea,
+              minPrice: result.overview.minPrice,
+              maxPrice: result.overview.maxPrice,
             })
           });
         }
