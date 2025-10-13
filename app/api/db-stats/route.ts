@@ -86,7 +86,9 @@ export async function GET() {
     const crawlsWithDuration = await prisma.crawlHistory.findMany({
       where: {
         status: 'completed',
-        duration: { not: null },
+        NOT: {
+          duration: null,
+        },
       },
       select: {
         duration: true,
