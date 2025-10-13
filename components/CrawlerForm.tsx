@@ -148,13 +148,35 @@ export default function CrawlerForm({ onCrawlComplete }: CrawlerFormProps) {
     }
   };
 
-  // 컴포넌트 언마운트 시 폴링 및 타이머 중지
+  // 컴포넌트 마운트 시 진행 중인 크롤링 확인
   useEffect(() => {
+    checkOngoingCrawl();
+
     return () => {
       stopStatusPolling();
       stopElapsedTimer();
     };
   }, []);
+
+  // 진행 중인 크롤링 확인
+  const checkOngoingCrawl = async () => {
+    try {
+      const response = await fetch('/api/crawl-status?latest=true');
+      if (response.ok) {
+        const data = await response.json();
+
+        // 진행 중인 크롤링이 있으면 폴링 시작
+        if (data.found && (data.status === 'crawling' || data.status === 'saving')) {
+          console.log('[CrawlerForm] Found ongoing crawl:', data.crawlId);
+          setLoading(true);
+          startElapsedTimer();
+          startStatusPolling(data.crawlId);
+        }
+      }
+    } catch (error) {
+      console.error('[CrawlerForm] Failed to check ongoing crawl:', error);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

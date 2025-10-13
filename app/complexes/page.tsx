@@ -58,7 +58,42 @@ export default function ComplexesPage() {
     fetchFavorites();
     // 페이지 로드 시 모든 단지 정보 자동 동기화
     syncAllFavorites();
+    // 진행 중인 크롤링 확인
+    checkOngoingCrawl();
   }, []);
+
+  // 진행 중인 크롤링 확인
+  const checkOngoingCrawl = async () => {
+    try {
+      const response = await fetch('/api/crawl-status?latest=true');
+      if (response.ok) {
+        const data = await response.json();
+
+        // 진행 중인 크롤링이 있으면 폴링 시작
+        if (data.status === 'crawling' || data.status === 'saving') {
+          console.log('[Complexes] Found ongoing crawl:', data.crawlId);
+          setCrawlingAll(true);
+          setCrawlProgress({
+            crawlId: data.crawlId,
+            status: data.status,
+            currentStep: data.progress?.currentStep || 'Processing...',
+            complexProgress: data.progress?.complexProgress || 0,
+            processedArticles: data.progress?.processedArticles || 0,
+          });
+
+          // 폴링 시작
+          await pollCrawlStatus(data.crawlId);
+
+          // 완료 후 UI 갱신
+          await fetchFavorites();
+          setCrawlingAll(false);
+          setCrawlProgress(null);
+        }
+      }
+    } catch (error) {
+      console.error('[Complexes] Failed to check ongoing crawl:', error);
+    }
+  };
 
   // 경과 시간 업데이트 (1초마다)
   useEffect(() => {
