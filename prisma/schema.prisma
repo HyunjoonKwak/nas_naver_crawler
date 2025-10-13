@@ -91,8 +91,8 @@ model CrawlHistory {
   processedArticles Int      @default(0) @map("processed_articles") // 처리된 매물 수
   processedComplexes Int     @default(0) @map("processed_complexes") // 처리된 단지 수
 
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
 
   @@index([createdAt])
   @@index([status])
