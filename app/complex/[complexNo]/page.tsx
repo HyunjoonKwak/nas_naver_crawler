@@ -512,49 +512,61 @@ export default function ComplexDetailPage() {
 
                   {/* 매물 테이블 */}
                   <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-                    <div className="overflow-x-auto">
+                    {/* 상단 스크롤바 */}
+                    <div className="overflow-x-auto border-b border-gray-200 dark:border-gray-700" id="table-scroll-top" onScroll={(e) => {
+                      const bottomScroll = document.getElementById('table-scroll-bottom');
+                      if (bottomScroll) bottomScroll.scrollLeft = e.currentTarget.scrollLeft;
+                    }}>
+                      <div style={{ height: '1px', width: '100%', minWidth: '1400px' }}></div>
+                    </div>
+
+                    {/* 실제 테이블 */}
+                    <div className="overflow-x-auto" id="table-scroll-bottom" onScroll={(e) => {
+                      const topScroll = document.getElementById('table-scroll-top');
+                      if (topScroll) topScroll.scrollLeft = e.currentTarget.scrollLeft;
+                    }}>
                       <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                        <thead className="bg-gray-50 dark:bg-gray-900">
+                        <thead className="bg-gray-50 dark:bg-gray-900 sticky top-0 z-10">
                           <tr>
                             <th
                               onClick={() => handleSort('tradeType')}
-                              className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800"
+                              className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800"
                             >
                               거래유형 {getSortIcon('tradeType')}
                             </th>
                             <th
                               onClick={() => handleSort('price')}
-                              className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800"
+                              className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800"
                             >
                               가격 {getSortIcon('price')}
                             </th>
                             <th
                               onClick={() => handleSort('area')}
-                              className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800"
+                              className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800"
                             >
                               면적 {getSortIcon('area')}
                             </th>
                             <th
                               onClick={() => handleSort('dong')}
-                              className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800"
+                              className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800"
                             >
                               동/호 {getSortIcon('dong')}
                             </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
+                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                               층
                             </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
+                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                               중개소
                             </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
+                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase text-center">
                               중복
                             </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
+                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                               매물특징
                             </th>
                             <th
                               onClick={() => handleSort('date')}
-                              className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800"
+                              className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800"
                             >
                               확인일 {getSortIcon('date')}
                             </th>
@@ -563,7 +575,7 @@ export default function ComplexDetailPage() {
                         <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                           {sortedArticles.map((article: any, index: number) => (
                             <tr key={index} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-                              <td className="px-6 py-4 whitespace-nowrap">
+                              <td className="px-3 py-2 whitespace-nowrap">
                                 <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
                                   article.tradeTypeName === '매매'
                                     ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
@@ -574,7 +586,7 @@ export default function ComplexDetailPage() {
                                   {article.tradeTypeName}
                                 </span>
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap">
+                              <td className="px-3 py-2 whitespace-nowrap">
                                 {article.tradeTypeName === '월세' ? (
                                   <div className="text-sm">
                                     <div className="font-semibold text-gray-900 dark:text-white">
@@ -590,29 +602,29 @@ export default function ComplexDetailPage() {
                                   </span>
                                 )}
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">
+                              <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">
                                 {formatArea(article.area1)}
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">
+                              <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">
                                 {article.buildingName || '-'}
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">
+                              <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">
                                 {article.floorInfo || '-'}
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">
+                              <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">
                                 {article.realtorName || '-'}
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-center text-gray-600 dark:text-gray-300">
+                              <td className="px-3 py-2 whitespace-nowrap text-sm text-center text-gray-600 dark:text-gray-300">
                                 {article.sameAddrCnt ? (
                                   <span className="inline-flex items-center justify-center w-6 h-6 text-xs font-semibold rounded-full bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400">
                                     {article.sameAddrCnt}
                                   </span>
                                 ) : '-'}
                               </td>
-                              <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-300 max-w-xs truncate" title={article.articleFeatureDesc || ''}>
+                              <td className="px-3 py-2 text-sm text-gray-600 dark:text-gray-300 max-w-xs truncate" title={article.articleFeatureDesc || ''}>
                                 {article.articleFeatureDesc || '-'}
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                              <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                                 {(() => {
                                   const date = article.articleConfirmYmd || article.cfmYmd;
                                   return date ?
