@@ -18,6 +18,8 @@ services:
     volumes:
       - ./app:/app/app
       - ./components:/app/components
+      - ./lib:/app/lib
+      - ./prisma:/app/prisma
       - ./public:/app/public
       - ./logic:/app/logic
       - ./crawled_data:/app/crawled_data
