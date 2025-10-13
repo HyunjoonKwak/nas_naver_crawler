@@ -6,7 +6,8 @@
       "Bash(node:*)",
       "Bash(npx tsc:*)",
       "Bash(docker-compose restart:*)",
-      "Bash(docker ps:*)"
+      "Bash(docker ps:*)",
+      "Bash(docker exec:*)"
     ],
     "deny": [],
     "ask": []
