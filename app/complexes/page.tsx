@@ -43,26 +43,10 @@ export default function ComplexesPage() {
   // 드래그 앤 드롭
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
 
-  // 서버 크롤링 상태
-  const [serverCrawlState, setServerCrawlState] = useState<{
-    isCrawling: boolean;
-    complexCount?: number;
-    currentComplex?: string;
-    startTime?: string;
-  } | null>(null);
-
   useEffect(() => {
     fetchFavorites();
     // 페이지 로드 시 모든 단지 정보 자동 동기화
     syncAllFavorites();
-    // 서버 크롤링 상태 확인
-    checkServerCrawlState();
-  }, []);
-
-  // 서버 크롤링 상태 폴링 (5초마다)
-  useEffect(() => {
-    const interval = setInterval(checkServerCrawlState, 5000);
-    return () => clearInterval(interval);
   }, []);
 
   // 경과 시간 업데이트를 위한 리렌더링 (1초마다)
@@ -76,27 +60,6 @@ export default function ComplexesPage() {
     }
   }, [crawlingAll, crawling]);
 
-  const checkServerCrawlState = async () => {
-    try {
-      const response = await fetch('/api/crawl-state');
-      const data = await response.json();
-      setServerCrawlState(data);
-
-      // 서버에서 크롤링 중이지만 로컬 상태가 아니면 동기화
-      if (data.isCrawling && !crawlingAll && !crawling) {
-        setCrawlingAll(true);
-      }
-      // 서버에서 크롤링 완료되었지만 로컬 상태가 크롤링 중이면 동기화
-      if (!data.isCrawling && (crawlingAll || crawling)) {
-        setCrawlingAll(false);
-        setCrawling(null);
-        // 데이터 새로고침
-        await fetchFavorites();
-      }
-    } catch (error) {
-      console.error('Failed to check server crawl state:', error);
-    }
-  };
 
   // 크롤링 중 페이지 이탈 경고
   useEffect(() => {

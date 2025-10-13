@@ -259,11 +259,13 @@ export async function POST(request: NextRequest) {
     crawlId = crawlHistory.id;
     currentCrawlId = crawlId;
 
-    // 2. Python 크롤러 실행
+    // 2. Python 크롤러 실행 (crawl_id 전달)
     const baseDir = process.env.NODE_ENV === 'production' ? '/app' : process.cwd();
-    const command = `python3 ${baseDir}/logic/nas_playwright_crawler.py "${complexNos}"`;
+    const command = `python3 ${baseDir}/logic/nas_playwright_crawler.py "${complexNos}" "${crawlId}"`;
 
     console.log('🚀 Starting crawler...');
+    console.log(`   - Crawl ID: ${crawlId}`);
+    console.log(`   - Complexes: ${complexNos}`);
 
     await prisma.crawlHistory.update({
       where: { id: crawlId },
@@ -275,7 +277,7 @@ export async function POST(request: NextRequest) {
     const { stdout, stderr } = await execAsync(command, {
       cwd: baseDir,
       maxBuffer: 10 * 1024 * 1024, // 10MB
-      timeout: 900000, // 15분 타임아웃
+      timeout: 1800000, // 30분 타임아웃 (15분 → 30분으로 증가)
     });
 
     // Python 출력을 로그에 표시

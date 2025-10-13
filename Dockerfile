@@ -37,6 +37,7 @@ RUN apt-get update && \
     curl \
     openssl \
     libssl3 \
+    libpq-dev \
     fonts-liberation \
     fonts-dejavu-core \
     fonts-unifont \
@@ -50,7 +51,8 @@ RUN pip install --no-cache-dir --upgrade pip && \
     python-dotenv==1.0.0 \
     aiohttp==3.9.1 \
     loguru==0.7.2 \
-    playwright==1.40.0
+    playwright==1.40.0 \
+    psycopg2-binary==2.9.9
 
 # Playwright 브라우저만 설치 (의존성은 수동으로)
 RUN playwright install chromium

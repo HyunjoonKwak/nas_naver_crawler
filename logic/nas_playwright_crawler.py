@@ -16,6 +16,8 @@ from typing import Dict, List, Optional, Any
 from playwright.async_api import async_playwright, Browser, Page, BrowserContext
 import pandas as pd
 from dotenv import load_dotenv
+import psycopg2
+from psycopg2.extras import RealDictCursor
 
 # 환경변수 로드
 load_dotenv()
@@ -30,50 +32,88 @@ def get_kst_now():
 
 class NASNaverRealEstateCrawler:
     """NAS 환경용 네이버 부동산 크롤러"""
-    
-    def __init__(self):
+
+    def __init__(self, crawl_id: Optional[str] = None):
         self.browser: Optional[Browser] = None
         self.context: Optional[BrowserContext] = None
         self.page: Optional[Page] = None
-        self.status_file = None  # 진행 상태 파일
+        self.status_file = None  # 진행 상태 파일 (백업용)
         self.start_time = None  # 크롤링 시작 시간
         self.results = []
         self.output_dir = Path(os.getenv('OUTPUT_DIR', './crawled_data'))
         self.output_dir.mkdir(exist_ok=True)
-        
+
         # 크롤링 설정
         self.request_delay = float(os.getenv('REQUEST_DELAY', '2.0'))  # 요청 간격 (초)
         self.timeout = int(os.getenv('TIMEOUT', '30000'))  # 타임아웃 (밀리초)
         self.headless = os.getenv('HEADLESS', 'true').lower() == 'true'
-        
+
+        # DB 연결 설정
+        self.crawl_id = crawl_id  # API에서 전달받은 crawl ID
+        self.db_conn = None
+        self.db_enabled = self._init_db_connection()
+
         print(f"크롤러 초기화 완료:")
         print(f"- 출력 디렉토리: {self.output_dir}")
         print(f"- 요청 간격: {self.request_delay}초")
         print(f"- 헤드리스 모드: {self.headless}")
         print(f"- 타임아웃: {self.timeout}ms")
+        print(f"- DB 연결: {'✅ 활성화' if self.db_enabled else '❌ 비활성화 (파일 모드)'}")
+        if self.crawl_id:
+            print(f"- Crawl ID: {self.crawl_id}")
+
+    def _init_db_connection(self) -> bool:
+        """DB 연결 초기화"""
+        try:
+            database_url = os.getenv('DATABASE_URL')
+            if not database_url:
+                print("[WARNING] DATABASE_URL이 설정되지 않았습니다. 파일 모드로 작동합니다.")
+                return False
+
+            # Docker 내부에서는 'db' 호스트 사용
+            # DATABASE_URL이 localhost로 시작하면 docker 내부이므로 db로 변경
+            if 'localhost' in database_url or '127.0.0.1' in database_url:
+                # Docker 내부 환경 감지
+                if os.path.exists('/.dockerenv'):
+                    database_url = database_url.replace('localhost', 'db').replace('127.0.0.1', 'db')
+                    print(f"[DB] Docker 환경 감지 - 호스트를 'db'로 변경")
+
+            self.db_conn = psycopg2.connect(database_url)
+            print(f"[DB] PostgreSQL 연결 성공")
+            return True
+        except Exception as e:
+            print(f"[WARNING] DB 연결 실패: {e}")
+            print("[WARNING] 파일 모드로 작동합니다.")
+            return False
+
+    def _close_db_connection(self):
+        """DB 연결 종료"""
+        if self.db_conn:
+            try:
+                self.db_conn.close()
+                print("[DB] 연결 종료")
+            except Exception as e:
+                print(f"[WARNING] DB 연결 종료 실패: {e}")
     
     def update_status(self, status: str, progress: int, total: int, current_complex: str = "", message: str = "", items_collected: int = 0):
-        """진행 상태를 파일로 저장"""
-        if not self.status_file:
-            return
-        
+        """진행 상태를 DB 및 파일에 저장"""
         # 경과 시간 계산
         elapsed_seconds = 0
         speed = 0.0
         estimated_total_seconds = 0
-        
+
         if self.start_time:
             elapsed_seconds = int((get_kst_now() - self.start_time).total_seconds())
-            
+
             # 속도 계산 (매물/초)
             if elapsed_seconds > 0 and items_collected > 0:
                 speed = round(items_collected / elapsed_seconds, 2)
-            
+
             # 예상 총 소요 시간 계산 (단지 기준)
             if progress > 0 and total > 0:
                 avg_time_per_complex = elapsed_seconds / progress
                 estimated_total_seconds = int(avg_time_per_complex * total)
-        
+
         status_data = {
             "status": status,  # "running", "completed", "error"
             "progress": progress,
@@ -89,12 +129,56 @@ class NASNaverRealEstateCrawler:
             "items_collected": items_collected,
             "speed": speed  # 매물/초
         }
-        
-        try:
-            with open(self.status_file, 'w', encoding='utf-8') as f:
-                json.dump(status_data, f, ensure_ascii=False, indent=2)
-        except Exception as e:
-            print(f"[WARNING] 상태 파일 업데이트 실패: {e}")
+
+        # 1. 파일에 저장 (백업용, 기존 방식 유지)
+        if self.status_file:
+            try:
+                with open(self.status_file, 'w', encoding='utf-8') as f:
+                    json.dump(status_data, f, ensure_ascii=False, indent=2)
+            except Exception as e:
+                print(f"[WARNING] 상태 파일 업데이트 실패: {e}")
+
+        # 2. DB에 업데이트 (새로운 방식)
+        if self.db_enabled and self.crawl_id:
+            try:
+                cursor = self.db_conn.cursor()
+
+                # CrawlHistory 테이블 업데이트
+                # status: 'crawling' | 'saving' | 'success' | 'partial' | 'failed'
+                db_status = 'crawling' if status == 'running' else status
+                if status == 'completed':
+                    db_status = 'success'
+                elif status == 'error':
+                    db_status = 'failed'
+
+                cursor.execute("""
+                    UPDATE crawl_history
+                    SET current_step = %s,
+                        processed_complexes = %s,
+                        processed_articles = %s,
+                        duration = %s,
+                        status = %s,
+                        updated_at = NOW()
+                    WHERE id = %s
+                """, (
+                    message,
+                    progress,
+                    items_collected,
+                    elapsed_seconds,
+                    db_status,
+                    self.crawl_id
+                ))
+
+                self.db_conn.commit()
+                cursor.close()
+
+                # 디버그 로그 (너무 자주 출력하지 않도록 10% 단위로만)
+                if progress % max(1, total // 10) == 0 or status in ['completed', 'error']:
+                    print(f"[DB] 상태 업데이트: {message} ({progress}/{total}, {items_collected}개 매물)")
+
+            except Exception as e:
+                print(f"[WARNING] DB 상태 업데이트 실패: {e}")
+                # DB 업데이트 실패는 크롤링 중단 사유가 아니므로 계속 진행
 
     async def setup_browser(self):
         """브라우저 설정 및 초기화"""
@@ -142,7 +226,7 @@ class NASNaverRealEstateCrawler:
             raise
 
     async def close_browser(self):
-        """브라우저 종료"""
+        """브라우저 및 DB 연결 종료"""
         try:
             if self.context:
                 await self.context.close()
@@ -151,6 +235,9 @@ class NASNaverRealEstateCrawler:
             print("브라우저 종료 완료")
         except Exception as e:
             print(f"브라우저 종료 중 오류: {e}")
+
+        # DB 연결 종료
+        self._close_db_connection()
 
     async def crawl_complex_overview(self, complex_no: str) -> Optional[Dict]:
         """단지 개요 정보 크롤링"""
@@ -761,20 +848,25 @@ class NASNaverRealEstateCrawler:
 async def main():
     """메인 함수"""
     import sys
-    
-    # 크롤러 인스턴스 생성
-    crawler = NASNaverRealEstateCrawler()
-    
+
     # 명령행 인자 처리
+    # Usage: python nas_playwright_crawler.py "22065,12345" [crawl_id]
+    crawl_id = None
+    complex_numbers = ['22065']  # 기본값
+
     if len(sys.argv) > 1:
         complex_numbers = sys.argv[1].split(',')
         complex_numbers = [num.strip() for num in complex_numbers if num.strip()]
-    else:
-        # 기본값: 동탄시범다은마을월드메르디앙반도유보라
-        complex_numbers = ['22065']
-    
-    print(f"크롤링 대상 단지: {complex_numbers}")
-    
+
+    if len(sys.argv) > 2:
+        crawl_id = sys.argv[2].strip()
+        print(f"🔗 Crawl ID: {crawl_id}")
+
+    print(f"📋 크롤링 대상 단지: {complex_numbers}")
+
+    # 크롤러 인스턴스 생성 (crawl_id 전달)
+    crawler = NASNaverRealEstateCrawler(crawl_id=crawl_id)
+
     # 크롤링 실행
     await crawler.run_crawling(complex_numbers)
 
