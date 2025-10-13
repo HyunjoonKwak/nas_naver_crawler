@@ -31,7 +31,8 @@ services:
   web:
     build:
       context: .
-      dockerfile: Dockerfile.dev  # 개발 모드 사용 (Hot Reload)
+      dockerfile: Dockerfile.dev  # ⚠️ 개발 모드 유지 (별도 지시 전까지 변경 금지)
+                                   # 정책: /docs/DEVELOPMENT_POLICY.md 참고
     container_name: naver-crawler-web
     restart: unless-stopped
 

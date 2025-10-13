@@ -8,6 +8,27 @@
 ![Playwright](https://img.shields.io/badge/playwright-1.40+-green.svg)
 ![Docker](https://img.shields.io/badge/docker-20.10+-blue.svg)
 
+---
+
+## ⚠️ 중요: 현재 개발 모드 운영 중
+
+**🔴 별도 지시가 있을 때까지 개발 모드를 유지합니다.**
+
+- ✅ Hot Reload 활성화 (코드 변경 시 3초 내 자동 반영)
+- ✅ 빠른 배포 (`git pull` + `docker-compose restart web` = 8초)
+- ❌ **프로덕션 모드로 변경 금지**
+
+**정책 문서:** [`/docs/DEVELOPMENT_POLICY.md`](/docs/DEVELOPMENT_POLICY.md)
+
+**빠른 배포:**
+```bash
+cd /volume1/docker/naver-crawler
+git pull origin main
+docker-compose restart web  # 3초 완료!
+```
+
+---
+
 **네이버 부동산의 단지별 매물 정보를 무한 스크롤 방식으로 완전 자동 수집하는 크롤러입니다.**
 
 ---
