@@ -82,12 +82,12 @@ export async function GET() {
       },
     });
 
-    // 평균 크롤링 소요 시간
+    // 평균 크롤링 소요 시간 (duration이 0보다 큰 완료된 크롤링만)
     const crawlsWithDuration = await prisma.crawlHistory.findMany({
       where: {
         status: 'completed',
-        NOT: {
-          duration: null,
+        duration: {
+          gt: 0,
         },
       },
       select: {
