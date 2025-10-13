@@ -243,41 +243,50 @@ class NASNaverRealEstateCrawler:
         """단지 개요 정보 크롤링"""
         try:
             print(f"단지 개요 정보 크롤링 시작: {complex_no}")
-            
-            # 네이버 부동산 단지 페이지 접속
-            url = f"https://new.land.naver.com/complexes/{complex_no}"
-            await self.page.goto(url, wait_until='domcontentloaded', timeout=15000)
-            
-            # 페이지 로딩 대기
-            await asyncio.sleep(3)
-            
+
             # 네트워크 요청 모니터링하여 API 응답 캐치
             overview_data = None
-            
+
             async def handle_response(response):
                 nonlocal overview_data
                 if f'/api/complexes/overview/{complex_no}' in response.url:
                     try:
                         data = await response.json()
                         overview_data = data
-                        print(f"단지 개요 API 응답 캐치됨")
+                        print(f"단지 개요 API 응답 캐치됨: {data.get('complexName', 'Unknown')}")
                     except Exception as e:
                         print(f"API 응답 파싱 실패: {e}")
-            
+
             # 응답 핸들러 등록
             self.page.on('response', handle_response)
-            
-            # 페이지 새로고침하여 API 호출 트리거
-            await self.page.reload(wait_until='domcontentloaded')
-            await asyncio.sleep(1.5)
-            
+
+            # 네이버 부동산 단지 페이지 접속
+            url = f"https://new.land.naver.com/complexes/{complex_no}"
+            await self.page.goto(url, wait_until='domcontentloaded', timeout=15000)
+
+            # API 응답 대기
+            await asyncio.sleep(3)
+
+            # 응답이 없으면 페이지 새로고침
+            if not overview_data:
+                print("Overview 데이터 없음, 페이지 새로고침...")
+                await self.page.reload(wait_until='domcontentloaded')
+                await asyncio.sleep(2)
+
             # 응답 핸들러 제거
             self.page.remove_listener('response', handle_response)
-            
+
+            if overview_data:
+                print(f"✅ Overview 수집 성공: {overview_data.get('complexName', 'Unknown')}")
+            else:
+                print(f"⚠️ Overview 수집 실패")
+
             return overview_data
-            
+
         except Exception as e:
             print(f"단지 개요 크롤링 실패: {e}")
+            import traceback
+            traceback.print_exc()
             return None
 
     async def crawl_complex_articles_with_scroll(self, complex_no: str) -> Optional[Dict]:

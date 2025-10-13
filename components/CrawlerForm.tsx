@@ -138,6 +138,16 @@ export default function CrawlerForm({ onCrawlComplete }: CrawlerFormProps) {
     stopElapsedTimer();
   };
 
+  const handleStopCrawl = () => {
+    if (confirm('크롤링을 중단하시겠습니까?')) {
+      stopStatusPolling();
+      setLoading(false);
+      setCrawlStatus(null);
+      setMessage('');
+      setError('크롤링이 사용자에 의해 중단되었습니다.');
+    }
+  };
+
   // 컴포넌트 언마운트 시 폴링 및 타이머 중지
   useEffect(() => {
     return () => {
@@ -224,30 +234,45 @@ export default function CrawlerForm({ onCrawlComplete }: CrawlerFormProps) {
           </div>
         </div>
 
-        <button
-          type="submit"
-          disabled={loading || !complexNumbers.trim()}
-          className={`w-full py-4 px-6 rounded-xl font-bold text-white transition-all shadow-lg ${
-            loading || !complexNumbers.trim()
-              ? 'bg-gray-400 cursor-not-allowed'
-              : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 hover:shadow-xl active:scale-95'
-          }`}
-        >
-          {loading ? (
-            <span className="flex items-center justify-center gap-3">
-              <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-              <span className="text-lg">크롤링 중...</span>
-            </span>
-          ) : (
-            <span className="text-lg flex items-center justify-center gap-2">
-              <span>🚀</span>
-              <span>크롤링 시작</span>
-            </span>
+        <div className="flex gap-3">
+          <button
+            type="submit"
+            disabled={loading || !complexNumbers.trim()}
+            className={`flex-1 py-4 px-6 rounded-xl font-bold text-white transition-all shadow-lg ${
+              loading || !complexNumbers.trim()
+                ? 'bg-gray-400 cursor-not-allowed'
+                : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 hover:shadow-xl active:scale-95'
+            }`}
+          >
+            {loading ? (
+              <span className="flex items-center justify-center gap-3">
+                <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span className="text-lg">크롤링 중...</span>
+              </span>
+            ) : (
+              <span className="text-lg flex items-center justify-center gap-2">
+                <span>🚀</span>
+                <span>크롤링 시작</span>
+              </span>
+            )}
+          </button>
+
+          {loading && (
+            <button
+              type="button"
+              onClick={handleStopCrawl}
+              className="px-6 py-4 rounded-xl font-bold text-white bg-red-600 hover:bg-red-700 transition-all shadow-lg hover:shadow-xl active:scale-95"
+            >
+              <span className="flex items-center justify-center gap-2">
+                <span>⏹️</span>
+                <span>중단</span>
+              </span>
+            </button>
           )}
-        </button>
+        </div>
 
         {/* 실시간 진행 상태 표시 */}
         {crawlStatus && loading && (

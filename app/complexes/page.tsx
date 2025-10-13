@@ -295,6 +295,15 @@ export default function ComplexesPage() {
     }
   };
 
+  const handleStopCrawl = () => {
+    if (confirm('크롤링을 중단하시겠습니까?')) {
+      setCrawling(null);
+      setCrawlingAll(false);
+      setCrawlProgress(null);
+      alert('크롤링이 사용자에 의해 중단되었습니다.');
+    }
+  };
+
   const handleCrawlAll = async () => {
     if (favorites.length === 0) {
       alert('등록된 단지가 없습니다.');
@@ -571,9 +580,20 @@ export default function ComplexesPage() {
                 </div>
               </div>
 
-              <p className="text-xs text-blue-700 dark:text-blue-400">
-                ⚠️ 크롤링이 완료될 때까지 페이지를 닫지 마세요.
-              </p>
+              <div className="flex items-center justify-between pt-2">
+                <p className="text-xs text-blue-700 dark:text-blue-400">
+                  ⚠️ 크롤링이 완료될 때까지 페이지를 닫지 마세요.
+                </p>
+                <button
+                  onClick={handleStopCrawl}
+                  className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white font-semibold transition-colors shadow-md hover:shadow-lg active:scale-95"
+                >
+                  <span className="flex items-center gap-2">
+                    <span>⏹️</span>
+                    <span>크롤링 중단</span>
+                  </span>
+                </button>
+              </div>
             </div>
           </div>
         )}
