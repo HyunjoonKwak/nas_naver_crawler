@@ -144,7 +144,7 @@ export default function ComplexDetailPage() {
   }
 
   const overview = data?.overview || {};
-  const articles = data?.articles?.articleList || [];
+  const articles = data?.articles || [];
   const crawlingInfo = data?.crawling_info || {};
 
   // 거래 유형별 통계
