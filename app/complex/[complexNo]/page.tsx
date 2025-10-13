@@ -121,13 +121,8 @@ export default function ComplexDetailPage() {
   };
 
   const getTradeTypeLabel = (tradeType: string) => {
-    const types: any = {
-      'A1': '매매',
-      'B1': '전세',
-      'B2': '월세',
-      'B3': '단기임대',
-    };
-    return types[tradeType] || tradeType;
+    // tradeTypeName이 이미 한글로 되어 있음
+    return tradeType;
   };
 
   if (loading) {
@@ -147,7 +142,7 @@ export default function ComplexDetailPage() {
 
   // 거래 유형별 통계
   const tradeStats = articles.reduce((acc: any, article: any) => {
-    const type = article.tradeTypeCode || article.tradeType;
+    const type = article.tradeTypeName || '기타';
     acc[type] = (acc[type] || 0) + 1;
     return acc;
   }, {});
@@ -155,7 +150,7 @@ export default function ComplexDetailPage() {
   // 필터링된 매물
   const filteredArticles = articles.filter((article: any) => {
     if (filterTradeType !== 'all') {
-      const tradeType = article.tradeTypeCode || article.tradeType;
+      const tradeType = article.tradeTypeName;
       if (tradeType !== filterTradeType) return false;
     }
 
@@ -181,8 +176,8 @@ export default function ComplexDetailPage() {
 
     switch (sortField) {
       case 'tradeType':
-        aVal = a.tradeTypeCode || a.tradeType;
-        bVal = b.tradeTypeCode || b.tradeType;
+        aVal = a.tradeTypeName || '';
+        bVal = b.tradeTypeName || '';
         break;
       case 'area':
         aVal = a.area1 || 0;
@@ -342,17 +337,17 @@ export default function ComplexDetailPage() {
               />
               <StatCard
                 label="매매"
-                value={tradeStats['A1'] || 0}
+                value={tradeStats['매매'] || 0}
                 color="red"
               />
               <StatCard
                 label="전세"
-                value={tradeStats['B1'] || 0}
+                value={tradeStats['전세'] || 0}
                 color="indigo"
               />
               <StatCard
                 label="월세"
-                value={tradeStats['B2'] || 0}
+                value={tradeStats['월세'] || 0}
                 color="green"
               />
             </div>
@@ -433,9 +428,9 @@ export default function ComplexDetailPage() {
                           className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
                         >
                           <option value="all">전체</option>
-                          <option value="A1">매매</option>
-                          <option value="B1">전세</option>
-                          <option value="B2">월세</option>
+                          <option value="매매">매매</option>
+                          <option value="전세">전세</option>
+                          <option value="월세">월세</option>
                         </select>
                       </div>
                       <div>
@@ -517,17 +512,17 @@ export default function ComplexDetailPage() {
                             <tr key={index} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
                               <td className="px-6 py-4 whitespace-nowrap">
                                 <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                                  (article.tradeTypeCode || article.tradeType) === 'A1'
+                                  article.tradeTypeName === '매매'
                                     ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
-                                    : (article.tradeTypeCode || article.tradeType) === 'B1'
+                                    : article.tradeTypeName === '전세'
                                     ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400'
                                     : 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
                                 }`}>
-                                  {getTradeTypeLabel(article.tradeTypeCode || article.tradeType)}
+                                  {article.tradeTypeName}
                                 </span>
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap">
-                                {(article.tradeTypeCode || article.tradeType) === 'B2' ? (
+                                {article.tradeTypeName === '월세' ? (
                                   <div className="text-sm">
                                     <div className="font-semibold text-gray-900 dark:text-white">
                                       보증 {formatPrice(article.dealOrWarrantPrc)}

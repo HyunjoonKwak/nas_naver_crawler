@@ -153,6 +153,8 @@ async function saveCrawlResultsToDB(crawlId: string, complexNos: string[]) {
           floorInfo: article.floorInfo,
           direction: article.direction,
           articleConfirmYmd: article.articleConfirmYmd,
+          buildingName: article.buildingName,
+          sameAddrCnt: article.sameAddrCnt ? parseInt(article.sameAddrCnt) : null,
           tagList: article.tagList || [],
         });
       }

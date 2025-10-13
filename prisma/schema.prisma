@@ -59,6 +59,8 @@ model Article {
   floorInfo           String?  // 층 정보 (예: "5/15")
   direction           String?  // 방향
   articleConfirmYmd   String?  // 매물 확인 일자
+  buildingName        String?  // 동
+  sameAddrCnt         Int?     // 중복 건수
 
   // 추가 정보 (JSON)
   tagList             Json?    // 태그 리스트
