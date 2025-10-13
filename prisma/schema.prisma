@@ -76,16 +76,23 @@ model Article {
 
 // 크롤링 히스토리 테이블
 model CrawlHistory {
-  id             String   @id @default(uuid())
-  complexNos     String[] // 크롤링한 단지 번호들
-  totalComplexes Int      // 크롤링한 총 단지 수
-  successCount   Int      // 성공한 단지 수
-  errorCount     Int      // 실패한 단지 수
-  totalArticles  Int      // 수집한 총 매물 수
-  duration       Int      // 소요 시간 (ms)
-  status         String   // success, partial, failed
-  errorMessage   String?  // 에러 메시지
-  createdAt      DateTime @default(now())
+  id                String   @id @default(uuid())
+  complexNos        String[] // 크롤링한 단지 번호들
+  totalComplexes    Int      // 크롤링한 총 단지 수
+  successCount      Int      // 성공한 단지 수
+  errorCount        Int      // 실패한 단지 수
+  totalArticles     Int      // 수집한 총 매물 수
+  duration          Int      // 소요 시간 (ms)
+  status            String   // crawling, saving, success, partial, failed
+  errorMessage      String?  // 에러 메시지
+
+  // Progress tracking fields
+  currentStep       String?  // current operation step
+  processedArticles Int      @default(0) // 처리된 매물 수
+  processedComplexes Int     @default(0) // 처리된 단지 수
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
   @@index([createdAt])
   @@index([status])

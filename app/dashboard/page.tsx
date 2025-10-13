@@ -22,6 +22,13 @@ export default function DashboardPage() {
   const [crawling, setCrawling] = useState<string | null>(null);
   const [crawlingAll, setCrawlingAll] = useState(false);
   const [selectedComplex, setSelectedComplex] = useState<{ complexNo: string; data: ComplexData } | null>(null);
+  const [crawlProgress, setCrawlProgress] = useState<{
+    crawlId: string | null;
+    status: string;
+    currentStep: string;
+    complexProgress: number;
+    processedArticles: number;
+  } | null>(null);
   
   // 단지 추가 폼
   const [showAddForm, setShowAddForm] = useState(false);
@@ -103,6 +110,7 @@ export default function DashboardPage() {
   const handleCrawlComplex = async (complexNo: string) => {
     setCrawling(complexNo);
     try {
+      // 크롤링 시작
       const response = await fetch('/api/crawl', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -111,7 +119,9 @@ export default function DashboardPage() {
 
       const data = await response.json();
 
-      if (response.ok) {
+      if (response.ok && data.crawlId) {
+        // 폴링으로 진행 상황 추적
+        await pollCrawlStatus(data.crawlId);
         // 단지 정보 업데이트
         await updateFavoriteInfo(complexNo);
         alert(`${complexNo} 크롤링 완료`);
@@ -123,7 +133,50 @@ export default function DashboardPage() {
       alert('크롤링 중 오류가 발생했습니다.');
     } finally {
       setCrawling(null);
+      setCrawlProgress(null);
     }
+  };
+
+  const pollCrawlStatus = async (crawlId: string) => {
+    return new Promise<void>((resolve, reject) => {
+      const interval = setInterval(async () => {
+        try {
+          const response = await fetch(`/api/crawl-status?crawlId=${crawlId}`);
+          const data = await response.json();
+
+          if (!response.ok) {
+            clearInterval(interval);
+            reject(new Error(data.error || 'Failed to get status'));
+            return;
+          }
+
+          // 진행 상황 업데이트
+          setCrawlProgress({
+            crawlId: data.crawlId,
+            status: data.status,
+            currentStep: data.progress?.currentStep || 'Processing...',
+            complexProgress: data.progress?.complexProgress || 0,
+            processedArticles: data.progress?.processedArticles || 0,
+          });
+
+          // 완료 또는 실패 시 폴링 중지
+          if (data.status === 'success' || data.status === 'partial' || data.status === 'failed') {
+            clearInterval(interval);
+            resolve();
+          }
+        } catch (error) {
+          console.error('Polling error:', error);
+          clearInterval(interval);
+          reject(error);
+        }
+      }, 2000); // 2초마다 폴링
+
+      // 최대 15분 타임아웃
+      setTimeout(() => {
+        clearInterval(interval);
+        reject(new Error('Crawl timeout'));
+      }, 900000);
+    });
   };
 
   const handleCrawlAll = async () => {
@@ -139,6 +192,7 @@ export default function DashboardPage() {
     const complexNos = favorites.map(f => f.complexNo).join(',');
 
     try {
+      // 크롤링 시작
       const response = await fetch('/api/crawl', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -147,7 +201,9 @@ export default function DashboardPage() {
 
       const data = await response.json();
 
-      if (response.ok) {
+      if (response.ok && data.crawlId) {
+        // 폴링으로 진행 상황 추적
+        await pollCrawlStatus(data.crawlId);
         // 모든 단지 정보 업데이트
         for (const complexNo of favorites.map(f => f.complexNo)) {
           await updateFavoriteInfo(complexNo);
@@ -162,6 +218,7 @@ export default function DashboardPage() {
       alert('크롤링 중 오류가 발생했습니다.');
     } finally {
       setCrawlingAll(false);
+      setCrawlProgress(null);
     }
   };
 
@@ -284,6 +341,36 @@ export default function DashboardPage() {
               등록된 단지: <span className="font-bold text-blue-600 dark:text-blue-400">{favorites.length}개</span>
             </div>
           </div>
+
+          {/* Progress Bar */}
+          {crawlProgress && (crawlingAll || crawling) && (
+            <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="font-medium text-gray-700 dark:text-gray-300">
+                    {crawlProgress.currentStep}
+                  </span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">
+                    {crawlProgress.status === 'crawling' ? '🔍 크롤링 중' :
+                     crawlProgress.status === 'saving' ? '💾 데이터베이스 저장 중' :
+                     '✅ 완료'}
+                  </span>
+                </div>
+                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5">
+                  <div
+                    className="bg-blue-600 h-2.5 rounded-full transition-all duration-300"
+                    style={{ width: `${crawlProgress.complexProgress}%` }}
+                  ></div>
+                </div>
+                <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
+                  <span>진행률: {crawlProgress.complexProgress}%</span>
+                  {crawlProgress.processedArticles > 0 && (
+                    <span>처리된 매물: {crawlProgress.processedArticles}개</span>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Add Form */}
           {showAddForm && (
