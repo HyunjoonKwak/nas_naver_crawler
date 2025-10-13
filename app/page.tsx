@@ -61,15 +61,14 @@ export default function Home() {
 
       // 크롤링 데이터로 favorites.json 동기화
       for (const result of results) {
-        const data = Array.isArray(result.data) ? result.data[0] : result.data;
-        if (data?.overview?.complexNo) {
+        if (result?.overview?.complexNo) {
           await fetch('/api/favorites', {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              complexNo: data.overview.complexNo,
-              complexName: data.overview.complexName,
-              articleCount: data.articles?.articleList?.length || 0
+              complexNo: result.overview.complexNo,
+              complexName: result.overview.complexName,
+              articleCount: result.articles?.length || 0
             })
           });
         }
@@ -82,34 +81,31 @@ export default function Home() {
 
       // 통계 계산
       const totalArticles = results.reduce((sum: number, result: any) => {
-        const data = Array.isArray(result.data) ? result.data[0] : result.data;
-        return sum + (data?.articles?.articleList?.length || 0);
+        return sum + (result?.articles?.length || 0);
       }, 0);
 
       // 선호 단지별 상세 통계 계산
       const favoritesWithStats = favList.map((fav: FavoriteComplex) => {
         // 해당 단지의 최신 크롤링 데이터 찾기
         const complexResult = results.find((result: any) => {
-          const data = Array.isArray(result.data) ? result.data[0] : result.data;
-          return data?.overview?.complexNo === fav.complexNo;
+          return result?.overview?.complexNo === fav.complexNo;
         });
 
         if (complexResult) {
-          const data = Array.isArray(complexResult.data) ? complexResult.data[0] : complexResult.data;
-          const articles = data?.articles?.articleList || [];
+          const articles = complexResult?.articles || [];
 
           // 거래유형별 통계
           const stats: ArticleStats = {
             total: articles.length,
-            A1: articles.filter((a: any) => (a.tradeTypeCode || a.tradeType) === 'A1').length,
-            B1: articles.filter((a: any) => (a.tradeTypeCode || a.tradeType) === 'B1').length,
-            B2: articles.filter((a: any) => (a.tradeTypeCode || a.tradeType) === 'B2').length,
+            A1: articles.filter((a: any) => a.tradeTypeName === '매매').length,
+            B1: articles.filter((a: any) => a.tradeTypeName === '전세').length,
+            B2: articles.filter((a: any) => a.tradeTypeName === '월세').length,
           };
 
           return {
             ...fav,
             stats,
-            complexName: data?.overview?.complexName || fav.complexName,
+            complexName: complexResult?.overview?.complexName || fav.complexName,
           };
         }
 
