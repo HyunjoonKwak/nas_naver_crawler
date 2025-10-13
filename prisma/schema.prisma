@@ -26,6 +26,7 @@ model Complex {
   jibunAddress   String?   // 지번 주소
   beopjungdong   String?   // 법정동
   haengjeongdong String?   // 행정동
+  pyeongs        Json?     // 평형별 타입 정보
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 

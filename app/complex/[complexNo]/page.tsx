@@ -352,6 +352,49 @@ export default function ComplexDetailPage() {
                 color="green"
               />
             </div>
+
+            {/* 평형별 타입 정보 */}
+            {overview.pyeongs && Array.isArray(overview.pyeongs) && overview.pyeongs.length > 0 && (
+              <div className="mt-6 bg-gradient-to-br from-gray-50 to-white dark:from-gray-900 dark:to-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+                <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+                  <span className="text-lg">📐</span>
+                  평형별 타입 정보
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                  {overview.pyeongs.map((pyeong: any, index: number) => (
+                    <div key={index} className="bg-white dark:bg-gray-800 rounded-lg p-3 border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow">
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex-1">
+                          <div className="font-bold text-blue-600 dark:text-blue-400 text-lg">
+                            {pyeong.pyeongName}
+                          </div>
+                          <div className="text-xs text-gray-500 dark:text-gray-400">
+                            {pyeong.pyeongName2}평
+                          </div>
+                        </div>
+                        <div className="text-xs text-gray-400 dark:text-gray-500">
+                          #{pyeong.pyeongNo}
+                        </div>
+                      </div>
+                      <div className="space-y-1 text-xs">
+                        <div className="flex justify-between">
+                          <span className="text-gray-600 dark:text-gray-400">전용면적:</span>
+                          <span className="font-semibold text-gray-900 dark:text-white">
+                            {pyeong.exclusiveArea}㎡ ({pyeong.exclusivePyeong}평)
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-600 dark:text-gray-400">공급면적:</span>
+                          <span className="font-semibold text-gray-900 dark:text-white">
+                            {pyeong.supplyArea}㎡
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

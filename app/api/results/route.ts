@@ -77,6 +77,7 @@ export async function GET(request: NextRequest) {
             jibunAddress: article.complex.jibunAddress,
             beopjungdong: article.complex.beopjungdong,
             haengjeongdong: article.complex.haengjeongdong,
+            pyeongs: article.complex.pyeongs,
           },
           articles: [],
         });

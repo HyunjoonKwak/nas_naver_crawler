@@ -90,6 +90,7 @@ async function saveCrawlResultsToDB(crawlId: string, complexNos: string[]) {
         jibunAddress: overview.jibunAddress,
         beopjungdong: overview.beopjungdong,
         haengjeongdong: overview.haengjeongdong,
+        pyeongs: overview.pyeongs || [],
       });
 
       // Progress update
