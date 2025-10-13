@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
     const maxPrice = searchParams.get('maxPrice');
     const minArea = searchParams.get('minArea');
     const maxArea = searchParams.get('maxArea');
-    const limit = parseInt(searchParams.get('limit') || '100');
+    const limit = parseInt(searchParams.get('limit') || '10000'); // 충분히 큰 기본값으로 변경
     const offset = parseInt(searchParams.get('offset') || '0');
 
     // WHERE 조건 구성
