@@ -503,6 +503,12 @@ export default function ComplexDetailPage() {
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                               중개소
                             </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
+                              중복
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
+                              매물특징
+                            </th>
                             <th
                               onClick={() => handleSort('date')}
                               className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800"
@@ -552,6 +558,16 @@ export default function ComplexDetailPage() {
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">
                                 {article.realtorName || '-'}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-center text-gray-600 dark:text-gray-300">
+                                {article.sameAddrCnt ? (
+                                  <span className="inline-flex items-center justify-center w-6 h-6 text-xs font-semibold rounded-full bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400">
+                                    {article.sameAddrCnt}
+                                  </span>
+                                ) : '-'}
+                              </td>
+                              <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-300 max-w-xs truncate" title={article.articleFeatureDesc || ''}>
+                                {article.articleFeatureDesc || '-'}
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                                 {(() => {
