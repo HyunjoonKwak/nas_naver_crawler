@@ -42,13 +42,11 @@ export default function ComplexDetailPage() {
 
       if (result.results) {
         const complexData = result.results.find((r: any) => {
-          const data = Array.isArray(r.data) ? r.data[0] : r.data;
-          return data?.overview?.complexNo === complexNo;
+          return r.overview?.complexNo === complexNo;
         });
 
         if (complexData) {
-          const parsedData = Array.isArray(complexData.data) ? complexData.data[0] : complexData.data;
-          setData(parsedData);
+          setData(complexData);
         }
       }
     } catch (error) {
