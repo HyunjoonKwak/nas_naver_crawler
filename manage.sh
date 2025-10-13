@@ -75,24 +75,27 @@ restart_server() {
 check_status() {
     log_info "시스템 상태 확인 중..."
     echo ""
-    
-    # 프로덕션/개발 모드 확인 (개발 모드를 먼저 체크)
-    if docker ps --format "{{.Names}}" | grep -q "^naver-crawler-web-dev$"; then
-        log_blue "🔧 개발 모드 실행 중"
+
+    # 컨테이너 실행 여부 확인
+    if docker ps --format "{{.Names}}" | grep -q "^naver-crawler-web$"; then
+        # 컨테이너에서 실행 중인 명령어로 모드 판단
+        CONTAINER_CMD=$(docker inspect naver-crawler-web --format='{{.Config.Cmd}}' 2>/dev/null | grep -o "npm run [a-z]*" || echo "")
+
+        if echo "$CONTAINER_CMD" | grep -q "npm run dev"; then
+            log_blue "🔧 개발 모드 실행 중"
+            echo "   - Hot Reload 활성화"
+            echo "   - Dockerfile.dev 사용 중"
+        else
+            log_blue "🚀 프로덕션 모드 실행 중"
+            echo "   - 빌드된 애플리케이션"
+        fi
+
         echo ""
-        echo "=== 개발 모드 컨테이너 상태 ==="
-        docker-compose -f docker-compose.dev.yml ps
-        echo ""
-        echo "=== 리소스 사용량 ==="
-        docker stats --no-stream naver-crawler-web-dev 2>/dev/null
-    elif docker ps --format "{{.Names}}" | grep -q "^naver-crawler-web$"; then
-        log_blue "🚀 프로덕션 모드 실행 중"
-        echo ""
-        echo "=== 프로덕션 컨테이너 상태 ==="
+        echo "=== 컨테이너 상태 ==="
         docker-compose ps
         echo ""
         echo "=== 리소스 사용량 ==="
-        docker stats --no-stream naver-crawler-web 2>/dev/null
+        docker stats --no-stream naver-crawler-web naver-crawler-db 2>/dev/null
     else
         log_warn "웹서버가 실행 중이 아닙니다."
     fi
@@ -113,19 +116,28 @@ check_status() {
 view_logs() {
     log_info "로그 확인 중..."
     echo ""
-    
-    # 개발/프로덕션 모드 확인 (개발 모드를 먼저 체크)
-    if docker ps --format "{{.Names}}" | grep -q "^naver-crawler-web-dev$"; then
-        log_blue "개발 모드 로그를 확인합니다. (Ctrl+C로 종료)"
-        sleep 2
-        docker-compose -f docker-compose.dev.yml logs -f --tail=100 -t web
-    elif docker ps --format "{{.Names}}" | grep -q "^naver-crawler-web$"; then
-        log_blue "프로덕션 모드 로그를 확인합니다. (Ctrl+C로 종료)"
-        sleep 2
-        docker-compose logs -f web
-    else
+
+    # 컨테이너가 실행 중인지 확인
+    if ! docker ps --format "{{.Names}}" | grep -q "^naver-crawler-web$"; then
         log_error "실행 중인 웹서버가 없습니다."
+        return 1
     fi
+
+    # 컨테이너에서 실행 중인 명령어 확인 (npm run dev vs npm start)
+    CONTAINER_CMD=$(docker inspect naver-crawler-web --format='{{.Config.Cmd}}' 2>/dev/null | grep -o "npm run [a-z]*" || echo "")
+
+    if echo "$CONTAINER_CMD" | grep -q "npm run dev"; then
+        log_blue "🔧 개발 모드 로그를 확인합니다. (Ctrl+C로 종료)"
+        echo "   - Hot Reload 활성화"
+        echo "   - Dockerfile.dev 사용 중"
+    else
+        log_blue "🚀 프로덕션 모드 로그를 확인합니다. (Ctrl+C로 종료)"
+        echo "   - 빌드된 애플리케이션 실행 중"
+    fi
+
+    echo ""
+    sleep 2
+    docker-compose logs -f --tail=100 web
 }
 
 build_image() {

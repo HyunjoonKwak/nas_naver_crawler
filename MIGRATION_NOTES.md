@@ -110,19 +110,33 @@ Python 크롤러가 **직접 PostgreSQL DB에 실시간 상태를 저장**하도
 
 ## 🚀 배포 방법
 
-### NAS 환경 (개발 모드 - Hot Reload)
+### ⚠️ 이번 배포는 의존성 변경이 있으므로 --no-cache 필수!
+
+**NAS 환경 - 의존성 변경 배포:**
+```bash
+cd /volume1/docker/naver-crawler
+git pull origin main
+
+# 기존 컨테이너 중지
+docker-compose down
+
+# 캐시 없이 새로 빌드 (psycopg2, libpq-dev 설치)
+docker-compose build --no-cache
+
+# 컨테이너 시작
+docker-compose up -d
+```
+
+**또는 한 줄로:**
+```bash
+cd /volume1/docker/naver-crawler && git pull origin main && docker-compose down && docker-compose build --no-cache && docker-compose up -d
+```
+
+**이후 코드만 변경된 경우 (Hot Reload 모드):**
 ```bash
 cd /volume1/docker/naver-crawler
 git pull origin main
 docker-compose restart web  # 3초 완료!
-```
-
-### 처음 배포 시 (DB 마이그레이션 필요 없음)
-```bash
-cd /volume1/docker/naver-crawler
-git pull origin main
-docker-compose down
-docker-compose up -d --build  # 새 이미지 빌드
 ```
 
 ---
@@ -138,9 +152,11 @@ environment:
   - DATABASE_URL=postgresql://crawler_user:crawler_pass_2025@db:5432/naver_crawler
 ```
 
-### 2. psycopg2 의존성
-- 새로운 Docker 이미지 빌드 필요
-- `pip install psycopg2-binary==2.9.9` 자동 설치됨
+### 2. psycopg2 의존성 ⚠️ 중요!
+- **반드시 `--no-cache` 옵션으로 빌드 필요**
+- 새로운 시스템 패키지: `libpq-dev`
+- 새로운 Python 패키지: `psycopg2-binary==2.9.9`
+- 캐시를 사용하면 설치되지 않아 에러 발생!
 
 ### 3. 호환성
 - 기존 JSON 파일은 그대로 유지 (백업용)
