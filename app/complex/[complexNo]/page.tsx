@@ -37,17 +37,18 @@ export default function ComplexDetailPage() {
   const fetchComplexData = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/results');
+      const response = await fetch(`/api/results?complexNo=${complexNo}`);
       const result = await response.json();
 
-      if (result.results) {
-        const complexData = result.results.find((r: any) => {
-          return r.overview?.complexNo === complexNo;
-        });
+      console.log('API Response:', result);
 
-        if (complexData) {
-          setData(complexData);
-        }
+      if (result.results && result.results.length > 0) {
+        const complexData = result.results[0];
+        console.log('Complex Data:', complexData);
+        console.log('Articles:', complexData.articles);
+        setData(complexData);
+      } else {
+        console.log('No data found for complex:', complexNo);
       }
     } catch (error) {
       console.error('Failed to fetch complex data:', error);
