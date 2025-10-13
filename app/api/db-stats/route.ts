@@ -23,10 +23,8 @@ export async function GET() {
       // 전체 매물 수
       prisma.article.count(),
 
-      // 관심 단지 수
-      prisma.complex.count({
-        where: { isFavorite: true },
-      }),
+      // 관심 단지 수 (Favorite 테이블 기반)
+      prisma.favorite.count(),
 
       // 전체 크롤링 기록 수
       prisma.crawlHistory.count(),
