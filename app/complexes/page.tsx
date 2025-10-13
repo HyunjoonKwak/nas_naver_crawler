@@ -24,6 +24,13 @@ export default function ComplexesPage() {
   const [loading, setLoading] = useState(true);
   const [crawling, setCrawling] = useState<string | null>(null);
   const [crawlingAll, setCrawlingAll] = useState(false);
+  const [crawlProgress, setCrawlProgress] = useState<{
+    crawlId: string | null;
+    status: string;
+    currentStep: string;
+    complexProgress: number;
+    processedArticles: number;
+  } | null>(null);
 
   // 단지 추가 폼
   const [showAddForm, setShowAddForm] = useState(false);
@@ -211,17 +218,68 @@ export default function ComplexesPage() {
     }
   };
 
+  // DB 기반 폴링 함수
+  const pollCrawlStatus = async (crawlId: string) => {
+    return new Promise<void>((resolve, reject) => {
+      let pollCount = 0;
+      const maxPolls = 450; // 15분
+
+      const interval = setInterval(async () => {
+        try {
+          pollCount++;
+          console.log(`[Complexes] Polling ${pollCount}/${maxPolls} for crawlId: ${crawlId}`);
+
+          const response = await fetch(`/api/crawl-status?crawlId=${crawlId}`);
+          const data = await response.json();
+
+          console.log('[Complexes] Status:', data.status, 'Progress:', data.progress);
+
+          if (!response.ok) {
+            console.error('[Complexes] API error:', data.error);
+            clearInterval(interval);
+            reject(new Error(data.error || 'Failed to get status'));
+            return;
+          }
+
+          // 진행 상황 업데이트
+          setCrawlProgress({
+            crawlId: data.crawlId,
+            status: data.status,
+            currentStep: data.progress?.currentStep || 'Processing...',
+            complexProgress: data.progress?.complexProgress || 0,
+            processedArticles: data.progress?.processedArticles || 0,
+          });
+
+          // 완료 또는 실패 시 폴링 중지
+          if (data.status === 'success' || data.status === 'partial' || data.status === 'failed') {
+            console.log('[Complexes] Completed with status:', data.status);
+            clearInterval(interval);
+            resolve();
+            return;
+          }
+
+          // 타임아웃 체크
+          if (pollCount >= maxPolls) {
+            console.error('[Complexes] Timeout reached');
+            clearInterval(interval);
+            reject(new Error('Crawl timeout - exceeded 15 minutes'));
+            return;
+          }
+        } catch (error) {
+          console.error('[Complexes] Polling error:', error);
+          clearInterval(interval);
+          reject(error);
+        }
+      }, 2000); // 2초마다 폴링
+    });
+  };
+
   const handleCrawlComplex = async (complexNo: string) => {
     setCrawling(complexNo);
-
-    // 서버에 크롤링 시작 상태 저장
-    await fetch('/api/crawl-state', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ isCrawling: true, complexCount: 1, currentComplex: complexNo })
-    });
+    setCrawlProgress(null);
 
     try {
+      // 크롤링 시작
       const response = await fetch('/api/crawl', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -230,35 +288,15 @@ export default function ComplexesPage() {
 
       const data = await response.json();
 
-      if (response.ok) {
-        // 단지 정보 업데이트
-        await updateFavoriteInfo(complexNo);
+      if (response.ok && data.crawlId) {
+        // 폴링으로 진행 상황 추적
+        await pollCrawlStatus(data.crawlId);
+
         // UI 갱신
         await fetchFavorites();
 
-        // 크롤 상태 및 시스템 상태 조회
-        const [crawlStatusResponse, systemStatusResponse] = await Promise.all([
-          fetch('/api/crawl-status'),
-          fetch('/api/status')
-        ]);
-        const crawlStatus = await crawlStatusResponse.json();
-        const systemStatus = await systemStatusResponse.json();
-
         const complexName = favorites.find(f => f.complexNo === complexNo)?.complexName || complexNo;
-        const articleCount = crawlStatus.items_collected || 0;
-        const elapsedTime = crawlStatus.elapsed_seconds || 0;
-        const speed = crawlStatus.speed || 0;
-
-        alert(
-          `✅ 크롤링 완료!\n\n` +
-          `📌 단지: ${complexName}\n` +
-          `🏠 수집된 매물: ${articleCount}개\n` +
-          `⏱️ 소요 시간: ${elapsedTime}초\n` +
-          `⚡ 수집 속도: ${speed}개/초\n\n` +
-          `📊 시스템 상태:\n` +
-          `• 전체 크롤링 파일: ${systemStatus.crawledDataCount || 0}개\n` +
-          `• 선호 단지: ${systemStatus.favoritesCount || 0}개`
-        );
+        alert(`✅ ${complexName} 크롤링 완료!`);
       } else {
         alert(data.error || '크롤링 실패');
       }
@@ -267,12 +305,7 @@ export default function ComplexesPage() {
       alert('크롤링 중 오류가 발생했습니다.');
     } finally {
       setCrawling(null);
-      // 서버에 크롤링 완료 상태 저장
-      await fetch('/api/crawl-state', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ isCrawling: false })
-      });
+      setCrawlProgress(null);
     }
   };
 
@@ -286,16 +319,11 @@ export default function ComplexesPage() {
     if (!confirmed) return;
 
     setCrawlingAll(true);
+    setCrawlProgress(null);
     const complexNos = favorites.map(f => f.complexNo).join(',');
 
-    // 서버에 크롤링 시작 상태 저장
-    await fetch('/api/crawl-state', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ isCrawling: true, complexCount: favorites.length })
-    });
-
     try {
+      // 크롤링 시작
       const response = await fetch('/api/crawl', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -304,36 +332,14 @@ export default function ComplexesPage() {
 
       const data = await response.json();
 
-      if (response.ok) {
-        // 모든 단지 정보 업데이트
-        for (const complexNo of favorites.map(f => f.complexNo)) {
-          await updateFavoriteInfo(complexNo);
-        }
+      if (response.ok && data.crawlId) {
+        // 폴링으로 진행 상황 추적
+        await pollCrawlStatus(data.crawlId);
+
+        // UI 갱신
         await fetchFavorites();
 
-        // 크롤 상태 및 시스템 상태 조회
-        const [crawlStatusResponse, systemStatusResponse] = await Promise.all([
-          fetch('/api/crawl-status'),
-          fetch('/api/status')
-        ]);
-        const crawlStatus = await crawlStatusResponse.json();
-        const systemStatus = await systemStatusResponse.json();
-
-        const totalArticles = crawlStatus.items_collected || 0;
-        const elapsedTime = crawlStatus.elapsed_seconds || 0;
-        const speed = crawlStatus.speed || 0;
-
-        alert(
-          `✅ 전체 크롤링 완료!\n\n` +
-          `📌 크롤링된 단지: ${favorites.length}개\n` +
-          `🏠 전체 매물 수: ${totalArticles}개\n` +
-          `⏱️ 소요 시간: ${elapsedTime}초\n` +
-          `⚡ 수집 속도: ${speed}개/초\n\n` +
-          `📊 시스템 상태:\n` +
-          `• 전체 크롤링 파일: ${systemStatus.crawledDataCount || 0}개\n` +
-          `• 선호 단지: ${systemStatus.favoritesCount || 0}개\n` +
-          `• 디스크 사용량: ${systemStatus.crawledDataSize || '알 수 없음'}`
-        );
+        alert(`✅ 전체 크롤링 완료!\n\n크롤링된 단지: ${favorites.length}개`);
       } else {
         alert(data.error || '크롤링 실패');
       }
@@ -342,12 +348,7 @@ export default function ComplexesPage() {
       alert('크롤링 중 오류가 발생했습니다.');
     } finally {
       setCrawlingAll(false);
-      // 서버에 크롤링 완료 상태 저장
-      await fetch('/api/crawl-state', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ isCrawling: false })
-      });
+      setCrawlProgress(null);
     }
   };
 
@@ -525,48 +526,49 @@ export default function ComplexesPage() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Crawling Status Banner */}
         {(crawlingAll || crawling) && (
-          <div className="bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20 border-2 border-yellow-400 dark:border-yellow-600 rounded-lg p-4 mb-6 shadow-lg">
-            <div className="flex items-center gap-4">
-              <div className="flex-shrink-0">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-600 dark:border-yellow-400"></div>
-              </div>
-              <div className="flex-1">
-                <h3 className="text-lg font-bold text-yellow-900 dark:text-yellow-200 mb-1">
-                  {crawlingAll ? '⏳ 전체 크롤링 진행 중' : '⏳ 크롤링 진행 중'}
-                </h3>
-                <p className="text-sm text-yellow-800 dark:text-yellow-300">
-                  {serverCrawlState?.isCrawling && serverCrawlState.complexCount ? (
-                    <>
-                      {serverCrawlState.complexCount}개 단지의 데이터를 수집하고 있습니다.
-                      {serverCrawlState.currentComplex && (
-                        <span className="block mt-1">
-                          현재 수집 중: <span className="font-semibold">{serverCrawlState.currentComplex}</span>
-                        </span>
-                      )}
-                      {serverCrawlState.startTime && (() => {
-                        const elapsed = Math.floor((Date.now() - new Date(serverCrawlState.startTime).getTime()) / 1000);
-                        const minutes = Math.floor(elapsed / 60);
-                        const seconds = elapsed % 60;
-                        return (
-                          <span className="block mt-1 text-xs">
-                            경과 시간: {minutes > 0 ? `${minutes}분 ` : ''}{seconds}초
-                          </span>
-                        );
-                      })()}
-                    </>
-                  ) : crawlingAll ? (
-                    `${favorites.length}개 단지의 데이터를 수집하고 있습니다. 잠시만 기다려주세요.`
-                  ) : (
-                    '데이터를 수집하고 있습니다. 잠시만 기다려주세요.'
+          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-2 border-blue-400 dark:border-blue-600 rounded-lg p-4 mb-6 shadow-lg">
+            <div className="space-y-3">
+              <div className="flex items-center gap-4">
+                <div className="flex-shrink-0">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 dark:border-blue-400"></div>
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-bold text-blue-900 dark:text-blue-200 mb-1">
+                    {crawlingAll ? '⏳ 전체 크롤링 진행 중' : '⏳ 크롤링 진행 중'}
+                  </h3>
+                  {crawlProgress && (
+                    <p className="text-sm text-blue-800 dark:text-blue-300">
+                      {crawlProgress.currentStep}
+                      {crawlProgress.status === 'crawling' && ' 🔍'}
+                      {crawlProgress.status === 'saving' && ' 💾'}
+                    </p>
                   )}
-                </p>
-                <p className="text-xs text-yellow-700 dark:text-yellow-400 mt-2">
-                  ⚠️ 크롤링이 완료될 때까지 페이지를 닫지 마세요.
-                  {serverCrawlState?.isCrawling && (
-                    <span className="ml-2">다른 기기에서도 크롤링 진행 상태가 표시됩니다.</span>
-                  )}
-                </p>
+                </div>
               </div>
+
+              {/* 프로그레스 바 */}
+              {crawlProgress && (
+                <div className="space-y-2">
+                  <div className="w-full bg-blue-100 dark:bg-blue-900/30 rounded-full h-3 overflow-hidden">
+                    <div
+                      className="bg-blue-600 dark:bg-blue-500 h-full rounded-full transition-all duration-300 ease-out relative overflow-hidden"
+                      style={{ width: `${crawlProgress.complexProgress}%` }}
+                    >
+                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shimmer"></div>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between text-xs text-blue-700 dark:text-blue-400">
+                    <span>진행률: {crawlProgress.complexProgress}%</span>
+                    {crawlProgress.processedArticles > 0 && (
+                      <span>처리된 매물: {crawlProgress.processedArticles}개</span>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              <p className="text-xs text-blue-700 dark:text-blue-400">
+                ⚠️ 크롤링이 완료될 때까지 페이지를 닫지 마세요.
+              </p>
             </div>
           </div>
         )}

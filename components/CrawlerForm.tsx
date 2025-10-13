@@ -7,17 +7,14 @@ interface CrawlerFormProps {
 }
 
 interface CrawlStatus {
-  status: 'idle' | 'running' | 'completed' | 'error';
-  progress: number;
-  total: number;
-  percent: number;
-  current_complex: string;
-  message: string;
-  timestamp: string;
-  elapsed_seconds: number;
-  estimated_total_seconds: number;
-  items_collected: number;
-  speed: number;
+  crawlId?: string;
+  status: string; // 'crawling', 'saving', 'success', 'partial', 'failed'
+  currentStep: string;
+  complexProgress: number;
+  processedArticles: number;
+  processedComplexes?: number;
+  totalComplexes?: number;
+  duration?: number;
 }
 
 export default function CrawlerForm({ onCrawlComplete }: CrawlerFormProps) {
@@ -26,6 +23,7 @@ export default function CrawlerForm({ onCrawlComplete }: CrawlerFormProps) {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [crawlStatus, setCrawlStatus] = useState<CrawlStatus | null>(null);
+  const [currentCrawlId, setCurrentCrawlId] = useState<string | null>(null);
   const statusIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // 시간을 MM:SS 형식으로 변환
@@ -35,41 +33,76 @@ export default function CrawlerForm({ onCrawlComplete }: CrawlerFormProps) {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // 크롤링 상태 폴링
-  const startStatusPolling = () => {
+  // 크롤링 상태 폴링 (DB 기반)
+  const startStatusPolling = (crawlId: string) => {
     if (statusIntervalRef.current) {
       clearInterval(statusIntervalRef.current);
     }
 
+    setCurrentCrawlId(crawlId);
+    let pollCount = 0;
+    const maxPolls = 450; // 15분
+
     statusIntervalRef.current = setInterval(async () => {
       try {
-        const response = await fetch('/api/crawl-status');
+        pollCount++;
+        console.log(`[CrawlerForm] Polling ${pollCount}/${maxPolls} for crawlId: ${crawlId}`);
+
+        const response = await fetch(`/api/crawl-status?crawlId=${crawlId}`);
         const data = await response.json();
-        
-        if (data.status === 'idle') {
-          setCrawlStatus(null);
+
+        console.log('[CrawlerForm] Status:', data.status, 'Progress:', data.progress);
+
+        if (!response.ok) {
+          console.error('[CrawlerForm] API error:', data.error);
           stopStatusPolling();
-        } else {
-          setCrawlStatus(data);
-          
-          // 완료 또는 에러 상태면 폴링 중지
-          if (data.status === 'completed' || data.status === 'error') {
-            stopStatusPolling();
-            
-            if (data.status === 'completed') {
-              setMessage(data.message || '✅ 크롤링 완료!');
-              onCrawlComplete();
-            } else {
-              setError(data.message || '❌ 크롤링 실패');
-            }
-            
-            setLoading(false);
+          setError(data.error || '❌ 상태 조회 실패');
+          setLoading(false);
+          return;
+        }
+
+        // 진행 상황 업데이트
+        setCrawlStatus({
+          crawlId: data.crawlId,
+          status: data.status,
+          currentStep: data.progress?.currentStep || 'Processing...',
+          complexProgress: data.progress?.complexProgress || 0,
+          processedArticles: data.progress?.processedArticles || 0,
+          processedComplexes: data.progress?.processedComplexes || 0,
+          totalComplexes: data.progress?.totalComplexes || 0,
+          duration: data.duration || 0,
+        });
+
+        // 완료 또는 실패 시 폴링 중지
+        if (data.status === 'success' || data.status === 'partial' || data.status === 'failed') {
+          console.log('[CrawlerForm] Completed with status:', data.status);
+          stopStatusPolling();
+
+          if (data.status === 'success' || data.status === 'partial') {
+            setMessage('✅ 크롤링 완료!');
+            onCrawlComplete();
+          } else {
+            setError(data.errorMessage || '❌ 크롤링 실패');
           }
+
+          setLoading(false);
+          return;
+        }
+
+        // 타임아웃 체크
+        if (pollCount >= maxPolls) {
+          console.error('[CrawlerForm] Timeout reached');
+          stopStatusPolling();
+          setError('❌ 타임아웃 - 15분 초과');
+          setLoading(false);
         }
       } catch (err) {
-        console.error('상태 확인 중 오류:', err);
+        console.error('[CrawlerForm] Polling error:', err);
+        stopStatusPolling();
+        setError('❌ 상태 확인 중 오류 발생');
+        setLoading(false);
       }
-    }, 1000); // 1초마다 폴링
+    }, 2000); // 2초마다 폴링
   };
 
   const stopStatusPolling = () => {
@@ -77,6 +110,7 @@ export default function CrawlerForm({ onCrawlComplete }: CrawlerFormProps) {
       clearInterval(statusIntervalRef.current);
       statusIntervalRef.current = null;
     }
+    setCurrentCrawlId(null);
   };
 
   // 컴포넌트 언마운트 시 폴링 중지
@@ -95,10 +129,7 @@ export default function CrawlerForm({ onCrawlComplete }: CrawlerFormProps) {
 
     try {
       const numbers = complexNumbers.split(',').map(n => n.trim()).filter(Boolean);
-      
-      // 크롤링 시작과 동시에 상태 폴링 시작
-      startStatusPolling();
-      
+
       const response = await fetch('/api/crawl', {
         method: 'POST',
         headers: {
@@ -109,14 +140,14 @@ export default function CrawlerForm({ onCrawlComplete }: CrawlerFormProps) {
 
       const data = await response.json();
 
-      if (response.ok) {
-        // 폴링에서 처리하므로 여기서는 아무것도 안 함
-        // setMessage는 폴링에서 설정됨
+      if (response.ok && data.crawlId) {
+        // crawlId를 받아서 폴링 시작
+        console.log('[CrawlerForm] Starting polling for crawlId:', data.crawlId);
+        startStatusPolling(data.crawlId);
         setComplexNumbers("");
       } else {
-        setError(data.error || '크롤링 실패');
+        setError(data.error || '크롤링 시작 실패');
         setLoading(false);
-        stopStatusPolling();
       }
     } catch (err: any) {
       setError(`오류 발생: ${err.message}`);
@@ -192,22 +223,24 @@ export default function CrawlerForm({ onCrawlComplete }: CrawlerFormProps) {
         </button>
 
         {/* 실시간 진행 상태 표시 */}
-        {crawlStatus && crawlStatus.status === 'running' && (
+        {crawlStatus && loading && (
           <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg space-y-3">
             <div className="flex items-center justify-between text-sm">
               <span className="text-blue-900 dark:text-blue-300 font-medium">
-                {crawlStatus.message}
+                {crawlStatus.currentStep}
               </span>
-              <span className="text-blue-700 dark:text-blue-400 font-semibold">
-                {crawlStatus.percent.toFixed(1)}%
+              <span className="text-xs text-gray-500 dark:text-gray-400">
+                {crawlStatus.status === 'crawling' ? '🔍 크롤링 중' :
+                 crawlStatus.status === 'saving' ? '💾 데이터베이스 저장 중' :
+                 '✅ 완료'}
               </span>
             </div>
-            
+
             {/* 프로그레스 바 */}
             <div className="w-full bg-blue-100 dark:bg-blue-900/30 rounded-full h-3 overflow-hidden">
-              <div 
+              <div
                 className="bg-blue-600 dark:bg-blue-500 h-full rounded-full transition-all duration-300 ease-out relative overflow-hidden"
-                style={{ width: `${crawlStatus.percent}%` }}
+                style={{ width: `${crawlStatus.complexProgress}%` }}
               >
                 {/* 애니메이션 효과 */}
                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shimmer"></div>
@@ -216,52 +249,35 @@ export default function CrawlerForm({ onCrawlComplete }: CrawlerFormProps) {
 
             {/* 상세 정보 */}
             <div className="flex items-center justify-between text-xs text-blue-700 dark:text-blue-400">
-              <span>
-                {crawlStatus.progress} / {crawlStatus.total} 단지
-              </span>
-              {crawlStatus.current_complex && (
-                <span className="font-mono">
-                  단지 #{crawlStatus.current_complex}
+              <span>진행률: {crawlStatus.complexProgress}%</span>
+              {crawlStatus.processedComplexes !== undefined && crawlStatus.totalComplexes && (
+                <span>
+                  {crawlStatus.processedComplexes} / {crawlStatus.totalComplexes} 단지
                 </span>
               )}
             </div>
 
-            {/* 경과 시간 및 속도 정보 */}
+            {/* 경과 시간 및 매물 정보 */}
             <div className="pt-3 border-t border-blue-200 dark:border-blue-700 grid grid-cols-2 gap-3">
               {/* 경과 시간 */}
-              <div className="bg-white dark:bg-gray-800/50 rounded-lg p-2.5">
-                <div className="text-xs text-gray-500 dark:text-gray-400 mb-0.5">⏱️ 경과 시간</div>
-                <div className="text-sm font-bold text-blue-600 dark:text-blue-400">
-                  {formatTime(crawlStatus.elapsed_seconds)}
-                  {crawlStatus.estimated_total_seconds > 0 && (
-                    <span className="text-xs font-normal text-gray-500 dark:text-gray-400 ml-1">
-                      / {formatTime(crawlStatus.estimated_total_seconds)}
-                    </span>
-                  )}
+              {crawlStatus.duration !== undefined && crawlStatus.duration > 0 && (
+                <div className="bg-white dark:bg-gray-800/50 rounded-lg p-2.5">
+                  <div className="text-xs text-gray-500 dark:text-gray-400 mb-0.5">⏱️ 경과 시간</div>
+                  <div className="text-sm font-bold text-blue-600 dark:text-blue-400">
+                    {formatTime(crawlStatus.duration)}
+                  </div>
                 </div>
-              </div>
-
-              {/* 수집 속도 */}
-              <div className="bg-white dark:bg-gray-800/50 rounded-lg p-2.5">
-                <div className="text-xs text-gray-500 dark:text-gray-400 mb-0.5">🚀 수집 속도</div>
-                <div className="text-sm font-bold text-green-600 dark:text-green-400">
-                  {crawlStatus.speed > 0 ? (
-                    <>
-                      {crawlStatus.speed.toFixed(1)} <span className="text-xs font-normal">매물/초</span>
-                    </>
-                  ) : (
-                    <span className="text-xs font-normal text-gray-400">계산 중...</span>
-                  )}
-                </div>
-              </div>
+              )}
 
               {/* 수집 매물 수 */}
-              <div className="bg-white dark:bg-gray-800/50 rounded-lg p-2.5 col-span-2">
-                <div className="text-xs text-gray-500 dark:text-gray-400 mb-0.5">📊 수집 매물</div>
-                <div className="text-sm font-bold text-purple-600 dark:text-purple-400">
-                  {crawlStatus.items_collected.toLocaleString()} <span className="text-xs font-normal">개</span>
+              {crawlStatus.processedArticles > 0 && (
+                <div className="bg-white dark:bg-gray-800/50 rounded-lg p-2.5">
+                  <div className="text-xs text-gray-500 dark:text-gray-400 mb-0.5">📊 수집 매물</div>
+                  <div className="text-sm font-bold text-purple-600 dark:text-purple-400">
+                    {crawlStatus.processedArticles.toLocaleString()} <span className="text-xs font-normal">개</span>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           </div>
         )}
