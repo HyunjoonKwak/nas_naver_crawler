@@ -24,13 +24,37 @@ export default function CrawlerForm({ onCrawlComplete }: CrawlerFormProps) {
   const [error, setError] = useState("");
   const [crawlStatus, setCrawlStatus] = useState<CrawlStatus | null>(null);
   const [currentCrawlId, setCurrentCrawlId] = useState<string | null>(null);
+  const [startTime, setStartTime] = useState<number | null>(null);
+  const [elapsedSeconds, setElapsedSeconds] = useState<number>(0);
   const statusIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // 시간을 MM:SS 형식으로 변환
   const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  // 경과 시간 타이머 시작
+  const startElapsedTimer = () => {
+    if (timerIntervalRef.current) {
+      clearInterval(timerIntervalRef.current);
+    }
+    setStartTime(Date.now());
+    setElapsedSeconds(0);
+
+    timerIntervalRef.current = setInterval(() => {
+      setElapsedSeconds(prev => prev + 1);
+    }, 1000);
+  };
+
+  // 경과 시간 타이머 중지
+  const stopElapsedTimer = () => {
+    if (timerIntervalRef.current) {
+      clearInterval(timerIntervalRef.current);
+      timerIntervalRef.current = null;
+    }
   };
 
   // 크롤링 상태 폴링 (DB 기반)
@@ -111,12 +135,14 @@ export default function CrawlerForm({ onCrawlComplete }: CrawlerFormProps) {
       statusIntervalRef.current = null;
     }
     setCurrentCrawlId(null);
+    stopElapsedTimer();
   };
 
-  // 컴포넌트 언마운트 시 폴링 중지
+  // 컴포넌트 언마운트 시 폴링 및 타이머 중지
   useEffect(() => {
     return () => {
       stopStatusPolling();
+      stopElapsedTimer();
     };
   }, []);
 
@@ -143,6 +169,7 @@ export default function CrawlerForm({ onCrawlComplete }: CrawlerFormProps) {
       if (response.ok && data.crawlId) {
         // crawlId를 받아서 폴링 시작
         console.log('[CrawlerForm] Starting polling for crawlId:', data.crawlId);
+        startElapsedTimer(); // 타이머 시작
         startStatusPolling(data.crawlId);
         setComplexNumbers("");
       } else {
@@ -260,24 +287,20 @@ export default function CrawlerForm({ onCrawlComplete }: CrawlerFormProps) {
             {/* 경과 시간 및 매물 정보 */}
             <div className="pt-3 border-t border-blue-200 dark:border-blue-700 grid grid-cols-2 gap-3">
               {/* 경과 시간 */}
-              {crawlStatus.duration !== undefined && crawlStatus.duration > 0 && (
-                <div className="bg-white dark:bg-gray-800/50 rounded-lg p-2.5">
-                  <div className="text-xs text-gray-500 dark:text-gray-400 mb-0.5">⏱️ 경과 시간</div>
-                  <div className="text-sm font-bold text-blue-600 dark:text-blue-400">
-                    {formatTime(crawlStatus.duration)}
-                  </div>
+              <div className="bg-white dark:bg-gray-800/50 rounded-lg p-2.5">
+                <div className="text-xs text-gray-500 dark:text-gray-400 mb-0.5">⏱️ 경과 시간</div>
+                <div className="text-sm font-bold text-blue-600 dark:text-blue-400">
+                  {formatTime(elapsedSeconds)}
                 </div>
-              )}
+              </div>
 
               {/* 수집 매물 수 */}
-              {crawlStatus.processedArticles > 0 && (
-                <div className="bg-white dark:bg-gray-800/50 rounded-lg p-2.5">
-                  <div className="text-xs text-gray-500 dark:text-gray-400 mb-0.5">📊 수집 매물</div>
-                  <div className="text-sm font-bold text-purple-600 dark:text-purple-400">
-                    {crawlStatus.processedArticles.toLocaleString()} <span className="text-xs font-normal">개</span>
-                  </div>
+              <div className="bg-white dark:bg-gray-800/50 rounded-lg p-2.5">
+                <div className="text-xs text-gray-500 dark:text-gray-400 mb-0.5">📊 수집 매물</div>
+                <div className="text-sm font-bold text-purple-600 dark:text-purple-400">
+                  {crawlStatus.processedArticles > 0 ? crawlStatus.processedArticles.toLocaleString() : '0'} <span className="text-xs font-normal">개</span>
                 </div>
-              )}
+              </div>
             </div>
           </div>
         )}
