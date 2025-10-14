@@ -31,7 +31,11 @@ export async function GET() {
 
       // 완료된 크롤링 수
       prisma.crawlHistory.count({
-        where: { status: 'completed' },
+        where: {
+          status: {
+            in: ['completed', 'success']
+          }
+        },
       }),
 
       // 실패한 크롤링 수
@@ -85,7 +89,9 @@ export async function GET() {
     // 평균 크롤링 소요 시간 (duration이 0보다 큰 완료된 크롤링만)
     const crawlsWithDuration = await prisma.crawlHistory.findMany({
       where: {
-        status: 'completed',
+        status: {
+          in: ['completed', 'success']
+        },
         duration: {
           gt: 0,
         },
