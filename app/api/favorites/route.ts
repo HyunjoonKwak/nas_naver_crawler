@@ -249,19 +249,20 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// DELETE: 선호 단지 삭제
+// DELETE: 선호 단지 삭제 (DB에서도 함께 삭제)
 export async function DELETE(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const complexNo = searchParams.get('complexNo');
-    
+
     if (!complexNo) {
       return NextResponse.json(
         { error: '단지번호가 필요합니다.' },
         { status: 400 }
       );
     }
-    
+
+    // 1. favorites.json에서 삭제
     const favorites = await readFavorites();
     const filtered = favorites.filter(f => f.complexNo !== complexNo);
 
@@ -279,13 +280,50 @@ export async function DELETE(request: NextRequest) {
     }));
 
     await writeFavorites(reordered);
-    
+
+    // 2. DB에서 단지와 관련 매물 삭제
+    let deletedArticlesCount = 0;
+    let deletedFavoritesCount = 0;
+
+    try {
+      const complex = await prisma.complex.findUnique({
+        where: { complexNo },
+        include: {
+          _count: {
+            select: {
+              articles: true,
+              favorites: true,
+            }
+          }
+        }
+      });
+
+      if (complex) {
+        deletedArticlesCount = complex._count.articles;
+        deletedFavoritesCount = complex._count.favorites;
+
+        // Cascade로 Article과 Favorite도 함께 삭제됨
+        await prisma.complex.delete({
+          where: { complexNo }
+        });
+
+        console.log(`✓ DB 삭제 완료: Complex(1), Articles(${deletedArticlesCount}), Favorites(${deletedFavoritesCount})`);
+      }
+    } catch (dbError) {
+      console.warn('DB 삭제 실패 (단지가 DB에 없을 수 있음):', dbError);
+      // DB에 없어도 favorites.json 삭제는 성공으로 처리
+    }
+
     return NextResponse.json({
       success: true,
       message: '선호 단지가 삭제되었습니다.',
-      complexNo
+      complexNo,
+      deletedFromDB: {
+        articles: deletedArticlesCount,
+        favorites: deletedFavoritesCount,
+      }
     });
-    
+
   } catch (error: any) {
     console.error('Favorite delete error:', error);
     return NextResponse.json(

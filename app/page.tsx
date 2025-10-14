@@ -29,7 +29,7 @@ export default function Home() {
   const [favorites, setFavorites] = useState<FavoriteWithStats[]>([]);
   const [stats, setStats] = useState({
     totalFavorites: 0,
-    totalCrawls: 0,
+    totalComplexes: 0, // 매물이 있는 단지 수
     totalArticles: 0,
     lastCrawlTime: null as string | null,
   });
@@ -67,6 +67,10 @@ export default function Home() {
       const favData = await favResponse.json();
       const favList = favData.favorites || [];
 
+      // DB 통계 조회 (최근 크롤링 시간 등)
+      const dbStatsResponse = await fetch('/api/db-stats');
+      const dbStatsData = await dbStatsResponse.json();
+
       // 통계 계산
       const totalArticles = results.reduce((sum: number, result: any) => {
         return sum + (result?.articles?.length || 0);
@@ -102,11 +106,17 @@ export default function Home() {
 
       setFavorites(favoritesWithStats.slice(0, 6)); // 최근 6개
 
+      // 최근 크롤링 시간 가져오기 (DB의 최근 크롤링 히스토리에서)
+      let lastCrawlTime = null;
+      if (dbStatsData?.crawling?.recentCrawls?.length > 0) {
+        lastCrawlTime = dbStatsData.crawling.recentCrawls[0].createdAt;
+      }
+
       setStats({
         totalFavorites: favList.length,
-        totalCrawls: results.length,
+        totalComplexes: results.length, // 매물이 있는 단지 수
         totalArticles,
-        lastCrawlTime: results[0]?.createdAt || null,
+        lastCrawlTime,
       });
     } catch (error) {
       console.error('Failed to fetch dashboard data:', error);
@@ -224,9 +234,9 @@ export default function Home() {
               link="/complexes"
             />
             <StatCard
-              icon="📊"
-              label="총 크롤링"
-              value={stats.totalCrawls}
+              icon="🏢"
+              label="등록 단지"
+              value={stats.totalComplexes}
               color="green"
             />
             <StatCard

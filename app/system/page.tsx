@@ -80,12 +80,17 @@ export default function SystemPage() {
   const [sortColumn, setSortColumn] = useState<string | null>(null);
   const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set());
   const [showModal, setShowModal] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [activeTab, setActiveTab] = useState<'csv' | 'json'>('csv');
 
   // Database stats states
   const [dbStats, setDbStats] = useState<DBStats | null>(null);
   const [dbLoading, setDbLoading] = useState(false);
+  const [showResetModal, setShowResetModal] = useState(false);
+  const [resetConfirmText, setResetConfirmText] = useState('');
+  const [isResetting, setIsResetting] = useState(false);
+  const [deleteFilesOption, setDeleteFilesOption] = useState(true);
 
   useEffect(() => {
     fetchStatus();
@@ -140,6 +145,44 @@ export default function SystemPage() {
     }
   };
 
+  const handleDatabaseReset = async () => {
+    if (resetConfirmText !== 'RESET DATABASE') {
+      alert('확인 텍스트를 정확히 입력해주세요: RESET DATABASE');
+      return;
+    }
+
+    setIsResetting(true);
+    try {
+      const response = await fetch('/api/database/reset', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          confirmText: resetConfirmText,
+          deleteFiles: deleteFilesOption,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        alert('데이터베이스가 성공적으로 초기화되었습니다.');
+        setShowResetModal(false);
+        setResetConfirmText('');
+        // DB 통계 새로고침
+        await fetchDBStats();
+        // 상태 새로고침
+        await fetchStatus();
+      } else {
+        alert(`초기화 실패: ${data.error}`);
+      }
+    } catch (error) {
+      console.error('Database reset error:', error);
+      alert('데이터베이스 초기화 중 오류가 발생했습니다.');
+    } finally {
+      setIsResetting(false);
+    }
+  };
+
   const handleDelete = async (filename: string, e: React.MouseEvent) => {
     e.stopPropagation();
     if (!confirm(`${filename} 파일을 삭제하시겠습니까?`)) {
@@ -175,6 +218,7 @@ export default function SystemPage() {
       return;
     }
 
+    setIsDeleting(true);
     try {
       const deletePromises = Array.from(selectedFiles).map(filename =>
         fetch('/api/csv', {
@@ -196,6 +240,8 @@ export default function SystemPage() {
     } catch (error) {
       console.error('Bulk delete error:', error);
       alert('파일 삭제 중 오류가 발생했습니다.');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -810,9 +856,19 @@ export default function SystemPage() {
                       </span>
                       <button
                         onClick={handleBulkDelete}
-                        className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
+                        disabled={isDeleting}
+                        className="px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
                       >
-                        🗑️ 선택 삭제
+                        {isDeleting ? (
+                          <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                            삭제 중...
+                          </>
+                        ) : (
+                          <>
+                            🗑️ 선택 삭제
+                          </>
+                        )}
                       </button>
                     </div>
                   )}
@@ -915,13 +971,21 @@ export default function SystemPage() {
           ) : dbStats ? (
             <div className="space-y-6">
               {/* Page Header */}
-              <div className="mb-8">
-                <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-                  데이터베이스 현황
-                </h2>
-                <p className="text-gray-600 dark:text-gray-400">
-                  저장된 데이터와 크롤링 통계를 확인하세요
-                </p>
+              <div className="mb-8 flex items-start justify-between">
+                <div>
+                  <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+                    데이터베이스 현황
+                  </h2>
+                  <p className="text-gray-600 dark:text-gray-400">
+                    저장된 데이터와 크롤링 통계를 확인하세요
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowResetModal(true)}
+                  className="px-6 py-3 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition-colors flex items-center gap-2 shadow-lg"
+                >
+                  🗑️ 데이터베이스 초기화
+                </button>
               </div>
 
               {/* Database Stats */}
@@ -1149,6 +1213,106 @@ export default function SystemPage() {
             <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
               <div className="p-6">
                 <CrawlerHistory refresh={refresh} />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Database Reset Modal */}
+        {showResetModal && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowResetModal(false)}>
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-800 max-w-2xl w-full overflow-hidden" onClick={(e) => e.stopPropagation()}>
+              <div className="bg-gradient-to-r from-red-600 to-rose-600 px-6 py-4 flex items-center justify-between">
+                <div>
+                  <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                    ⚠️ 데이터베이스 초기화
+                  </h2>
+                  <p className="text-red-100 text-sm mt-1">
+                    이 작업은 되돌릴 수 없습니다
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowResetModal(false);
+                    setResetConfirmText('');
+                  }}
+                  className="text-white hover:bg-white/20 rounded-lg p-2 transition-colors"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              <div className="p-6 space-y-6">
+                <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
+                  <h3 className="text-lg font-bold text-red-900 dark:text-red-200 mb-2">
+                    다음 데이터가 모두 삭제됩니다:
+                  </h3>
+                  <ul className="space-y-1 text-red-800 dark:text-red-300">
+                    <li>• 등록된 모든 단지 (Complex)</li>
+                    <li>• 수집된 모든 매물 (Article)</li>
+                    <li>• 즐겨찾기 정보 (Favorite)</li>
+                    <li>• 크롤링 히스토리 (CrawlHistory)</li>
+                    <li>• 알림 설정 및 로그 (Alert, NotificationLog)</li>
+                    <li>• 스케줄 설정 및 로그 (Schedule, ScheduleLog)</li>
+                  </ul>
+                </div>
+
+                <div className="space-y-4">
+                  <div>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={deleteFilesOption}
+                        onChange={(e) => setDeleteFilesOption(e.target.checked)}
+                        className="w-4 h-4 text-red-600 bg-gray-100 border-gray-300 rounded focus:ring-red-500"
+                      />
+                      <span className="text-gray-700 dark:text-gray-300">
+                        favorites.json 파일도 초기화
+                      </span>
+                    </label>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      계속하려면 <span className="font-bold text-red-600">RESET DATABASE</span>를 입력하세요:
+                    </label>
+                    <input
+                      type="text"
+                      value={resetConfirmText}
+                      onChange={(e) => setResetConfirmText(e.target.value)}
+                      placeholder="RESET DATABASE"
+                      className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 dark:bg-gray-700 dark:text-white"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+                  <button
+                    onClick={() => {
+                      setShowResetModal(false);
+                      setResetConfirmText('');
+                    }}
+                    className="flex-1 px-4 py-3 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-900 dark:text-white font-medium rounded-lg transition-colors"
+                  >
+                    취소
+                  </button>
+                  <button
+                    onClick={handleDatabaseReset}
+                    disabled={resetConfirmText !== 'RESET DATABASE' || isResetting}
+                    className="flex-1 px-4 py-3 bg-red-600 hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
+                  >
+                    {isResetting ? (
+                      <>
+                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                        초기화 중...
+                      </>
+                    ) : (
+                      '데이터베이스 초기화'
+                    )}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
