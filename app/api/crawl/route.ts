@@ -270,15 +270,13 @@ async function saveCrawlResultsToDB(crawlId: string, complexNos: string[]) {
             where: { complexId: complex.id }
           });
 
-          // Find and update favorite
+          // Find and update favorite (only update articleCount and lastCrawledAt)
           const index = favorites.findIndex((f: any) => f.complexNo === complexNo);
           if (index !== -1) {
-            favorites[index].complexName = complex.complexName;
+            // Only update article count
             favorites[index].articleCount = articleCount;
-            favorites[index].totalHouseHoldCount = complex.totalHousehold;
-            favorites[index].totalDongCount = complex.totalDong;
 
-            // Update last crawled time
+            // Only update last crawled time
             if (complex.articles[0]?.updatedAt) {
               favorites[index].lastCrawledAt = complex.articles[0].updatedAt.toISOString();
             }

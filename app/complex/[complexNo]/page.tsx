@@ -20,6 +20,11 @@ export default function ComplexDetailPage() {
   const [data, setData] = useState<ComplexData | null>(null);
   const [loading, setLoading] = useState(true);
   const [crawling, setCrawling] = useState(false);
+  const [crawlProgress, setCrawlProgress] = useState<{
+    currentStep: string;
+    status: string;
+    processedArticles: number;
+  } | null>(null);
 
   // 필터 상태
   const [filterTradeType, setFilterTradeType] = useState<string>('all');
@@ -59,25 +64,70 @@ export default function ComplexDetailPage() {
 
   const handleCrawl = async () => {
     setCrawling(true);
+    setCrawlProgress(null);
+
     try {
+      // Start crawl
       const response = await fetch('/api/crawl', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ complexNumbers: complexNo })
       });
 
-      if (response.ok) {
-        alert('크롤링이 완료되었습니다!');
+      const data = await response.json();
+
+      if (response.ok && data.crawlId) {
+        // Poll for progress
+        await pollCrawlStatus(data.crawlId);
+
+        // Refresh data after completion
         await fetchComplexData();
+        alert('✅ 크롤링이 완료되었습니다!');
       } else {
-        alert('크롤링에 실패했습니다.');
+        alert('❌ 크롤링에 실패했습니다.');
       }
     } catch (error) {
       console.error('Crawl error:', error);
-      alert('크롤링 중 오류가 발생했습니다.');
+      alert('❌ 크롤링 중 오류가 발생했습니다.');
     } finally {
       setCrawling(false);
+      setCrawlProgress(null);
     }
+  };
+
+  const pollCrawlStatus = async (crawlId: string) => {
+    return new Promise<void>((resolve, reject) => {
+      const interval = setInterval(async () => {
+        try {
+          const response = await fetch(`/api/crawl-status?crawlId=${crawlId}`);
+          const data = await response.json();
+
+          if (!response.ok) {
+            clearInterval(interval);
+            reject(new Error(data.error || 'Failed to get status'));
+            return;
+          }
+
+          // Update progress
+          setCrawlProgress({
+            currentStep: data.progress?.currentStep || 'Processing...',
+            status: data.status,
+            processedArticles: data.progress?.processedArticles || 0,
+          });
+
+          // Check if completed
+          if (data.status === 'success' || data.status === 'partial' || data.status === 'failed') {
+            clearInterval(interval);
+            resolve();
+            return;
+          }
+        } catch (error) {
+          console.error('Polling error:', error);
+          clearInterval(interval);
+          reject(error);
+        }
+      }, 2000); // Poll every 2 seconds
+    });
   };
 
   const handleDelete = async () => {
@@ -292,6 +342,33 @@ export default function ComplexDetailPage() {
                   )}
                 </div>
               </div>
+
+              {/* 크롤링 진행 상태 배너 */}
+              {crawling && crawlProgress && (
+                <div className="mb-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-2 border-blue-400 dark:border-blue-600 rounded-lg p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 dark:border-blue-400"></div>
+                    <div className="flex-1">
+                      <h3 className="text-sm font-bold text-blue-900 dark:text-blue-200 mb-1">
+                        ⏳ 크롤링 진행 중
+                      </h3>
+                      <p className="text-xs text-blue-800 dark:text-blue-300">
+                        {crawlProgress.currentStep}
+                        {crawlProgress.status === 'crawling' && ' 🔍'}
+                        {crawlProgress.status === 'saving' && ' 💾'}
+                      </p>
+                    </div>
+                    {crawlProgress.processedArticles > 0 && (
+                      <div className="text-right">
+                        <div className="text-xs text-blue-600 dark:text-blue-400">수집 매물</div>
+                        <div className="text-lg font-bold text-blue-900 dark:text-blue-200">
+                          {crawlProgress.processedArticles}개
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {/* 액션 버튼 그룹 */}
               <div className="flex flex-wrap gap-2">
