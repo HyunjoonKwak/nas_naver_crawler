@@ -239,6 +239,66 @@ class NASNaverRealEstateCrawler:
         # DB 연결 종료
         self._close_db_connection()
 
+    async def fetch_complex_info_only(self, complex_no: str) -> Optional[Dict]:
+        """단지 기본 정보만 가져오기 (매물 크롤링 없이)"""
+        try:
+            print(f"[INFO-ONLY] 단지 정보 조회 시작: {complex_no}")
+
+            # 네트워크 요청 모니터링하여 API 응답 캐치
+            overview_data = None
+
+            async def handle_response(response):
+                nonlocal overview_data
+                if f'/api/complexes/overview/{complex_no}' in response.url:
+                    try:
+                        data = await response.json()
+                        overview_data = data
+                        print(f"[INFO-ONLY] 단지 개요 API 응답 캐치됨: {data.get('complexName', 'Unknown')}")
+                    except Exception as e:
+                        print(f"[INFO-ONLY] API 응답 파싱 실패: {e}")
+
+            # 응답 핸들러 등록
+            self.page.on('response', handle_response)
+
+            # 네이버 부동산 단지 페이지 접속
+            url = f"https://new.land.naver.com/complexes/{complex_no}"
+            await self.page.goto(url, wait_until='domcontentloaded', timeout=30000)
+
+            # API 응답 대기
+            await asyncio.sleep(3)
+
+            # 응답이 없으면 페이지 새로고침
+            if not overview_data:
+                print("[INFO-ONLY] Overview 데이터 없음, 페이지 새로고침...")
+                await self.page.reload(wait_until='domcontentloaded')
+                await asyncio.sleep(2)
+
+            # 응답 핸들러 제거
+            try:
+                self.page.remove_listener('response', handle_response)
+            except Exception:
+                pass
+
+            if overview_data:
+                print(f"[INFO-ONLY] ✅ 단지 정보 수집 성공: {overview_data.get('complexName', 'Unknown')}")
+                return {
+                    'complexNo': complex_no,
+                    'complexName': overview_data.get('complexName'),
+                    'totalHousehold': overview_data.get('totalHouseholdCount'),
+                    'totalDong': overview_data.get('totalDongCount'),
+                    'address': overview_data.get('address'),
+                    'roadAddress': overview_data.get('roadAddress'),
+                }
+            else:
+                print(f"[INFO-ONLY] ⚠️ 단지 정보 수집 실패")
+                return None
+
+        except Exception as e:
+            print(f"[INFO-ONLY] 단지 정보 조회 실패: {e}")
+            import traceback
+            traceback.print_exc()
+            return None
+
     async def crawl_complex_overview(self, complex_no: str) -> Optional[Dict]:
         """단지 개요 정보 크롤링"""
         try:
@@ -860,12 +920,47 @@ class NASNaverRealEstateCrawler:
             await self.close_browser()
 
 
+async def fetch_info_only(complex_no: str) -> Optional[Dict]:
+    """단지 정보만 가져오는 독립 함수 (매물 크롤링 없이)"""
+    crawler = NASNaverRealEstateCrawler()
+    try:
+        await crawler.setup_browser()
+        info = await crawler.fetch_complex_info_only(complex_no)
+        return info
+    finally:
+        await crawler.close_browser()
+
+
 async def main():
     """메인 함수"""
     import sys
 
     # 명령행 인자 처리
-    # Usage: python nas_playwright_crawler.py "22065,12345" [crawl_id]
+    # Usage:
+    #   - Full crawl: python nas_playwright_crawler.py "22065,12345" [crawl_id]
+    #   - Info only: python nas_playwright_crawler.py --info-only 22065
+
+    if len(sys.argv) > 1 and sys.argv[1] == '--info-only':
+        # 정보만 가져오기 모드
+        if len(sys.argv) < 3:
+            print("Usage: python nas_playwright_crawler.py --info-only <complex_no>")
+            sys.exit(1)
+
+        complex_no = sys.argv[2].strip()
+        print(f"📋 단지 정보만 조회: {complex_no}")
+
+        info = await fetch_info_only(complex_no)
+        if info:
+            # JSON 형식으로 출력 (Node.js에서 파싱 가능)
+            print("===INFO_START===")
+            print(json.dumps(info, ensure_ascii=False))
+            print("===INFO_END===")
+        else:
+            print("ERROR: Failed to fetch complex info")
+            sys.exit(1)
+        return
+
+    # 일반 크롤링 모드
     crawl_id = None
     complex_numbers = ['22065']  # 기본값
 
