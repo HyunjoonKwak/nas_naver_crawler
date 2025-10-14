@@ -48,17 +48,22 @@ async function saveCrawlResultsToDB(crawlId: string, complexNos: string[]) {
     const files = await fs.readdir(crawledDataDir);
     const jsonFiles = files
       .filter(f => f.startsWith('complexes_') && f.endsWith('.json'))
-      .sort()
-      .reverse();
+      .map(f => {
+        const fullPath = path.join(crawledDataDir, f);
+        const stats = require('fs').statSync(fullPath);
+        return { name: f, mtime: stats.mtime };
+      })
+      .sort((a, b) => b.mtime.getTime() - a.mtime.getTime())  // Sort by modification time (newest first)
+      .map(f => f.name);
 
     if (jsonFiles.length === 0) {
       console.log('No crawl result files found');
       return { totalArticles: 0, totalComplexes: 0, errors: ['No data files found'] };
     }
 
-    // 가장 최신 파일 사용
+    // 가장 최신 파일 사용 (수정 시간 기준)
     const latestFile = path.join(crawledDataDir, jsonFiles[0]);
-    console.log(`Processing file: ${jsonFiles[0]}`);
+    console.log(`Processing file: ${jsonFiles[0]} (latest by mtime)`);
 
     const rawData = await fs.readFile(latestFile, 'utf-8');
     const crawlData = JSON.parse(rawData);
@@ -198,12 +203,18 @@ async function saveCrawlResultsToDB(crawlId: string, complexNos: string[]) {
     });
 
     // 3. Batch insert (skipDuplicates로 안전하게)
+    const articlesBeforeInsert = articlesToCreate.length;
     const result = await prisma.article.createMany({
       data: articlesToCreate,
       skipDuplicates: true,
     });
 
     totalArticles = result.count;
+
+    // 중복 제거된 매물이 있으면 로그 출력
+    if (articlesBeforeInsert > totalArticles) {
+      console.log(`⚠️  Duplicates skipped: ${articlesBeforeInsert - totalArticles} articles (${articlesBeforeInsert} → ${totalArticles})`);
+    }
 
     await prisma.crawlHistory.update({
       where: { id: crawlId },
