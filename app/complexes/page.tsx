@@ -1172,13 +1172,44 @@ export default function ComplexesPage() {
         <div className="mt-8 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
           <div className="bg-gradient-to-r from-slate-600 to-gray-600 px-6 py-4">
             <h3 className="text-xl font-bold text-white flex items-center gap-2">
-              🔍 단일 단지 크롤링
+              🔍 일회성 매물 조회
             </h3>
             <p className="text-slate-100 text-sm mt-1">
-              등록되지 않은 단지의 매물 정보를 일회성으로 수집합니다
+              관심 단지로 등록하지 않고 매물 정보만 확인합니다
             </p>
           </div>
           <div className="p-6">
+            {/* 안내 메시지 */}
+            <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg">
+              <div className="flex items-start gap-3">
+                <div className="text-2xl">ℹ️</div>
+                <div className="flex-1">
+                  <h4 className="text-sm font-semibold text-blue-900 dark:text-blue-200 mb-2">
+                    일회성 조회 vs 관심 단지
+                  </h4>
+                  <div className="text-xs text-blue-800 dark:text-blue-300 space-y-2">
+                    <div className="flex items-start gap-2">
+                      <span className="text-green-600 dark:text-green-400 font-bold">✓</span>
+                      <span>DB에 저장되어 언제든지 조회 가능합니다</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-red-600 dark:text-red-400 font-bold">✗</span>
+                      <span>홈페이지 관심 단지 목록에는 표시되지 않습니다</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-red-600 dark:text-red-400 font-bold">✗</span>
+                      <span>스케줄러에서 자동 크롤링되지 않습니다</span>
+                    </div>
+                    <div className="mt-3 pt-3 border-t border-blue-200 dark:border-blue-700">
+                      <span className="text-blue-900 dark:text-blue-200 font-medium">
+                        💡 지속적으로 관리하려면 상단의 "단지 추가" 버튼을 사용하세요
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <SingleComplexCrawler onCrawlComplete={fetchComplexes} />
           </div>
         </div>
