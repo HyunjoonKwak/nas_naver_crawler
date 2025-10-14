@@ -176,22 +176,22 @@ async function saveCrawlResultsToDB(crawlId: string, complexNos: string[]) {
       }
     }
 
-    // Batch insert articles (중복 제거를 위해 deleteMany 후 createMany)
-    // 1. 기존 articleNo들 가져오기
-    const articleNos = articlesToCreate.map(a => a.articleNo);
+    // Batch insert articles (단지별로 기존 매물 전체 삭제 후 재생성)
+    // 1. 크롤링된 단지들의 complexId 목록 추출
+    const crawledComplexIds = Array.from(new Set(articlesToCreate.map(a => a.complexId)));
 
     await prisma.crawlHistory.update({
       where: { id: crawlId },
       data: {
-        currentStep: `Deleting old articles (${articleNos.length} items)`,
+        currentStep: `Deleting old articles from ${crawledComplexIds.length} complexes`,
       },
     });
 
-    // 2. 기존 매물 삭제 (upsert 대신 delete + create로 성능 향상)
+    // 2. 해당 단지들의 모든 기존 매물 삭제 (삭제된 매물 반영)
     await prisma.article.deleteMany({
       where: {
-        articleNo: {
-          in: articleNos,
+        complexId: {
+          in: crawledComplexIds,
         },
       },
     });
