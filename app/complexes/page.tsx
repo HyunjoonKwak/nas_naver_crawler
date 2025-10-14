@@ -3,20 +3,23 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 
-interface FavoriteComplex {
+interface ComplexItem {
+  id: string;
   complexNo: string;
-  complexName?: string;
-  addedAt: string;
-  lastCrawledAt?: string;
-  articleCount?: number;
-  // 크롤링 데이터가 있을 때 추가 정보
-  totalHouseHoldCount?: number;
-  totalDongCount?: number;
-  minArea?: number;
-  maxArea?: number;
-  minPrice?: number;
-  maxPrice?: number;
-  order?: number;
+  complexName: string;
+  totalHousehold?: number;
+  totalDong?: number;
+  location?: {
+    latitude?: number;
+    longitude?: number;
+  };
+  address?: string;
+  roadAddress?: string;
+  jibunAddress?: string;
+  articleCount: number;
+  isFavorite: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
 interface ComplexInfo {
@@ -33,7 +36,7 @@ interface ComplexInfo {
 }
 
 export default function ComplexesPage() {
-  const [favorites, setFavorites] = useState<FavoriteComplex[]>([]);
+  const [complexes, setComplexes] = useState<ComplexItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [crawling, setCrawling] = useState<string | null>(null);
   const [crawlingAll, setCrawlingAll] = useState(false);
@@ -69,16 +72,13 @@ export default function ComplexesPage() {
   };
 
   useEffect(() => {
-    fetchFavorites();
-    // Note: syncAllFavorites() removed to prevent unnecessary API calls on page load
-    // Note: checkOngoingCrawl() removed to prevent auto-resume that confuses users
-    // Users should manually trigger crawling using "전체 크롤링" button
+    fetchComplexes();
 
     // Auto-refresh every 30 seconds to catch updates from detail page crawls
     const refreshInterval = setInterval(() => {
       if (!crawlingAll && !crawling) {
         console.log('[Complexes] Auto-refreshing data...');
-        fetchFavorites();
+        fetchComplexes();
       }
     }, 30000); // 30 seconds
 
@@ -86,7 +86,7 @@ export default function ComplexesPage() {
     const handleVisibilityChange = () => {
       if (!document.hidden && !crawlingAll && !crawling) {
         console.log('[Complexes] Page visible, refreshing data...');
-        fetchFavorites();
+        fetchComplexes();
       }
     };
 
@@ -139,19 +139,16 @@ export default function ComplexesPage() {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [crawlingAll, crawling]);
 
-  // Note: syncAllFavorites() removed - was causing unnecessary API calls on page load
-  // Favorites are now synced automatically after successful crawls in the /api/crawl route
-
-  const fetchFavorites = async () => {
+  const fetchComplexes = async () => {
     setLoading(true);
     try {
-      const response = await fetch('/api/favorites');
+      const response = await fetch('/api/complexes');
       const data = await response.json();
-      setFavorites(data.favorites || []);
-      console.log('[Dashboard] Favorites loaded:', data.favorites?.length || 0);
+      setComplexes(data.complexes || []);
+      console.log('[Complexes] Loaded:', data.complexes?.length || 0);
     } catch (error) {
-      console.error('[Dashboard] Failed to fetch favorites:', error);
-      setFavorites([]); // 에러 시 빈 배열로 설정
+      console.error('[Complexes] Failed to fetch complexes:', error);
+      setComplexes([]); // 에러 시 빈 배열로 설정
     } finally {
       setLoading(false);
     }
