@@ -43,16 +43,20 @@ export default function SchedulerPage() {
     name: "",
     complexNos: [] as string[],
     cronExpr: "0 9 * * *", // 기본값: 매일 오전 9시
+    selectedDays: [0, 1, 2, 3, 4, 5, 6] as number[], // 0=일요일, 6=토요일
+    selectedHour: 9,
+    selectedMinute: 0,
   });
 
-  // Cron 프리셋
-  const cronPresets = [
-    { label: "매일 오전 9시", value: "0 9 * * *" },
-    { label: "매일 오후 6시", value: "0 18 * * *" },
-    { label: "매시 정각", value: "0 * * * *" },
-    { label: "30분마다", value: "*/30 * * * *" },
-    { label: "평일 오전 9시", value: "0 9 * * 1-5" },
-    { label: "주말 오전 10시", value: "0 10 * * 0,6" },
+  // 요일 목록
+  const weekDays = [
+    { label: "일", value: 0 },
+    { label: "월", value: 1 },
+    { label: "화", value: 2 },
+    { label: "수", value: 3 },
+    { label: "목", value: 4 },
+    { label: "금", value: 5 },
+    { label: "토", value: 6 },
   ];
 
   useEffect(() => {
@@ -94,14 +98,45 @@ export default function SchedulerPage() {
     }
   };
 
+  // Cron 표현식을 요일/시간으로 파싱
+  const parseCronExpr = (cronExpr: string) => {
+    const parts = cronExpr.split(" ");
+    if (parts.length === 5) {
+      const minute = parseInt(parts[0]) || 0;
+      const hour = parseInt(parts[1]) || 9;
+      const dayOfWeek = parts[4];
+
+      let days: number[] = [];
+      if (dayOfWeek === "*") {
+        days = [0, 1, 2, 3, 4, 5, 6];
+      } else {
+        const dayParts = dayOfWeek.split(",");
+        days = dayParts.map((d) => parseInt(d));
+      }
+
+      return { minute, hour, days };
+    }
+    return { minute: 0, hour: 9, days: [0, 1, 2, 3, 4, 5, 6] };
+  };
+
+  // 요일/시간을 Cron 표현식으로 변환
+  const buildCronExpr = (days: number[], hour: number, minute: number) => {
+    const dayStr = days.length === 7 ? "*" : days.sort().join(",");
+    return `${minute} ${hour} * * ${dayStr}`;
+  };
+
   const handleOpenModal = (schedule?: Schedule) => {
     if (schedule) {
       // 수정 모드
       setEditingSchedule(schedule);
+      const parsed = parseCronExpr(schedule.cronExpr);
       setFormData({
         name: schedule.name,
         complexNos: schedule.complexNos,
         cronExpr: schedule.cronExpr,
+        selectedDays: parsed.days,
+        selectedHour: parsed.hour,
+        selectedMinute: parsed.minute,
       });
     } else {
       // 생성 모드
@@ -110,6 +145,9 @@ export default function SchedulerPage() {
         name: "",
         complexNos: [],
         cronExpr: "0 9 * * *",
+        selectedDays: [0, 1, 2, 3, 4, 5, 6],
+        selectedHour: 9,
+        selectedMinute: 0,
       });
     }
     setShowModal(true);
@@ -123,11 +161,14 @@ export default function SchedulerPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // 요일/시간 선택으로부터 Cron 표현식 생성
+    const cronExpr = buildCronExpr(formData.selectedDays, formData.selectedHour, formData.selectedMinute);
+
     try {
       const payload = {
         name: formData.name,
         complexNos: formData.complexNos,
-        cronExpr: formData.cronExpr,
+        cronExpr: cronExpr,
       };
 
       const url = editingSchedule ? `/api/schedules/${editingSchedule.id}` : "/api/schedules";
@@ -450,9 +491,24 @@ export default function SchedulerPage() {
 
               {/* 크롤링 단지 선택 */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  크롤링 단지 선택 * (복수 선택 가능)
-                </label>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    크롤링 단지 선택 * (복수 선택 가능)
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const allSelected = formData.complexNos.length === complexes.length;
+                      setFormData({
+                        ...formData,
+                        complexNos: allSelected ? [] : complexes.map((c) => c.complexNo),
+                      });
+                    }}
+                    className="text-sm text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300 font-semibold"
+                  >
+                    {formData.complexNos.length === complexes.length ? "모두 해제" : "모두 선택"}
+                  </button>
+                </div>
                 <div className="grid grid-cols-1 gap-2 max-h-60 overflow-y-auto border border-gray-300 dark:border-gray-600 rounded-lg p-3">
                   {complexes.map((complex) => (
                     <label
@@ -485,43 +541,82 @@ export default function SchedulerPage() {
                 </div>
               </div>
 
-              {/* Cron 프리셋 */}
+              {/* 실행 요일 선택 */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  실행 주기 *
+                  실행 요일 *
                 </label>
-                <div className="grid grid-cols-2 gap-2 mb-3">
-                  {cronPresets.map((preset) => (
+                <div className="flex gap-2">
+                  {weekDays.map((day) => (
                     <button
-                      key={preset.value}
+                      key={day.value}
                       type="button"
-                      onClick={() => setFormData({ ...formData, cronExpr: preset.value })}
-                      className={`px-4 py-2 rounded-lg border transition-colors text-sm font-medium ${
-                        formData.cronExpr === preset.value
+                      onClick={() => {
+                        const isSelected = formData.selectedDays.includes(day.value);
+                        setFormData({
+                          ...formData,
+                          selectedDays: isSelected
+                            ? formData.selectedDays.filter((d) => d !== day.value)
+                            : [...formData.selectedDays, day.value],
+                        });
+                      }}
+                      className={`flex-1 px-3 py-2 rounded-lg border transition-colors text-sm font-medium ${
+                        formData.selectedDays.includes(day.value)
                           ? "bg-green-100 border-green-600 text-green-800 dark:bg-green-900/30 dark:border-green-500 dark:text-green-400"
                           : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-600"
                       }`}
                     >
-                      {preset.label}
+                      {day.label}
                     </button>
                   ))}
                 </div>
+                {formData.selectedDays.length === 0 && (
+                  <p className="text-xs text-red-500 mt-1">최소 하나의 요일을 선택해주세요</p>
+                )}
               </div>
 
-              {/* Cron 표현식 직접 입력 */}
+              {/* 실행 시간 선택 */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Cron 표현식 (고급)
+                  실행 시간 *
                 </label>
-                <input
-                  type="text"
-                  value={formData.cronExpr}
-                  onChange={(e) => setFormData({ ...formData, cronExpr: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-green-500 font-mono"
-                  placeholder="0 9 * * *"
-                />
+                <div className="flex gap-3 items-center">
+                  <div className="flex-1">
+                    <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">시</label>
+                    <select
+                      value={formData.selectedHour}
+                      onChange={(e) =>
+                        setFormData({ ...formData, selectedHour: parseInt(e.target.value) })
+                      }
+                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-green-500"
+                    >
+                      {Array.from({ length: 24 }, (_, i) => (
+                        <option key={i} value={i}>
+                          {i.toString().padStart(2, "0")}시
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="flex-1">
+                    <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">분</label>
+                    <select
+                      value={formData.selectedMinute}
+                      onChange={(e) =>
+                        setFormData({ ...formData, selectedMinute: parseInt(e.target.value) })
+                      }
+                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-green-500"
+                    >
+                      {Array.from({ length: 60 }, (_, i) => (
+                        <option key={i} value={i}>
+                          {i.toString().padStart(2, "0")}분
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  형식: 분 시 일 월 요일 (예: 0 9 * * * = 매일 오전 9시)
+                  선택된 요일의 {formData.selectedHour.toString().padStart(2, "0")}:
+                  {formData.selectedMinute.toString().padStart(2, "0")}에 실행됩니다
                 </p>
               </div>
 
