@@ -38,6 +38,13 @@ export default function Home() {
 
   useEffect(() => {
     fetchDashboardData();
+
+    // 30초마다 자동 새로고침 (관심단지 변경사항 반영)
+    const refreshInterval = setInterval(() => {
+      fetchDashboardData();
+    }, 30000);
+
+    return () => clearInterval(refreshInterval);
   }, [refresh]);
 
   // 클라이언트에서만 시간 표시 (hydration 에러 방지)
@@ -171,7 +178,7 @@ export default function Home() {
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3">
               {/* Current Date & Time - 클라이언트에서만 렌더링 */}
               {isMounted && currentTime && (
                 <div className="hidden lg:flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
@@ -183,6 +190,12 @@ export default function Home() {
                   </div>
                 </div>
               )}
+              <Link
+                href="/"
+                className="px-4 py-2 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-lg transition-colors font-semibold"
+              >
+                🏠 홈
+              </Link>
               <Link
                 href="/alerts"
                 className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors font-semibold"

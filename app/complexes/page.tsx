@@ -58,8 +58,8 @@ export default function ComplexesPage() {
   const [complexInfo, setComplexInfo] = useState<ComplexInfo | null>(null);
   const [fetchingInfo, setFetchingInfo] = useState(false);
 
-  // 뷰 모드 (card only)
-  const viewMode = 'card';
+  // 뷰 모드
+  const [viewMode, setViewMode] = useState<'card' | 'list'>('card');
 
   // 드래그 앤 드롭
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
@@ -617,13 +617,25 @@ export default function ComplexesPage() {
                     href="/"
                     className="px-4 py-2 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-lg transition-colors font-semibold"
                   >
-                    ← 홈
+                    🏠 홈
+                  </Link>
+                  <Link
+                    href="/alerts"
+                    className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors font-semibold"
+                  >
+                    🔔 알림
                   </Link>
                   <Link
                     href="/scheduler"
                     className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors font-semibold"
                   >
                     ⏰ 스케줄러
+                  </Link>
+                  <Link
+                    href="/system"
+                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors font-semibold"
+                  >
+                    ⚙️ 시스템
                   </Link>
                 </>
               )}
