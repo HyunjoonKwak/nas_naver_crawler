@@ -94,8 +94,20 @@ export default function SystemPage() {
 
   useEffect(() => {
     fetchStatus();
-    const interval = setInterval(fetchStatus, 10000); // 10초마다 업데이트
-    return () => clearInterval(interval);
+
+    // Refresh when page becomes visible (탭 전환 시에만)
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        console.log('[System] Page visible, refreshing status...');
+        fetchStatus();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, []);
 
   useEffect(() => {

@@ -74,15 +74,7 @@ export default function ComplexesPage() {
   useEffect(() => {
     fetchComplexes();
 
-    // Auto-refresh every 30 seconds to catch updates from detail page crawls
-    const refreshInterval = setInterval(() => {
-      if (!crawlingAll && !crawling) {
-        console.log('[Complexes] Auto-refreshing data...');
-        fetchComplexes();
-      }
-    }, 30000); // 30 seconds
-
-    // Also refresh when page becomes visible
+    // Refresh when page becomes visible (탭 전환 시에만)
     const handleVisibilityChange = () => {
       if (!document.hidden && !crawlingAll && !crawling) {
         console.log('[Complexes] Page visible, refreshing data...');
@@ -93,7 +85,6 @@ export default function ComplexesPage() {
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
-      clearInterval(refreshInterval);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [crawlingAll, crawling]);
