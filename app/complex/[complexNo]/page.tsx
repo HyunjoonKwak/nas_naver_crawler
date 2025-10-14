@@ -64,71 +64,73 @@ export default function ComplexDetailPage() {
 
   const handleCrawl = async () => {
     setCrawling(true);
-    setCrawlProgress(null);
+
+    // Show initial progress immediately
+    setCrawlProgress({
+      currentStep: '크롤링을 시작하고 있습니다...',
+      status: 'crawling',
+      processedArticles: 0,
+    });
+
+    // Simulate progress updates while waiting for response
+    const messages = [
+      '브라우저를 설정하고 있습니다...',
+      '단지 정보를 수집하고 있습니다...',
+      '매물 목록을 스크롤하고 있습니다...',
+      '매물 데이터를 분석하고 있습니다...',
+      '데이터를 처리하고 있습니다...',
+    ];
+    let messageIndex = 0;
+
+    const progressInterval = setInterval(() => {
+      messageIndex = (messageIndex + 1) % messages.length;
+      setCrawlProgress(prev => prev ? { ...prev, currentStep: messages[messageIndex] } : null);
+    }, 3000);
 
     try {
-      // Start crawl
+      // Start crawl (this will take a while)
       const response = await fetch('/api/crawl', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ complexNumbers: complexNo })
       });
 
+      clearInterval(progressInterval);
+
       const data = await response.json();
 
-      if (response.ok && data.crawlId) {
-        // Poll for progress
-        await pollCrawlStatus(data.crawlId);
+      if (response.ok) {
+        // Show final stats
+        const articleCount = data.data?.totalArticles || 0;
+        setCrawlProgress({
+          currentStep: '✅ 크롤링이 완료되었습니다!',
+          status: 'success',
+          processedArticles: articleCount,
+        });
 
         // Refresh data after completion
         await fetchComplexData();
-        alert('✅ 크롤링이 완료되었습니다!');
+
+        setTimeout(() => {
+          alert(`✅ 크롤링이 완료되었습니다!\n\n수집된 매물: ${articleCount}개`);
+        }, 500);
       } else {
         alert('❌ 크롤링에 실패했습니다.');
       }
     } catch (error) {
+      clearInterval(progressInterval);
       console.error('Crawl error:', error);
       alert('❌ 크롤링 중 오류가 발생했습니다.');
     } finally {
-      setCrawling(false);
-      setCrawlProgress(null);
+      setTimeout(() => {
+        setCrawling(false);
+        setCrawlProgress(null);
+      }, 2000); // Show final state for 2 seconds
     }
   };
 
-  const pollCrawlStatus = async (crawlId: string) => {
-    return new Promise<void>((resolve, reject) => {
-      const interval = setInterval(async () => {
-        try {
-          const response = await fetch(`/api/crawl-status?crawlId=${crawlId}`);
-          const data = await response.json();
-
-          if (!response.ok) {
-            clearInterval(interval);
-            reject(new Error(data.error || 'Failed to get status'));
-            return;
-          }
-
-          // Update progress
-          setCrawlProgress({
-            currentStep: data.progress?.currentStep || 'Processing...',
-            status: data.status,
-            processedArticles: data.progress?.processedArticles || 0,
-          });
-
-          // Check if completed
-          if (data.status === 'success' || data.status === 'partial' || data.status === 'failed') {
-            clearInterval(interval);
-            resolve();
-            return;
-          }
-        } catch (error) {
-          console.error('Polling error:', error);
-          clearInterval(interval);
-          reject(error);
-        }
-      }, 2000); // Poll every 2 seconds
-    });
-  };
+  // Note: Real-time polling removed because /api/crawl is synchronous
+  // Using simulated progress updates instead to provide better UX feedback
 
   const handleDelete = async () => {
     if (!confirm('이 단지를 즐겨찾기에서 삭제하시겠습니까?')) return;
@@ -343,7 +345,7 @@ export default function ComplexDetailPage() {
               </div>
 
               {/* 크롤링 진행 상태 배너 */}
-              {crawling && crawlProgress && (
+              {crawling && (
                 <div className="mb-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-2 border-blue-400 dark:border-blue-600 rounded-lg p-4">
                   <div className="flex items-center gap-3">
                     <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 dark:border-blue-400"></div>
@@ -352,12 +354,12 @@ export default function ComplexDetailPage() {
                         ⏳ 크롤링 진행 중
                       </h3>
                       <p className="text-xs text-blue-800 dark:text-blue-300">
-                        {crawlProgress.currentStep}
-                        {crawlProgress.status === 'crawling' && ' 🔍'}
-                        {crawlProgress.status === 'saving' && ' 💾'}
+                        {crawlProgress?.currentStep || '크롤링을 시작하고 있습니다...'}
+                        {crawlProgress?.status === 'crawling' && ' 🔍'}
+                        {crawlProgress?.status === 'saving' && ' 💾'}
                       </p>
                     </div>
-                    {crawlProgress.processedArticles > 0 && (
+                    {crawlProgress && crawlProgress.processedArticles > 0 && (
                       <div className="text-right">
                         <div className="text-xs text-blue-600 dark:text-blue-400">수집 매물</div>
                         <div className="text-lg font-bold text-blue-900 dark:text-blue-200">

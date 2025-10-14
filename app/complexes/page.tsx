@@ -59,7 +59,30 @@ export default function ComplexesPage() {
     // Note: syncAllFavorites() removed to prevent unnecessary API calls on page load
     // Note: checkOngoingCrawl() removed to prevent auto-resume that confuses users
     // Users should manually trigger crawling using "전체 크롤링" button
-  }, []);
+
+    // Auto-refresh every 30 seconds to catch updates from detail page crawls
+    const refreshInterval = setInterval(() => {
+      if (!crawlingAll && !crawling) {
+        console.log('[Complexes] Auto-refreshing data...');
+        fetchFavorites();
+      }
+    }, 30000); // 30 seconds
+
+    // Also refresh when page becomes visible
+    const handleVisibilityChange = () => {
+      if (!document.hidden && !crawlingAll && !crawling) {
+        console.log('[Complexes] Page visible, refreshing data...');
+        fetchFavorites();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      clearInterval(refreshInterval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [crawlingAll, crawling]);
 
   // Note: checkOngoingCrawl() function removed - no longer needed
 
@@ -597,6 +620,21 @@ export default function ComplexesPage() {
                 }`}
               >
                 {crawlingAll ? '⏳ 크롤링 중...' : '🔄 전체 크롤링'}
+              </button>
+              <button
+                onClick={() => {
+                  console.log('[Complexes] Manual refresh triggered');
+                  fetchFavorites();
+                }}
+                disabled={crawlingAll || crawling}
+                className={`px-4 py-2 rounded-lg transition-colors font-medium ${
+                  crawlingAll || crawling
+                    ? 'bg-gray-300 dark:bg-gray-600 cursor-not-allowed'
+                    : 'bg-blue-600 hover:bg-blue-700 text-white'
+                }`}
+                title="단지 정보 새로고침"
+              >
+                🔃
               </button>
             </div>
 
