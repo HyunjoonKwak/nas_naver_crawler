@@ -66,18 +66,31 @@ export default function SchedulerPage() {
   const fetchData = async () => {
     try {
       setLoading(true);
+      console.log('[SCHEDULER] 데이터 조회 시작');
 
       // 스케줄 목록 조회
+      console.log('[SCHEDULER] /api/schedules 호출');
       const schedulesResponse = await fetch("/api/schedules");
       const schedulesData = await schedulesResponse.json();
       setSchedules(schedulesData.schedules || []);
+      console.log('[SCHEDULER] 스케줄 목록 조회 완료:', { count: schedulesData.schedules?.length || 0 });
 
-      // 단지 목록 조회
+      // 단지 목록 조회 (favorites.json에서 읽기)
+      console.log('[SCHEDULER] /api/favorites 호출 (favorites.json 읽기)');
       const favResponse = await fetch("/api/favorites");
       const favData = await favResponse.json();
       const favoriteComplexes = favData.favorites || [];
+      console.log('[SCHEDULER] 관심단지 조회 완료:', {
+        count: favoriteComplexes.length,
+        favorites: favoriteComplexes.map((f: any) => ({
+          complexNo: f.complexNo,
+          complexName: f.complexName,
+          order: f.order
+        }))
+      });
 
       // 단지 상세 정보 조회
+      console.log('[SCHEDULER] /api/results 호출 (단지명 매칭용)');
       const complexResponse = await fetch("/api/results");
       const complexData = await complexResponse.json();
       const results = complexData.results || [];
@@ -91,8 +104,12 @@ export default function SchedulerPage() {
       });
 
       setComplexes(complexList);
+      console.log('[SCHEDULER] 최종 단지 목록 설정 완료:', {
+        count: complexList.length,
+        complexes: complexList
+      });
     } catch (error) {
-      console.error("Failed to fetch data:", error);
+      console.error("[SCHEDULER] Failed to fetch data:", error);
     } finally {
       setLoading(false);
     }
@@ -126,13 +143,16 @@ export default function SchedulerPage() {
   };
 
   const handleOpenModal = (schedule?: Schedule) => {
+    // 현재 관심단지 목록을 자동으로 사용
+    const currentFavoriteComplexNos = complexes.map((c) => c.complexNo);
+
     if (schedule) {
       // 수정 모드
       setEditingSchedule(schedule);
       const parsed = parseCronExpr(schedule.cronExpr);
       setFormData({
         name: schedule.name,
-        complexNos: schedule.complexNos,
+        complexNos: currentFavoriteComplexNos, // 관심단지로 자동 설정
         cronExpr: schedule.cronExpr,
         selectedDays: parsed.days,
         selectedHour: parsed.hour,
@@ -143,7 +163,7 @@ export default function SchedulerPage() {
       setEditingSchedule(null);
       setFormData({
         name: "",
-        complexNos: [],
+        complexNos: currentFavoriteComplexNos, // 관심단지로 자동 설정
         cronExpr: "0 9 * * *",
         selectedDays: [0, 1, 2, 3, 4, 5, 6],
         selectedHour: 9,
@@ -160,6 +180,12 @@ export default function SchedulerPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // 관심단지가 없으면 스케줄 생성 불가
+    if (complexes.length === 0) {
+      alert("관심단지가 없습니다. 먼저 단지 목록 페이지에서 관심단지를 등록해주세요.");
+      return;
+    }
 
     // 요일/시간 선택으로부터 Cron 표현식 생성
     const cronExpr = buildCronExpr(formData.selectedDays, formData.selectedHour, formData.selectedMinute);
@@ -507,55 +533,42 @@ export default function SchedulerPage() {
                 />
               </div>
 
-              {/* 크롤링 단지 선택 */}
+              {/* 크롤링 단지 (관심단지 자동 사용) */}
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    크롤링 단지 선택 * (복수 선택 가능)
+                    크롤링 단지 (관심단지 자동 사용)
                   </label>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const allSelected = formData.complexNos.length === complexes.length;
-                      setFormData({
-                        ...formData,
-                        complexNos: allSelected ? [] : complexes.map((c) => c.complexNo),
-                      });
-                    }}
-                    className="text-sm text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300 font-semibold"
-                  >
-                    {formData.complexNos.length === complexes.length ? "모두 해제" : "모두 선택"}
-                  </button>
+                  <span className="text-xs text-green-600 dark:text-green-400 font-semibold bg-green-50 dark:bg-green-900/20 px-2 py-1 rounded">
+                    ✓ 총 {complexes.length}개 단지
+                  </span>
                 </div>
-                <div className="grid grid-cols-1 gap-2 max-h-60 overflow-y-auto border border-gray-300 dark:border-gray-600 rounded-lg p-3">
-                  {complexes.map((complex) => (
-                    <label
-                      key={complex.complexNo}
-                      className="flex items-center gap-3 p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded cursor-pointer"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={formData.complexNos.includes(complex.complexNo)}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setFormData({
-                              ...formData,
-                              complexNos: [...formData.complexNos, complex.complexNo],
-                            });
-                          } else {
-                            setFormData({
-                              ...formData,
-                              complexNos: formData.complexNos.filter(
-                                (id) => id !== complex.complexNo
-                              ),
-                            });
-                          }
-                        }}
-                        className="w-4 h-4"
-                      />
-                      <span className="text-gray-900 dark:text-white">{complex.complexName}</span>
-                    </label>
-                  ))}
+                <div className="bg-gray-50 dark:bg-gray-900/50 border border-gray-300 dark:border-gray-600 rounded-lg p-4">
+                  <p className="text-xs text-gray-600 dark:text-gray-400 mb-3">
+                    💡 스케줄러는 자동으로 <strong>관심단지 목록</strong>의 모든 단지를 크롤링합니다.
+                    단지를 추가하거나 제거하려면 <strong>단지 목록</strong> 페이지에서 관심 등록을 변경하세요.
+                  </p>
+                  {complexes.length > 0 ? (
+                    <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto">
+                      {complexes.map((complex) => (
+                        <span
+                          key={complex.complexNo}
+                          className="px-3 py-1 bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 rounded-full text-xs font-medium border border-green-200 dark:border-green-800"
+                        >
+                          ⭐ {complex.complexName}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-4">
+                      <p className="text-sm text-orange-600 dark:text-orange-400 font-semibold">
+                        ⚠️ 관심 등록된 단지가 없습니다
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        단지 목록 페이지에서 먼저 관심단지를 등록해주세요
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
 
