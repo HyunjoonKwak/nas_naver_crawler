@@ -37,6 +37,7 @@ export default function SchedulerPage() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingSchedule, setEditingSchedule] = useState<Schedule | null>(null);
+  const [runningScheduleId, setRunningScheduleId] = useState<string | null>(null);
 
   // 폼 상태
   const [formData, setFormData] = useState({
@@ -263,19 +264,22 @@ export default function SchedulerPage() {
     if (!confirm("이 스케줄을 지금 실행하시겠습니까?")) return;
 
     try {
+      setRunningScheduleId(id);
       const response = await fetch(`/api/schedules/${id}/run`, {
         method: "POST",
       });
 
       if (response.ok) {
-        alert("스케줄이 실행되었습니다! 잠시 후 결과를 확인하세요.");
-        fetchData();
+        window.alert("스케줄이 실행되었습니다! 잠시 후 결과를 확인하세요.");
+        await fetchData();
       } else {
-        alert("스케줄 실행에 실패했습니다.");
+        window.alert("스케줄 실행에 실패했습니다.");
       }
     } catch (error) {
       console.error("Failed to run schedule:", error);
-      alert("스케줄 실행 중 오류가 발생했습니다.");
+      window.alert("스케줄 실행 중 오류가 발생했습니다.");
+    } finally {
+      setRunningScheduleId(null);
     }
   };
 
@@ -457,23 +461,44 @@ export default function SchedulerPage() {
                       {schedule.logs.slice(0, 3).map((log) => (
                         <div
                           key={log.id}
-                          className="flex items-center justify-between text-xs bg-gray-50 dark:bg-gray-700 rounded px-2 py-1"
+                          className="bg-gray-50 dark:bg-gray-700 rounded px-2 py-1.5"
                         >
-                          <span className="flex items-center gap-2">
-                            <span
-                              className={`w-2 h-2 rounded-full ${
-                                log.status === "success"
-                                  ? "bg-green-500"
-                                  : "bg-red-500"
-                              }`}
-                            ></span>
-                            <span className="text-gray-600 dark:text-gray-300">
-                              {formatDate(log.executedAt)}
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="flex items-center gap-2">
+                              <span
+                                className={`w-2 h-2 rounded-full ${
+                                  log.status === "success"
+                                    ? "bg-green-500"
+                                    : "bg-red-500"
+                                }`}
+                              ></span>
+                              <span className="text-gray-600 dark:text-gray-300">
+                                {formatDate(log.executedAt)}
+                              </span>
                             </span>
-                          </span>
-                          <span className="text-gray-900 dark:text-white font-semibold">
-                            {log.articlesCount || 0}개 매물
-                          </span>
+                            <span className="font-semibold">
+                              {log.status === "success" ? (
+                                log.articlesCount !== null && log.articlesCount > 0 ? (
+                                  <span className="text-gray-900 dark:text-white">
+                                    {log.articlesCount}개 매물
+                                  </span>
+                                ) : (
+                                  <span className="text-orange-600 dark:text-orange-400">
+                                    매물 없음
+                                  </span>
+                                )
+                              ) : (
+                                <span className="text-red-600 dark:text-red-400">
+                                  크롤링 실패
+                                </span>
+                              )}
+                            </span>
+                          </div>
+                          {log.status === "failed" && log.errorMessage && (
+                            <div className="mt-1 text-xs text-red-600 dark:text-red-400">
+                              💬 {log.errorMessage}
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>
@@ -484,19 +509,44 @@ export default function SchedulerPage() {
                 <div className="flex gap-2">
                   <button
                     onClick={() => handleRunNow(schedule.id)}
-                    className="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors font-semibold text-sm"
+                    disabled={runningScheduleId === schedule.id}
+                    className={`flex-1 px-4 py-2 rounded-lg transition-colors font-semibold text-sm ${
+                      runningScheduleId === schedule.id
+                        ? 'bg-gray-400 cursor-not-allowed text-white'
+                        : 'bg-green-600 hover:bg-green-700 text-white'
+                    }`}
                   >
-                    ▶️ 즉시 실행
+                    {runningScheduleId === schedule.id ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        실행 중...
+                      </span>
+                    ) : (
+                      '▶️ 즉시 실행'
+                    )}
                   </button>
                   <button
                     onClick={() => handleOpenModal(schedule)}
-                    className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-semibold text-sm"
+                    disabled={runningScheduleId === schedule.id}
+                    className={`flex-1 px-4 py-2 rounded-lg transition-colors font-semibold text-sm ${
+                      runningScheduleId === schedule.id
+                        ? 'bg-gray-300 cursor-not-allowed text-gray-500'
+                        : 'bg-blue-600 hover:bg-blue-700 text-white'
+                    }`}
                   >
                     ✏️ 수정
                   </button>
                   <button
                     onClick={() => handleDelete(schedule.id)}
-                    className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors font-semibold text-sm"
+                    disabled={runningScheduleId === schedule.id}
+                    className={`flex-1 px-4 py-2 rounded-lg transition-colors font-semibold text-sm ${
+                      runningScheduleId === schedule.id
+                        ? 'bg-gray-300 cursor-not-allowed text-gray-500'
+                        : 'bg-red-600 hover:bg-red-700 text-white'
+                    }`}
                   >
                     🗑️ 삭제
                   </button>

@@ -22,32 +22,73 @@ function getNextRunTime(cronExpr: string): Date | null {
       return null;
     }
 
-    // 다음 실행 시간 계산 (간단한 방법)
-    const now = new Date();
     const parts = cronExpr.split(' ');
-
-    // 기본적인 계산 (실제로는 더 복잡하지만, 대략적인 추정)
-    // node-cron은 다음 실행 시간을 직접 제공하지 않으므로 대략적으로 계산
-
-    // 매 분: * * * * *
-    if (parts[0] === '*') {
-      now.setMinutes(now.getMinutes() + 1);
-      return now;
+    if (parts.length !== 5) {
+      console.error(`Invalid cron format: ${cronExpr}`);
+      return null;
     }
 
-    // 특정 분: 30 * * * * (매시 30분)
-    const minute = parseInt(parts[0]);
-    if (!isNaN(minute)) {
-      now.setMinutes(minute);
-      if (now < new Date()) {
-        now.setHours(now.getHours() + 1);
+    const [minute, hour, dayOfMonth, month, dayOfWeek] = parts;
+
+    // 현재 시간 (서울 시간대)
+    const now = new Date();
+    let next = new Date(now);
+    next.setSeconds(0);
+    next.setMilliseconds(0);
+
+    // 분 설정
+    if (minute !== '*') {
+      const targetMinute = parseInt(minute);
+      next.setMinutes(targetMinute);
+
+      // 현재 분이 이미 지났으면 다음 시간으로
+      if (next <= now) {
+        next.setHours(next.getHours() + 1);
       }
-      return now;
+    } else {
+      // * 이면 다음 분
+      next.setMinutes(next.getMinutes() + 1);
     }
 
-    // 기본값: 1시간 후
-    now.setHours(now.getHours() + 1);
-    return now;
+    // 시간 설정
+    if (hour !== '*') {
+      const targetHour = parseInt(hour);
+      next.setHours(targetHour);
+
+      // 현재 시간이 이미 지났으면 다음 날로
+      if (next <= now) {
+        next.setDate(next.getDate() + 1);
+      }
+    }
+
+    // 요일 설정 (0=일요일, 6=토요일)
+    if (dayOfWeek !== '*') {
+      const targetDays = dayOfWeek.split(',').map(d => parseInt(d));
+      const currentDay = next.getDay();
+
+      // 현재 요일이 대상 요일이 아니면 다음 유효한 요일 찾기
+      if (!targetDays.includes(currentDay) || next <= now) {
+        let daysToAdd = 1;
+        for (let i = 1; i <= 7; i++) {
+          const checkDay = (currentDay + i) % 7;
+          if (targetDays.includes(checkDay)) {
+            daysToAdd = i;
+            break;
+          }
+        }
+        next.setDate(next.getDate() + daysToAdd);
+
+        // 요일이 바뀌면 시간을 다시 설정
+        if (hour !== '*') {
+          next.setHours(parseInt(hour));
+        }
+        if (minute !== '*') {
+          next.setMinutes(parseInt(minute));
+        }
+      }
+    }
+
+    return next;
   } catch (error) {
     console.error('Failed to calculate next run time:', error);
     return null;
@@ -64,10 +105,10 @@ async function executeCrawl(scheduleId: string, complexNos: string[]) {
     console.log(`🚀 Executing scheduled crawl: ${scheduleId}`);
     console.log(`   Complexes: ${complexNos.join(', ')}`);
 
-    // 크롤링 API 호출 (타임아웃: 10분)
+    // 크롤링 API 호출 (타임아웃: 30분)
     const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 600000); // 10분
+    const timeoutId = setTimeout(() => controller.abort(), 1800000); // 30분
 
     const response = await fetch(`${baseUrl}/api/crawl`, {
       method: 'POST',
@@ -78,6 +119,9 @@ async function executeCrawl(scheduleId: string, complexNos: string[]) {
         complexNumbers: complexNos,
       }),
       signal: controller.signal,
+      // @ts-ignore - undici specific options
+      headersTimeout: 1800000, // 30분 (밀리초)
+      bodyTimeout: 1800000, // 30분 (밀리초)
     });
 
     clearTimeout(timeoutId);
