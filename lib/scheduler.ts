@@ -80,9 +80,11 @@ async function executeCrawl(scheduleId: string, complexNos: string[]) {
     const duration = Date.now() - startTime;
 
     if (response.ok) {
+      const articlesCount = data.data?.articles || 0;
       console.log(`✅ Scheduled crawl completed: ${scheduleId}`);
       console.log(`   Duration: ${Math.floor(duration / 1000)}s`);
-      console.log(`   Articles: ${data.data?.articles || 0}`);
+      console.log(`   Articles: ${articlesCount}`);
+      console.log(`   Response data:`, JSON.stringify(data, null, 2));
 
       // 성공 로그 저장
       await prisma.scheduleLog.create({
@@ -90,7 +92,7 @@ async function executeCrawl(scheduleId: string, complexNos: string[]) {
           scheduleId,
           status: 'success',
           duration: Math.floor(duration / 1000),
-          articlesCount: data.data?.articles || 0,
+          articlesCount: articlesCount,
         },
       });
 
