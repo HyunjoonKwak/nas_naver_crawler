@@ -910,10 +910,10 @@ export default function ComplexesPage() {
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-12 text-center">
             <div className="text-6xl mb-4">📭</div>
             <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
-              등록된 선호 단지가 없습니다
+              등록된 단지가 없습니다
             </h3>
             <p className="text-gray-500 dark:text-gray-400 mb-4">
-              "단지 추가" 버튼을 클릭하여 관심있는 단지를 등록하세요
+              "단지 추가" 버튼을 클릭하여 단지를 등록하세요
             </p>
           </div>
         ) : viewMode === 'card' ? (
