@@ -7,17 +7,10 @@ interface Alert {
   id: string;
   name: string;
   complexIds: string[];
-  complexes: Array<{ complexNo: string; complexName: string }>;
   tradeTypes: string[];
-  minPrice: number | null;
-  maxPrice: number | null;
-  minArea: number | null;
-  maxArea: number | null;
   isActive: boolean;
-  notifyWebhook: boolean;
   webhookUrl: string | null;
   createdAt: string;
-  logs: any[];
 }
 
 interface Complex {
@@ -26,17 +19,17 @@ interface Complex {
 }
 
 export default function AlertsPage() {
-  const [alerts, setAlerts] = useState<Alert[]>([]);
+  const [alert, setAlert] = useState<Alert | null>(null);
   const [complexes, setComplexes] = useState<Complex[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showModal, setShowModal] = useState(false);
-  const [editingAlert, setEditingAlert] = useState<Alert | null>(null);
+  const [saving, setSaving] = useState(false);
 
   // 폼 상태
   const [formData, setFormData] = useState({
-    name: "",
+    name: "매물 변경 알림",
     tradeTypes: [] as string[],
     webhookUrl: "",
+    isActive: true,
   });
 
   const [testingWebhook, setTestingWebhook] = useState(false);
@@ -49,10 +42,21 @@ export default function AlertsPage() {
     try {
       setLoading(true);
 
-      // 알림 목록 조회
+      // 알림 목록 조회 (1개만 있을 것)
       const alertsResponse = await fetch("/api/alerts");
       const alertsData = await alertsResponse.json();
-      setAlerts(alertsData.alerts || []);
+      const alerts = alertsData.alerts || [];
+
+      if (alerts.length > 0) {
+        const existingAlert = alerts[0];
+        setAlert(existingAlert);
+        setFormData({
+          name: existingAlert.name,
+          tradeTypes: existingAlert.tradeTypes,
+          webhookUrl: existingAlert.webhookUrl || "",
+          isActive: existingAlert.isActive,
+        });
+      }
 
       // 단지 목록 조회 (favorites에서)
       const favResponse = await fetch("/api/favorites");
@@ -80,42 +84,21 @@ export default function AlertsPage() {
     }
   };
 
-  const handleOpenModal = (alert?: Alert) => {
-    if (alert) {
-      // 수정 모드
-      setEditingAlert(alert);
-      setFormData({
-        name: alert.name,
-        tradeTypes: alert.tradeTypes,
-        webhookUrl: alert.webhookUrl || "",
-      });
-    } else {
-      // 생성 모드
-      setEditingAlert(null);
-      setFormData({
-        name: "",
-        tradeTypes: [],
-        webhookUrl: "",
-      });
-    }
-    setShowModal(true);
-  };
-
-  const handleCloseModal = () => {
-    setShowModal(false);
-    setEditingAlert(null);
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
+  const handleSave = async () => {
     // 관심단지가 없으면 알림 생성 불가
     if (complexes.length === 0) {
       alert("관심단지가 없습니다. 먼저 단지 목록 페이지에서 관심단지를 등록해주세요.");
       return;
     }
 
+    if (!formData.webhookUrl) {
+      alert("Discord 웹훅 URL을 입력해주세요.");
+      return;
+    }
+
     try {
+      setSaving(true);
+
       // 관심단지 전체를 자동으로 사용
       const complexIds = complexes.map((c) => c.complexNo);
 
@@ -131,8 +114,8 @@ export default function AlertsPage() {
         webhookUrl: formData.webhookUrl || null,
       };
 
-      const url = editingAlert ? `/api/alerts/${editingAlert.id}` : "/api/alerts";
-      const method = editingAlert ? "PUT" : "POST";
+      const url = alert ? `/api/alerts/${alert.id}` : "/api/alerts";
+      const method = alert ? "PUT" : "POST";
 
       const response = await fetch(url, {
         method,
@@ -141,8 +124,7 @@ export default function AlertsPage() {
       });
 
       if (response.ok) {
-        alert(editingAlert ? "알림이 수정되었습니다!" : "알림이 생성되었습니다!");
-        handleCloseModal();
+        alert("알림 설정이 저장되었습니다!");
         fetchData();
       } else {
         const data = await response.json();
@@ -151,18 +133,24 @@ export default function AlertsPage() {
     } catch (error) {
       console.error("Failed to save alert:", error);
       alert("알림 저장 중 오류가 발생했습니다.");
+    } finally {
+      setSaving(false);
     }
   };
 
-  const handleToggleActive = async (alert: Alert) => {
+  const handleToggleActive = async () => {
+    if (!alert) return;
+
     try {
       const response = await fetch(`/api/alerts/${alert.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ isActive: !alert.isActive }),
+        body: JSON.stringify({ isActive: !formData.isActive }),
       });
 
       if (response.ok) {
+        setFormData({ ...formData, isActive: !formData.isActive });
+        alert("알림 상태가 변경되었습니다.");
         fetchData();
       } else {
         alert("알림 상태 변경에 실패했습니다.");
@@ -170,26 +158,6 @@ export default function AlertsPage() {
     } catch (error) {
       console.error("Failed to toggle alert:", error);
       alert("알림 상태 변경 중 오류가 발생했습니다.");
-    }
-  };
-
-  const handleDelete = async (id: string) => {
-    if (!confirm("이 알림을 삭제하시겠습니까?")) return;
-
-    try {
-      const response = await fetch(`/api/alerts?id=${id}`, {
-        method: "DELETE",
-      });
-
-      if (response.ok) {
-        alert("알림이 삭제되었습니다.");
-        fetchData();
-      } else {
-        alert("알림 삭제에 실패했습니다.");
-      }
-    } catch (error) {
-      console.error("Failed to delete alert:", error);
-      alert("알림 삭제 중 오류가 발생했습니다.");
     }
   };
 
@@ -225,21 +193,12 @@ export default function AlertsPage() {
     }
   };
 
-  const formatPrice = (price: number | null) => {
-    if (!price) return "-";
-    const uk = Math.floor(price / 10000);
-    const man = price % 10000;
-    if (uk === 0) return `${man}만`;
-    if (man === 0) return `${uk}억`;
-    return `${uk}억 ${man}만`;
-  };
-
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950">
         <div className="text-center">
           <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600 dark:text-gray-400">알림 목록을 불러오는 중...</p>
+          <p className="text-gray-600 dark:text-gray-400">알림 설정을 불러오는 중...</p>
         </div>
       </div>
     );
@@ -258,7 +217,7 @@ export default function AlertsPage() {
               <div>
                 <h1 className="text-xl font-bold text-gray-900 dark:text-white">알림 설정</h1>
                 <p className="text-xs text-gray-500 dark:text-gray-400">
-                  매물 변경 시 실시간 알림 받기
+                  매물 변경 시 실시간 Discord 알림
                 </p>
               </div>
             </div>
@@ -292,290 +251,201 @@ export default function AlertsPage() {
         </div>
       </nav>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* 헤더 */}
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-              알림 목록
-            </h2>
-            <p className="text-gray-600 dark:text-gray-400 mt-1">
-              {alerts.length}개의 알림이 등록되어 있습니다
-            </p>
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* 알림 상태 표시 */}
+        <div className="mb-6 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="text-4xl">
+                {formData.isActive ? "🔔" : "🔕"}
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+                  {formData.isActive ? "알림 활성화됨" : "알림 비활성화됨"}
+                </h2>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                  {alert
+                    ? `${new Date(alert.createdAt).toLocaleDateString("ko-KR")} 설정됨`
+                    : "아직 알림이 설정되지 않았습니다"}
+                </p>
+              </div>
+            </div>
+            {alert && (
+              <button
+                onClick={handleToggleActive}
+                className={`px-6 py-3 rounded-lg font-semibold transition-colors ${
+                  formData.isActive
+                    ? "bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200"
+                    : "bg-green-600 hover:bg-green-700 text-white"
+                }`}
+              >
+                {formData.isActive ? "🔕 비활성화" : "🔔 활성화"}
+              </button>
+            )}
           </div>
-          <button
-            onClick={() => handleOpenModal()}
-            className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-lg transition-all font-semibold shadow-lg"
-          >
-            ➕ 새 알림 만들기
-          </button>
         </div>
 
-        {/* 알림 목록 */}
-        {alerts.length === 0 ? (
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-12 text-center">
-            <div className="text-7xl mb-4">🔕</div>
-            <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">
-              등록된 알림이 없습니다
-            </h3>
-            <p className="text-gray-600 dark:text-gray-400 mb-6">
-              새 알림을 만들어 매물 변경을 실시간으로 받아보세요
-            </p>
-            <button
-              onClick={() => handleOpenModal()}
-              className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-lg transition-all font-semibold shadow-lg"
-            >
-              ➕ 첫 알림 만들기
-            </button>
+        {/* 알림 설정 폼 */}
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6 space-y-6">
+          <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
+            알림 설정
+          </h3>
+
+          {/* 알림 이름 */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              알림 이름
+            </label>
+            <input
+              type="text"
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500"
+              placeholder="예: 매물 변경 알림"
+            />
           </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {alerts.map((alert) => (
-              <div
-                key={alert.id}
-                className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6"
-              >
-                {/* 알림 헤더 */}
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex-1">
-                    <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-1">
-                      {alert.name}
-                    </h3>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                      {new Date(alert.createdAt).toLocaleDateString("ko-KR")} 생성
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => handleToggleActive(alert)}
-                      className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors ${
-                        alert.isActive
-                          ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
-                          : "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-400"
-                      }`}
-                    >
-                      {alert.isActive ? "✓ 활성" : "✗ 비활성"}
-                    </button>
-                  </div>
-                </div>
 
-                {/* 단지 목록 */}
-                <div className="mb-4">
-                  <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                    🏘️ 관심 단지
-                  </h4>
-                  <div className="flex flex-wrap gap-2">
-                    {alert.complexes.map((complex) => (
-                      <span
-                        key={complex.complexNo}
-                        className="px-3 py-1 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 rounded-full text-xs font-medium"
-                      >
-                        {complex.complexName}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-
-                {/* 조건 */}
-                <div className="grid grid-cols-2 gap-4 mb-4 text-sm">
-                  <div>
-                    <span className="text-gray-600 dark:text-gray-400">거래유형:</span>
-                    <span className="ml-2 font-semibold text-gray-900 dark:text-white">
-                      {alert.tradeTypes.length > 0 ? alert.tradeTypes.join(", ") : "전체"}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-gray-600 dark:text-gray-400">가격:</span>
-                    <span className="ml-2 font-semibold text-gray-900 dark:text-white">
-                      {alert.minPrice || alert.maxPrice
-                        ? `${formatPrice(alert.minPrice)} ~ ${formatPrice(alert.maxPrice)}`
-                        : "제한없음"}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-gray-600 dark:text-gray-400">면적:</span>
-                    <span className="ml-2 font-semibold text-gray-900 dark:text-white">
-                      {alert.minArea || alert.maxArea
-                        ? `${alert.minArea || 0}㎡ ~ ${alert.maxArea || "∞"}㎡`
-                        : "제한없음"}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-gray-600 dark:text-gray-400">웹훅:</span>
-                    <span className="ml-2 font-semibold text-gray-900 dark:text-white">
-                      {alert.notifyWebhook ? "✓ 활성" : "✗ 비활성"}
-                    </span>
-                  </div>
-                </div>
-
-                {/* 최근 알림 */}
-                <div className="mb-4">
-                  <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                    📊 최근 알림: {alert.logs.length}건
-                  </h4>
-                </div>
-
-                {/* 액션 버튼 */}
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => handleOpenModal(alert)}
-                    className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-semibold text-sm"
-                  >
-                    ✏️ 수정
-                  </button>
-                  <button
-                    onClick={() => handleDelete(alert.id)}
-                    className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors font-semibold text-sm"
-                  >
-                    🗑️ 삭제
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* 알림 생성/수정 모달 */}
-      {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-gradient-to-r from-purple-600 to-pink-600 px-6 py-4 rounded-t-xl">
-              <h3 className="text-2xl font-bold text-white">
-                {editingAlert ? "알림 수정" : "새 알림 만들기"}
-              </h3>
+          {/* 알림 단지 (관심단지 자동 사용) */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                알림 대상 단지
+              </label>
+              <span className="text-xs text-purple-600 dark:text-purple-400 font-semibold bg-purple-50 dark:bg-purple-900/20 px-3 py-1 rounded-full">
+                ✓ 관심단지 {complexes.length}개 자동 적용
+              </span>
             </div>
-
-            <form onSubmit={handleSubmit} className="p-6 space-y-6">
-              {/* 알림 이름 */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  알림 이름 *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500"
-                  placeholder="예: 강남 아파트 전세 알림"
-                />
-              </div>
-
-              {/* 알림 단지 (관심단지 자동 사용) */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    알림 단지 (관심단지 자동 사용)
-                  </label>
-                  <span className="text-xs text-purple-600 dark:text-purple-400 font-semibold bg-purple-50 dark:bg-purple-900/20 px-2 py-1 rounded">
-                    ✓ 총 {complexes.length}개 단지
-                  </span>
-                </div>
-                <div className="bg-gray-50 dark:bg-gray-900/50 border border-gray-300 dark:border-gray-600 rounded-lg p-4">
-                  <p className="text-xs text-gray-600 dark:text-gray-400 mb-3">
-                    💡 알림은 자동으로 <strong>관심단지 목록</strong>의 모든 단지를 대상으로 합니다.
-                    단지를 추가하거나 제거하려면 <strong>단지 목록</strong> 페이지에서 관심 등록을 변경하세요.
-                  </p>
-                  {complexes.length > 0 ? (
-                    <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto">
-                      {complexes.map((complex) => (
-                        <span
-                          key={complex.complexNo}
-                          className="px-3 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300 rounded-full text-xs font-medium border border-purple-200 dark:border-purple-800"
-                        >
-                          ⭐ {complex.complexName}
-                        </span>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-center py-4">
-                      <p className="text-sm text-orange-600 dark:text-orange-400 font-semibold">
-                        ⚠️ 관심 등록된 단지가 없습니다
-                      </p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                        단지 목록 페이지에서 먼저 관심단지를 등록해주세요
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* 거래 유형 */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  거래 유형 (선택안하면 전체)
-                </label>
-                <div className="flex gap-4">
-                  {["매매", "전세", "월세"].map((type) => (
-                    <label key={type} className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={formData.tradeTypes.includes(type)}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setFormData({
-                              ...formData,
-                              tradeTypes: [...formData.tradeTypes, type],
-                            });
-                          } else {
-                            setFormData({
-                              ...formData,
-                              tradeTypes: formData.tradeTypes.filter((t) => t !== type),
-                            });
-                          }
-                        }}
-                        className="w-4 h-4"
-                      />
-                      <span className="text-gray-900 dark:text-white">{type}</span>
-                    </label>
+            <div className="bg-gray-50 dark:bg-gray-900/50 border border-gray-300 dark:border-gray-600 rounded-lg p-4">
+              <p className="text-xs text-gray-600 dark:text-gray-400 mb-3">
+                💡 <strong>관심단지 목록</strong>의 모든 단지에 대해 알림을 보냅니다.
+                단지를 추가하거나 제거하려면 <strong>단지 목록</strong> 페이지에서 관심 등록을 변경하세요.
+              </p>
+              {complexes.length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                  {complexes.map((complex) => (
+                    <span
+                      key={complex.complexNo}
+                      className="px-3 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300 rounded-full text-xs font-medium border border-purple-200 dark:border-purple-800"
+                    >
+                      ⭐ {complex.complexName}
+                    </span>
                   ))}
                 </div>
-              </div>
+              ) : (
+                <div className="text-center py-4">
+                  <p className="text-sm text-orange-600 dark:text-orange-400 font-semibold">
+                    ⚠️ 관심 등록된 단지가 없습니다
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    단지 목록 페이지에서 먼저 관심단지를 등록해주세요
+                  </p>
+                  <Link
+                    href="/complexes"
+                    className="inline-block mt-3 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold"
+                  >
+                    단지 목록으로 이동
+                  </Link>
+                </div>
+              )}
+            </div>
+          </div>
 
-              {/* Discord 웹훅 URL */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Discord 웹훅 URL *
+          {/* 거래 유형 */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              거래 유형
+            </label>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+              선택한 거래 유형의 매물만 알림을 받습니다. 선택하지 않으면 모든 거래 유형을 알립니다.
+            </p>
+            <div className="flex gap-4">
+              {["매매", "전세", "월세"].map((type) => (
+                <label key={type} className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={formData.tradeTypes.includes(type)}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setFormData({
+                          ...formData,
+                          tradeTypes: [...formData.tradeTypes, type],
+                        });
+                      } else {
+                        setFormData({
+                          ...formData,
+                          tradeTypes: formData.tradeTypes.filter((t) => t !== type),
+                        });
+                      }
+                    }}
+                    className="w-5 h-5 text-purple-600 rounded focus:ring-2 focus:ring-purple-500"
+                  />
+                  <span className="text-gray-900 dark:text-white font-medium">{type}</span>
                 </label>
-                <input
-                  type="url"
-                  required
-                  value={formData.webhookUrl}
-                  onChange={(e) => setFormData({ ...formData, webhookUrl: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500"
-                  placeholder="https://discord.com/api/webhooks/..."
-                />
-                <button
-                  type="button"
-                  onClick={handleTestWebhook}
-                  disabled={testingWebhook || !formData.webhookUrl}
-                  className="mt-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white rounded-lg transition-colors font-semibold text-sm"
-                >
-                  {testingWebhook ? "전송 중..." : "🧪 테스트 알림 보내기"}
-                </button>
-              </div>
+              ))}
+            </div>
+            {formData.tradeTypes.length > 0 && (
+              <p className="text-xs text-purple-600 dark:text-purple-400 mt-2">
+                ✓ {formData.tradeTypes.join(", ")} 매물만 알림
+              </p>
+            )}
+            {formData.tradeTypes.length === 0 && (
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                → 모든 거래 유형 알림
+              </p>
+            )}
+          </div>
 
-              {/* 버튼 */}
-              <div className="flex gap-3 pt-4">
-                <button
-                  type="button"
-                  onClick={handleCloseModal}
-                  className="flex-1 px-6 py-3 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-lg transition-colors font-semibold"
-                >
-                  취소
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-lg transition-all font-semibold shadow-lg"
-                >
-                  {editingAlert ? "수정하기" : "만들기"}
-                </button>
-              </div>
-            </form>
+          {/* Discord 웹훅 URL */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Discord 웹훅 URL *
+            </label>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+              Discord 서버 설정 → 연동 → 웹훅에서 웹훅 URL을 복사하여 입력하세요.
+            </p>
+            <input
+              type="url"
+              value={formData.webhookUrl}
+              onChange={(e) => setFormData({ ...formData, webhookUrl: e.target.value })}
+              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500"
+              placeholder="https://discord.com/api/webhooks/..."
+            />
+            <button
+              type="button"
+              onClick={handleTestWebhook}
+              disabled={testingWebhook || !formData.webhookUrl}
+              className="mt-3 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white rounded-lg transition-colors font-semibold text-sm"
+            >
+              {testingWebhook ? "전송 중..." : "🧪 테스트 알림 보내기"}
+            </button>
+          </div>
+
+          {/* 저장 버튼 */}
+          <div className="flex gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="flex-1 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 disabled:from-gray-400 disabled:to-gray-400 text-white rounded-lg transition-all font-semibold shadow-lg"
+            >
+              {saving ? "저장 중..." : alert ? "💾 설정 업데이트" : "✅ 알림 설정 저장"}
+            </button>
           </div>
         </div>
-      )}
+
+        {/* 알림 동작 안내 */}
+        <div className="mt-6 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+          <h4 className="text-sm font-semibold text-blue-900 dark:text-blue-300 mb-2">
+            💡 알림이 언제 발송되나요?
+          </h4>
+          <ul className="text-xs text-blue-800 dark:text-blue-300 space-y-1">
+            <li>• <strong>스케줄러가 크롤링을 실행</strong>할 때마다 변경사항을 감지합니다</li>
+            <li>• <strong>신규 매물</strong>이 등록되면 Discord로 알림을 보냅니다</li>
+            <li>• <strong>매물이 삭제</strong>되면 (거래 완료 가능성) 알림을 보냅니다</li>
+            <li>• <strong>가격이 변경</strong>되면 변경 내역과 함께 알림을 보냅니다</li>
+            <li>• 거래 유형을 선택하면 해당 유형의 매물만 알림합니다</li>
+          </ul>
+        </div>
+      </div>
     </div>
   );
 }
