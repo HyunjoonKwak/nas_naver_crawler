@@ -48,6 +48,10 @@ class NASNaverRealEstateCrawler:
         self.timeout = int(os.getenv('TIMEOUT', '30000'))  # 타임아웃 (밀리초)
         self.headless = os.getenv('HEADLESS', 'true').lower() == 'true'
 
+        # Retry 설정
+        self.max_retries = int(os.getenv('MAX_RETRIES', '3'))  # 최대 재시도 횟수
+        self.retry_delay = float(os.getenv('RETRY_DELAY', '5.0'))  # 재시도 간격 (초)
+
         # DB 연결 설정
         self.crawl_id = crawl_id  # API에서 전달받은 crawl ID
         self.db_conn = None
@@ -306,6 +310,62 @@ class NASNaverRealEstateCrawler:
             traceback.print_exc()
             return None
 
+    async def validate_complex_exists(self, complex_no: str) -> bool:
+        """단지 번호가 유효한지 간단히 확인"""
+        try:
+            url = f"https://new.land.naver.com/complexes/{complex_no}"
+            response = await self.page.goto(url, wait_until='domcontentloaded', timeout=self.timeout)
+
+            # HTTP 상태 코드 확인
+            if response and response.status >= 400:
+                print(f"❌ 단지 {complex_no}: HTTP {response.status} - 존재하지 않거나 접근 불가")
+                return False
+
+            # 페이지 타이틀 확인
+            title = await self.page.title()
+            if '오류' in title or 'error' in title.lower() or 'not found' in title.lower():
+                print(f"❌ 단지 {complex_no}: 페이지 오류 - {title}")
+                return False
+
+            print(f"✅ 단지 {complex_no} 유효성 확인 완료")
+            return True
+
+        except Exception as e:
+            print(f"❌ 단지 {complex_no} 검증 실패: {e}")
+            return False
+
+    async def crawl_complex_overview_with_retry(self, complex_no: str) -> Optional[Dict]:
+        """재시도 로직이 포함된 단지 개요 크롤링"""
+        for attempt in range(1, self.max_retries + 1):
+            try:
+                if attempt > 1:
+                    print(f"[재시도 {attempt}/{self.max_retries}] 단지 개요 크롤링 시작: {complex_no}")
+
+                overview_data = await self.crawl_complex_overview(complex_no)
+
+                if overview_data:
+                    return overview_data
+
+                # 데이터가 없으면 재시도
+                if attempt < self.max_retries:
+                    wait_time = self.retry_delay * (2 ** (attempt - 1))  # 지수 백오프: 5s, 10s, 20s
+                    print(f"⏳ Overview 데이터 없음. {wait_time}초 후 재시도...")
+                    await asyncio.sleep(wait_time)
+
+            except Exception as e:
+                print(f"❌ 시도 {attempt}/{self.max_retries} 실패: {e}")
+
+                if attempt < self.max_retries:
+                    wait_time = self.retry_delay * (2 ** (attempt - 1))
+                    print(f"⏳ {wait_time}초 후 재시도...")
+                    await asyncio.sleep(wait_time)
+                else:
+                    print(f"🚫 최대 재시도 횟수 {self.max_retries}회 도달, 포기")
+                    import traceback
+                    traceback.print_exc()
+
+        return None
+
     async def crawl_complex_overview(self, complex_no: str) -> Optional[Dict]:
         """단지 개요 정보 크롤링"""
         try:
@@ -327,9 +387,9 @@ class NASNaverRealEstateCrawler:
             # 응답 핸들러 등록
             self.page.on('response', handle_response)
 
-            # 네이버 부동산 단지 페이지 접속
+            # 네이버 부동산 단지 페이지 접속 (timeout 증가)
             url = f"https://new.land.naver.com/complexes/{complex_no}"
-            await self.page.goto(url, wait_until='domcontentloaded', timeout=30000)  # Increased to 30s
+            await self.page.goto(url, wait_until='domcontentloaded', timeout=self.timeout)
 
             # API 응답 대기
             await asyncio.sleep(3)
@@ -337,11 +397,14 @@ class NASNaverRealEstateCrawler:
             # 응답이 없으면 페이지 새로고침
             if not overview_data:
                 print("Overview 데이터 없음, 페이지 새로고침...")
-                await self.page.reload(wait_until='domcontentloaded')
+                await self.page.reload(wait_until='domcontentloaded', timeout=self.timeout)
                 await asyncio.sleep(2)
 
             # 응답 핸들러 제거
-            self.page.remove_listener('response', handle_response)
+            try:
+                self.page.remove_listener('response', handle_response)
+            except Exception:
+                pass
 
             if overview_data:
                 print(f"✅ Overview 수집 성공: {overview_data.get('complexName', 'Unknown')}")
@@ -690,43 +753,59 @@ class NASNaverRealEstateCrawler:
             return None
 
     async def crawl_complex_data(self, complex_no: str) -> Dict:
-        """단지 전체 데이터 크롤링"""
+        """단지 전체 데이터 크롤링 (재시도 로직 포함)"""
         print(f"\n{'='*60}")
         print(f"단지 번호 {complex_no} 크롤링 시작")
         print(f"{'='*60}")
-        
+
         complex_data = {
             'crawling_info': {
                 'complex_no': complex_no,
                 'crawling_date': get_kst_now().isoformat(),
-                'crawler_version': '1.0.0'
+                'crawler_version': '1.0.1'  # retry 로직 추가로 버전 업
             }
         }
-        
+
         try:
-            # 1. 단지 개요 정보
-            overview = await self.crawl_complex_overview(complex_no)
+            # 0. 단지 번호 유효성 검사 (선택 사항)
+            is_valid = await self.validate_complex_exists(complex_no)
+            if not is_valid:
+                print(f"⚠️ 단지 {complex_no}이(가) 존재하지 않거나 접근할 수 없습니다.")
+                print(f"   → 크롤링을 건너뜁니다.")
+                complex_data['error'] = f'단지 {complex_no} 존재하지 않거나 접근 불가'
+                complex_data['skipped'] = True
+                return complex_data
+
+            # 1. 단지 개요 정보 (재시도 로직 포함)
+            overview = await self.crawl_complex_overview_with_retry(complex_no)
             if overview:
                 complex_data['overview'] = overview
                 complex_name = overview.get('complexName', 'Unknown')
                 print(f"단지명: {complex_name}")
                 print(f"세대수: {overview.get('totalHouseHoldCount', 'Unknown')}")
                 print(f"동수: {overview.get('totalDongCount', 'Unknown')}")
-            
+            else:
+                print(f"⚠️ 단지 개요 정보를 가져오지 못했습니다.")
+                # 개요 없이도 매물은 시도
+
             # 요청 간격 조절
             await asyncio.sleep(self.request_delay)
-            
+
             # 2. 매물 목록 (무한 스크롤 방식)
             articles = await self.crawl_complex_articles(complex_no, 1)
             if articles:
                 complex_data['articles'] = articles
                 article_count = len(articles.get('articleList', []))
                 print(f"매물 수: {article_count}개")
-            
+            else:
+                print(f"⚠️ 매물 정보를 가져오지 못했습니다.")
+
             print(f"단지 {complex_no} 크롤링 완료")
-            
+
         except Exception as e:
             print(f"단지 {complex_no} 크롤링 중 오류: {e}")
+            import traceback
+            traceback.print_exc()
             complex_data['error'] = str(e)
         
         return complex_data
