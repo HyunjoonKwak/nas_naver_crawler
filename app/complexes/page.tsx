@@ -58,8 +58,8 @@ export default function ComplexesPage() {
   const [complexInfo, setComplexInfo] = useState<ComplexInfo | null>(null);
   const [fetchingInfo, setFetchingInfo] = useState(false);
 
-  // 뷰 모드 (card, list)
-  const [viewMode, setViewMode] = useState<'card' | 'list'>('card');
+  // 뷰 모드 (card only)
+  const viewMode = 'card';
 
   // 드래그 앤 드롭
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
@@ -229,7 +229,7 @@ export default function ComplexesPage() {
         const addedComplexNo = complexInfo.complexNo;
         const addedComplexName = complexInfo.complexName;
 
-        await fetchFavorites();
+        await fetchComplexes();
         setNewComplexNo("");
         setComplexInfo(null);
         setShowAddForm(false);
@@ -247,7 +247,7 @@ export default function ComplexesPage() {
             });
 
             if (crawlResponse.ok) {
-              await fetchFavorites();
+              await fetchComplexes();
               alert(`✅ ${addedComplexName} 크롤링 완료!`);
             } else {
               alert(`⚠️ 크롤링 실패. 나중에 수동으로 크롤링해주세요.`);
@@ -270,8 +270,30 @@ export default function ComplexesPage() {
     }
   };
 
-  const handleDeleteFavorite = async (complexNo: string) => {
-    const confirmed = window.confirm('이 단지를 삭제하시겠습니까?');
+  const handleToggleFavorite = async (complexNo: string, isFavorite: boolean) => {
+    try {
+      const response = await fetch('/api/complexes/favorite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ complexNo }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        alert(data.message);
+        await fetchComplexes();
+      } else {
+        alert(data.error || '관심단지 설정 실패');
+      }
+    } catch (error) {
+      console.error('Failed to toggle favorite:', error);
+      alert('관심단지 설정 중 오류가 발생했습니다.');
+    }
+  };
+
+  const handleDeleteComplex = async (complexNo: string) => {
+    const confirmed = window.confirm('이 단지를 완전히 삭제하시겠습니까?\n(DB와 모든 매물 데이터가 삭제됩니다)');
     if (!confirmed) return;
 
     try {
@@ -280,13 +302,14 @@ export default function ComplexesPage() {
       });
 
       if (response.ok) {
-        await fetchFavorites();
+        await fetchComplexes();
+        alert('단지가 삭제되었습니다.');
       } else {
         const data = await response.json();
         alert(data.error || '단지 삭제 실패');
       }
     } catch (error) {
-      console.error('Failed to delete favorite:', error);
+      console.error('Failed to delete complex:', error);
       alert('단지 삭제 중 오류가 발생했습니다.');
     }
   };
@@ -366,9 +389,9 @@ export default function ComplexesPage() {
         await pollCrawlStatus(data.crawlId);
 
         // UI 갱신
-        await fetchFavorites();
+        await fetchComplexes();
 
-        const complexName = favorites.find(f => f.complexNo === complexNo)?.complexName || complexNo;
+        const complexName = complexes.find(f => f.complexNo === complexNo)?.complexName || complexNo;
         alert(`✅ ${complexName} 크롤링 완료!`);
       } else {
         alert(data.error || '크롤링 실패');
@@ -397,17 +420,17 @@ export default function ComplexesPage() {
   };
 
   const handleCrawlAll = async () => {
-    if (favorites.length === 0) {
+    if (complexes.length === 0) {
       alert('등록된 단지가 없습니다.');
       return;
     }
 
-    const confirmed = window.confirm(`${favorites.length}개 단지를 모두 크롤링하시겠습니까?`);
+    const confirmed = window.confirm(`${complexes.length}개 단지를 모두 크롤링하시겠습니까?`);
     if (!confirmed) return;
 
     setCrawlingAll(true);
     setCrawlProgress(null);
-    const complexNos = favorites.map(f => f.complexNo).join(',');
+    const complexNos = complexes.map(f => f.complexNo).join(',');
 
     try {
       // 크롤링 시작
@@ -424,9 +447,9 @@ export default function ComplexesPage() {
         await pollCrawlStatus(data.crawlId);
 
         // UI 갱신
-        await fetchFavorites();
+        await fetchComplexes();
 
-        alert(`✅ 전체 크롤링 완료!\n\n크롤링된 단지: ${favorites.length}개`);
+        alert(`✅ 전체 크롤링 완료!\n\n크롤링된 단지: ${complexes.length}개`);
       } else {
         alert(data.error || '크롤링 실패');
       }
@@ -519,12 +542,12 @@ export default function ComplexesPage() {
     e.preventDefault();
     if (draggedIndex === null || draggedIndex === index) return;
 
-    const newFavorites = [...favorites];
+    const newFavorites = [...complexes];
     const draggedItem = newFavorites[draggedIndex];
     newFavorites.splice(draggedIndex, 1);
     newFavorites.splice(index, 0, draggedItem);
 
-    setFavorites(newFavorites);
+    setComplexes(newFavorites);
     setDraggedIndex(index);
   };
 
@@ -535,7 +558,7 @@ export default function ComplexesPage() {
       await fetch('/api/favorites/reorder', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ favorites: favorites.map((f, idx) => ({ ...f, order: idx })) })
+        body: JSON.stringify({ favorites: complexes.map((f, idx) => ({ ...f, order: idx })) })
       });
     } catch (error) {
       console.error('Failed to save order:', error);
@@ -707,9 +730,9 @@ export default function ComplexesPage() {
               </button>
               <button
                 onClick={handleCrawlAll}
-                disabled={crawlingAll || favorites.length === 0}
+                disabled={crawlingAll || complexes.length === 0}
                 className={`px-4 py-2 rounded-lg transition-colors font-medium ${
-                  crawlingAll || favorites.length === 0
+                  crawlingAll || complexes.length === 0
                     ? 'bg-gray-300 dark:bg-gray-600 cursor-not-allowed'
                     : 'bg-green-600 hover:bg-green-700 text-white'
                 }`}
@@ -719,7 +742,7 @@ export default function ComplexesPage() {
               <button
                 onClick={() => {
                   console.log('[Complexes] Manual refresh triggered');
-                  fetchFavorites();
+                  fetchComplexes();
                 }}
                 disabled={crawlingAll || crawling}
                 className={`px-4 py-2 rounded-lg transition-colors font-medium ${
@@ -759,7 +782,7 @@ export default function ComplexesPage() {
               </div>
 
               <div className="text-sm text-gray-600 dark:text-gray-400">
-                등록된 단지: <span className="font-bold text-blue-600 dark:text-blue-400">{favorites.length}개</span>
+                등록된 단지: <span className="font-bold text-blue-600 dark:text-blue-400">{complexes.length}개</span>
               </div>
             </div>
           </div>
@@ -903,7 +926,7 @@ export default function ComplexesPage() {
           <div className="flex items-center justify-center py-20">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
           </div>
-        ) : favorites.length === 0 ? (
+        ) : complexes.length === 0 ? (
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-12 text-center">
             <div className="text-6xl mb-4">📭</div>
             <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
@@ -914,37 +937,35 @@ export default function ComplexesPage() {
             </p>
           </div>
         ) : viewMode === 'card' ? (
-          // 카드 뷰 - 네이버 부동산 스타일
+          // 카드 뷰
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {favorites.map((favorite, index) => (
+            {complexes.map((complex, index) => (
               <div
-                key={favorite.complexNo}
-                draggable
-                onDragStart={() => handleDragStart(index)}
-                onDragOver={(e) => handleDragOver(e, index)}
-                onDragEnd={handleDragEnd}
-                className={`bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-all ${
-                  draggedIndex === index ? 'opacity-50' : ''
-                }`}
+                key={complex.complexNo}
+                className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-all"
               >
-                {/* 드래그 힌트 */}
-                <div className="px-6 pt-4 pb-2">
-                  <p className="text-xs text-gray-400 dark:text-gray-500 flex items-center gap-1">
-                    <span className="cursor-grab active:cursor-grabbing">☰</span>
-                    드래그하여 순서 변경
-                  </p>
-                </div>
-
-                <div className="px-6 pb-6">
-                  {/* 단지명 */}
-                  <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3">
-                    {favorite.complexName || `단지 ${favorite.complexNo}`}
-                  </h3>
+                <div className="px-6 py-6">
+                  {/* 단지명과 관심단지 버튼 */}
+                  <div className="flex items-start justify-between mb-3">
+                    <h3 className="text-xl font-bold text-gray-900 dark:text-white flex-1">
+                      {complex.complexName || `단지 ${complex.complexNo}`}
+                    </h3>
+                    <button
+                      onClick={() => handleToggleFavorite(complex.complexNo, complex.isFavorite)}
+                      className={`ml-2 px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
+                        complex.isFavorite
+                          ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400'
+                          : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
+                      }`}
+                    >
+                      {complex.isFavorite ? '⭐ 관심단지' : '☆ 관심등록'}
+                    </button>
+                  </div>
 
                   {/* 단지번호 */}
                   <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mb-4">
                     <span>📍</span>
-                    <span>단지번호 {favorite.complexNo}</span>
+                    <span>단지번호 {complex.complexNo}</span>
                   </div>
 
                   {/* 구분선 */}
@@ -952,96 +973,71 @@ export default function ComplexesPage() {
 
                   {/* 단지 정보 */}
                   <div className="space-y-2.5 text-sm mb-4">
+                    {/* 매물 수 */}
                     <div className="flex items-center justify-between">
-                      <span className="text-gray-600 dark:text-gray-400">유형</span>
-                      <span className="text-gray-900 dark:text-white font-medium">아파트</span>
+                      <span className="text-gray-600 dark:text-gray-400">등록 매물</span>
+                      <span className="text-gray-900 dark:text-white font-medium">
+                        {complex.articleCount}개
+                      </span>
                     </div>
 
                     {/* 세대수 */}
-                    {favorite.totalHouseHoldCount && (
+                    {complex.totalHousehold && (
                       <div className="flex items-center justify-between">
                         <span className="text-gray-600 dark:text-gray-400">세대수</span>
                         <span className="text-gray-900 dark:text-white font-medium">
-                          {favorite.totalHouseHoldCount.toLocaleString()}세대
+                          {complex.totalHousehold.toLocaleString()}세대
                         </span>
                       </div>
                     )}
 
                     {/* 동수 */}
-                    {favorite.totalDongCount && (
+                    {complex.totalDong && (
                       <div className="flex items-center justify-between">
                         <span className="text-gray-600 dark:text-gray-400">동수</span>
                         <span className="text-gray-900 dark:text-white font-medium">
-                          {favorite.totalDongCount}개동
+                          {complex.totalDong}개동
                         </span>
                       </div>
                     )}
 
-                    {/* 면적 */}
-                    {(favorite.minArea || favorite.maxArea) && (
+                    {/* 주소 */}
+                    {complex.address && (
                       <div className="flex items-center justify-between">
-                        <span className="text-gray-600 dark:text-gray-400">면적</span>
-                        <span className="text-gray-900 dark:text-white font-medium">
-                          {favorite.minArea && favorite.maxArea
-                            ? `${formatArea(favorite.minArea)} ~ ${formatArea(favorite.maxArea)}`
-                            : formatArea(favorite.minArea || favorite.maxArea)}
-                        </span>
-                      </div>
-                    )}
-
-                    {favorite.lastCrawledAt && (
-                      <div className="flex items-center justify-between">
-                        <span className="text-gray-600 dark:text-gray-400">마지막 수집</span>
-                        <span className="text-gray-900 dark:text-white font-medium text-xs">
-                          {formatDate(favorite.lastCrawledAt)}
+                        <span className="text-gray-600 dark:text-gray-400">주소</span>
+                        <span className="text-gray-900 dark:text-white font-medium text-xs text-right">
+                          {complex.roadAddress || complex.address}
                         </span>
                       </div>
                     )}
                   </div>
 
-                  {/* 매매가 범위 - 크롤링 데이터가 있을 때만 */}
-                  {(favorite.minPrice || favorite.maxPrice) && (
-                    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg p-4 mb-4 border border-blue-100 dark:border-blue-800">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-gray-600 dark:text-gray-400">매매가</span>
-                        <span className="text-lg font-bold text-blue-600 dark:text-blue-400">
-                          {favorite.minPrice && favorite.maxPrice
-                            ? `${formatPrice(favorite.minPrice)} ~ ${formatPrice(favorite.maxPrice)}`
-                            : formatPrice(favorite.minPrice || favorite.maxPrice)}
-                        </span>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* 매물 수 - 강조 */}
-                  {favorite.articleCount !== undefined && (
-                    <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 mt-4">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-gray-600 dark:text-gray-400">매물</span>
-                        <span className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                          {favorite.articleCount}
-                          <span className="text-base font-normal ml-1">건</span>
-                        </span>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* 상세보기 버튼 */}
-                  {crawlingAll || crawling ? (
-                    <button
-                      disabled
-                      className="w-full mt-4 px-4 py-2.5 rounded-lg bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed border-2 border-gray-400 text-sm font-semibold"
-                    >
-                      상세보기
-                    </button>
-                  ) : (
+                  {/* 액션 버튼들 */}
+                  <div className="flex gap-2 mt-4">
                     <Link
-                      href={`/complex/${favorite.complexNo}`}
-                      className="block w-full mt-4 px-4 py-2.5 rounded-lg bg-white dark:bg-gray-700 border-2 border-blue-600 dark:border-blue-500 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors text-sm font-semibold text-center"
+                      href={`/complex/${complex.complexNo}`}
+                      className="flex-1 px-4 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors text-sm font-semibold text-center"
                     >
                       상세보기
                     </Link>
-                  )}
+                    <button
+                      onClick={() => handleCrawl(complex.complexNo)}
+                      disabled={crawling === complex.complexNo || crawlingAll}
+                      className={`px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors ${
+                        crawling === complex.complexNo || crawlingAll
+                          ? 'bg-gray-300 dark:bg-gray-600 text-gray-500 cursor-not-allowed'
+                          : 'bg-green-600 hover:bg-green-700 text-white'
+                      }`}
+                    >
+                      {crawling === complex.complexNo ? '⏳' : '🔄'}
+                    </button>
+                    <button
+                      onClick={() => handleDeleteComplex(complex.complexNo)}
+                      className="px-4 py-2.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-sm font-semibold transition-colors"
+                    >
+                      🗑️
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
@@ -1076,7 +1072,7 @@ export default function ComplexesPage() {
                 </tr>
               </thead>
               <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                {favorites.map((favorite, index) => (
+                {complexes.map((favorite, index) => (
                   <tr
                     key={favorite.complexNo}
                     draggable
