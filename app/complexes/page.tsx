@@ -39,7 +39,8 @@ export default function ComplexesPage() {
   // 단지 추가 폼
   const [showAddForm, setShowAddForm] = useState(false);
   const [newComplexNo, setNewComplexNo] = useState("");
-  const [newComplexName, setNewComplexName] = useState("");
+  const [complexInfo, setComplexInfo] = useState<any>(null);
+  const [fetchingInfo, setFetchingInfo] = useState(false);
 
   // 뷰 모드 (card, list)
   const [viewMode, setViewMode] = useState<'card' | 'list'>('card');
@@ -143,9 +144,37 @@ export default function ComplexesPage() {
     }
   };
 
-  const handleAddFavorite = async () => {
+  // 단지 정보 가져오기
+  const handleFetchComplexInfo = async () => {
     if (!newComplexNo.trim()) {
       alert('단지번호를 입력해주세요.');
+      return;
+    }
+
+    setFetchingInfo(true);
+    setComplexInfo(null);
+
+    try {
+      const response = await fetch(`/api/complex-info?complexNo=${newComplexNo.trim()}`);
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        setComplexInfo(data.complex);
+      } else {
+        alert(data.error || '단지 정보를 가져올 수 없습니다.');
+      }
+    } catch (error) {
+      console.error('Failed to fetch complex info:', error);
+      alert('단지 정보 조회 중 오류가 발생했습니다.');
+    } finally {
+      setFetchingInfo(false);
+    }
+  };
+
+  // 단지 추가 (정보 확인 후)
+  const handleAddFavorite = async () => {
+    if (!complexInfo) {
+      alert('먼저 단지 정보를 조회해주세요.');
       return;
     }
 
@@ -154,8 +183,8 @@ export default function ComplexesPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          complexNo: newComplexNo.trim(),
-          complexName: newComplexName.trim() || undefined
+          complexNo: complexInfo.complexNo,
+          complexName: complexInfo.complexName
         })
       });
 
@@ -164,8 +193,9 @@ export default function ComplexesPage() {
       if (response.ok) {
         await fetchFavorites();
         setNewComplexNo("");
-        setNewComplexName("");
+        setComplexInfo(null);
         setShowAddForm(false);
+        alert(`✅ ${complexInfo.complexName}이(가) 추가되었습니다!`);
       } else {
         alert(data.error || '단지 추가 실패');
       }
@@ -672,40 +702,91 @@ export default function ComplexesPage() {
           {/* Add Form */}
           {showAddForm && (
             <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-              <div className="flex gap-3">
-                <input
-                  type="text"
-                  value={newComplexNo}
-                  onChange={(e) => setNewComplexNo(e.target.value)}
-                  placeholder="단지번호 (예: 22065)"
-                  className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                  onKeyPress={(e) => e.key === 'Enter' && handleAddFavorite()}
-                />
-                <input
-                  type="text"
-                  value={newComplexName}
-                  onChange={(e) => setNewComplexName(e.target.value)}
-                  placeholder="단지명 (선택사항)"
-                  className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                  onKeyPress={(e) => e.key === 'Enter' && handleAddFavorite()}
-                />
-                <button
-                  onClick={handleAddFavorite}
-                  className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium"
-                >
-                  추가
-                </button>
-                <button
-                  onClick={() => {
-                    setShowAddForm(false);
-                    setNewComplexNo("");
-                    setNewComplexName("");
+              <div className="flex flex-col gap-3">
+                {/* 단지번호 입력 */}
+                <div className="flex gap-3">
+                  <input
+                    type="text"
+                    value={newComplexNo}
+                    onChange={(e) => setNewComplexNo(e.target.value)}
+                    placeholder="단지번호 입력 (예: 22065)"
+                    className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    onKeyPress={(e) => e.key === 'Enter' && !complexInfo && handleFetchComplexInfo()}
+                  />
+                  {!complexInfo && (
+                    <button
+                      onClick={handleFetchComplexInfo}
+                      disabled={fetchingInfo}
+                      className={`px-6 py-2 rounded-lg transition-colors font-medium ${
+                        fetchingInfo
+                          ? 'bg-gray-300 dark:bg-gray-600 cursor-not-allowed'
+                          : 'bg-blue-600 hover:bg-blue-700 text-white'
+                      }`}
+                    >
+                      {fetchingInfo ? '⏳ 조회중...' : '🔍 조회'}
+                    </button>
+                  )}
+                  <button
+                    onClick={() => {
+                      setShowAddForm(false);
+                      setNewComplexNo("");
+                      setComplexInfo(null);
                   }}
                   className="px-6 py-2 bg-gray-300 hover:bg-gray-400 dark:bg-gray-600 dark:hover:bg-gray-500 text-gray-700 dark:text-gray-200 rounded-lg transition-colors"
                 >
                   취소
                 </button>
               </div>
+
+              {/* 단지 정보 미리보기 */}
+              {complexInfo && (
+                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-2 border-blue-400 dark:border-blue-600 rounded-lg p-4">
+                  <h4 className="text-lg font-bold text-blue-900 dark:text-blue-200 mb-3">
+                    📋 단지 정보
+                  </h4>
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <span className="text-gray-600 dark:text-gray-400">단지명:</span>
+                      <span className="ml-2 font-semibold text-gray-900 dark:text-white">
+                        {complexInfo.complexName}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-gray-600 dark:text-gray-400">단지번호:</span>
+                      <span className="ml-2 font-semibold text-gray-900 dark:text-white">
+                        {complexInfo.complexNo}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-gray-600 dark:text-gray-400">총 세대수:</span>
+                      <span className="ml-2 font-semibold text-gray-900 dark:text-white">
+                        {complexInfo.totalHousehold || '-'}세대
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-gray-600 dark:text-gray-400">총 동수:</span>
+                      <span className="ml-2 font-semibold text-gray-900 dark:text-white">
+                        {complexInfo.totalDong || '-'}동
+                      </span>
+                    </div>
+                    {complexInfo.address && (
+                      <div className="col-span-2">
+                        <span className="text-gray-600 dark:text-gray-400">주소:</span>
+                        <span className="ml-2 text-gray-900 dark:text-white">
+                          {complexInfo.address}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  <button
+                    onClick={handleAddFavorite}
+                    className="mt-4 w-full px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors font-bold"
+                  >
+                    ✅ 이 단지를 즐겨찾기에 추가
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>
