@@ -3,8 +3,12 @@ import { prisma } from '@/lib/prisma';
 import fs from 'fs/promises';
 import path from 'path';
 
-// favorites.json 경로
-const favoritesPath = path.join(process.cwd(), 'data', 'favorites.json');
+// favorites.json 경로 - /api/favorites와 동일한 경로 사용
+const getFavoritesPath = () => {
+  const baseDir = process.env.NODE_ENV === 'production' ? '/app' : process.cwd();
+  return path.join(baseDir, 'crawled_data', 'favorites.json');
+};
+const favoritesPath = getFavoritesPath();
 
 // favorites.json 읽기
 async function readFavorites() {
