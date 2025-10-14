@@ -122,6 +122,8 @@ async function fetchComplexInfoViaCrawler(complexNo: string): Promise<any> {
 
     let stdout = '';
     let stderr = '';
+    let timeoutId: NodeJS.Timeout;
+    let isResolved = false;
 
     pythonProcess.stdout.on('data', (data) => {
       const chunk = data.toString();
@@ -136,9 +138,13 @@ async function fetchComplexInfoViaCrawler(complexNo: string): Promise<any> {
     });
 
     pythonProcess.on('close', (code) => {
+      if (isResolved) return;
+      isResolved = true;
+      clearTimeout(timeoutId);
+
       console.log('[complex-info] Python process exited with code:', code);
 
-      if (code !== 0) {
+      if (code !== 0 && code !== null) {
         reject(new Error(`Python 크롤러 실행 실패 (exit code: ${code})\n${stderr}`));
         return;
       }
@@ -150,7 +156,7 @@ async function fetchComplexInfoViaCrawler(complexNo: string): Promise<any> {
       const endIdx = stdout.indexOf(endMarker);
 
       if (startIdx === -1 || endIdx === -1) {
-        reject(new Error('Python 크롤러 응답에서 정보를 찾을 수 없습니다.'));
+        reject(new Error('Python 크롤러 응답에서 정보를 찾을 수 없습니다.\n\n출력:\n' + stdout.substring(0, 500)));
         return;
       }
 
@@ -165,14 +171,30 @@ async function fetchComplexInfoViaCrawler(complexNo: string): Promise<any> {
     });
 
     pythonProcess.on('error', (error) => {
+      if (isResolved) return;
+      isResolved = true;
+      clearTimeout(timeoutId);
       console.error('[complex-info] Python process error:', error);
       reject(error);
     });
 
-    // 30초 타임아웃
-    setTimeout(() => {
-      pythonProcess.kill();
-      reject(new Error('Python 크롤러 실행 타임아웃 (30초)'));
-    }, 30000);
+    // 60초 타임아웃 (브라우저 초기화 시간 고려)
+    timeoutId = setTimeout(() => {
+      if (isResolved) return;
+      isResolved = true;
+
+      console.error('[complex-info] Timeout reached, killing Python process');
+      pythonProcess.kill('SIGTERM');
+
+      // SIGTERM으로 안 죽으면 SIGKILL
+      setTimeout(() => {
+        if (pythonProcess.exitCode === null) {
+          console.error('[complex-info] Force killing with SIGKILL');
+          pythonProcess.kill('SIGKILL');
+        }
+      }, 5000);
+
+      reject(new Error('Python 크롤러 실행 타임아웃 (60초)\n\n브라우저 초기화에 시간이 오래 걸릴 수 있습니다.'));
+    }, 60000);
   });
 }

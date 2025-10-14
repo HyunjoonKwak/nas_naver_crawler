@@ -242,7 +242,7 @@ class NASNaverRealEstateCrawler:
     async def fetch_complex_info_only(self, complex_no: str) -> Optional[Dict]:
         """단지 기본 정보만 가져오기 (매물 크롤링 없이)"""
         try:
-            print(f"[INFO-ONLY] 단지 정보 조회 시작: {complex_no}")
+            print(f"[INFO-ONLY] 단지 정보 조회 시작: {complex_no}", flush=True)
 
             # 네트워크 요청 모니터링하여 API 응답 캐치
             overview_data = None
@@ -251,36 +251,43 @@ class NASNaverRealEstateCrawler:
                 nonlocal overview_data
                 if f'/api/complexes/overview/{complex_no}' in response.url:
                     try:
+                        print(f"[INFO-ONLY] Overview API 응답 감지!", flush=True)
                         data = await response.json()
                         overview_data = data
-                        print(f"[INFO-ONLY] 단지 개요 API 응답 캐치됨: {data.get('complexName', 'Unknown')}")
+                        print(f"[INFO-ONLY] 단지 개요 API 응답 캐치됨: {data.get('complexName', 'Unknown')}", flush=True)
                     except Exception as e:
-                        print(f"[INFO-ONLY] API 응답 파싱 실패: {e}")
+                        print(f"[INFO-ONLY] API 응답 파싱 실패: {e}", flush=True)
 
             # 응답 핸들러 등록
+            print(f"[INFO-ONLY] 응답 핸들러 등록", flush=True)
             self.page.on('response', handle_response)
 
             # 네이버 부동산 단지 페이지 접속
             url = f"https://new.land.naver.com/complexes/{complex_no}"
+            print(f"[INFO-ONLY] 페이지 이동 중: {url}", flush=True)
             await self.page.goto(url, wait_until='domcontentloaded', timeout=30000)
+            print(f"[INFO-ONLY] 페이지 로드 완료", flush=True)
 
             # API 응답 대기
+            print(f"[INFO-ONLY] API 응답 대기 중 (3초)...", flush=True)
             await asyncio.sleep(3)
 
             # 응답이 없으면 페이지 새로고침
             if not overview_data:
-                print("[INFO-ONLY] Overview 데이터 없음, 페이지 새로고침...")
+                print("[INFO-ONLY] Overview 데이터 없음, 페이지 새로고침...", flush=True)
                 await self.page.reload(wait_until='domcontentloaded')
+                print("[INFO-ONLY] 페이지 새로고침 완료, 추가 대기 중...", flush=True)
                 await asyncio.sleep(2)
 
             # 응답 핸들러 제거
             try:
                 self.page.remove_listener('response', handle_response)
-            except Exception:
-                pass
+                print("[INFO-ONLY] 응답 핸들러 제거 완료", flush=True)
+            except Exception as e:
+                print(f"[INFO-ONLY] 응답 핸들러 제거 실패: {e}", flush=True)
 
             if overview_data:
-                print(f"[INFO-ONLY] ✅ 단지 정보 수집 성공: {overview_data.get('complexName', 'Unknown')}")
+                print(f"[INFO-ONLY] ✅ 단지 정보 수집 성공: {overview_data.get('complexName', 'Unknown')}", flush=True)
                 return {
                     'complexNo': complex_no,
                     'complexName': overview_data.get('complexName'),
@@ -290,11 +297,11 @@ class NASNaverRealEstateCrawler:
                     'roadAddress': overview_data.get('roadAddress'),
                 }
             else:
-                print(f"[INFO-ONLY] ⚠️ 단지 정보 수집 실패")
+                print(f"[INFO-ONLY] ⚠️ 단지 정보 수집 실패", flush=True)
                 return None
 
         except Exception as e:
-            print(f"[INFO-ONLY] 단지 정보 조회 실패: {e}")
+            print(f"[INFO-ONLY] 단지 정보 조회 실패: {e}", flush=True)
             import traceback
             traceback.print_exc()
             return None
@@ -922,13 +929,24 @@ class NASNaverRealEstateCrawler:
 
 async def fetch_info_only(complex_no: str) -> Optional[Dict]:
     """단지 정보만 가져오는 독립 함수 (매물 크롤링 없이)"""
+    print(f"[fetch_info_only] 크롤러 인스턴스 생성 중...", flush=True)
     crawler = NASNaverRealEstateCrawler()
     try:
+        print(f"[fetch_info_only] 브라우저 설정 시작...", flush=True)
         await crawler.setup_browser()
+        print(f"[fetch_info_only] 브라우저 설정 완료, 단지 정보 조회 시작...", flush=True)
         info = await crawler.fetch_complex_info_only(complex_no)
+        print(f"[fetch_info_only] 단지 정보 조회 완료", flush=True)
         return info
+    except Exception as e:
+        print(f"[fetch_info_only] 오류 발생: {e}", flush=True)
+        import traceback
+        traceback.print_exc()
+        return None
     finally:
+        print(f"[fetch_info_only] 브라우저 종료 중...", flush=True)
         await crawler.close_browser()
+        print(f"[fetch_info_only] 브라우저 종료 완료", flush=True)
 
 
 async def main():
