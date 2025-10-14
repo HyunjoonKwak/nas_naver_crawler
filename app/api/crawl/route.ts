@@ -246,6 +246,76 @@ async function saveCrawlResultsToDB(crawlId: string, complexNos: string[]) {
         console.log('No favorites.json found, skipping update');
       }
 
+      // Read latest CSV for complex info
+      const crawledDataDir = path.join(baseDir, 'crawled_data');
+      const csvComplexInfo = new Map<string, any>();
+
+      try {
+        const files = await fs.readdir(crawledDataDir);
+        const csvFiles = files
+          .filter(f => f.endsWith('.csv') && f.startsWith('complexes_'))
+          .sort()
+          .reverse();
+
+        if (csvFiles.length > 0) {
+          console.log(`📊 Reading CSV for complex info: ${csvFiles[0]}`);
+          const csvPath = path.join(crawledDataDir, csvFiles[0]);
+          const csvContent = await fs.readFile(csvPath, 'utf-8');
+          const lines = csvContent.split('\n');
+
+          if (lines.length >= 2) {
+            const headers = lines[0].split(',').map(h => h.trim());
+            const indices = {
+              complexNo: headers.indexOf('단지번호'),
+              complexName: headers.indexOf('단지명'),
+              totalHousehold: headers.indexOf('세대수'),
+              totalDong: headers.indexOf('동수'),
+              minArea: headers.indexOf('최소면적'),
+              maxArea: headers.indexOf('최대면적'),
+              minPrice: headers.indexOf('최소가격'),
+              maxPrice: headers.indexOf('최대가격'),
+            };
+
+            if (indices.complexNo !== -1) {
+              for (let i = 1; i < lines.length; i++) {
+                const line = lines[i].trim();
+                if (!line) continue;
+
+                const values = line.split(',').map(v => v.trim());
+                const complexNo = values[indices.complexNo];
+
+                if (complexNo) {
+                  csvComplexInfo.set(complexNo, {
+                    complexName: indices.complexName !== -1 ? values[indices.complexName] : undefined,
+                    totalHouseHoldCount: indices.totalHousehold !== -1 && values[indices.totalHousehold]
+                      ? parseInt(values[indices.totalHousehold])
+                      : undefined,
+                    totalDongCount: indices.totalDong !== -1 && values[indices.totalDong]
+                      ? parseInt(values[indices.totalDong])
+                      : undefined,
+                    minArea: indices.minArea !== -1 && values[indices.minArea]
+                      ? parseFloat(values[indices.minArea])
+                      : undefined,
+                    maxArea: indices.maxArea !== -1 && values[indices.maxArea]
+                      ? parseFloat(values[indices.maxArea])
+                      : undefined,
+                    minPrice: indices.minPrice !== -1 && values[indices.minPrice]
+                      ? parseFloat(values[indices.minPrice])
+                      : undefined,
+                    maxPrice: indices.maxPrice !== -1 && values[indices.maxPrice]
+                      ? parseFloat(values[indices.maxPrice])
+                      : undefined,
+                  });
+                }
+              }
+              console.log(`📊 Loaded ${csvComplexInfo.size} complexes from CSV`);
+            }
+          }
+        }
+      } catch (csvError) {
+        console.warn('Failed to read CSV:', csvError);
+      }
+
       const favorites = favoritesData.favorites || [];
       let updated = false;
 
@@ -270,15 +340,28 @@ async function saveCrawlResultsToDB(crawlId: string, complexNos: string[]) {
             where: { complexId: complex.id }
           });
 
-          // Find and update favorite (only update articleCount and lastCrawledAt)
+          // Get CSV info for this complex
+          const csvInfo = csvComplexInfo.get(complexNo);
+
+          // Find and update favorite
           const index = favorites.findIndex((f: any) => f.complexNo === complexNo);
           if (index !== -1) {
-            // Only update article count
+            // Update article count and crawl time
             favorites[index].articleCount = articleCount;
 
-            // Only update last crawled time
             if (complex.articles[0]?.updatedAt) {
               favorites[index].lastCrawledAt = complex.articles[0].updatedAt.toISOString();
+            }
+
+            // Update from CSV if available
+            if (csvInfo) {
+              favorites[index].complexName = favorites[index].complexName || csvInfo.complexName;
+              favorites[index].totalHouseHoldCount = csvInfo.totalHouseHoldCount;
+              favorites[index].totalDongCount = csvInfo.totalDongCount;
+              favorites[index].minArea = csvInfo.minArea;
+              favorites[index].maxArea = csvInfo.maxArea;
+              favorites[index].minPrice = csvInfo.minPrice;
+              favorites[index].maxPrice = csvInfo.maxPrice;
             }
 
             console.log(`📝 Updated favorite for ${complexNo}: ${articleCount} articles`);
@@ -292,7 +375,7 @@ async function saveCrawlResultsToDB(crawlId: string, complexNos: string[]) {
       // Write back to favorites.json if any updates
       if (updated) {
         await fs.writeFile(favoritesPath, JSON.stringify(favoritesData, null, 2), 'utf-8');
-        console.log('✅ Favorites.json updated');
+        console.log('✅ Favorites.json updated with CSV data');
       }
     } catch (error: any) {
       console.error('Failed to update favorites.json:', error);

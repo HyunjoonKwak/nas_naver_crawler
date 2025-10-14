@@ -192,16 +192,16 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { complexNo, complexName } = body;
-    
+
     if (!complexNo) {
       return NextResponse.json(
         { error: '단지번호가 필요합니다.' },
         { status: 400 }
       );
     }
-    
+
     const favorites = await readFavorites();
-    
+
     // 중복 확인
     if (favorites.some(f => f.complexNo === complexNo)) {
       return NextResponse.json(
@@ -209,24 +209,37 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-    
-    // 새 단지 추가 (order는 배열 끝으로)
+
+    // CSV에서 단지 정보 가져오기
+    const csvComplexInfo = await readCSVComplexInfo();
+    const csvInfo = csvComplexInfo.get(complexNo);
+
+    // 새 단지 추가 (CSV 정보가 있으면 포함)
     const newFavorite: FavoriteComplex = {
       complexNo,
-      complexName: complexName || `단지 ${complexNo}`,
+      complexName: complexName || csvInfo?.complexName || `단지 ${complexNo}`,
       addedAt: new Date().toISOString(),
       order: favorites.length, // 현재 길이를 order로 설정
+      // CSV 정보가 있으면 추가
+      ...(csvInfo && {
+        totalHouseHoldCount: csvInfo.totalHouseHoldCount,
+        totalDongCount: csvInfo.totalDongCount,
+        minArea: csvInfo.minArea,
+        maxArea: csvInfo.maxArea,
+        minPrice: csvInfo.minPrice,
+        maxPrice: csvInfo.maxPrice,
+      }),
     };
 
     favorites.push(newFavorite);
     await writeFavorites(favorites);
-    
+
     return NextResponse.json({
       success: true,
       message: '선호 단지가 추가되었습니다.',
       favorite: newFavorite
     });
-    
+
   } catch (error: any) {
     console.error('Favorite add error:', error);
     return NextResponse.json(
