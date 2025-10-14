@@ -1162,11 +1162,17 @@ export default function SystemPage() {
                           <tr key={crawl.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
                             <td className="px-4 py-3 whitespace-nowrap">
                               <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                                crawl.status === 'completed' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' :
+                                crawl.status === 'completed' || crawl.status === 'success' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' :
+                                crawl.status === 'partial' ? 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400' :
                                 crawl.status === 'failed' ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400' :
+                                crawl.status === 'saving' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400' :
                                 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400'
                               }`}>
-                                {crawl.status === 'completed' ? '✅ 완료' : crawl.status === 'failed' ? '❌ 실패' : '🔄 진행중'}
+                                {crawl.status === 'completed' || crawl.status === 'success' ? '✅ 완료' :
+                                 crawl.status === 'partial' ? '⚠️ 부분완료' :
+                                 crawl.status === 'failed' ? '❌ 실패' :
+                                 crawl.status === 'saving' ? '💾 저장중' :
+                                 crawl.status === 'crawling' ? '🔄 크롤링중' : '⏳ 진행중'}
                               </span>
                             </td>
                             <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">
