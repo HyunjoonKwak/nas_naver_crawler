@@ -19,6 +19,19 @@ interface FavoriteComplex {
   order?: number;
 }
 
+interface ComplexInfo {
+  complexNo: string;
+  complexName: string;
+  totalHousehold?: number;
+  totalDong?: number;
+  address?: string;
+  roadAddress?: string;
+  articleCount?: number;
+  lastCrawledAt?: string;
+  areaRange?: string;
+  priceRange?: string;
+}
+
 export default function ComplexesPage() {
   const [favorites, setFavorites] = useState<FavoriteComplex[]>([]);
   const [loading, setLoading] = useState(true);
@@ -39,7 +52,7 @@ export default function ComplexesPage() {
   // 단지 추가 폼
   const [showAddForm, setShowAddForm] = useState(false);
   const [newComplexNo, setNewComplexNo] = useState("");
-  const [complexInfo, setComplexInfo] = useState<any>(null);
+  const [complexInfo, setComplexInfo] = useState<ComplexInfo | null>(null);
   const [fetchingInfo, setFetchingInfo] = useState(false);
 
   // 뷰 모드 (card, list)
@@ -799,37 +812,70 @@ export default function ComplexesPage() {
                   <h4 className="text-lg font-bold text-blue-900 dark:text-blue-200 mb-3">
                     📋 단지 정보
                   </h4>
-                  <div className="grid grid-cols-2 gap-3 text-sm">
-                    <div>
-                      <span className="text-gray-600 dark:text-gray-400">단지명:</span>
-                      <span className="ml-2 font-semibold text-gray-900 dark:text-white">
+                  <div className="space-y-3">
+                    {/* 단지명 - 큰 글씨로 강조 */}
+                    <div className="pb-3 border-b border-blue-200 dark:border-blue-800">
+                      <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">단지명</div>
+                      <div className="text-lg font-bold text-gray-900 dark:text-white">
                         {complexInfo.complexName}
-                      </span>
+                      </div>
                     </div>
-                    <div>
-                      <span className="text-gray-600 dark:text-gray-400">단지번호:</span>
-                      <span className="ml-2 font-semibold text-gray-900 dark:text-white">
-                        {complexInfo.complexNo}
-                      </span>
+
+                    {/* 주요 정보 그리드 */}
+                    <div className="grid grid-cols-2 gap-3 text-sm">
+                      <div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">총 세대수</div>
+                        <div className="font-semibold text-gray-900 dark:text-white">
+                          {complexInfo.totalHousehold ? `${complexInfo.totalHousehold.toLocaleString()}세대` : '-'}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">총 동수</div>
+                        <div className="font-semibold text-gray-900 dark:text-white">
+                          {complexInfo.totalDong ? `${complexInfo.totalDong}동` : '-'}
+                        </div>
+                      </div>
+                      {complexInfo.areaRange && (
+                        <div>
+                          <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">면적</div>
+                          <div className="font-semibold text-gray-900 dark:text-white">
+                            {complexInfo.areaRange}
+                          </div>
+                        </div>
+                      )}
+                      {complexInfo.priceRange && (
+                        <div>
+                          <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">매매가</div>
+                          <div className="font-semibold text-blue-600 dark:text-blue-400">
+                            {complexInfo.priceRange}
+                          </div>
+                        </div>
+                      )}
+                      {complexInfo.articleCount !== undefined && (
+                        <div>
+                          <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">매물 수</div>
+                          <div className="font-semibold text-green-600 dark:text-green-400">
+                            {complexInfo.articleCount}개
+                          </div>
+                        </div>
+                      )}
+                      {complexInfo.lastCrawledAt && (
+                        <div>
+                          <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">마지막 수집</div>
+                          <div className="font-semibold text-gray-900 dark:text-white text-xs">
+                            {new Date(complexInfo.lastCrawledAt).toLocaleDateString('ko-KR')}
+                          </div>
+                        </div>
+                      )}
                     </div>
-                    <div>
-                      <span className="text-gray-600 dark:text-gray-400">총 세대수:</span>
-                      <span className="ml-2 font-semibold text-gray-900 dark:text-white">
-                        {complexInfo.totalHousehold || '-'}세대
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-gray-600 dark:text-gray-400">총 동수:</span>
-                      <span className="ml-2 font-semibold text-gray-900 dark:text-white">
-                        {complexInfo.totalDong || '-'}동
-                      </span>
-                    </div>
+
+                    {/* 주소 */}
                     {complexInfo.address && (
-                      <div className="col-span-2">
-                        <span className="text-gray-600 dark:text-gray-400">주소:</span>
-                        <span className="ml-2 text-gray-900 dark:text-white">
+                      <div className="pt-3 border-t border-blue-200 dark:border-blue-800">
+                        <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">주소</div>
+                        <div className="text-sm text-gray-900 dark:text-white">
                           {complexInfo.address}
-                        </span>
+                        </div>
                       </div>
                     )}
                   </div>

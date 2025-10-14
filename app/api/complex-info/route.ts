@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { spawn } from 'child_process';
 import path from 'path';
+import fs from 'fs/promises';
 
 export const dynamic = 'force-dynamic';
 
@@ -9,7 +10,8 @@ export const dynamic = 'force-dynamic';
  * GET /api/complex-info?complexNo=123456
  * 단지 정보를 조회합니다.
  * 1. DB에서 먼저 조회
- * 2. 없으면 Python 크롤러를 통해 네이버에서 가져오기
+ * 2. CSV 파일에서 조회 (크롤링된 데이터)
+ * 3. 없으면 Python 크롤러를 통해 네이버에서 가져오기
  */
 export async function GET(request: NextRequest) {
   try {
@@ -28,18 +30,52 @@ export async function GET(request: NextRequest) {
       where: { complexNo },
       include: {
         articles: {
-          take: 1,
           orderBy: { updatedAt: 'desc' },
-          select: { updatedAt: true }
+          select: {
+            updatedAt: true,
+            tradeType: true,
+            area: true,
+            dealOrWarrantPrc: true,
+          }
         }
       }
     });
 
     if (complex) {
       // DB에 있으면 DB 정보 반환
-      const articleCount = await prisma.article.count({
-        where: { complexId: complex.id }
-      });
+      const articleCount = complex.articles.length;
+
+      // 면적 범위 계산 (매매만)
+      const saleArticles = complex.articles.filter(a => a.tradeType === 'A1');
+      const areas = [...new Set(saleArticles.map(a => a.area).filter(Boolean))].sort((a, b) => a! - b!);
+      const areaRange = areas.length > 0
+        ? areas.length === 1
+          ? `${areas[0]}㎡`
+          : `${areas[0]}~${areas[areas.length - 1]}㎡`
+        : '-';
+
+      // 가격 범위 계산 (매매만, 억 단위로 변환)
+      const prices = saleArticles
+        .map(a => {
+          if (!a.dealOrWarrantPrc) return null;
+          // "10억 5,000" 형식을 숫자로 변환
+          const priceStr = a.dealOrWarrantPrc.replace(/,/g, '');
+          const match = priceStr.match(/(\d+)억\s*(\d+)?/);
+          if (match) {
+            const eok = parseInt(match[1]);
+            const man = match[2] ? parseInt(match[2]) : 0;
+            return eok + (man / 10000);
+          }
+          return null;
+        })
+        .filter((p): p is number => p !== null)
+        .sort((a, b) => a - b);
+
+      const priceRange = prices.length > 0
+        ? prices.length === 1
+          ? `${prices[0].toFixed(1)}억`
+          : `${prices[0].toFixed(1)}~${prices[prices.length - 1].toFixed(1)}억`
+        : '-';
 
       console.log('[complex-info] Found in DB:', complex.complexName);
       return NextResponse.json({
@@ -54,12 +90,32 @@ export async function GET(request: NextRequest) {
           roadAddress: complex.roadAddress,
           articleCount,
           lastCrawledAt: complex.articles[0]?.updatedAt?.toISOString(),
+          areaRange,
+          priceRange,
         }
       });
     }
 
-    // 2. DB에 없으면 Python 크롤러를 통해 가져오기
-    console.log('[complex-info] Not in DB, fetching via Python crawler:', complexNo);
+    // 2. CSV 파일에서 조회
+    console.log('[complex-info] Not in DB, checking CSV files:', complexNo);
+
+    try {
+      const csvInfo = await findComplexInCSV(complexNo);
+
+      if (csvInfo) {
+        console.log('[complex-info] Found in CSV:', csvInfo.complexName);
+        return NextResponse.json({
+          success: true,
+          source: 'csv',
+          complex: csvInfo,
+        });
+      }
+    } catch (csvError: any) {
+      console.warn('[complex-info] CSV lookup failed:', csvError.message);
+    }
+
+    // 3. DB와 CSV 모두 없으면 Python 크롤러를 통해 가져오기
+    console.log('[complex-info] Not in DB or CSV, fetching via Python crawler:', complexNo);
 
     try {
       const info = await fetchComplexInfoViaCrawler(complexNo);
@@ -102,6 +158,108 @@ export async function GET(request: NextRequest) {
       { error: '단지 정보 조회 중 오류가 발생했습니다.', details: error.message },
       { status: 500 }
     );
+  }
+}
+
+/**
+ * CSV 파일에서 단지 정보 찾기
+ */
+async function findComplexInCSV(complexNo: string): Promise<any> {
+  const baseDir = process.cwd();
+  const crawledDataDir = path.join(baseDir, 'crawled_data');
+
+  try {
+    // crawled_data 디렉토리의 모든 CSV 파일 찾기
+    const files = await fs.readdir(crawledDataDir);
+    const csvFiles = files
+      .filter(f => f.endsWith('.csv') && f.startsWith('complexes_'))
+      .sort()
+      .reverse(); // 최신 파일 우선
+
+    if (csvFiles.length === 0) {
+      console.log('[CSV] No CSV files found');
+      return null;
+    }
+
+    console.log(`[CSV] Found ${csvFiles.length} CSV files, checking latest: ${csvFiles[0]}`);
+
+    // 최신 CSV 파일 읽기
+    const csvPath = path.join(crawledDataDir, csvFiles[0]);
+    const csvContent = await fs.readFile(csvPath, 'utf-8');
+
+    // CSV 파싱 (간단한 방식)
+    const lines = csvContent.split('\n');
+    if (lines.length < 2) {
+      console.log('[CSV] CSV file is empty');
+      return null;
+    }
+
+    const headers = lines[0].split(',').map(h => h.trim());
+    const complexNoIndex = headers.indexOf('단지번호');
+    const complexNameIndex = headers.indexOf('단지명');
+    const totalHouseholdIndex = headers.indexOf('세대수');
+    const totalDongIndex = headers.indexOf('동수');
+    const minAreaIndex = headers.indexOf('최소면적');
+    const maxAreaIndex = headers.indexOf('최대면적');
+    const minPriceIndex = headers.indexOf('최소가격');
+    const maxPriceIndex = headers.indexOf('최대가격');
+
+    if (complexNoIndex === -1) {
+      console.error('[CSV] Invalid CSV format: missing 단지번호 column');
+      return null;
+    }
+
+    // 단지번호로 검색
+    for (let i = 1; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (!line) continue;
+
+      const values = line.split(',').map(v => v.trim());
+
+      if (values[complexNoIndex] === complexNo) {
+        console.log(`[CSV] Found complex ${complexNo} in CSV at line ${i + 1}`);
+
+        // 면적 범위 계산
+        const minArea = minAreaIndex !== -1 ? parseFloat(values[minAreaIndex]) : null;
+        const maxArea = maxAreaIndex !== -1 ? parseFloat(values[maxAreaIndex]) : null;
+        const areaRange = minArea && maxArea
+          ? minArea === maxArea
+            ? `${minArea}㎡`
+            : `${minArea}~${maxArea}㎡`
+          : minArea
+          ? `${minArea}㎡`
+          : '-';
+
+        // 가격 범위 계산
+        const minPrice = minPriceIndex !== -1 ? parseFloat(values[minPriceIndex]) : null;
+        const maxPrice = maxPriceIndex !== -1 ? parseFloat(values[maxPriceIndex]) : null;
+        const priceRange = minPrice && maxPrice
+          ? minPrice === maxPrice
+            ? `${(minPrice / 10000).toFixed(1)}억`
+            : `${(minPrice / 10000).toFixed(1)}~${(maxPrice / 10000).toFixed(1)}억`
+          : minPrice
+          ? `${(minPrice / 10000).toFixed(1)}억`
+          : '-';
+
+        return {
+          complexNo,
+          complexName: complexNameIndex !== -1 ? values[complexNameIndex] : '',
+          totalHousehold: totalHouseholdIndex !== -1 ? parseInt(values[totalHouseholdIndex]) : null,
+          totalDong: totalDongIndex !== -1 ? parseInt(values[totalDongIndex]) : null,
+          areaRange,
+          priceRange,
+          articleCount: 0,
+          lastCrawledAt: null,
+        };
+      }
+    }
+
+    console.log(`[CSV] Complex ${complexNo} not found in CSV`);
+    return null;
+
+  } catch (error: any) {
+    console.error('[CSV] Error reading CSV:', error.message);
+    throw error;
   }
 }
 
