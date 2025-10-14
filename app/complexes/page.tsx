@@ -145,9 +145,34 @@ export default function ComplexesPage() {
   };
 
   // 단지 정보 가져오기
+  // URL 또는 단지번호에서 단지번호를 추출하는 함수
+  const extractComplexNo = (input: string): string | null => {
+    const trimmed = input.trim();
+
+    // URL 형식인 경우: https://new.land.naver.com/complexes/22065 또는 new.land.naver.com/complexes/22065
+    const urlMatch = trimmed.match(/land\.naver\.com\/complexes\/(\d+)/);
+    if (urlMatch) {
+      return urlMatch[1];
+    }
+
+    // 순수 숫자만 있는 경우
+    if (/^\d+$/.test(trimmed)) {
+      return trimmed;
+    }
+
+    return null;
+  };
+
   const handleFetchComplexInfo = async () => {
     if (!newComplexNo.trim()) {
-      alert('단지번호를 입력해주세요.');
+      alert('네이버 단지 URL 또는 단지번호를 입력해주세요.');
+      return;
+    }
+
+    const complexNo = extractComplexNo(newComplexNo);
+
+    if (!complexNo) {
+      alert('올바른 형식이 아닙니다.\n\n예시:\n- URL: https://new.land.naver.com/complexes/22065\n- 단지번호: 22065');
       return;
     }
 
@@ -155,7 +180,7 @@ export default function ComplexesPage() {
     setComplexInfo(null);
 
     try {
-      const response = await fetch(`/api/complex-info?complexNo=${newComplexNo.trim()}`);
+      const response = await fetch(`/api/complex-info?complexNo=${complexNo}`);
       const data = await response.json();
 
       if (response.ok && data.success) {
@@ -172,7 +197,7 @@ export default function ComplexesPage() {
   };
 
   // 단지 추가 (정보 확인 후)
-  const handleAddFavorite = async () => {
+  const handleAddFavorite = async (autoCrawl: boolean = false) => {
     if (!complexInfo) {
       alert('먼저 단지 정보를 조회해주세요.');
       return;
@@ -191,11 +216,41 @@ export default function ComplexesPage() {
       const data = await response.json();
 
       if (response.ok) {
+        const addedComplexNo = complexInfo.complexNo;
+        const addedComplexName = complexInfo.complexName;
+
         await fetchFavorites();
         setNewComplexNo("");
         setComplexInfo(null);
         setShowAddForm(false);
-        alert(`✅ ${complexInfo.complexName}이(가) 추가되었습니다!`);
+
+        if (autoCrawl) {
+          // 추가 후 자동으로 크롤링 시작
+          alert(`✅ ${addedComplexName}이(가) 추가되었습니다!\n\n매물 정보를 수집합니다...`);
+
+          setCrawling(addedComplexNo);
+          try {
+            const crawlResponse = await fetch('/api/crawl', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ complexNumbers: addedComplexNo })
+            });
+
+            if (crawlResponse.ok) {
+              await fetchFavorites();
+              alert(`✅ ${addedComplexName} 크롤링 완료!`);
+            } else {
+              alert(`⚠️ 크롤링 실패. 나중에 수동으로 크롤링해주세요.`);
+            }
+          } catch (error) {
+            console.error('Auto-crawl failed:', error);
+            alert(`⚠️ 크롤링 실패. 나중에 수동으로 크롤링해주세요.`);
+          } finally {
+            setCrawling(null);
+          }
+        } else {
+          alert(`✅ ${addedComplexName}이(가) 추가되었습니다!\n\n상세 페이지에서 매물 정보를 수집하세요.`);
+        }
       } else {
         alert(data.error || '단지 추가 실패');
       }
@@ -709,7 +764,7 @@ export default function ComplexesPage() {
                     type="text"
                     value={newComplexNo}
                     onChange={(e) => setNewComplexNo(e.target.value)}
-                    placeholder="단지번호 입력 (예: 22065)"
+                    placeholder="네이버 단지 URL 또는 단지번호 입력 (예: https://new.land.naver.com/complexes/22065)"
                     className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                     onKeyPress={(e) => e.key === 'Enter' && !complexInfo && handleFetchComplexInfo()}
                   />
@@ -779,12 +834,20 @@ export default function ComplexesPage() {
                     )}
                   </div>
 
-                  <button
-                    onClick={handleAddFavorite}
-                    className="mt-4 w-full px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors font-bold"
-                  >
-                    ✅ 이 단지를 즐겨찾기에 추가
-                  </button>
+                  <div className="mt-4 flex gap-3">
+                    <button
+                      onClick={() => handleAddFavorite(false)}
+                      className="flex-1 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-bold"
+                    >
+                      ➕ 추가만 하기
+                    </button>
+                    <button
+                      onClick={() => handleAddFavorite(true)}
+                      className="flex-1 px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors font-bold"
+                    >
+                      ✅ 추가 + 매물 수집
+                    </button>
+                  </div>
                 </div>
               )}
               </div>

@@ -58,29 +58,42 @@ export async function GET(request: NextRequest) {
     // 2. DB에 없으면 네이버 API 직접 호출
     try {
       const naverApiUrl = `https://new.land.naver.com/api/complexes/${complexNo}`;
+      console.log('[complex-info] Fetching from Naver API:', naverApiUrl);
+
       const naverResponse = await fetch(naverApiUrl, {
         headers: {
-          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
           'Referer': 'https://new.land.naver.com/',
+          'Accept': 'application/json',
+          'Accept-Language': 'ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7',
         }
       });
 
+      console.log('[complex-info] Naver API response status:', naverResponse.status);
+
       if (!naverResponse.ok) {
+        const errorText = await naverResponse.text();
+        console.error('[complex-info] Naver API error:', errorText);
         return NextResponse.json(
-          { error: '단지 정보를 찾을 수 없습니다. 단지번호를 확인해주세요.' },
+          { error: `단지 정보를 찾을 수 없습니다. (HTTP ${naverResponse.status})\n\n단지번호를 확인해주세요.` },
           { status: 404 }
         );
       }
 
       const naverData = await naverResponse.json();
+      console.log('[complex-info] Naver API response keys:', Object.keys(naverData));
+
       const complexDetail = naverData.complexDetail;
 
       if (!complexDetail) {
+        console.error('[complex-info] No complexDetail in response:', JSON.stringify(naverData).substring(0, 500));
         return NextResponse.json(
-          { error: '단지 정보가 없습니다.' },
+          { error: '단지 정보가 없습니다. 올바른 단지번호인지 확인해주세요.' },
           { status: 404 }
         );
       }
+
+      console.log('[complex-info] Successfully fetched:', complexDetail.complexName);
 
       return NextResponse.json({
         success: true,
@@ -97,10 +110,10 @@ export async function GET(request: NextRequest) {
         }
       });
 
-    } catch (error) {
-      console.error('Failed to fetch from Naver API:', error);
+    } catch (error: any) {
+      console.error('[complex-info] Failed to fetch from Naver API:', error);
       return NextResponse.json(
-        { error: '단지 정보를 가져오는데 실패했습니다.' },
+        { error: `단지 정보를 가져오는데 실패했습니다.\n\n오류: ${error.message}` },
         { status: 500 }
       );
     }
