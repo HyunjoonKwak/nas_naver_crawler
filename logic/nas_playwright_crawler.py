@@ -262,7 +262,7 @@ class NASNaverRealEstateCrawler:
 
             # 네이버 부동산 단지 페이지 접속
             url = f"https://new.land.naver.com/complexes/{complex_no}"
-            await self.page.goto(url, wait_until='domcontentloaded', timeout=15000)
+            await self.page.goto(url, wait_until='domcontentloaded', timeout=30000)  # Increased to 30s
 
             # API 응답 대기
             await asyncio.sleep(3)
@@ -355,7 +355,7 @@ class NASNaverRealEstateCrawler:
                 # 2. 단지 페이지로 이동 (localStorage 값이 자동 적용됨)
                 url = f"https://new.land.naver.com/complexes/{complex_no}"
                 print(f"URL 접속: {url}")
-                await self.page.goto(url, wait_until='domcontentloaded', timeout=15000)
+                await self.page.goto(url, wait_until='domcontentloaded', timeout=30000)  # Increased to 30s
                 await asyncio.sleep(2)
                 
                 # 2. 매물 탭 클릭
@@ -590,10 +590,16 @@ class NASNaverRealEstateCrawler:
                 
             except Exception as e:
                 print(f"스크롤 크롤링 중 오류: {e}")
-            
+                # 에러가 발생해도 이미 수집한 데이터가 있으면 반환
+                if all_articles:
+                    print(f"⚠️  에러 발생했지만 {len(all_articles)}개 매물은 수집 완료")
+
             # 응답 핸들러 제거
-            self.page.remove_listener('response', handle_articles_response)
-            
+            try:
+                self.page.remove_listener('response', handle_articles_response)
+            except Exception as e:
+                print(f"[WARNING] 핸들러 제거 실패: {e}")
+
             if all_articles:
                 return {
                     'articleList': all_articles,
@@ -601,7 +607,7 @@ class NASNaverRealEstateCrawler:
                     'isMoreData': False
                 }
             else:
-                print("매물 데이터를 수집하지 못했습니다.")
+                print("⚠️  매물 데이터를 수집하지 못했습니다.")
                 return None
                 
         except Exception as e:
