@@ -1,7 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import fs from 'fs/promises';
+import path from 'path';
 
 export const dynamic = 'force-dynamic';
+
+// favorites.json 읽기 함수
+const readFavoritesJson = async (): Promise<Set<string>> => {
+  try {
+    const baseDir = process.env.NODE_ENV === 'production' ? '/app' : process.cwd();
+    const favoritesPath = path.join(baseDir, 'crawled_data', 'favorites.json');
+    const content = await fs.readFile(favoritesPath, 'utf-8');
+    const data = JSON.parse(content);
+    const favoriteComplexNos = (data.favorites || []).map((f: any) => f.complexNo);
+    return new Set(favoriteComplexNos);
+  } catch {
+    return new Set(); // 파일이 없으면 빈 Set 반환
+  }
+};
 
 // 단지 목록 조회 및 검색
 export async function GET(request: NextRequest) {
@@ -33,7 +49,7 @@ export async function GET(request: NextRequest) {
         _count: {
           select: {
             articles: true, // 매물 개수
-            favorites: true, // 즐겨찾기 여부
+            favorites: true, // 즐겨찾기 여부 (DB)
           },
         },
       },
@@ -46,6 +62,9 @@ export async function GET(request: NextRequest) {
 
     // 총 개수
     const total = await prisma.complex.count({ where });
+
+    // favorites.json에서 즐겨찾기 목록 가져오기
+    const favoriteComplexNos = await readFavoritesJson();
 
     // 응답 포맷팅
     const results = complexes.map(complex => ({
@@ -64,7 +83,8 @@ export async function GET(request: NextRequest) {
       beopjungdong: complex.beopjungdong,
       haengjeongdong: complex.haengjeongdong,
       articleCount: complex._count.articles,
-      isFavorite: complex._count.favorites > 0,
+      // favorites.json에 있거나 DB Favorite 테이블에 레코드가 있으면 즐겨찾기로 표시
+      isFavorite: favoriteComplexNos.has(complex.complexNo) || complex._count.favorites > 0,
       createdAt: complex.createdAt.toISOString(),
       updatedAt: complex.updatedAt.toISOString(),
     }));
