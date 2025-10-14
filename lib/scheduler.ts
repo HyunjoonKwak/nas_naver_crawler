@@ -64,8 +64,11 @@ async function executeCrawl(scheduleId: string, complexNos: string[]) {
     console.log(`🚀 Executing scheduled crawl: ${scheduleId}`);
     console.log(`   Complexes: ${complexNos.join(', ')}`);
 
-    // 크롤링 API 호출
+    // 크롤링 API 호출 (타임아웃: 10분)
     const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 600000); // 10분
+
     const response = await fetch(`${baseUrl}/api/crawl`, {
       method: 'POST',
       headers: {
@@ -74,7 +77,10 @@ async function executeCrawl(scheduleId: string, complexNos: string[]) {
       body: JSON.stringify({
         complexNumbers: complexNos,
       }),
+      signal: controller.signal,
     });
+
+    clearTimeout(timeoutId);
 
     const data = await response.json();
     const duration = Date.now() - startTime;
