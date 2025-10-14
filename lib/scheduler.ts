@@ -84,7 +84,29 @@ async function executeCrawl(scheduleId: string, complexNos: string[]) {
       console.log(`✅ Scheduled crawl completed: ${scheduleId}`);
       console.log(`   Duration: ${Math.floor(duration / 1000)}s`);
       console.log(`   Articles: ${articlesCount}`);
-      console.log(`   Response data:`, JSON.stringify(data, null, 2));
+
+      // 스케줄 정보 조회
+      const schedule = await prisma.schedule.findUnique({
+        where: { id: scheduleId },
+      });
+
+      if (!schedule) {
+        console.error(`Schedule not found: ${scheduleId}`);
+        return;
+      }
+
+      // 다음 실행 시간 계산
+      const nextRun = getNextRunTime(schedule.cronExpr);
+      const now = new Date();
+
+      // 스케줄 업데이트 (lastRun, nextRun)
+      await prisma.schedule.update({
+        where: { id: scheduleId },
+        data: {
+          lastRun: now,
+          nextRun,
+        },
+      });
 
       // 성공 로그 저장
       await prisma.scheduleLog.create({
@@ -95,22 +117,6 @@ async function executeCrawl(scheduleId: string, complexNos: string[]) {
           articlesCount: articlesCount,
         },
       });
-
-      // 스케줄 업데이트 (lastRun, nextRun)
-      const schedule = await prisma.schedule.findUnique({
-        where: { id: scheduleId },
-      });
-
-      if (schedule) {
-        const nextRun = getNextRunTime(schedule.cronExpr);
-        await prisma.schedule.update({
-          where: { id: scheduleId },
-          data: {
-            lastRun: new Date(),
-            nextRun,
-          },
-        });
-      }
     } else {
       throw new Error(data.error || 'Crawl failed');
     }
