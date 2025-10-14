@@ -67,7 +67,9 @@ export default function CrawlerHistory({ refresh }: CrawlerHistoryProps) {
       pending: { label: '대기중', color: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300', icon: '⏳' },
       crawling: { label: '크롤링중', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400', icon: '🔄' },
       saving: { label: '저장중', color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400', icon: '💾' },
+      success: { label: '완료', color: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400', icon: '✅' },
       completed: { label: '완료', color: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400', icon: '✅' },
+      partial: { label: '부분완료', color: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400', icon: '⚠️' },
       failed: { label: '실패', color: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400', icon: '❌' },
     };
 
@@ -179,8 +181,10 @@ export default function CrawlerHistory({ refresh }: CrawlerHistoryProps) {
                         <div className="w-24 bg-gray-200 dark:bg-gray-700 rounded-full h-2">
                           <div
                             className={`h-2 rounded-full transition-all ${
-                              item.status === 'completed'
+                              item.status === 'completed' || item.status === 'success'
                                 ? 'bg-green-500'
+                                : item.status === 'partial'
+                                ? 'bg-orange-500'
                                 : item.status === 'failed'
                                 ? 'bg-red-500'
                                 : 'bg-blue-500'
