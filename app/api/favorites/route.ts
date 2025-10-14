@@ -54,6 +54,87 @@ const writeFavorites = async (favorites: FavoriteComplex[]) => {
   await fs.writeFile(filePath, JSON.stringify({ favorites }, null, 2), 'utf-8');
 };
 
+// CSV에서 단지 정보 읽기
+const readCSVComplexInfo = async (): Promise<Map<string, any>> => {
+  const complexMap = new Map();
+
+  try {
+    const baseDir = process.env.NODE_ENV === 'production' ? '/app' : process.cwd();
+    const crawledDataDir = path.join(baseDir, 'crawled_data');
+
+    const files = await fs.readdir(crawledDataDir);
+    const csvFiles = files
+      .filter(f => f.endsWith('.csv') && f.startsWith('complexes_'))
+      .sort()
+      .reverse(); // 최신 파일 우선
+
+    if (csvFiles.length === 0) {
+      console.log('[CSV] No CSV files found');
+      return complexMap;
+    }
+
+    console.log(`[CSV] Reading latest CSV: ${csvFiles[0]}`);
+    const csvPath = path.join(crawledDataDir, csvFiles[0]);
+    const csvContent = await fs.readFile(csvPath, 'utf-8');
+    const lines = csvContent.split('\n');
+
+    if (lines.length < 2) return complexMap;
+
+    const headers = lines[0].split(',').map(h => h.trim());
+    const complexNoIdx = headers.indexOf('단지번호');
+    const complexNameIdx = headers.indexOf('단지명');
+    const totalHouseholdIdx = headers.indexOf('세대수');
+    const totalDongIdx = headers.indexOf('동수');
+    const minAreaIdx = headers.indexOf('최소면적');
+    const maxAreaIdx = headers.indexOf('최대면적');
+    const minPriceIdx = headers.indexOf('최소가격');
+    const maxPriceIdx = headers.indexOf('최대가격');
+
+    if (complexNoIdx === -1) {
+      console.error('[CSV] Invalid CSV format: missing 단지번호 column');
+      return complexMap;
+    }
+
+    for (let i = 1; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (!line) continue;
+
+      const values = line.split(',').map(v => v.trim());
+      const complexNo = values[complexNoIdx];
+
+      if (complexNo) {
+        complexMap.set(complexNo, {
+          complexName: complexNameIdx !== -1 ? values[complexNameIdx] : undefined,
+          totalHouseHoldCount: totalHouseholdIdx !== -1 && values[totalHouseholdIdx]
+            ? parseInt(values[totalHouseholdIdx])
+            : undefined,
+          totalDongCount: totalDongIdx !== -1 && values[totalDongIdx]
+            ? parseInt(values[totalDongIdx])
+            : undefined,
+          minArea: minAreaIdx !== -1 && values[minAreaIdx]
+            ? parseFloat(values[minAreaIdx])
+            : undefined,
+          maxArea: maxAreaIdx !== -1 && values[maxAreaIdx]
+            ? parseFloat(values[maxAreaIdx])
+            : undefined,
+          minPrice: minPriceIdx !== -1 && values[minPriceIdx]
+            ? parseFloat(values[minPriceIdx])
+            : undefined,
+          maxPrice: maxPriceIdx !== -1 && values[maxPriceIdx]
+            ? parseFloat(values[maxPriceIdx])
+            : undefined,
+        });
+      }
+    }
+
+    console.log(`[CSV] Loaded ${complexMap.size} complexes from CSV`);
+  } catch (error) {
+    console.error('[CSV] Failed to read CSV file:', error);
+  }
+
+  return complexMap;
+};
+
 export const dynamic = 'force-dynamic';
 
 // GET: 선호 단지 목록 조회
@@ -61,8 +142,31 @@ export async function GET(request: NextRequest) {
   try {
     const favorites = await readFavorites();
 
+    // CSV 파일에서 단지 정보 읽기
+    const csvComplexInfo = await readCSVComplexInfo();
+
+    // CSV 정보로 enrichment
+    const enrichedFavorites = favorites.map(fav => {
+      const csvInfo = csvComplexInfo.get(fav.complexNo);
+
+      if (csvInfo) {
+        return {
+          ...fav,
+          complexName: fav.complexName || csvInfo.complexName,
+          totalHouseHoldCount: csvInfo.totalHouseHoldCount,
+          totalDongCount: csvInfo.totalDongCount,
+          minArea: csvInfo.minArea,
+          maxArea: csvInfo.maxArea,
+          minPrice: csvInfo.minPrice,
+          maxPrice: csvInfo.maxPrice,
+        };
+      }
+
+      return fav;
+    });
+
     // order 필드로 정렬 (없으면 addedAt으로)
-    const sortedFavorites = favorites.sort((a, b) => {
+    const sortedFavorites = enrichedFavorites.sort((a, b) => {
       if (a.order !== undefined && b.order !== undefined) {
         return a.order - b.order;
       }
