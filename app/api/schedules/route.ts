@@ -10,6 +10,7 @@ import {
   registerSchedule,
   unregisterSchedule,
   validateCronExpression,
+  getNextRunTime,
 } from '@/lib/scheduler';
 import cronstrue from 'cronstrue/i18n';
 
@@ -114,9 +115,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 다음 실행 시간 계산 (간단한 방법)
-    const now = new Date();
-    const nextRun = new Date(now.getTime() + 60000); // 임시: 1분 후
+    // 다음 실행 시간 계산
+    const nextRun = getNextRunTime(cronExpr);
+    if (!nextRun) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Failed to calculate next run time',
+        },
+        { status: 400 }
+      );
+    }
 
     // 스케줄 생성
     const schedule = await prisma.schedule.create({

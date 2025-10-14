@@ -14,7 +14,7 @@ const activeCronJobs = new Map<string, cron.ScheduledTask>();
 /**
  * 다음 실행 시간 계산
  */
-function getNextRunTime(cronExpr: string): Date | null {
+export function getNextRunTime(cronExpr: string): Date | null {
   try {
     // cron 표현식이 유효한지 검증
     if (!cron.validate(cronExpr)) {

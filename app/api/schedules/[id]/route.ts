@@ -11,6 +11,7 @@ import {
   registerSchedule,
   unregisterSchedule,
   validateCronExpression,
+  getNextRunTime,
 } from '@/lib/scheduler';
 
 const prisma = new PrismaClient();
@@ -114,6 +115,22 @@ export async function PUT(
       );
     }
 
+    // 다음 실행 시간 계산 (cronExpr이 변경된 경우)
+    let nextRun = existingSchedule.nextRun;
+    if (cronExpr && cronExpr !== existingSchedule.cronExpr) {
+      const calculatedNextRun = getNextRunTime(cronExpr);
+      if (!calculatedNextRun) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Failed to calculate next run time',
+          },
+          { status: 400 }
+        );
+      }
+      nextRun = calculatedNextRun;
+    }
+
     // 스케줄 수정
     const schedule = await prisma.schedule.update({
       where: { id: params.id },
@@ -121,6 +138,7 @@ export async function PUT(
         name,
         complexNos,
         cronExpr,
+        nextRun,
       },
     });
 
