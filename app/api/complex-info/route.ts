@@ -33,8 +33,8 @@ export async function GET(request: NextRequest) {
           orderBy: { updatedAt: 'desc' },
           select: {
             updatedAt: true,
-            tradeType: true,
-            area: true,
+            tradeTypeName: true,
+            area1: true,
             dealOrWarrantPrc: true,
           }
         }
@@ -46,8 +46,8 @@ export async function GET(request: NextRequest) {
       const articleCount = complex.articles.length;
 
       // 면적 범위 계산 (매매만)
-      const saleArticles = complex.articles.filter(a => a.tradeType === 'A1');
-      const areas = [...new Set(saleArticles.map(a => a.area).filter(Boolean))].sort((a, b) => a! - b!);
+      const saleArticles = complex.articles.filter(a => a.tradeTypeName === '매매');
+      const areas = [...new Set(saleArticles.map(a => a.area1).filter(Boolean))].sort((a, b) => a! - b!);
       const areaRange = areas.length > 0
         ? areas.length === 1
           ? `${areas[0]}㎡`
