@@ -14,7 +14,9 @@ const favoritesPath = getFavoritesPath();
 async function readFavorites() {
   try {
     const data = await fs.readFile(favoritesPath, 'utf-8');
-    return JSON.parse(data);
+    const parsed = JSON.parse(data);
+    // /api/favorites와 동일하게 favorites 배열 반환
+    return parsed.favorites || parsed || [];
   } catch (error) {
     return [];
   }
@@ -26,7 +28,8 @@ async function writeFavorites(favorites: any[]) {
     // data 디렉토리가 없으면 생성
     const dataDir = path.dirname(favoritesPath);
     await fs.mkdir(dataDir, { recursive: true });
-    await fs.writeFile(favoritesPath, JSON.stringify(favorites, null, 2));
+    // /api/favorites와 동일하게 {favorites: []} 형식으로 저장
+    await fs.writeFile(favoritesPath, JSON.stringify({ favorites }, null, 2), 'utf-8');
   } catch (error) {
     console.error('Failed to write favorites.json:', error);
     throw error;
