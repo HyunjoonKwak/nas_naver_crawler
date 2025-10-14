@@ -30,12 +30,14 @@ function getNextRunTime(cronExpr: string): Date | null {
 
     const [minute, hour, dayOfMonth, month, dayOfWeek] = parts;
 
-    // 현재 시간을 한국 시간대로 변환
+    // 현재 UTC 시간
     const now = new Date();
-    const kstOffset = 9 * 60; // KST = UTC+9 (분 단위)
-    const kstNow = new Date(now.getTime() + kstOffset * 60 * 1000);
 
-    let next = new Date(kstNow);
+    // KST 시간 계산 (UTC + 9시간)
+    const kstTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Seoul' }));
+
+    // 다음 실행 시간을 KST 기준으로 계산
+    let next = new Date(kstTime);
     next.setSeconds(0);
     next.setMilliseconds(0);
 
@@ -44,12 +46,10 @@ function getNextRunTime(cronExpr: string): Date | null {
       const targetMinute = parseInt(minute);
       next.setMinutes(targetMinute);
 
-      // 현재 분이 이미 지났으면 다음 시간으로
-      if (next <= kstNow) {
+      if (next <= kstTime) {
         next.setHours(next.getHours() + 1);
       }
     } else {
-      // * 이면 다음 분
       next.setMinutes(next.getMinutes() + 1);
     }
 
@@ -58,8 +58,7 @@ function getNextRunTime(cronExpr: string): Date | null {
       const targetHour = parseInt(hour);
       next.setHours(targetHour);
 
-      // 현재 시간이 이미 지났으면 다음 날로
-      if (next <= kstNow) {
+      if (next <= kstTime) {
         next.setDate(next.getDate() + 1);
       }
     }
@@ -67,10 +66,9 @@ function getNextRunTime(cronExpr: string): Date | null {
     // 요일 설정 (0=일요일, 6=토요일)
     if (dayOfWeek !== '*') {
       const targetDays = dayOfWeek.split(',').map(d => parseInt(d));
-      const currentDay = next.getDay();
+      let currentDay = next.getDay();
 
-      // 현재 요일이 대상 요일이 아니면 다음 유효한 요일 찾기
-      if (!targetDays.includes(currentDay) || next <= kstNow) {
+      if (!targetDays.includes(currentDay) || next <= kstTime) {
         let daysToAdd = 1;
         for (let i = 1; i <= 7; i++) {
           const checkDay = (currentDay + i) % 7;
@@ -91,8 +89,17 @@ function getNextRunTime(cronExpr: string): Date | null {
       }
     }
 
-    // KST 시간을 UTC로 변환하여 반환 (DB 저장용)
-    const utcNext = new Date(next.getTime() - kstOffset * 60 * 1000);
+    // next는 KST 시간이므로, 이를 UTC로 변환
+    // KST 로컬 시간을 UTC ISO 문자열로 변환
+    const year = next.getFullYear();
+    const monthNum = next.getMonth();
+    const date = next.getDate();
+    const hours = next.getHours();
+    const minutes = next.getMinutes();
+
+    // KST 시간을 UTC로 변환 (KST - 9시간 = UTC)
+    const utcNext = new Date(Date.UTC(year, monthNum, date, hours, minutes) - 9 * 60 * 60 * 1000);
+
     return utcNext;
   } catch (error) {
     console.error('Failed to calculate next run time:', error);
