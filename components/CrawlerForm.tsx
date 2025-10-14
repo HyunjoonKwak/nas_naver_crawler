@@ -139,44 +139,30 @@ export default function CrawlerForm({ onCrawlComplete }: CrawlerFormProps) {
   };
 
   const handleStopCrawl = () => {
-    if (confirm('크롤링을 중단하시겠습니까?')) {
+    const message = `⚠️ 중요: 크롤링을 중단하시겠습니까?\n\n` +
+      `현재 UI에서는 진행 상황 추적만 중단됩니다.\n` +
+      `백그라운드에서 실행 중인 크롤링은 계속 진행되며 완료됩니다.\n\n` +
+      `결과는 나중에 히스토리에서 확인할 수 있습니다.`;
+
+    if (confirm(message)) {
       stopStatusPolling();
       setLoading(false);
       setCrawlStatus(null);
-      setMessage('');
-      setError('크롤링이 사용자에 의해 중단되었습니다.');
+      setMessage('✅ UI 추적을 중단했습니다. 백그라운드 크롤링은 계속 진행됩니다.');
+      setError('');
     }
   };
 
-  // 컴포넌트 마운트 시 진행 중인 크롤링 확인
+  // Note: checkOngoingCrawl() removed to prevent auto-resume of ongoing crawls
+  // This prevents confusion when users just want to view the page without triggering crawls
   useEffect(() => {
-    checkOngoingCrawl();
-
     return () => {
       stopStatusPolling();
       stopElapsedTimer();
     };
   }, []);
 
-  // 진행 중인 크롤링 확인
-  const checkOngoingCrawl = async () => {
-    try {
-      const response = await fetch('/api/crawl-status?latest=true');
-      if (response.ok) {
-        const data = await response.json();
-
-        // 진행 중인 크롤링이 있으면 폴링 시작
-        if (data.found && (data.status === 'crawling' || data.status === 'saving')) {
-          console.log('[CrawlerForm] Found ongoing crawl:', data.crawlId);
-          setLoading(true);
-          startElapsedTimer();
-          startStatusPolling(data.crawlId);
-        }
-      }
-    } catch (error) {
-      console.error('[CrawlerForm] Failed to check ongoing crawl:', error);
-    }
-  };
+  // Note: checkOngoingCrawl() function removed - no longer needed
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

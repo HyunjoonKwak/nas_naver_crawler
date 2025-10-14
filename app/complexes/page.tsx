@@ -56,44 +56,12 @@ export default function ComplexesPage() {
 
   useEffect(() => {
     fetchFavorites();
-    // 페이지 로드 시 모든 단지 정보 자동 동기화
-    syncAllFavorites();
-    // 진행 중인 크롤링 확인
-    checkOngoingCrawl();
+    // Note: syncAllFavorites() removed to prevent unnecessary API calls on page load
+    // Note: checkOngoingCrawl() removed to prevent auto-resume that confuses users
+    // Users should manually trigger crawling using "전체 크롤링" button
   }, []);
 
-  // 진행 중인 크롤링 확인
-  const checkOngoingCrawl = async () => {
-    try {
-      const response = await fetch('/api/crawl-status?latest=true');
-      if (response.ok) {
-        const data = await response.json();
-
-        // 진행 중인 크롤링이 있으면 폴링 시작
-        if (data.status === 'crawling' || data.status === 'saving') {
-          console.log('[Complexes] Found ongoing crawl:', data.crawlId);
-          setCrawlingAll(true);
-          setCrawlProgress({
-            crawlId: data.crawlId,
-            status: data.status,
-            currentStep: data.progress?.currentStep || 'Processing...',
-            complexProgress: data.progress?.complexProgress || 0,
-            processedArticles: data.progress?.processedArticles || 0,
-          });
-
-          // 폴링 시작
-          await pollCrawlStatus(data.crawlId);
-
-          // 완료 후 UI 갱신
-          await fetchFavorites();
-          setCrawlingAll(false);
-          setCrawlProgress(null);
-        }
-      }
-    } catch (error) {
-      console.error('[Complexes] Failed to check ongoing crawl:', error);
-    }
-  };
+  // Note: checkOngoingCrawl() function removed - no longer needed
 
   // 경과 시간 업데이트 (1초마다)
   useEffect(() => {
@@ -134,42 +102,8 @@ export default function ComplexesPage() {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [crawlingAll, crawling]);
 
-  // 모든 선호단지 정보를 크롤링 데이터와 동기화
-  const syncAllFavorites = async () => {
-    try {
-      // 최신 크롤링 데이터 조회
-      const response = await fetch('/api/results');
-      const data = await response.json();
-      const results = data.results || [];
-
-      // 각 크롤링 결과에서 단지 정보 추출하여 업데이트
-      for (const result of results) {
-        if (result?.overview?.complexNo) {
-          await fetch('/api/favorites', {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              complexNo: result.overview.complexNo,
-              complexName: result.overview.complexName,
-              articleCount: result.articles?.length || 0,
-              totalHouseHoldCount: result.overview.totalHouseHoldCount,
-              totalDongCount: result.overview.totalDongCount,
-              minArea: result.overview.minArea,
-              maxArea: result.overview.maxArea,
-              minPrice: result.overview.minPrice,
-              maxPrice: result.overview.maxPrice,
-            })
-          });
-        }
-      }
-
-      // 동기화 완료 후 UI 갱신
-      await fetchFavorites();
-      console.log('[단지목록] 모든 단지 정보 동기화 완료');
-    } catch (error) {
-      console.error('[단지목록] 동기화 실패:', error);
-    }
-  };
+  // Note: syncAllFavorites() removed - was causing unnecessary API calls on page load
+  // Favorites are now synced automatically after successful crawls in the /api/crawl route
 
   const fetchFavorites = async () => {
     setLoading(true);
@@ -331,11 +265,16 @@ export default function ComplexesPage() {
   };
 
   const handleStopCrawl = () => {
-    if (confirm('크롤링을 중단하시겠습니까?')) {
+    const message = `⚠️ 중요: 크롤링을 중단하시겠습니까?\n\n` +
+      `현재 UI에서는 진행 상황 추적만 중단됩니다.\n` +
+      `백그라운드에서 실행 중인 크롤링은 계속 진행되며 완료됩니다.\n\n` +
+      `결과는 나중에 히스토리에서 확인할 수 있습니다.`;
+
+    if (confirm(message)) {
       setCrawling(null);
       setCrawlingAll(false);
       setCrawlProgress(null);
-      alert('크롤링이 사용자에 의해 중단되었습니다.');
+      alert('✅ UI 추적을 중단했습니다.\n\n백그라운드 크롤링은 계속 진행됩니다.');
     }
   };
 
