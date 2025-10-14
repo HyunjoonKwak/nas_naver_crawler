@@ -35,12 +35,7 @@ export default function AlertsPage() {
   // 폼 상태
   const [formData, setFormData] = useState({
     name: "",
-    complexIds: [] as string[],
     tradeTypes: [] as string[],
-    minPrice: "",
-    maxPrice: "",
-    minArea: "",
-    maxArea: "",
     webhookUrl: "",
   });
 
@@ -91,12 +86,7 @@ export default function AlertsPage() {
       setEditingAlert(alert);
       setFormData({
         name: alert.name,
-        complexIds: alert.complexIds,
         tradeTypes: alert.tradeTypes,
-        minPrice: alert.minPrice?.toString() || "",
-        maxPrice: alert.maxPrice?.toString() || "",
-        minArea: alert.minArea?.toString() || "",
-        maxArea: alert.maxArea?.toString() || "",
         webhookUrl: alert.webhookUrl || "",
       });
     } else {
@@ -104,12 +94,7 @@ export default function AlertsPage() {
       setEditingAlert(null);
       setFormData({
         name: "",
-        complexIds: [],
         tradeTypes: [],
-        minPrice: "",
-        maxPrice: "",
-        minArea: "",
-        maxArea: "",
         webhookUrl: "",
       });
     }
@@ -124,15 +109,24 @@ export default function AlertsPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // 관심단지가 없으면 알림 생성 불가
+    if (complexes.length === 0) {
+      alert("관심단지가 없습니다. 먼저 단지 목록 페이지에서 관심단지를 등록해주세요.");
+      return;
+    }
+
     try {
+      // 관심단지 전체를 자동으로 사용
+      const complexIds = complexes.map((c) => c.complexNo);
+
       const payload = {
         name: formData.name,
-        complexIds: formData.complexIds,
+        complexIds: complexIds,
         tradeTypes: formData.tradeTypes,
-        minPrice: formData.minPrice ? parseInt(formData.minPrice) : null,
-        maxPrice: formData.maxPrice ? parseInt(formData.maxPrice) : null,
-        minArea: formData.minArea ? parseFloat(formData.minArea) : null,
-        maxArea: formData.maxArea ? parseFloat(formData.maxArea) : null,
+        minPrice: null,
+        maxPrice: null,
+        minArea: null,
+        maxArea: null,
         notifyWebhook: !!formData.webhookUrl,
         webhookUrl: formData.webhookUrl || null,
       };
@@ -468,38 +462,42 @@ export default function AlertsPage() {
                 />
               </div>
 
-              {/* 관심 단지 선택 */}
+              {/* 알림 단지 (관심단지 자동 사용) */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  관심 단지 선택 * (복수 선택 가능)
-                </label>
-                <div className="grid grid-cols-1 gap-2 max-h-60 overflow-y-auto border border-gray-300 dark:border-gray-600 rounded-lg p-3">
-                  {complexes.map((complex) => (
-                    <label
-                      key={complex.complexNo}
-                      className="flex items-center gap-3 p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded cursor-pointer"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={formData.complexIds.includes(complex.complexNo)}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setFormData({
-                              ...formData,
-                              complexIds: [...formData.complexIds, complex.complexNo],
-                            });
-                          } else {
-                            setFormData({
-                              ...formData,
-                              complexIds: formData.complexIds.filter((id) => id !== complex.complexNo),
-                            });
-                          }
-                        }}
-                        className="w-4 h-4"
-                      />
-                      <span className="text-gray-900 dark:text-white">{complex.complexName}</span>
-                    </label>
-                  ))}
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    알림 단지 (관심단지 자동 사용)
+                  </label>
+                  <span className="text-xs text-purple-600 dark:text-purple-400 font-semibold bg-purple-50 dark:bg-purple-900/20 px-2 py-1 rounded">
+                    ✓ 총 {complexes.length}개 단지
+                  </span>
+                </div>
+                <div className="bg-gray-50 dark:bg-gray-900/50 border border-gray-300 dark:border-gray-600 rounded-lg p-4">
+                  <p className="text-xs text-gray-600 dark:text-gray-400 mb-3">
+                    💡 알림은 자동으로 <strong>관심단지 목록</strong>의 모든 단지를 대상으로 합니다.
+                    단지를 추가하거나 제거하려면 <strong>단지 목록</strong> 페이지에서 관심 등록을 변경하세요.
+                  </p>
+                  {complexes.length > 0 ? (
+                    <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto">
+                      {complexes.map((complex) => (
+                        <span
+                          key={complex.complexNo}
+                          className="px-3 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300 rounded-full text-xs font-medium border border-purple-200 dark:border-purple-800"
+                        >
+                          ⭐ {complex.complexName}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-4">
+                      <p className="text-sm text-orange-600 dark:text-orange-400 font-semibold">
+                        ⚠️ 관심 등록된 단지가 없습니다
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        단지 목록 페이지에서 먼저 관심단지를 등록해주세요
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -532,64 +530,6 @@ export default function AlertsPage() {
                       <span className="text-gray-900 dark:text-white">{type}</span>
                     </label>
                   ))}
-                </div>
-              </div>
-
-              {/* 가격 범위 */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    최소 가격 (만원)
-                  </label>
-                  <input
-                    type="number"
-                    value={formData.minPrice}
-                    onChange={(e) => setFormData({ ...formData, minPrice: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500"
-                    placeholder="예: 10000"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    최대 가격 (만원)
-                  </label>
-                  <input
-                    type="number"
-                    value={formData.maxPrice}
-                    onChange={(e) => setFormData({ ...formData, maxPrice: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500"
-                    placeholder="예: 50000"
-                  />
-                </div>
-              </div>
-
-              {/* 면적 범위 */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    최소 면적 (㎡)
-                  </label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    value={formData.minArea}
-                    onChange={(e) => setFormData({ ...formData, minArea: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500"
-                    placeholder="예: 60"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    최대 면적 (㎡)
-                  </label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    value={formData.maxArea}
-                    onChange={(e) => setFormData({ ...formData, maxArea: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500"
-                    placeholder="예: 100"
-                  />
                 </div>
               </div>
 
