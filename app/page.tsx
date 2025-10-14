@@ -62,7 +62,7 @@ export default function Home() {
       // Note: favorites.json sync removed - now handled by /api/crawl automatically
       // This prevents file-based data from overwriting accurate DB-based counts
 
-      // 선호 단지 조회
+      // 관심 단지 조회
       const favResponse = await fetch('/api/favorites');
       const favData = await favResponse.json();
       const favList = favData.favorites || [];
@@ -76,7 +76,7 @@ export default function Home() {
         return sum + (result?.articles?.length || 0);
       }, 0);
 
-      // 선호 단지별 상세 통계 계산
+      // 관심 단지별 상세 통계 계산
       const favoritesWithStats = favList.map((fav: FavoriteComplex) => {
         // 해당 단지의 최신 크롤링 데이터 찾기
         const complexResult = results.find((result: any) => {
@@ -228,7 +228,7 @@ export default function Home() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
             <StatCard
               icon="⭐"
-              label="선호 단지"
+              label="관심 단지"
               value={stats.totalFavorites}
               color="blue"
               link="/complexes"
@@ -259,13 +259,13 @@ export default function Home() {
         <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-800 overflow-hidden mb-8">
           <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-800">
             <h3 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-              ⭐ 선호 단지
+              ⭐ 관심 단지
             </h3>
             <Link
               href="/complexes"
               className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-semibold flex items-center gap-1"
             >
-              전체 보기 →
+              전체 관리 →
             </Link>
           </div>
           <div className="p-6">
@@ -273,7 +273,7 @@ export default function Home() {
               <div className="text-center py-16">
                 <div className="text-7xl mb-4">📭</div>
                 <p className="text-xl font-semibold text-gray-500 dark:text-gray-400 mb-4">
-                  등록된 선호 단지가 없습니다
+                  등록된 관심 단지가 없습니다
                 </p>
                 <Link
                   href="/complexes"
@@ -287,7 +287,7 @@ export default function Home() {
                 {favorites.map((fav) => (
                   <Link
                     key={fav.complexNo}
-                    href="/complexes"
+                    href={`/complex/${fav.complexNo}`}
                     className="block bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-5 hover:shadow-lg transition-all hover:-translate-y-1"
                   >
                     {/* 단지명 */}
