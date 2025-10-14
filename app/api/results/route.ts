@@ -1,7 +1,66 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import fs from 'fs/promises';
+import path from 'path';
 
 export const dynamic = 'force-dynamic';
+
+// CSV 파일에서 단지 정보 읽기
+async function readCSVComplexInfo(): Promise<Map<string, any>> {
+  const complexInfoMap = new Map();
+
+  try {
+    const baseDir = process.cwd();
+    const crawledDataDir = path.join(baseDir, 'crawled_data');
+
+    const files = await fs.readdir(crawledDataDir);
+    const csvFiles = files
+      .filter(f => f.endsWith('.csv') && f.startsWith('complexes_'))
+      .sort()
+      .reverse(); // 최신 파일 우선
+
+    if (csvFiles.length === 0) {
+      return complexInfoMap;
+    }
+
+    // 최신 CSV 파일 읽기
+    const latestCsvPath = path.join(crawledDataDir, csvFiles[0]);
+    const csvContent = await fs.readFile(latestCsvPath, 'utf-8');
+    const lines = csvContent.split('\n').filter(line => line.trim());
+
+    if (lines.length < 2) {
+      return complexInfoMap;
+    }
+
+    const headers = lines[0].split(',').map(h => h.trim());
+
+    for (let i = 1; i < lines.length; i++) {
+      const values = lines[i].split(',').map(v => v.trim());
+      const row: any = {};
+
+      headers.forEach((header, index) => {
+        row[header] = values[index] || '';
+      });
+
+      const complexNo = row['단지번호'];
+      if (complexNo) {
+        complexInfoMap.set(complexNo, {
+          complexName: row['단지명'],
+          totalHouseHoldCount: parseInt(row['세대수']) || null,
+          totalDongCount: parseInt(row['동수']) || null,
+          minArea: parseFloat(row['최소면적']) || null,
+          maxArea: parseFloat(row['최대면적']) || null,
+          minPrice: parseInt(row['최소가격']) || null,
+          maxPrice: parseInt(row['최대가격']) || null,
+        });
+      }
+    }
+  } catch (error) {
+    console.log('CSV 읽기 실패 (무시):', error);
+  }
+
+  return complexInfoMap;
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -55,6 +114,9 @@ export async function GET(request: NextRequest) {
     // 총 개수
     const total = await prisma.article.count({ where });
 
+    // CSV에서 단지 정보 읽기
+    const csvComplexInfo = await readCSVComplexInfo();
+
     // 단지별로 그룹화
     const complexMap = new Map();
 
@@ -62,12 +124,15 @@ export async function GET(request: NextRequest) {
       const complexNo = article.complex.complexNo;
 
       if (!complexMap.has(complexNo)) {
+        // CSV 정보 가져오기
+        const csvInfo = csvComplexInfo.get(complexNo);
+
         complexMap.set(complexNo, {
           overview: {
             complexNo: article.complex.complexNo,
             complexName: article.complex.complexName,
-            totalHousehold: article.complex.totalHousehold,
-            totalDong: article.complex.totalDong,
+            totalHousehold: article.complex.totalHousehold || csvInfo?.totalHouseHoldCount,
+            totalDong: article.complex.totalDong || csvInfo?.totalDongCount,
             location: {
               latitude: article.complex.latitude,
               longitude: article.complex.longitude,
@@ -78,6 +143,11 @@ export async function GET(request: NextRequest) {
             beopjungdong: article.complex.beopjungdong,
             haengjeongdong: article.complex.haengjeongdong,
             pyeongs: article.complex.pyeongs,
+            // CSV에서 가져온 추가 정보
+            minArea: csvInfo?.minArea,
+            maxArea: csvInfo?.maxArea,
+            minPrice: csvInfo?.minPrice,
+            maxPrice: csvInfo?.maxPrice,
           },
           articles: [],
         });

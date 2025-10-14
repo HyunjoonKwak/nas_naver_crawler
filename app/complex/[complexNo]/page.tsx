@@ -332,16 +332,54 @@ export default function ComplexDetailPage() {
                 </h2>
                 <div className="flex flex-wrap gap-4 text-sm text-gray-600 dark:text-gray-400">
                   <span>📍 단지번호: {complexNo}</span>
-                  {overview.totalHouseHoldCount && (
-                    <span>🏢 총 {overview.totalHouseHoldCount}세대</span>
+                  {(overview.totalHousehold || overview.totalHouseHoldCount) && (
+                    <span>🏢 총 {(overview.totalHousehold || overview.totalHouseHoldCount).toLocaleString()}세대</span>
                   )}
-                  {overview.totalDongCount && (
-                    <span>🏗️ {overview.totalDongCount}개 동</span>
+                  {(overview.totalDong || overview.totalDongCount) && (
+                    <span>🏗️ {overview.totalDong || overview.totalDongCount}개 동</span>
                   )}
                   {overview.useApproveYmd && (
                     <span>📅 {overview.useApproveYmd.toString().substring(0,4)}년 준공</span>
                   )}
                 </div>
+
+                {/* CSV 추가 정보 - 면적/가격 범위 */}
+                {(overview.minArea || overview.maxArea || overview.minPrice || overview.maxPrice) && (
+                  <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {(overview.minArea || overview.maxArea) && (
+                      <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 border border-blue-100 dark:border-blue-800">
+                        <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">전용면적 범위</div>
+                        <div className="text-sm font-semibold text-blue-600 dark:text-blue-400">
+                          {overview.minArea && overview.maxArea
+                            ? `${overview.minArea.toFixed(2)}㎡ ~ ${overview.maxArea.toFixed(2)}㎡`
+                            : overview.minArea
+                            ? `${overview.minArea.toFixed(2)}㎡`
+                            : `${overview.maxArea.toFixed(2)}㎡`}
+                        </div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                          {overview.minArea && overview.maxArea
+                            ? `${(overview.minArea / 3.3058).toFixed(1)}평 ~ ${(overview.maxArea / 3.3058).toFixed(1)}평`
+                            : overview.minArea
+                            ? `${(overview.minArea / 3.3058).toFixed(1)}평`
+                            : `${(overview.maxArea / 3.3058).toFixed(1)}평`}
+                        </div>
+                      </div>
+                    )}
+
+                    {(overview.minPrice || overview.maxPrice) && (
+                      <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-3 border border-green-100 dark:border-green-800">
+                        <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">매매가 범위</div>
+                        <div className="text-sm font-semibold text-green-600 dark:text-green-400">
+                          {overview.minPrice && overview.maxPrice
+                            ? `${formatPrice(overview.minPrice)} ~ ${formatPrice(overview.maxPrice)}`
+                            : overview.minPrice
+                            ? `${formatPrice(overview.minPrice)}`
+                            : `${formatPrice(overview.maxPrice)}`}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* 크롤링 진행 상태 배너 */}

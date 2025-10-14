@@ -18,7 +18,15 @@ async function readFavorites() {
 
 // favorites.json 쓰기
 async function writeFavorites(favorites: any[]) {
-  await fs.writeFile(favoritesPath, JSON.stringify(favorites, null, 2));
+  try {
+    // data 디렉토리가 없으면 생성
+    const dataDir = path.dirname(favoritesPath);
+    await fs.mkdir(dataDir, { recursive: true });
+    await fs.writeFile(favoritesPath, JSON.stringify(favorites, null, 2));
+  } catch (error) {
+    console.error('Failed to write favorites.json:', error);
+    throw error;
+  }
 }
 
 /**
