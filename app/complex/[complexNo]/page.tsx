@@ -330,16 +330,37 @@ export default function ComplexDetailPage() {
                 <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
                   {overview.complexName || '단지명 없음'}
                 </h2>
-                <div className="flex flex-wrap gap-4 text-sm text-gray-600 dark:text-gray-400">
-                  <span>📍 단지번호: {complexNo}</span>
-                  {(overview.totalHousehold || overview.totalHouseHoldCount) && (
-                    <span>🏢 총 {(overview.totalHousehold || overview.totalHouseHoldCount).toLocaleString()}세대</span>
-                  )}
-                  {(overview.totalDong || overview.totalDongCount) && (
-                    <span>🏗️ {overview.totalDong || overview.totalDongCount}개 동</span>
-                  )}
+                {/* 기본 정보 */}
+                <div className="space-y-2 mb-4">
+                  <div className="flex flex-wrap gap-4 text-sm text-gray-600 dark:text-gray-400">
+                    <span>📍 단지번호: {complexNo}</span>
+                    {(overview.totalHousehold || overview.totalHouseHoldCount) && (
+                      <span>🏢 총 {(overview.totalHousehold || overview.totalHouseHoldCount).toLocaleString()}세대</span>
+                    )}
+                    {(overview.totalDong || overview.totalDongCount) && (
+                      <span>🏗️ {overview.totalDong || overview.totalDongCount}개 동</span>
+                    )}
+                  </div>
+
+                  {/* 사용승인일 */}
                   {overview.useApproveYmd && (
-                    <span>📅 {overview.useApproveYmd.toString().substring(0,4)}년 준공</span>
+                    <div className="text-sm text-gray-600 dark:text-gray-400">
+                      <span>📅 사용승인일: {overview.useApproveYmd.toString().substring(0,4)}-{overview.useApproveYmd.toString().substring(4,6)}-{overview.useApproveYmd.toString().substring(6,8)}</span>
+                    </div>
+                  )}
+
+                  {/* 좌표 정보 */}
+                  {(overview.location?.latitude || overview.location?.longitude) && (
+                    <div className="text-sm text-gray-600 dark:text-gray-400">
+                      <span>🗺️ 좌표: {overview.location.latitude?.toFixed(6)}, {overview.location.longitude?.toFixed(6)}</span>
+                    </div>
+                  )}
+
+                  {/* 주소 정보 */}
+                  {(overview.roadAddress || overview.jibunAddress || overview.address) && (
+                    <div className="text-sm text-gray-600 dark:text-gray-400">
+                      <span>🏠 주소: {overview.roadAddress || overview.jibunAddress || overview.address}</span>
+                    </div>
                   )}
                 </div>
 
@@ -496,7 +517,7 @@ export default function ComplexDetailPage() {
                         <div className="flex justify-between">
                           <span className="text-gray-600 dark:text-gray-400">전용면적:</span>
                           <span className="font-semibold text-gray-900 dark:text-white">
-                            {pyeong.exclusiveArea}㎡ ({pyeong.exclusivePyeong}평)
+                            {pyeong.exclusiveArea}㎡
                           </span>
                         </div>
                         <div className="flex justify-between">

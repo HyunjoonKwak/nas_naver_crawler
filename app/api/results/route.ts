@@ -52,6 +52,12 @@ async function readCSVComplexInfo(): Promise<Map<string, any>> {
           maxArea: parseFloat(row['최대면적']) || null,
           minPrice: parseInt(row['최소가격']) || null,
           maxPrice: parseInt(row['최대가격']) || null,
+          useApproveYmd: row['사용승인일'] || null,
+          latitude: parseFloat(row['위도']) || null,
+          longitude: parseFloat(row['경도']) || null,
+          roadAddress: row['도로명주소'] || null,
+          jibunAddress: row['지번주소'] || null,
+          address: row['주소'] || null,
         });
       }
     }
@@ -134,15 +140,16 @@ export async function GET(request: NextRequest) {
             totalHousehold: article.complex.totalHousehold || csvInfo?.totalHouseHoldCount,
             totalDong: article.complex.totalDong || csvInfo?.totalDongCount,
             location: {
-              latitude: article.complex.latitude,
-              longitude: article.complex.longitude,
+              latitude: article.complex.latitude || csvInfo?.latitude,
+              longitude: article.complex.longitude || csvInfo?.longitude,
             },
-            address: article.complex.address,
-            roadAddress: article.complex.roadAddress,
-            jibunAddress: article.complex.jibunAddress,
+            address: article.complex.address || csvInfo?.address,
+            roadAddress: article.complex.roadAddress || csvInfo?.roadAddress,
+            jibunAddress: article.complex.jibunAddress || csvInfo?.jibunAddress,
             beopjungdong: article.complex.beopjungdong,
             haengjeongdong: article.complex.haengjeongdong,
             pyeongs: article.complex.pyeongs,
+            useApproveYmd: csvInfo?.useApproveYmd,
             // CSV에서 가져온 추가 정보
             minArea: csvInfo?.minArea,
             maxArea: csvInfo?.maxArea,
