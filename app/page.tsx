@@ -38,14 +38,22 @@ export default function Home() {
 
   useEffect(() => {
     fetchDashboardData();
-
-    // 30초마다 자동 새로고침 (관심단지 변경사항 반영)
-    const refreshInterval = setInterval(() => {
-      fetchDashboardData();
-    }, 30000);
-
-    return () => clearInterval(refreshInterval);
   }, [refresh]);
+
+  // 페이지 포커스 시 데이터 새로고침 (다른 페이지에서 돌아올 때)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        console.log('[MAIN_PAGE] 페이지 포커스 감지 - 데이터 새로고침 시작');
+        fetchDashboardData();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
 
   // 클라이언트에서만 시간 표시 (hydration 에러 방지)
   useEffect(() => {
@@ -60,19 +68,33 @@ export default function Home() {
   }, []);
 
   const fetchDashboardData = async () => {
+    console.log('[MAIN_PAGE] 대시보드 데이터 조회 시작');
     try {
       // 크롤링 결과 조회
+      console.log('[MAIN_PAGE] /api/results 호출');
       const resultResponse = await fetch('/api/results');
       const resultData = await resultResponse.json();
       const results = resultData.results || [];
+      console.log('[MAIN_PAGE] 크롤링 결과 조회 완료:', {
+        resultsCount: results.length
+      });
 
       // Note: favorites.json sync removed - now handled by /api/crawl automatically
       // This prevents file-based data from overwriting accurate DB-based counts
 
       // 관심 단지 조회
+      console.log('[MAIN_PAGE] /api/favorites 호출 (favorites.json 읽기)');
       const favResponse = await fetch('/api/favorites');
       const favData = await favResponse.json();
       const favList = favData.favorites || [];
+      console.log('[MAIN_PAGE] 관심 단지 조회 완료:', {
+        favoritesCount: favList.length,
+        favorites: favList.map((f: any) => ({
+          complexNo: f.complexNo,
+          complexName: f.complexName,
+          order: f.order
+        }))
+      });
 
       // DB 통계 조회 (최근 크롤링 시간 등)
       const dbStatsResponse = await fetch('/api/db-stats');

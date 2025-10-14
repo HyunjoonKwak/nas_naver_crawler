@@ -140,14 +140,26 @@ export default function ComplexesPage() {
   }, [crawlingAll, crawling]);
 
   const fetchComplexes = async () => {
+    console.log('[CLIENT_FETCH] 단지목록 조회 시작');
     setLoading(true);
     try {
       const response = await fetch('/api/complexes');
       const data = await response.json();
+
+      const favorites = (data.complexes || []).filter((c: any) => c.isFavorite);
+      console.log('[CLIENT_FETCH] 단지목록 조회 완료:', {
+        total: data.complexes?.length || 0,
+        favorites: favorites.length,
+        favoriteList: favorites.map((f: any) => ({
+          complexNo: f.complexNo,
+          complexName: f.complexName,
+          isFavorite: f.isFavorite
+        }))
+      });
+
       setComplexes(data.complexes || []);
-      console.log('[Complexes] Loaded:', data.complexes?.length || 0);
     } catch (error) {
-      console.error('[Complexes] Failed to fetch complexes:', error);
+      console.error('[CLIENT_FETCH] 단지목록 조회 실패:', error);
       setComplexes([]); // 에러 시 빈 배열로 설정
     } finally {
       setLoading(false);
@@ -271,7 +283,14 @@ export default function ComplexesPage() {
   };
 
   const handleToggleFavorite = async (complexNo: string, isFavorite: boolean) => {
+    console.log('[CLIENT_TOGGLE] 관심단지 토글 시작:', {
+      complexNo,
+      currentState: isFavorite ? '관심단지' : '일반단지',
+      action: isFavorite ? '해제' : '등록'
+    });
+
     try {
+      console.log('[CLIENT_TOGGLE] API 호출 시작');
       const response = await fetch('/api/complexes/favorite', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -279,15 +298,23 @@ export default function ComplexesPage() {
       });
 
       const data = await response.json();
+      console.log('[CLIENT_TOGGLE] API 응답:', {
+        status: response.status,
+        ok: response.ok,
+        data
+      });
 
       if (response.ok) {
         alert(data.message);
+        console.log('[CLIENT_TOGGLE] 단지목록 새로고침 시작');
         await fetchComplexes();
+        console.log('[CLIENT_TOGGLE] 단지목록 새로고침 완료');
       } else {
+        console.error('[CLIENT_TOGGLE] API 에러:', data);
         alert(data.error || '관심단지 설정 실패');
       }
     } catch (error) {
-      console.error('Failed to toggle favorite:', error);
+      console.error('[CLIENT_TOGGLE] 예외 발생:', error);
       alert('관심단지 설정 중 오류가 발생했습니다.');
     }
   };

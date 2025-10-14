@@ -38,7 +38,10 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { complexNo } = body;
 
+    console.log('[FAVORITE_TOGGLE] 요청 시작:', { complexNo });
+
     if (!complexNo) {
+      console.log('[FAVORITE_TOGGLE] 에러: 단지번호 누락');
       return NextResponse.json(
         { error: '단지번호가 필요합니다.' },
         { status: 400 }
@@ -56,7 +59,16 @@ export async function POST(request: NextRequest) {
       }
     });
 
+    console.log('[FAVORITE_TOGGLE] DB 조회 결과:', {
+      found: !!complex,
+      complexNo,
+      complexName: complex?.complexName,
+      favoritesCount: complex?.favorites.length,
+      articlesCount: complex?._count.articles
+    });
+
     if (!complex) {
+      console.log('[FAVORITE_TOGGLE] 에러: 단지를 찾을 수 없음');
       return NextResponse.json(
         { error: '단지를 찾을 수 없습니다. 먼저 크롤링을 실행해주세요.' },
         { status: 404 }
@@ -65,22 +77,35 @@ export async function POST(request: NextRequest) {
 
     // 2. 현재 관심단지 여부 확인
     const isFavorite = complex.favorites.length > 0;
+    console.log('[FAVORITE_TOGGLE] 현재 상태:', { isFavorite, action: isFavorite ? '해제' : '등록' });
 
     if (isFavorite) {
       // 관심단지 해제
+      console.log('[FAVORITE_TOGGLE] 관심단지 해제 시작');
+
       // DB에서 Favorite 삭제
       await prisma.favorite.deleteMany({
         where: { complexId: complex.id }
       });
+      console.log('[FAVORITE_TOGGLE] DB에서 Favorite 삭제 완료');
 
       // favorites.json에서 제거
       const favorites = await readFavorites();
+      console.log('[FAVORITE_TOGGLE] favorites.json 읽기 완료:', { count: favorites.length });
+
       const filtered = favorites.filter((f: any) => f.complexNo !== complexNo);
+      console.log('[FAVORITE_TOGGLE] 필터링 후:', {
+        before: favorites.length,
+        after: filtered.length,
+        removed: favorites.length - filtered.length
+      });
+
       const reordered = filtered.map((fav: any, index: number) => ({
         ...fav,
         order: index
       }));
       await writeFavorites(reordered);
+      console.log('[FAVORITE_TOGGLE] favorites.json 쓰기 완료:', { finalCount: reordered.length });
 
       return NextResponse.json({
         success: true,
@@ -89,15 +114,20 @@ export async function POST(request: NextRequest) {
       });
     } else {
       // 관심단지 등록
+      console.log('[FAVORITE_TOGGLE] 관심단지 등록 시작');
+
       // DB에 Favorite 추가
       await prisma.favorite.create({
         data: {
           complexId: complex.id
         }
       });
+      console.log('[FAVORITE_TOGGLE] DB에 Favorite 추가 완료');
 
       // favorites.json에 추가
       const favorites = await readFavorites();
+      console.log('[FAVORITE_TOGGLE] favorites.json 읽기 완료:', { count: favorites.length });
+
       const newFavorite = {
         complexNo: complex.complexNo,
         complexName: complex.complexName,
@@ -106,7 +136,13 @@ export async function POST(request: NextRequest) {
         articleCount: complex._count.articles,
       };
       favorites.push(newFavorite);
+      console.log('[FAVORITE_TOGGLE] favorites.json에 추가:', {
+        newFavorite,
+        newCount: favorites.length
+      });
+
       await writeFavorites(favorites);
+      console.log('[FAVORITE_TOGGLE] favorites.json 쓰기 완료');
 
       return NextResponse.json({
         success: true,

@@ -140,7 +140,16 @@ export const dynamic = 'force-dynamic';
 // GET: 선호 단지 목록 조회
 export async function GET(request: NextRequest) {
   try {
+    console.log('[API_FAVORITES] GET 요청 시작');
     const favorites = await readFavorites();
+    console.log('[API_FAVORITES] favorites.json 읽기 완료:', {
+      count: favorites.length,
+      favorites: favorites.map(f => ({
+        complexNo: f.complexNo,
+        complexName: f.complexName,
+        order: f.order
+      }))
+    });
 
     // CSV 파일에서 단지 정보 읽기
     const csvComplexInfo = await readCSVComplexInfo();
