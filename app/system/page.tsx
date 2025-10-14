@@ -483,12 +483,6 @@ export default function SystemPage() {
                 🏠 홈
               </Link>
               <Link
-                href="/alerts"
-                className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors font-semibold"
-              >
-                🔔 알림
-              </Link>
-              <Link
                 href="/complexes"
                 className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-semibold"
               >
@@ -499,6 +493,12 @@ export default function SystemPage() {
                 className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors font-semibold"
               >
                 ⏰ 스케줄러
+              </Link>
+              <Link
+                href="/alerts"
+                className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors font-semibold"
+              >
+                🔔 알림
               </Link>
             </div>
           </div>

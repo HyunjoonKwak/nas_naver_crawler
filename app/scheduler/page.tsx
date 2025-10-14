@@ -327,16 +327,16 @@ export default function SchedulerPage() {
                 🏠 홈
               </Link>
               <Link
-                href="/alerts"
-                className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors font-semibold"
-              >
-                🔔 알림
-              </Link>
-              <Link
                 href="/complexes"
                 className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-semibold"
               >
                 🏘️ 단지 목록
+              </Link>
+              <Link
+                href="/alerts"
+                className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors font-semibold"
+              >
+                🔔 알림
               </Link>
               <Link
                 href="/system"

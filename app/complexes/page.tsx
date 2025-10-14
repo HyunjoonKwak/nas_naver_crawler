@@ -638,16 +638,16 @@ export default function ComplexesPage() {
                     🏠 홈
                   </Link>
                   <Link
-                    href="/alerts"
-                    className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors font-semibold"
-                  >
-                    🔔 알림
-                  </Link>
-                  <Link
                     href="/scheduler"
                     className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors font-semibold"
                   >
                     ⏰ 스케줄러
+                  </Link>
+                  <Link
+                    href="/alerts"
+                    className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors font-semibold"
+                  >
+                    🔔 알림
                   </Link>
                   <Link
                     href="/system"

@@ -19,7 +19,7 @@ interface Complex {
 }
 
 export default function AlertsPage() {
-  const [alert, setAlert] = useState<Alert | null>(null);
+  const [currentAlert, setCurrentAlert] = useState<Alert | null>(null);
   const [complexes, setComplexes] = useState<Complex[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -49,7 +49,7 @@ export default function AlertsPage() {
 
       if (alerts.length > 0) {
         const existingAlert = alerts[0];
-        setAlert(existingAlert);
+        setCurrentAlert(existingAlert);
         setFormData({
           name: existingAlert.name,
           tradeTypes: existingAlert.tradeTypes,
@@ -87,12 +87,12 @@ export default function AlertsPage() {
   const handleSave = async () => {
     // 관심단지가 없으면 알림 생성 불가
     if (complexes.length === 0) {
-      alert("관심단지가 없습니다. 먼저 단지 목록 페이지에서 관심단지를 등록해주세요.");
+      window.alert("관심단지가 없습니다. 먼저 단지 목록 페이지에서 관심단지를 등록해주세요.");
       return;
     }
 
     if (!formData.webhookUrl) {
-      alert("Discord 웹훅 URL을 입력해주세요.");
+      window.alert("Discord 웹훅 URL을 입력해주세요.");
       return;
     }
 
@@ -114,8 +114,8 @@ export default function AlertsPage() {
         webhookUrl: formData.webhookUrl || null,
       };
 
-      const url = alert ? `/api/alerts/${alert.id}` : "/api/alerts";
-      const method = alert ? "PUT" : "POST";
+      const url = currentAlert ? `/api/alerts/${currentAlert.id}` : "/api/alerts";
+      const method = currentAlert ? "PUT" : "POST";
 
       const response = await fetch(url, {
         method,
@@ -124,25 +124,25 @@ export default function AlertsPage() {
       });
 
       if (response.ok) {
-        alert("알림 설정이 저장되었습니다!");
+        window.alert("알림 설정이 저장되었습니다!");
         fetchData();
       } else {
         const data = await response.json();
-        alert(data.error || "알림 저장에 실패했습니다.");
+        window.alert(data.error || "알림 저장에 실패했습니다.");
       }
     } catch (error) {
       console.error("Failed to save alert:", error);
-      alert("알림 저장 중 오류가 발생했습니다.");
+      window.alert("알림 저장 중 오류가 발생했습니다.");
     } finally {
       setSaving(false);
     }
   };
 
   const handleToggleActive = async () => {
-    if (!alert) return;
+    if (!currentAlert) return;
 
     try {
-      const response = await fetch(`/api/alerts/${alert.id}`, {
+      const response = await fetch(`/api/alerts/${currentAlert.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ isActive: !formData.isActive }),
@@ -150,20 +150,20 @@ export default function AlertsPage() {
 
       if (response.ok) {
         setFormData({ ...formData, isActive: !formData.isActive });
-        alert("알림 상태가 변경되었습니다.");
+        window.alert("알림 상태가 변경되었습니다.");
         fetchData();
       } else {
-        alert("알림 상태 변경에 실패했습니다.");
+        window.alert("알림 상태 변경에 실패했습니다.");
       }
     } catch (error) {
       console.error("Failed to toggle alert:", error);
-      alert("알림 상태 변경 중 오류가 발생했습니다.");
+      window.alert("알림 상태 변경 중 오류가 발생했습니다.");
     }
   };
 
   const handleTestWebhook = async () => {
     if (!formData.webhookUrl) {
-      alert("웹훅 URL을 입력해주세요.");
+      window.alert("웹훅 URL을 입력해주세요.");
       return;
     }
 
@@ -180,14 +180,14 @@ export default function AlertsPage() {
       });
 
       if (response.ok) {
-        alert("테스트 알림이 전송되었습니다! Discord를 확인해주세요.");
+        window.alert("테스트 알림이 전송되었습니다! Discord를 확인해주세요.");
       } else {
         const data = await response.json();
-        alert(data.error || "테스트 알림 전송에 실패했습니다.");
+        window.alert(data.error || "테스트 알림 전송에 실패했습니다.");
       }
     } catch (error) {
       console.error("Failed to test webhook:", error);
-      alert("테스트 알림 전송 중 오류가 발생했습니다.");
+      window.alert("테스트 알림 전송 중 오류가 발생했습니다.");
     } finally {
       setTestingWebhook(false);
     }
@@ -264,13 +264,13 @@ export default function AlertsPage() {
                   {formData.isActive ? "알림 활성화됨" : "알림 비활성화됨"}
                 </h2>
                 <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                  {alert
-                    ? `${new Date(alert.createdAt).toLocaleDateString("ko-KR")} 설정됨`
+                  {currentAlert
+                    ? `${new Date(currentAlert.createdAt).toLocaleDateString("ko-KR")} 설정됨`
                     : "아직 알림이 설정되지 않았습니다"}
                 </p>
               </div>
             </div>
-            {alert && (
+            {currentAlert && (
               <button
                 onClick={handleToggleActive}
                 className={`px-6 py-3 rounded-lg font-semibold transition-colors ${
@@ -427,7 +427,7 @@ export default function AlertsPage() {
               disabled={saving}
               className="flex-1 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 disabled:from-gray-400 disabled:to-gray-400 text-white rounded-lg transition-all font-semibold shadow-lg"
             >
-              {saving ? "저장 중..." : alert ? "💾 설정 업데이트" : "✅ 알림 설정 저장"}
+              {saving ? "저장 중..." : currentAlert ? "💾 설정 업데이트" : "✅ 알림 설정 저장"}
             </button>
           </div>
         </div>
