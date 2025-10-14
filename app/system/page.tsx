@@ -78,6 +78,8 @@ export default function SystemPage() {
   const [selectedFile, setSelectedFile] = useState<FileType | null>(null);
   const [filesLoading, setFilesLoading] = useState(false);
   const [sortColumn, setSortColumn] = useState<string | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set());
+  const [showModal, setShowModal] = useState(false);
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [activeTab, setActiveTab] = useState<'csv' | 'json'>('csv');
 
@@ -166,6 +168,61 @@ export default function SystemPage() {
     }
   };
 
+  const handleBulkDelete = async () => {
+    if (selectedFiles.size === 0) return;
+
+    if (!confirm(`선택한 ${selectedFiles.size}개 파일을 삭제하시겠습니까?`)) {
+      return;
+    }
+
+    try {
+      const deletePromises = Array.from(selectedFiles).map(filename =>
+        fetch('/api/csv', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ filename }),
+        })
+      );
+
+      await Promise.all(deletePromises);
+
+      if (selectedFile && selectedFiles.has(selectedFile.filename)) {
+        setSelectedFile(null);
+        setShowModal(false);
+      }
+
+      setSelectedFiles(new Set());
+      await fetchFiles();
+    } catch (error) {
+      console.error('Bulk delete error:', error);
+      alert('파일 삭제 중 오류가 발생했습니다.');
+    }
+  };
+
+  const toggleFileSelection = (filename: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const newSelection = new Set(selectedFiles);
+    if (newSelection.has(filename)) {
+      newSelection.delete(filename);
+    } else {
+      newSelection.add(filename);
+    }
+    setSelectedFiles(newSelection);
+  };
+
+  const toggleSelectAll = (files: FileType[]) => {
+    if (selectedFiles.size === files.length) {
+      setSelectedFiles(new Set());
+    } else {
+      setSelectedFiles(new Set(files.map(f => f.filename)));
+    }
+  };
+
+  const openFileModal = (file: FileType) => {
+    setSelectedFile(file);
+    setShowModal(true);
+  };
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleString('ko-KR', {
@@ -243,6 +300,14 @@ export default function SystemPage() {
         <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
           <thead className="bg-gray-50 dark:bg-gray-800">
             <tr>
+              <th className="px-3 py-3 text-left">
+                <input
+                  type="checkbox"
+                  checked={selectedFiles.size === files.length && files.length > 0}
+                  onChange={() => toggleSelectAll(files)}
+                  className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                />
+              </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                 파일명
               </th>
@@ -267,12 +332,20 @@ export default function SystemPage() {
               <tr
                 key={file.filename}
                 className={`hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors ${
-                  selectedFile?.filename === file.filename
+                  selectedFiles.has(file.filename)
                     ? 'bg-blue-50 dark:bg-blue-900/20'
                     : ''
                 }`}
-                onClick={() => setSelectedFile(file)}
+                onClick={() => openFileModal(file)}
               >
+                <td className="px-3 py-4">
+                  <input
+                    type="checkbox"
+                    checked={selectedFiles.has(file.filename)}
+                    onChange={(e) => toggleFileSelection(file.filename, e)}
+                    className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                  />
+                </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="text-sm font-medium text-gray-900 dark:text-white">
                     {file.filename}
@@ -707,27 +780,42 @@ export default function SystemPage() {
 
               {/* Tab Navigation */}
               <div className="border-b border-gray-200 dark:border-gray-700">
-                <div className="flex">
-                  <button
-                    onClick={() => setActiveTab('csv')}
-                    className={`px-6 py-3 text-sm font-medium transition-colors ${
-                      activeTab === 'csv'
-                        ? 'border-b-2 border-green-600 text-green-600 dark:text-green-400'
-                        : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
-                    }`}
-                  >
-                    📊 CSV 파일 ({csvFiles.length})
-                  </button>
-                  <button
-                    onClick={() => setActiveTab('json')}
-                    className={`px-6 py-3 text-sm font-medium transition-colors ${
-                      activeTab === 'json'
-                        ? 'border-b-2 border-blue-600 text-blue-600 dark:text-blue-400'
-                        : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
-                    }`}
-                  >
-                    📄 JSON 파일 ({jsonFiles.length})
-                  </button>
+                <div className="flex items-center justify-between">
+                  <div className="flex">
+                    <button
+                      onClick={() => setActiveTab('csv')}
+                      className={`px-6 py-3 text-sm font-medium transition-colors ${
+                        activeTab === 'csv'
+                          ? 'border-b-2 border-green-600 text-green-600 dark:text-green-400'
+                          : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                      }`}
+                    >
+                      📊 CSV 파일 ({csvFiles.length})
+                    </button>
+                    <button
+                      onClick={() => setActiveTab('json')}
+                      className={`px-6 py-3 text-sm font-medium transition-colors ${
+                        activeTab === 'json'
+                          ? 'border-b-2 border-blue-600 text-blue-600 dark:text-blue-400'
+                          : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                      }`}
+                    >
+                      📄 JSON 파일 ({jsonFiles.length})
+                    </button>
+                  </div>
+                  {selectedFiles.size > 0 && (
+                    <div className="flex items-center gap-3 px-6">
+                      <span className="text-sm text-gray-600 dark:text-gray-400">
+                        {selectedFiles.size}개 선택됨
+                      </span>
+                      <button
+                        onClick={handleBulkDelete}
+                        className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
+                      >
+                        🗑️ 선택 삭제
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -736,70 +824,82 @@ export default function SystemPage() {
               </div>
             </div>
 
-            {/* Data Viewer */}
-            {selectedFile && (
-              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
-                <div className="bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-4">
-                  <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-                    {selectedFile.type === 'csv' ? '📊' : '📄'} {selectedFile.filename}
-                  </h2>
-                  <p className="text-indigo-100 text-sm mt-1">
-                    {selectedFile.type === 'csv'
-                      ? `총 ${selectedFile.rowCount}행의 데이터`
-                      : 'JSON 원본 데이터'}
-                  </p>
-                </div>
+            {/* Modal for File Viewing */}
+            {showModal && selectedFile && (
+              <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowModal(false)}>
+                <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-800 max-w-7xl w-full max-h-[90vh] overflow-hidden" onClick={(e) => e.stopPropagation()}>
+                  <div className="bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-4 flex items-center justify-between">
+                    <div>
+                      <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                        {selectedFile.type === 'csv' ? '📊' : '📄'} {selectedFile.filename}
+                      </h2>
+                      <p className="text-indigo-100 text-sm mt-1">
+                        {selectedFile.type === 'csv'
+                          ? `총 ${selectedFile.rowCount}행의 데이터`
+                          : 'JSON 원본 데이터'}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => setShowModal(false)}
+                      className="text-white hover:bg-white/20 rounded-lg p-2 transition-colors"
+                    >
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
 
-                <div className="p-6">
-                  {selectedFile.type === 'csv' ? (
-                    <div className="overflow-x-auto">
-                      <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                        <thead className="bg-gray-50 dark:bg-gray-900">
-                          <tr>
-                            {selectedFile.headers.map((header) => (
-                              <th
-                                key={header}
-                                className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                                onClick={() => handleSort(header)}
-                              >
-                                <div className="flex items-center gap-2">
-                                  {header}
-                                  {sortColumn === header && (
-                                    <span className="text-blue-600 dark:text-blue-400">
-                                      {sortDirection === 'asc' ? '↑' : '↓'}
-                                    </span>
-                                  )}
-                                </div>
-                              </th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                          {getSortedData().map((row, index) => (
-                            <tr
-                              key={index}
-                              className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-                            >
+                  <div className="p-6 overflow-auto max-h-[calc(90vh-120px)]">
+                    {selectedFile.type === 'csv' ? (
+                      <div className="overflow-x-auto">
+                        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                          <thead className="bg-gray-50 dark:bg-gray-900 sticky top-0">
+                            <tr>
                               {selectedFile.headers.map((header) => (
-                                <td
+                                <th
                                   key={header}
-                                  className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300"
+                                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                                  onClick={() => handleSort(header)}
                                 >
-                                  {row[header] || '-'}
-                                </td>
+                                  <div className="flex items-center gap-2">
+                                    {header}
+                                    {sortColumn === header && (
+                                      <span className="text-blue-600 dark:text-blue-400">
+                                        {sortDirection === 'asc' ? '↑' : '↓'}
+                                      </span>
+                                    )}
+                                  </div>
+                                </th>
                               ))}
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  ) : (
-                    <div className="overflow-x-auto">
-                      <pre className="bg-gray-50 dark:bg-gray-900 p-4 rounded-lg text-sm text-gray-900 dark:text-gray-100 overflow-auto max-h-[600px]">
-                        {JSON.stringify(selectedFile.data, null, 2)}
-                      </pre>
-                    </div>
-                  )}
+                          </thead>
+                          <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                            {getSortedData().map((row, index) => (
+                              <tr
+                                key={index}
+                                className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                              >
+                                {selectedFile.headers.map((header) => (
+                                  <td
+                                    key={header}
+                                    className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300"
+                                  >
+                                    {row[header] || '-'}
+                                  </td>
+                                ))}
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <pre className="bg-gray-50 dark:bg-gray-900 p-4 rounded-lg text-sm text-gray-900 dark:text-gray-100 overflow-auto">
+                          {JSON.stringify(selectedFile.data, null, 2)}
+                        </pre>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             )}

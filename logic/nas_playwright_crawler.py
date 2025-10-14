@@ -812,14 +812,30 @@ class NASNaverRealEstateCrawler:
     def save_data(self, data: Any, filename_prefix: str = "naver_complex"):
         """데이터 저장"""
         timestamp = get_kst_now().strftime("%Y%m%d_%H%M%S")
-        
+
         try:
+            # 단지번호 추출 (파일명에 포함하기 위해)
+            complex_nos = []
+            if isinstance(data, list):
+                for item in data:
+                    if 'crawling_info' in item and 'complex_no' in item['crawling_info']:
+                        complex_nos.append(item['crawling_info']['complex_no'])
+                    elif 'overview' in item and 'complexNo' in item['overview']:
+                        complex_nos.append(item['overview']['complexNo'])
+
+            # 파일명에 단지번호 포함 (예: complexes_3_22065-12345-67890_20251014_120000)
+            complex_nos_str = '-'.join(complex_nos[:10]) if complex_nos else ''  # 최대 10개까지
+            if complex_nos_str:
+                filename = f"{filename_prefix}_{complex_nos_str}_{timestamp}"
+            else:
+                filename = f"{filename_prefix}_{timestamp}"
+
             # JSON 저장
-            json_filename = self.output_dir / f"{filename_prefix}_{timestamp}.json"
+            json_filename = self.output_dir / f"{filename}.json"
             with open(json_filename, 'w', encoding='utf-8') as f:
                 json.dump(data, f, ensure_ascii=False, indent=2)
             print(f"JSON 데이터 저장: {json_filename}")
-            
+
             # CSV 저장 (리스트 데이터인 경우)
             if isinstance(data, list) and data and isinstance(data[0], dict):
                 # 단지 개요 정보만 추출하여 CSV로 저장
@@ -841,13 +857,13 @@ class NASNaverRealEstateCrawler:
                             '경도': overview.get('longitude', ''),
                             '크롤링일시': item.get('crawling_info', {}).get('crawling_date', '')
                         })
-                
+
                 if csv_data:
                     df = pd.DataFrame(csv_data)
-                    csv_filename = self.output_dir / f"{filename_prefix}_{timestamp}.csv"
+                    csv_filename = self.output_dir / f"{filename}.csv"
                     df.to_csv(csv_filename, index=False, encoding='utf-8-sig')
                     print(f"CSV 데이터 저장: {csv_filename}")
-            
+
         except Exception as e:
             print(f"데이터 저장 중 오류: {e}")
 
