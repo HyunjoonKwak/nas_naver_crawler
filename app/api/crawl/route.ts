@@ -226,6 +226,80 @@ async function saveCrawlResultsToDB(crawlId: string, complexNos: string[]) {
 
     console.log(`✅ Batch save completed: ${totalComplexes} complexes, ${totalArticles} articles`);
 
+    // Update favorites.json with latest article count and crawl time
+    await prisma.crawlHistory.update({
+      where: { id: crawlId },
+      data: {
+        currentStep: 'Updating favorites',
+      },
+    });
+
+    try {
+      // Read favorites.json
+      const favoritesPath = path.join(baseDir, 'crawled_data', 'favorites.json');
+      let favoritesData: any = { favorites: [] };
+
+      try {
+        const content = await fs.readFile(favoritesPath, 'utf-8');
+        favoritesData = JSON.parse(content);
+      } catch (error) {
+        console.log('No favorites.json found, skipping update');
+      }
+
+      const favorites = favoritesData.favorites || [];
+      let updated = false;
+
+      for (const complexNo of complexNos) {
+        try {
+          // Get complex and article info from DB
+          const complex = await prisma.complex.findUnique({
+            where: { complexNo },
+            include: {
+              articles: {
+                orderBy: { updatedAt: 'desc' },
+                take: 1,
+                select: { updatedAt: true }
+              }
+            }
+          });
+
+          if (!complex) continue;
+
+          // Count articles for this complex
+          const articleCount = await prisma.article.count({
+            where: { complexId: complex.id }
+          });
+
+          // Find and update favorite
+          const index = favorites.findIndex((f: any) => f.complexNo === complexNo);
+          if (index !== -1) {
+            favorites[index].complexName = complex.complexName;
+            favorites[index].articleCount = articleCount;
+            favorites[index].totalHouseHoldCount = complex.totalHousehold;
+            favorites[index].totalDongCount = complex.totalDong;
+
+            // Update last crawled time
+            if (complex.articles[0]?.updatedAt) {
+              favorites[index].lastCrawledAt = complex.articles[0].updatedAt.toISOString();
+            }
+
+            console.log(`📝 Updated favorite for ${complexNo}: ${articleCount} articles`);
+            updated = true;
+          }
+        } catch (error: any) {
+          console.error(`Failed to update favorite for ${complexNo}:`, error);
+        }
+      }
+
+      // Write back to favorites.json if any updates
+      if (updated) {
+        await fs.writeFile(favoritesPath, JSON.stringify(favoritesData, null, 2), 'utf-8');
+        console.log('✅ Favorites.json updated');
+      }
+    } catch (error: any) {
+      console.error('Failed to update favorites.json:', error);
+    }
+
   } catch (error: any) {
     console.error('Failed to process crawl data:', error);
     errors.push(`Database save error: ${error.message}`);
