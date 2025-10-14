@@ -787,6 +787,7 @@ export default function ComplexesPage() {
                   </button>
                 </div>
               )}
+              </div>
             </div>
           )}
         </div>
