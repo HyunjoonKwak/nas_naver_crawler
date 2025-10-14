@@ -106,14 +106,8 @@ async function saveCrawlResultsToDB(crawlId: string, complexNos: string[]) {
         pyeongs: overview.pyeongs || [],
       });
 
-      // Progress update
-      await prisma.crawlHistory.update({
-        where: { id: crawlId },
-        data: {
-          currentStep: `Preparing complex ${i + 1}/${dataArray.length}`,
-          processedComplexes: i + 1,
-        },
-      });
+      // Note: processedComplexes is updated by Python crawler in real-time
+      // No need to update here to avoid progress bar confusion
     }
 
     // Batch upsert complexes
