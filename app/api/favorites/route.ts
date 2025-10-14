@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import fs from 'fs/promises';
 import path from 'path';
+import { prisma } from '@/lib/prisma';
 
 const FAVORITES_FILE = 'favorites.json';
 
@@ -219,7 +220,28 @@ export async function PATCH(request: NextRequest) {
     if (maxArea !== undefined) favorites[index].maxArea = maxArea;
     if (minPrice !== undefined) favorites[index].minPrice = minPrice;
     if (maxPrice !== undefined) favorites[index].maxPrice = maxPrice;
-    favorites[index].lastCrawledAt = new Date().toISOString();
+
+    // DB에서 실제 마지막 크롤링 시간 조회
+    try {
+      const complex = await prisma.complex.findUnique({
+        where: { complexNo },
+        include: {
+          articles: {
+            orderBy: { updatedAt: 'desc' },
+            take: 1,
+            select: { updatedAt: true }
+          }
+        }
+      });
+
+      if (complex?.articles[0]?.updatedAt) {
+        favorites[index].lastCrawledAt = complex.articles[0].updatedAt.toISOString();
+      }
+    } catch (error) {
+      console.error('Failed to fetch last crawl time from DB:', error);
+      // DB 조회 실패 시 현재 시간 사용 (fallback)
+      favorites[index].lastCrawledAt = new Date().toISOString();
+    }
 
     await writeFavorites(favorites);
     
