@@ -59,22 +59,10 @@ export default function Home() {
       const resultData = await resultResponse.json();
       const results = resultData.results || [];
 
-      // 크롤링 데이터로 favorites.json 동기화
-      for (const result of results) {
-        if (result?.overview?.complexNo) {
-          await fetch('/api/favorites', {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              complexNo: result.overview.complexNo,
-              complexName: result.overview.complexName,
-              articleCount: result.articles?.length || 0
-            })
-          });
-        }
-      }
+      // Note: favorites.json sync removed - now handled by /api/crawl automatically
+      // This prevents file-based data from overwriting accurate DB-based counts
 
-      // 동기화 후 선호 단지 조회
+      // 선호 단지 조회
       const favResponse = await fetch('/api/favorites');
       const favData = await favResponse.json();
       const favList = favData.favorites || [];

@@ -131,24 +131,23 @@ export default function ComplexDetailPage() {
   };
 
   const handleDelete = async () => {
-    if (!confirm('이 단지를 삭제하시겠습니까?')) return;
+    if (!confirm('이 단지를 즐겨찾기에서 삭제하시겠습니까?')) return;
 
     try {
-      const response = await fetch('/api/favorites', {
+      const response = await fetch(`/api/favorites?complexNo=${complexNo}`, {
         method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ complexNo })
       });
 
       if (response.ok) {
-        alert('삭제되었습니다.');
+        alert('✅ 삭제되었습니다.');
         router.push('/complexes');
       } else {
-        alert('삭제에 실패했습니다.');
+        const data = await response.json();
+        alert(`❌ 삭제에 실패했습니다: ${data.error || '알 수 없는 오류'}`);
       }
     } catch (error) {
       console.error('Delete error:', error);
-      alert('삭제 중 오류가 발생했습니다.');
+      alert('❌ 삭제 중 오류가 발생했습니다.');
     }
   };
 
