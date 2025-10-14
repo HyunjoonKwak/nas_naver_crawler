@@ -1060,7 +1060,7 @@ export default function ComplexesPage() {
                       상세보기
                     </Link>
                     <button
-                      onClick={() => handleCrawl(complex.complexNo)}
+                      onClick={() => handleCrawlComplex(complex.complexNo)}
                       disabled={crawling === complex.complexNo || crawlingAll}
                       className={`px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors ${
                         crawling === complex.complexNo || crawlingAll
@@ -1167,7 +1167,170 @@ export default function ComplexesPage() {
             </table>
           </div>
         )}
+
+        {/* Single Complex Crawl Section */}
+        <div className="mt-8 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+          <div className="bg-gradient-to-r from-slate-600 to-gray-600 px-6 py-4">
+            <h3 className="text-xl font-bold text-white flex items-center gap-2">
+              🔍 단일 단지 크롤링
+            </h3>
+            <p className="text-slate-100 text-sm mt-1">
+              등록되지 않은 단지의 매물 정보를 일회성으로 수집합니다
+            </p>
+          </div>
+          <div className="p-6">
+            <SingleComplexCrawler onCrawlComplete={fetchComplexes} />
+          </div>
+        </div>
       </main>
+    </div>
+  );
+}
+
+// 단일 단지 크롤링 컴포넌트
+function SingleComplexCrawler({ onCrawlComplete }: { onCrawlComplete: () => void }) {
+  const [complexNo, setComplexNo] = useState("");
+  const [crawling, setCrawling] = useState(false);
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+
+  const extractComplexNo = (input: string): string | null => {
+    const trimmed = input.trim();
+    const urlMatch = trimmed.match(/land\.naver\.com\/complexes\/(\d+)/);
+    if (urlMatch) return urlMatch[1];
+    if (/^\d+$/.test(trimmed)) return trimmed;
+    return null;
+  };
+
+  const handleCrawl = async () => {
+    if (!complexNo.trim()) {
+      setError('단지번호 또는 URL을 입력해주세요.');
+      return;
+    }
+
+    const extracted = extractComplexNo(complexNo);
+    if (!extracted) {
+      setError('올바른 형식이 아닙니다.\n예: https://new.land.naver.com/complexes/22065 또는 22065');
+      return;
+    }
+
+    setCrawling(true);
+    setMessage("");
+    setError("");
+
+    try {
+      const response = await fetch('/api/crawl', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ complexNumbers: extracted })
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.crawlId) {
+        // 폴링으로 결과 대기
+        await pollCrawlStatus(data.crawlId);
+        setMessage(`✅ 단지 ${extracted} 크롤링 완료!`);
+        setComplexNo("");
+        onCrawlComplete();
+      } else {
+        setError(data.error || '크롤링 실패');
+      }
+    } catch (err) {
+      console.error('Failed to crawl:', err);
+      setError('크롤링 중 오류가 발생했습니다.');
+    } finally {
+      setCrawling(false);
+    }
+  };
+
+  const pollCrawlStatus = async (crawlId: string): Promise<void> => {
+    return new Promise((resolve, reject) => {
+      let pollCount = 0;
+      const maxPolls = 450;
+
+      const interval = setInterval(async () => {
+        try {
+          pollCount++;
+          const response = await fetch(`/api/crawl-status?crawlId=${crawlId}`);
+          const data = await response.json();
+
+          if (!response.ok) {
+            clearInterval(interval);
+            reject(new Error(data.error || 'Failed to get status'));
+            return;
+          }
+
+          if (data.status === 'success' || data.status === 'partial' || data.status === 'failed') {
+            clearInterval(interval);
+            if (data.status === 'failed') {
+              reject(new Error(data.errorMessage || 'Crawl failed'));
+            } else {
+              resolve();
+            }
+            return;
+          }
+
+          if (pollCount >= maxPolls) {
+            clearInterval(interval);
+            reject(new Error('Timeout'));
+          }
+        } catch (error) {
+          clearInterval(interval);
+          reject(error);
+        }
+      }, 2000);
+    });
+  };
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          단지 번호 또는 URL
+        </label>
+        <div className="flex gap-3">
+          <input
+            type="text"
+            value={complexNo}
+            onChange={(e) => setComplexNo(e.target.value)}
+            placeholder="22065 또는 https://new.land.naver.com/complexes/22065"
+            className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+            disabled={crawling}
+            onKeyPress={(e) => e.key === 'Enter' && !crawling && handleCrawl()}
+          />
+          <button
+            onClick={handleCrawl}
+            disabled={crawling || !complexNo.trim()}
+            className={`px-6 py-2 rounded-lg font-medium transition-colors ${
+              crawling || !complexNo.trim()
+                ? 'bg-gray-300 dark:bg-gray-600 cursor-not-allowed'
+                : 'bg-blue-600 hover:bg-blue-700 text-white'
+            }`}
+          >
+            {crawling ? '⏳ 크롤링 중...' : '🚀 크롤링'}
+          </button>
+        </div>
+        <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+          💡 네이버 부동산 단지 페이지 URL 또는 단지번호를 입력하세요
+        </p>
+      </div>
+
+      {message && (
+        <div className="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+          <p className="text-green-800 dark:text-green-300 text-sm font-medium">
+            {message}
+          </p>
+        </div>
+      )}
+
+      {error && (
+        <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+          <p className="text-red-800 dark:text-red-300 text-sm font-medium whitespace-pre-line">
+            ❌ {error}
+          </p>
+        </div>
+      )}
     </div>
   );
 }

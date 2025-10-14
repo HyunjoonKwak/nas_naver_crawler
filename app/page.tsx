@@ -2,8 +2,6 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import CrawlerForm from "@/components/CrawlerForm";
-import CrawlerHistory from "@/components/CrawlerHistory";
 
 interface FavoriteComplex {
   complexNo: string;
@@ -150,10 +148,6 @@ export default function Home() {
     } catch (error) {
       console.error('Failed to fetch dashboard data:', error);
     }
-  };
-
-  const handleCrawlComplete = () => {
-    setRefresh(prev => prev + 1);
   };
 
   const formatDate = (dateString: string) => {
@@ -384,21 +378,6 @@ export default function Home() {
                 ))}
               </div>
             )}
-          </div>
-        </div>
-
-        {/* Single Complex Crawl Section - Moved Below */}
-        <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
-          <div className="bg-gradient-to-r from-slate-600 to-gray-600 px-6 py-4">
-            <h3 className="text-xl font-bold text-white flex items-center gap-2">
-              🔍 단일 단지 크롤링
-            </h3>
-            <p className="text-slate-100 text-sm mt-1">
-              단지번호를 입력하여 즉시 매물 정보를 수집하세요
-            </p>
-          </div>
-          <div className="p-6">
-            <CrawlerForm onCrawlComplete={handleCrawlComplete} />
           </div>
         </div>
 
