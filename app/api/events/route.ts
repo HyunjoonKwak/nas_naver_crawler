@@ -7,7 +7,8 @@ import { NextRequest } from 'next/server';
 import { eventBroadcaster } from '@/lib/eventBroadcaster';
 
 export const dynamic = 'force-dynamic';
-export const maxDuration = 300; // 5분 (개발 모드에서는 무제한)
+export const runtime = 'nodejs'; // Edge runtime 대신 Node.js runtime 사용
+export const maxDuration = 300; // 5분
 
 export async function GET(request: NextRequest) {
   // SSE 스트림 생성
@@ -22,7 +23,7 @@ export async function GET(request: NextRequest) {
         encoder.encode(`data: ${JSON.stringify({ type: 'connected', timestamp: new Date().toISOString() })}\n\n`)
       );
 
-      // 연결 유지를 위한 heartbeat (30초마다)
+      // 연결 유지를 위한 heartbeat (15초마다)
       const heartbeat = setInterval(() => {
         try {
           controller.enqueue(encoder.encode(': heartbeat\n\n'));
@@ -31,7 +32,7 @@ export async function GET(request: NextRequest) {
           clearInterval(heartbeat);
           eventBroadcaster.removeClient(controller);
         }
-      }, 30000);
+      }, 15000);
 
       // 클라이언트 연결 종료 시 cleanup
       request.signal.addEventListener('abort', () => {
