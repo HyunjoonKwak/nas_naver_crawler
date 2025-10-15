@@ -260,26 +260,37 @@ function getSingleAnalysis(complex: any, tradeTypes?: string[]) {
     return (typeOrder[a.tradeType] || 99) - (typeOrder[b.tradeType] || 99);
   });
 
-  // 6. 가격 분포 히스토그램 - 평형별로 구분
-  const priceHistogramByArea = articles
-    .filter((a: any) => a.area1 && a.dealOrWarrantPrc)
+  // 6. 가격 분포 히스토그램 - 평형별 + 거래유형별로 구분
+  const priceHistogramByAreaAndType = articles
+    .filter((a: any) => a.area1 && a.dealOrWarrantPrc && a.tradeTypeName)
     .reduce((acc: any, article: any) => {
       const pyeong = Math.round(article.area1 * 0.3025);
+      const tradeType = article.tradeTypeName;
       const price = parsePriceToNumber(article.dealOrWarrantPrc);
       const bucket = Math.floor(price / 10000) * 10000; // 1억 단위
       const priceRange = `${(bucket / 10000).toFixed(0)}억`;
+      const key = `${pyeong}_${tradeType}`;
 
-      if (!acc[pyeong]) acc[pyeong] = {};
-      if (!acc[pyeong][priceRange]) acc[pyeong][priceRange] = 0;
-      acc[pyeong][priceRange]++;
+      if (!acc[key]) {
+        acc[key] = {
+          pyeong,
+          tradeType,
+          priceRanges: {},
+        };
+      }
+      if (!acc[key].priceRanges[priceRange]) {
+        acc[key].priceRanges[priceRange] = 0;
+      }
+      acc[key].priceRanges[priceRange]++;
 
       return acc;
     }, {});
 
-  const histogramData = Object.entries(priceHistogramByArea)
-    .map(([pyeong, priceRanges]: [string, any]) => ({
-      pyeong: `${pyeong}평`,
-      data: Object.entries(priceRanges)
+  const histogramData = Object.values(priceHistogramByAreaAndType)
+    .map((group: any) => ({
+      pyeong: `${group.pyeong}평`,
+      tradeType: group.tradeType,
+      data: Object.entries(group.priceRanges)
         .map(([range, count]) => ({ range, count }))
         .sort((a: any, b: any) => {
           const aNum = parseFloat(a.range);
@@ -287,7 +298,15 @@ function getSingleAnalysis(complex: any, tradeTypes?: string[]) {
           return aNum - bNum;
         }),
     }))
-    .sort((a, b) => parseInt(a.pyeong) - parseInt(b.pyeong));
+    .sort((a: any, b: any) => {
+      // 1차: 평형 기준 오름차순
+      const aPyeong = parseInt(a.pyeong);
+      const bPyeong = parseInt(b.pyeong);
+      if (aPyeong !== bPyeong) return aPyeong - bPyeong;
+      // 2차: 거래유형 기준
+      const typeOrder: { [key: string]: number } = { '매매': 1, '전세': 2, '월세': 3 };
+      return (typeOrder[a.tradeType] || 99) - (typeOrder[b.tradeType] || 99);
+    });
 
   return NextResponse.json({
     success: true,

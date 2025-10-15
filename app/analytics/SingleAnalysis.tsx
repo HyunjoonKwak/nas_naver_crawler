@@ -163,34 +163,62 @@ export const SingleAnalysis: React.FC<SingleAnalysisProps> = ({ analyticsData, t
         />
       </div>
 
-      {/* 가격대별 매물 분포 - 평형별로 구분 */}
+      {/* 가격대별 매물 분포 - 평형별 + 거래유형별로 구분 */}
       <div className="bg-white dark:bg-gray-900 rounded-xl shadow-md p-6">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-          평형별 가격대 분포
+          평형별 • 거래유형별 가격대 분포
         </h3>
         <div className="space-y-6">
-          {charts.priceHistogram.map((areaGroup: any) => (
-            <div key={areaGroup.pyeong}>
-              <h4 className="text-md font-semibold text-gray-700 dark:text-gray-300 mb-3">
-                {areaGroup.pyeong}
-              </h4>
-              <div className="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-8 gap-3">
-                {areaGroup.data.map((item: any) => (
-                  <div
-                    key={`${areaGroup.pyeong}-${item.range}`}
-                    className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg p-3 text-center border border-blue-200 dark:border-blue-800"
-                  >
-                    <div className="text-xl font-bold text-blue-600 dark:text-blue-400">
-                      {item.count}
-                    </div>
-                    <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                      {item.range}
-                    </div>
+          {charts.priceHistogram
+            .filter((group: any) => tradeTypes.length === 0 || tradeTypes.includes(group.tradeType))
+            .map((group: any) => {
+              // 거래유형별 색상
+              const tradeTypeColors: { [key: string]: { bg: string; border: string; text: string } } = {
+                '매매': {
+                  bg: 'from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20',
+                  border: 'border-blue-300 dark:border-blue-700',
+                  text: 'text-blue-600 dark:text-blue-400'
+                },
+                '전세': {
+                  bg: 'from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20',
+                  border: 'border-green-300 dark:border-green-700',
+                  text: 'text-green-600 dark:text-green-400'
+                },
+                '월세': {
+                  bg: 'from-orange-50 to-orange-100 dark:from-orange-900/20 dark:to-orange-800/20',
+                  border: 'border-orange-300 dark:border-orange-700',
+                  text: 'text-orange-600 dark:text-orange-400'
+                },
+              };
+              const colors = tradeTypeColors[group.tradeType] || {
+                bg: 'from-gray-50 to-gray-100 dark:from-gray-900/20 dark:to-gray-800/20',
+                border: 'border-gray-300 dark:border-gray-700',
+                text: 'text-gray-600 dark:text-gray-400'
+              };
+
+              return (
+                <div key={`${group.pyeong}-${group.tradeType}`}>
+                  <h4 className="text-md font-semibold text-gray-700 dark:text-gray-300 mb-3">
+                    {group.pyeong} <span className={colors.text}>• {group.tradeType}</span>
+                  </h4>
+                  <div className="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-8 gap-3">
+                    {group.data.map((item: any) => (
+                      <div
+                        key={`${group.pyeong}-${group.tradeType}-${item.range}`}
+                        className={`bg-gradient-to-br ${colors.bg} rounded-lg p-3 text-center border ${colors.border}`}
+                      >
+                        <div className={`text-xl font-bold ${colors.text}`}>
+                          {item.count}
+                        </div>
+                        <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                          {item.range}
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            </div>
-          ))}
+                </div>
+              );
+            })}
         </div>
       </div>
     </div>
