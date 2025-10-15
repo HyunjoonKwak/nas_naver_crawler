@@ -248,47 +248,36 @@ class NASNaverRealEstateCrawler:
         try:
             print(f"[INFO-ONLY] 단지 정보 조회 시작: {complex_no}", flush=True)
 
-            # 네트워크 요청 모니터링하여 API 응답 캐치
-            overview_data = None
-
-            async def handle_response(response):
-                nonlocal overview_data
-                if f'/api/complexes/overview/{complex_no}' in response.url:
-                    try:
-                        print(f"[INFO-ONLY] Overview API 응답 감지!", flush=True)
-                        data = await response.json()
-                        overview_data = data
-                        print(f"[INFO-ONLY] 단지 개요 API 응답 캐치됨: {data.get('complexName', 'Unknown')}", flush=True)
-                    except Exception as e:
-                        print(f"[INFO-ONLY] API 응답 파싱 실패: {e}", flush=True)
-
-            # 응답 핸들러 등록
-            print(f"[INFO-ONLY] 응답 핸들러 등록", flush=True)
-            self.page.on('response', handle_response)
-
             # 네이버 부동산 단지 페이지 접속
             url = f"https://new.land.naver.com/complexes/{complex_no}"
             print(f"[INFO-ONLY] 페이지 이동 중: {url}", flush=True)
-            await self.page.goto(url, wait_until='domcontentloaded', timeout=30000)
+
+            # 네트워크가 안정될 때까지 대기
+            await self.page.goto(url, wait_until='networkidle', timeout=30000)
             print(f"[INFO-ONLY] 페이지 로드 완료", flush=True)
 
-            # API 응답 대기
-            print(f"[INFO-ONLY] API 응답 대기 중 (3초)...", flush=True)
-            await asyncio.sleep(3)
+            # 추가 대기 (JavaScript 실행 완료)
+            await asyncio.sleep(2)
 
-            # 응답이 없으면 페이지 새로고침
-            if not overview_data:
-                print("[INFO-ONLY] Overview 데이터 없음, 페이지 새로고침...", flush=True)
-                await self.page.reload(wait_until='domcontentloaded')
-                print("[INFO-ONLY] 페이지 새로고침 완료, 추가 대기 중...", flush=True)
-                await asyncio.sleep(2)
-
-            # 응답 핸들러 제거
+            # API 응답 데이터를 직접 fetch로 가져오기
+            overview_data = None
             try:
-                self.page.remove_listener('response', handle_response)
-                print("[INFO-ONLY] 응답 핸들러 제거 완료", flush=True)
+                print(f"[INFO-ONLY] API 직접 호출 시도...", flush=True)
+                api_url = f"https://new.land.naver.com/api/complexes/overview/{complex_no}?complexNo={complex_no}"
+
+                # 페이지 컨텍스트에서 fetch 실행
+                response = await self.page.evaluate(f'''
+                    async () => {{
+                        const response = await fetch('{api_url}');
+                        return await response.json();
+                    }}
+                ''')
+
+                if response:
+                    overview_data = response
+                    print(f"[INFO-ONLY] API 직접 호출 성공: {response.get('complexName', 'Unknown')}", flush=True)
             except Exception as e:
-                print(f"[INFO-ONLY] 응답 핸들러 제거 실패: {e}", flush=True)
+                print(f"[INFO-ONLY] API 직접 호출 실패: {e}", flush=True)
 
             if overview_data:
                 print(f"[INFO-ONLY] ✅ 단지 정보 수집 성공: {overview_data.get('complexName', 'Unknown')}", flush=True)
