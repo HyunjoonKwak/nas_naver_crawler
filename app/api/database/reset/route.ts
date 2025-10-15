@@ -59,9 +59,10 @@ export async function POST(request: NextRequest) {
 
     // favorites.json 파일 초기화 (선택적)
     if (deleteFiles) {
-      const favoritesPath = path.join(process.cwd(), 'data', 'favorites.json');
+      const baseDir = process.env.NODE_ENV === 'production' ? '/app' : process.cwd();
+      const favoritesPath = path.join(baseDir, 'crawled_data', 'favorites.json');
       try {
-        await fs.writeFile(favoritesPath, JSON.stringify([], null, 2));
+        await fs.writeFile(favoritesPath, JSON.stringify({ favorites: [] }, null, 2));
         console.log('✓ favorites.json 초기화 완료');
       } catch (error) {
         console.warn('favorites.json 초기화 실패 (무시):', error);
