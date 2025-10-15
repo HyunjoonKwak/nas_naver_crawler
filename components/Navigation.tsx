@@ -4,10 +4,23 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { ThemeToggle } from '@/components/ui';
+import { useCrawlEvents } from '@/hooks/useCrawlEvents';
 
 export const Navigation = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const pathname = usePathname();
+
+  // SSE 기반 실시간 크롤링 상태 모니터링
+  const crawlingStatus = useCrawlEvents();
+
+  const formatElapsedTime = (seconds: number): string => {
+    const minutes = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    if (minutes === 0) {
+      return `${secs}초`;
+    }
+    return `${minutes}분 ${secs}초`;
+  };
 
   // ESC 키로 모바일 메뉴 닫기
   useEffect(() => {
@@ -208,6 +221,47 @@ export const Navigation = () => {
           ))}
         </nav>
       </div>
+
+      {/* 크롤링 상태 인디케이터 (모든 페이지에 표시) */}
+      {crawlingStatus.isActive && (
+        <div className="absolute left-0 right-0 top-full bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-700 dark:to-indigo-700 shadow-md">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2">
+            <div className="flex items-center justify-between text-white text-sm">
+              <div className="flex items-center gap-3">
+                <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span className="font-semibold">
+                  {crawlingStatus.scheduleName
+                    ? `스케줄 "${crawlingStatus.scheduleName}" 실행 중`
+                    : '크롤링 진행 중'
+                  }
+                </span>
+                {crawlingStatus.startTime && (
+                  <span className="text-blue-100 hidden sm:inline">
+                    • {formatElapsedTime(crawlingStatus.elapsedSeconds)} 경과
+                  </span>
+                )}
+                {crawlingStatus.totalComplexes && (
+                  <span className="text-blue-100 hidden md:inline">
+                    • {crawlingStatus.totalComplexes}개 단지
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="font-bold">{crawlingStatus.progress}%</span>
+                <div className="w-24 bg-white/20 rounded-full h-1.5 hidden sm:block">
+                  <div
+                    className="bg-white h-full rounded-full transition-all duration-500"
+                    style={{ width: `${crawlingStatus.progress}%` }}
+                  ></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </nav>
   );
 };

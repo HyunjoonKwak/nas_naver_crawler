@@ -39,6 +39,10 @@ interface CrawlStatus {
   crawlId: string | null;
   progress: number;
   currentStep: string;
+  startTime: number | null;
+  elapsedSeconds: number;
+  totalComplexes?: number;
+  scheduleName?: string;
 }
 
 export function useCrawlEvents(onCrawlComplete?: () => void) {
@@ -47,15 +51,39 @@ export function useCrawlEvents(onCrawlComplete?: () => void) {
     crawlId: null,
     progress: 0,
     currentStep: '',
+    startTime: null,
+    elapsedSeconds: 0,
   });
 
   const lastCrawlIdRef = useRef<string | null>(null);
   const onCrawlCompleteRef = useRef(onCrawlComplete);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   // onCrawlComplete를 최신 상태로 유지
   useEffect(() => {
     onCrawlCompleteRef.current = onCrawlComplete;
   }, [onCrawlComplete]);
+
+  // Elapsed time 타이머
+  useEffect(() => {
+    if (crawlStatus.isActive && crawlStatus.startTime) {
+      // 1초마다 경과 시간 업데이트
+      timerRef.current = setInterval(() => {
+        setCrawlStatus(prev => {
+          if (!prev.startTime) return prev;
+          const elapsed = Math.floor((Date.now() - prev.startTime) / 1000);
+          return { ...prev, elapsedSeconds: elapsed };
+        });
+      }, 1000);
+
+      return () => {
+        if (timerRef.current) {
+          clearInterval(timerRef.current);
+          timerRef.current = null;
+        }
+      };
+    }
+  }, [crawlStatus.isActive, crawlStatus.startTime]);
 
   useEffect(() => {
     // 이벤트 핸들러
@@ -74,6 +102,9 @@ export function useCrawlEvents(onCrawlComplete?: () => void) {
               crawlId: data.crawlId,
               progress: 0,
               currentStep: '크롤링 시작 중...',
+              startTime: Date.now(),
+              elapsedSeconds: 0,
+              totalComplexes: data.data?.totalComplexes,
             });
 
             // 새로운 크롤링이면 토스트 알림
@@ -86,22 +117,31 @@ export function useCrawlEvents(onCrawlComplete?: () => void) {
 
         case 'crawl-progress':
           if (data.crawlId && data.data) {
-            setCrawlStatus({
+            setCrawlStatus(prev => ({
+              ...prev,
               isActive: true,
-              crawlId: data.crawlId,
-              progress: data.data.progress || 0,
-              currentStep: data.data.currentStep || '크롤링 중...',
-            });
+              crawlId: data.crawlId!,
+              progress: data.data!.progress || 0,
+              currentStep: data.data!.currentStep || '크롤링 중...',
+            }));
           }
           break;
 
         case 'crawl-complete':
           if (data.crawlId) {
+            // 타이머 정리
+            if (timerRef.current) {
+              clearInterval(timerRef.current);
+              timerRef.current = null;
+            }
+
             setCrawlStatus({
               isActive: false,
               crawlId: null,
               progress: 100,
               currentStep: '완료',
+              startTime: null,
+              elapsedSeconds: 0,
             });
 
             showSuccess(`✅ 크롤링이 완료되었습니다 (${data.data?.articlesCount || 0}개 매물)`);
@@ -117,11 +157,19 @@ export function useCrawlEvents(onCrawlComplete?: () => void) {
 
         case 'crawl-failed':
           if (data.crawlId) {
+            // 타이머 정리
+            if (timerRef.current) {
+              clearInterval(timerRef.current);
+              timerRef.current = null;
+            }
+
             setCrawlStatus({
               isActive: false,
               crawlId: null,
               progress: 0,
               currentStep: '실패',
+              startTime: null,
+              elapsedSeconds: 0,
             });
 
             showError(`❌ 크롤링이 실패했습니다: ${data.data?.errorMessage || '알 수 없는 오류'}`);
@@ -136,6 +184,10 @@ export function useCrawlEvents(onCrawlComplete?: () => void) {
               crawlId: data.data.scheduleId,
               progress: 0,
               currentStep: '스케줄 실행 중...',
+              startTime: Date.now(),
+              elapsedSeconds: 0,
+              totalComplexes: data.data.totalComplexes,
+              scheduleName: data.data.scheduleName,
             });
 
             showInfo(
@@ -147,11 +199,19 @@ export function useCrawlEvents(onCrawlComplete?: () => void) {
 
         case 'schedule-complete':
           if (data.data?.scheduleId && data.data?.scheduleName) {
+            // 타이머 정리
+            if (timerRef.current) {
+              clearInterval(timerRef.current);
+              timerRef.current = null;
+            }
+
             setCrawlStatus({
               isActive: false,
               crawlId: null,
               progress: 100,
               currentStep: '완료',
+              startTime: null,
+              elapsedSeconds: 0,
             });
 
             const durationSec = Math.floor((data.data.duration || 0) / 1000);
@@ -170,11 +230,19 @@ export function useCrawlEvents(onCrawlComplete?: () => void) {
 
         case 'schedule-failed':
           if (data.data?.scheduleId && data.data?.scheduleName) {
+            // 타이머 정리
+            if (timerRef.current) {
+              clearInterval(timerRef.current);
+              timerRef.current = null;
+            }
+
             setCrawlStatus({
               isActive: false,
               crawlId: null,
               progress: 0,
               currentStep: '실패',
+              startTime: null,
+              elapsedSeconds: 0,
             });
 
             showError(
@@ -194,6 +262,12 @@ export function useCrawlEvents(onCrawlComplete?: () => void) {
     return () => {
       console.log('[useCrawlEvents] Unregistering listener');
       sseClient.removeListener(handleEvent);
+
+      // 타이머 정리
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
     };
   }, []); // 빈 의존성 배열: 마운트/언마운트 시에만 실행
 

@@ -184,6 +184,15 @@ export default function Home() {
     });
   };
 
+  const formatElapsedTime = (seconds: number): string => {
+    const minutes = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    if (minutes === 0) {
+      return `${secs}초`;
+    }
+    return `${minutes}분 ${secs}초`;
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950">
       {/* Navigation */}
@@ -203,8 +212,8 @@ export default function Home() {
 
           {/* 크롤링 상태 배너 */}
           {crawlingStatus.isActive && (
-            <div className="mb-6 bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-700 dark:to-indigo-700 rounded-xl shadow-lg p-4 animate-pulse">
-              <div className="flex items-center justify-between">
+            <div className="mb-6 bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-700 dark:to-indigo-700 rounded-xl shadow-lg p-5">
+              <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
                     <svg className="animate-spin h-6 w-6 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -213,8 +222,25 @@ export default function Home() {
                     </svg>
                   </div>
                   <div>
-                    <h3 className="text-white font-bold text-lg">크롤링 진행 중</h3>
-                    <p className="text-blue-100 text-sm">{crawlingStatus.currentStep}</p>
+                    <h3 className="text-white font-bold text-lg">
+                      {crawlingStatus.scheduleName
+                        ? `스케줄 "${crawlingStatus.scheduleName}" 실행 중`
+                        : '크롤링 진행 중'
+                      }
+                    </h3>
+                    <div className="flex items-center gap-3 mt-1">
+                      <p className="text-blue-100 text-sm">{crawlingStatus.currentStep}</p>
+                      {crawlingStatus.startTime && (
+                        <p className="text-blue-100 text-sm font-medium">
+                          ⏱️ {formatElapsedTime(crawlingStatus.elapsedSeconds)} 경과
+                        </p>
+                      )}
+                    </div>
+                    {crawlingStatus.totalComplexes && (
+                      <p className="text-blue-100 text-xs mt-1">
+                        📍 {crawlingStatus.totalComplexes}개 단지 크롤링 중
+                      </p>
+                    )}
                   </div>
                 </div>
                 <div className="text-right">
@@ -223,7 +249,7 @@ export default function Home() {
                 </div>
               </div>
               {/* 프로그레스 바 */}
-              <div className="mt-3 w-full bg-white/20 rounded-full h-2 overflow-hidden">
+              <div className="w-full bg-white/20 rounded-full h-2 overflow-hidden">
                 <div
                   className="bg-white h-full rounded-full transition-all duration-500"
                   style={{ width: `${crawlingStatus.progress}%` }}
