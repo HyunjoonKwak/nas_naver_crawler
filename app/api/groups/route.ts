@@ -3,6 +3,8 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
+export const dynamic = 'force-dynamic';
+
 // GET /api/groups - 모든 그룹 조회
 export async function GET(request: NextRequest) {
   try {
@@ -37,11 +39,11 @@ export async function GET(request: NextRequest) {
     });
 
     // 단지 수 정보 추가
-    const groupsWithStats = groups.map(group => ({
+    const groupsWithStats = groups.map((group: any) => ({
       ...group,
       complexCount: group._count.complexGroups,
       complexes: includeComplexes && group.complexGroups ?
-        group.complexGroups.map(cg => ({
+        group.complexGroups.map((cg: any) => ({
           ...cg.complex,
           articleCount: cg.complex._count?.articles || 0
         })) : undefined

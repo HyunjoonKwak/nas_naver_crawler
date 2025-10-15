@@ -9,6 +9,8 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
+export const dynamic = 'force-dynamic';
+
 /**
  * GET /api/analytics - 단지 분석 데이터 조회
  */
@@ -195,7 +197,7 @@ function getSingleAnalysis(complex: any, tradeTypes?: string[]) {
     .map((a: any) => parsePriceToNumber(a.dealOrWarrantPrc));
 
   const sortedPrices = [...allPrices].sort((a, b) => a - b);
-  const avgPrice = Math.round(allPrices.reduce((sum, p) => sum + p, 0) / allPrices.length);
+  const avgPrice = Math.round(allPrices.reduce((sum: number, p: number) => sum + p, 0) / allPrices.length);
   const medianPrice = sortedPrices[Math.floor(sortedPrices.length / 2)];
   const minPrice = Math.min(...allPrices);
   const maxPrice = Math.max(...allPrices);

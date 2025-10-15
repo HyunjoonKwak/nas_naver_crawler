@@ -1323,6 +1323,9 @@ export default function ComplexesPage() {
         cancelText="취소"
         variant="default"
       />
+          </div> {/* 메인 컨텐츠 닫기 */}
+        </div> {/* flex 컨테이너 닫기 */}
+      </main>
     </div>
   );
 }
@@ -1505,9 +1508,6 @@ function SingleComplexCrawler({
           </p>
         </div>
       )}
-          </div> {/* 메인 컨텐츠 닫기 */}
-        </div> {/* flex 컨테이너 닫기 */}
-      </main>
     </div>
   );
 }

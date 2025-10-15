@@ -3,6 +3,8 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
+export const dynamic = 'force-dynamic';
+
 // POST /api/groups/[id]/complexes - 그룹에 단지 추가
 export async function POST(
   request: NextRequest,

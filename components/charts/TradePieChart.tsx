@@ -40,7 +40,7 @@ export const TradePieChart: React.FC<TradePieChartProps> = ({ data, className = 
             cx="50%"
             cy="50%"
             labelLine={false}
-            label={({ name, value }) => {
+            label={({ name, value }: any) => {
               const percent = ((value / total) * 100).toFixed(1);
               return `${name} ${percent}%`;
             }}

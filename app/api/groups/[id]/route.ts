@@ -3,6 +3,8 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
+export const dynamic = 'force-dynamic';
+
 // GET /api/groups/[id] - 특정 그룹 조회
 export async function GET(
   request: NextRequest,
