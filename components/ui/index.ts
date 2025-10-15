@@ -18,3 +18,5 @@ export {
   ComplexCardSkeleton,
   ListSkeleton,
 } from './Skeleton';
+
+export { ThemeToggle } from './ThemeToggle';

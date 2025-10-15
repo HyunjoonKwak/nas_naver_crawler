@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import CrawlerHistory from "@/components/CrawlerHistory";
+import { ThemeToggle } from "@/components/ui";
 
 interface StatusData {
   crawler: {
@@ -500,6 +501,8 @@ export default function SystemPage() {
               >
                 🔔 알림
               </Link>
+              {/* 다크모드 토글 버튼 */}
+              <ThemeToggle />
             </div>
           </div>
         </div>

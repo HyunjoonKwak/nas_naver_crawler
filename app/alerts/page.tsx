@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { ThemeToggle } from "@/components/ui";
 
 interface Alert {
   id: string;
@@ -246,6 +247,8 @@ export default function AlertsPage() {
               >
                 ⚙️ 시스템
               </Link>
+              {/* 다크모드 토글 버튼 */}
+              <ThemeToggle />
             </div>
           </div>
         </div>

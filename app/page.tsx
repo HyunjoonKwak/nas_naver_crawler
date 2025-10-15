@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { ThemeToggle } from "@/components/ui";
 
 interface FavoriteComplex {
   complexNo: string;
@@ -236,6 +237,8 @@ export default function Home() {
               >
                 ⚙️ 시스템
               </Link>
+              {/* 다크모드 토글 버튼 */}
+              <ThemeToggle />
             </div>
           </div>
         </div>

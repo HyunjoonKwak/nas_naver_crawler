@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { ThemeToggle } from "@/components/ui";
 
 interface ComplexItem {
   id: string;
@@ -655,6 +656,8 @@ export default function ComplexesPage() {
                   >
                     ⚙️ 시스템
                   </Link>
+                  {/* 다크모드 토글 버튼 */}
+                  <ThemeToggle />
                 </>
               )}
             </div>
