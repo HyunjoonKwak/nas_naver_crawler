@@ -53,9 +53,12 @@ services:
       - ./app:/app/app
       - ./components:/app/components
       - ./lib:/app/lib
+      - ./logic:/app/logic
+      - ./hooks:/app/hooks
       - ./prisma:/app/prisma
       - ./public:/app/public
       - ./scripts:/app/scripts
+      - ./instrumentation.ts:/app/instrumentation.ts
       - ./next.config.js:/app/next.config.js
       - ./tsconfig.json:/app/tsconfig.json
       - ./tailwind.config.js:/app/tailwind.config.js
