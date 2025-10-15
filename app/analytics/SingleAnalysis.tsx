@@ -7,9 +7,10 @@ import { PriceLineChart, TradePieChart, AreaScatterChart } from '@/components/ch
 
 interface SingleAnalysisProps {
   analyticsData: any;
+  tradeTypes?: string[];
 }
 
-export const SingleAnalysis: React.FC<SingleAnalysisProps> = ({ analyticsData }) => {
+export const SingleAnalysis: React.FC<SingleAnalysisProps> = ({ analyticsData, tradeTypes = [] }) => {
   if (!analyticsData) {
     return (
       <div className="flex flex-col items-center justify-center h-64 space-y-4">
@@ -23,6 +24,13 @@ export const SingleAnalysis: React.FC<SingleAnalysisProps> = ({ analyticsData })
   }
 
   const { complex, statistics, statisticsByArea, charts } = analyticsData;
+
+  // 필터 적용: tradeTypes가 비어있으면 전체 표시, 있으면 선택된 거래유형만
+  const filteredStatisticsByArea = statisticsByArea && statisticsByArea.length > 0
+    ? (tradeTypes.length > 0
+        ? statisticsByArea.filter((stat: any) => tradeTypes.includes(stat.tradeType))
+        : statisticsByArea)
+    : [];
 
   return (
     <div className="space-y-6">
@@ -72,7 +80,7 @@ export const SingleAnalysis: React.FC<SingleAnalysisProps> = ({ analyticsData })
       </div>
 
       {/* 평형별 + 거래유형별 상세 통계 */}
-      {statisticsByArea && statisticsByArea.length > 0 && (
+      {filteredStatisticsByArea && filteredStatisticsByArea.length > 0 && (
         <div className="bg-white dark:bg-gray-900 rounded-xl shadow-md p-6">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
             📐 평형별 • 거래유형별 상세 통계
@@ -93,7 +101,7 @@ export const SingleAnalysis: React.FC<SingleAnalysisProps> = ({ analyticsData })
                 </tr>
               </thead>
               <tbody>
-                {statisticsByArea.map((areaStats: any, index: number) => {
+                {filteredStatisticsByArea.map((areaStats: any, index: number) => {
                   // 거래유형별 색상
                   const tradeTypeColors: { [key: string]: string } = {
                     '매매': 'text-blue-600 dark:text-blue-400',

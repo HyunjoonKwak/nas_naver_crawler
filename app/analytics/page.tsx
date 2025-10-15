@@ -431,7 +431,7 @@ export default function AnalyticsPage() {
             </div>
           </div>
         ) : mode === "single" ? (
-          <SingleAnalysis analyticsData={analyticsData} />
+          <SingleAnalysis analyticsData={analyticsData} tradeTypes={tradeTypes} />
         ) : (
           <CompareAnalysis analyticsData={analyticsData} />
         )}
