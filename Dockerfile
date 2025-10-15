@@ -9,10 +9,11 @@ RUN npm ci
 
 COPY app ./app
 COPY components ./components
+COPY hooks ./hooks
 COPY public ./public
 COPY prisma ./prisma
 COPY lib ./lib
-COPY next.config.js tsconfig.json tailwind.config.js postcss.config.js ./
+COPY instrumentation.ts next.config.js tsconfig.json tailwind.config.js postcss.config.js ./
 
 # Prisma Client 생성
 RUN npx prisma generate
@@ -112,11 +113,12 @@ COPY config.env ./
 # Next.js 정적 파일 복사
 COPY app ./app
 COPY components ./components
+COPY hooks ./hooks
 COPY public ./public
 COPY prisma ./prisma
 COPY lib ./lib
 COPY scripts ./scripts
-COPY next.config.js tsconfig.json ./
+COPY instrumentation.ts next.config.js tsconfig.json ./
 
 # 필요한 디렉토리 생성
 RUN mkdir -p crawled_data logs && \
