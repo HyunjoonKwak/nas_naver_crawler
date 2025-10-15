@@ -42,9 +42,14 @@ export const Navigation = () => {
   const navLinks = [
     { href: '/', label: '홈', icon: '🏠' },
     { href: '/complexes', label: '단지 목록', icon: '🏘️' },
-    { href: '/scheduler', label: '스케줄러 & 알림', icon: '⏰' },
+    { href: '/scheduler', label: '스케줄러', icon: '⏰' },
     { href: '/system', label: '시스템', icon: '⚙️' },
   ];
+
+  // 현재 페이지에 따라 링크 필터링 (홈 페이지에서는 홈 링크 제외)
+  const filteredNavLinks = pathname === '/'
+    ? navLinks.filter(link => link.href !== '/')
+    : navLinks;
 
   const isActive = (href: string) => {
     if (href === '/') {
@@ -82,7 +87,7 @@ export const Navigation = () => {
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center gap-3">
-            {navLinks.map((link) => (
+            {filteredNavLinks.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
@@ -181,7 +186,7 @@ export const Navigation = () => {
 
         {/* Mobile Menu Links */}
         <nav className="p-4 space-y-2" aria-label="모바일 네비게이션">
-          {navLinks.map((link) => (
+          {filteredNavLinks.map((link) => (
             <Link
               key={link.href}
               href={link.href}

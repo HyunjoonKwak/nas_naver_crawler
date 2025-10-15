@@ -155,19 +155,13 @@ export const ThemeToggle: React.FC = () => {
   };
 
   return (
-    <div className="flex items-center gap-2">
-      {/* 현재 모드 표시 (디버깅용) */}
-      <span className="hidden sm:inline text-xs text-gray-600 dark:text-gray-400">
-        {getLabel()}
-      </span>
-      <button
-        onClick={cycleTheme}
-        className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 transition-colors border-2 border-gray-300 dark:border-gray-600"
-        aria-label={`현재: ${getLabel()}, 클릭하여 전환`}
-        title={getLabel()}
-      >
-        {getIcon()}
-      </button>
-    </div>
+    <button
+      onClick={cycleTheme}
+      className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 transition-colors border-2 border-gray-300 dark:border-gray-600"
+      aria-label={`현재: ${getLabel()}, 클릭하여 전환`}
+      title={getLabel()}
+    >
+      {getIcon()}
+    </button>
   );
 };
