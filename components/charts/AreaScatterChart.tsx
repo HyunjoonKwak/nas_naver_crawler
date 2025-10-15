@@ -22,6 +22,12 @@ interface AreaScatterChartProps {
     tradeType: string;
     priceLabel: string;
   }>;
+  dataRange?: {
+    minArea: number;
+    maxArea: number;
+    minPrice: number;
+    maxPrice: number;
+  };
   className?: string;
 }
 
@@ -31,7 +37,7 @@ const COLORS: { [key: string]: string } = {
   월세: '#f59e0b', // amber-500
 };
 
-export const AreaScatterChart: React.FC<AreaScatterChartProps> = ({ data, className = '' }) => {
+export const AreaScatterChart: React.FC<AreaScatterChartProps> = ({ data, dataRange, className = '' }) => {
   if (!data || data.length === 0) {
     return (
       <div className={`flex items-center justify-center h-64 bg-gray-50 dark:bg-gray-800 rounded-lg ${className}`}>
@@ -49,6 +55,17 @@ export const AreaScatterChart: React.FC<AreaScatterChartProps> = ({ data, classN
     groupedData[item.tradeType].push(item);
   });
 
+  // 축 범위 계산 (dataRange가 있으면 사용, 없으면 자동)
+  const xDomain = dataRange ? [
+    Math.floor(dataRange.minArea * 0.9), // 10% 여유
+    Math.ceil(dataRange.maxArea * 1.1)
+  ] : undefined;
+
+  const yDomain = dataRange ? [
+    Math.floor(dataRange.minPrice * 0.9), // 10% 여유
+    Math.ceil(dataRange.maxPrice * 1.1)
+  ] : undefined;
+
   return (
     <div className={className}>
       <ResponsiveContainer width="100%" height={400}>
@@ -59,6 +76,7 @@ export const AreaScatterChart: React.FC<AreaScatterChartProps> = ({ data, classN
             dataKey="area"
             name="면적"
             unit="㎡"
+            domain={xDomain}
             className="text-xs"
             stroke="currentColor"
             style={{ fill: 'currentColor' }}
@@ -68,6 +86,7 @@ export const AreaScatterChart: React.FC<AreaScatterChartProps> = ({ data, classN
             type="number"
             dataKey="price"
             name="가격"
+            domain={yDomain}
             className="text-xs"
             stroke="currentColor"
             style={{ fill: 'currentColor' }}

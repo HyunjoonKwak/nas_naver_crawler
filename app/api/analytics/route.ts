@@ -150,7 +150,7 @@ function getSingleAnalysis(complex: any, tradeTypes?: string[]) {
     value,
   }));
 
-  // 2. 면적별 가격 분포 (산점도 데이터)
+  // 2. 면적별 가격 분포 (산점도 데이터) + 데이터 범위 계산
   const areaVsPriceData = articles
     .filter((a: any) => a.dealOrWarrantPrc && a.area1)
     .map((a: any) => ({
@@ -160,20 +160,31 @@ function getSingleAnalysis(complex: any, tradeTypes?: string[]) {
       priceLabel: a.dealOrWarrantPrc,
     }));
 
-  // 3. 가격 추이 데이터 (단일 단지는 크롤링 날짜별 평균)
-  // 현재는 단일 시점 데이터이므로 간단히 처리
-  const priceByTradeType = articles.reduce((acc: any, article: any) => {
-    const type = article.tradeTypeName;
-    const price = parsePriceToNumber(article.dealOrWarrantPrc);
-    if (!acc[type]) acc[type] = [];
-    acc[type].push(price);
-    return acc;
-  }, {});
+  // 실제 데이터 범위 계산 (축 범위 자동 조정용)
+  const areas = areaVsPriceData.map((d: any) => d.area);
+  const prices = areaVsPriceData.map((d: any) => d.price);
+  const dataRange = {
+    minArea: Math.min(...areas),
+    maxArea: Math.max(...areas),
+    minPrice: Math.min(...prices),
+    maxPrice: Math.max(...prices),
+  };
+
+  // 3. 가격 추이 데이터 - 평형별로 구분
+  const priceByArea = articles
+    .filter((a: any) => a.area1 && a.dealOrWarrantPrc)
+    .reduce((acc: any, article: any) => {
+      const pyeong = Math.round(article.area1 * 0.3025);
+      const price = parsePriceToNumber(article.dealOrWarrantPrc);
+      if (!acc[pyeong]) acc[pyeong] = [];
+      acc[pyeong].push(price);
+      return acc;
+    }, {});
 
   const priceTrendData = [{
     date: new Date().toLocaleDateString('ko-KR'),
-    ...Object.entries(priceByTradeType).reduce((acc: any, [type, prices]: [string, any]) => {
-      acc[type] = Math.round(prices.reduce((sum: number, p: number) => sum + p, 0) / prices.length);
+    ...Object.entries(priceByArea).reduce((acc: any, [pyeong, prices]: [string, any]) => {
+      acc[`${pyeong}평`] = Math.round(prices.reduce((sum: number, p: number) => sum + p, 0) / prices.length);
       return acc;
     }, {}),
   }];
@@ -239,22 +250,34 @@ function getSingleAnalysis(complex: any, tradeTypes?: string[]) {
     };
   }).sort((a: any, b: any) => a.area - b.area); // 면적 기준 오름차순 정렬
 
-  // 5. 가격 분포 히스토그램 (1억 단위)
-  const priceHistogram = allPrices.reduce((acc: any, price: number) => {
-    const bucket = Math.floor(price / 10000) * 10000; // 1억 단위
-    const label = `${(bucket / 10000).toFixed(0)}억`;
-    if (!acc[label]) acc[label] = 0;
-    acc[label]++;
-    return acc;
-  }, {});
+  // 6. 가격 분포 히스토그램 - 평형별로 구분
+  const priceHistogramByArea = articles
+    .filter((a: any) => a.area1 && a.dealOrWarrantPrc)
+    .reduce((acc: any, article: any) => {
+      const pyeong = Math.round(article.area1 * 0.3025);
+      const price = parsePriceToNumber(article.dealOrWarrantPrc);
+      const bucket = Math.floor(price / 10000) * 10000; // 1억 단위
+      const priceRange = `${(bucket / 10000).toFixed(0)}억`;
 
-  const histogramData = Object.entries(priceHistogram)
-    .map(([range, count]) => ({ range, count }))
-    .sort((a: any, b: any) => {
-      const aNum = parseFloat(a.range);
-      const bNum = parseFloat(b.range);
-      return aNum - bNum;
-    });
+      if (!acc[pyeong]) acc[pyeong] = {};
+      if (!acc[pyeong][priceRange]) acc[pyeong][priceRange] = 0;
+      acc[pyeong][priceRange]++;
+
+      return acc;
+    }, {});
+
+  const histogramData = Object.entries(priceHistogramByArea)
+    .map(([pyeong, priceRanges]: [string, any]) => ({
+      pyeong: `${pyeong}평`,
+      data: Object.entries(priceRanges)
+        .map(([range, count]) => ({ range, count }))
+        .sort((a: any, b: any) => {
+          const aNum = parseFloat(a.range);
+          const bNum = parseFloat(b.range);
+          return aNum - bNum;
+        }),
+    }))
+    .sort((a, b) => parseInt(a.pyeong) - parseInt(b.pyeong));
 
   return NextResponse.json({
     success: true,
@@ -277,6 +300,7 @@ function getSingleAnalysis(complex: any, tradeTypes?: string[]) {
     charts: {
       tradeTypeDistribution: tradeTypePieData,
       areaVsPrice: areaVsPriceData,
+      areaVsPriceRange: dataRange, // 산점도 축 범위
       priceTrend: priceTrendData,
       priceHistogram: histogramData,
     },

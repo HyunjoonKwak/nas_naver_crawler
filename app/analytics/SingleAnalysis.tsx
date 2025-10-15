@@ -134,25 +134,37 @@ export const SingleAnalysis: React.FC<SingleAnalysisProps> = ({ analyticsData })
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
           면적별 가격 분포
         </h3>
-        <AreaScatterChart data={charts.areaVsPrice} />
+        <AreaScatterChart
+          data={charts.areaVsPrice}
+          dataRange={charts.areaVsPriceRange}
+        />
       </div>
 
-      {/* 가격 분포 히스토그램 */}
+      {/* 가격대별 매물 분포 - 평형별로 구분 */}
       <div className="bg-white dark:bg-gray-900 rounded-xl shadow-md p-6">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-          가격대별 매물 분포
+          평형별 가격대 분포
         </h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-          {charts.priceHistogram.map((item: any) => (
-            <div
-              key={item.range}
-              className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 text-center"
-            >
-              <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                {item.count}
-              </div>
-              <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                {item.range}
+        <div className="space-y-6">
+          {charts.priceHistogram.map((areaGroup: any) => (
+            <div key={areaGroup.pyeong}>
+              <h4 className="text-md font-semibold text-gray-700 dark:text-gray-300 mb-3">
+                {areaGroup.pyeong}
+              </h4>
+              <div className="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-8 gap-3">
+                {areaGroup.data.map((item: any) => (
+                  <div
+                    key={`${areaGroup.pyeong}-${item.range}`}
+                    className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg p-3 text-center border border-blue-200 dark:border-blue-800"
+                  >
+                    <div className="text-xl font-bold text-blue-600 dark:text-blue-400">
+                      {item.count}
+                    </div>
+                    <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                      {item.range}
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           ))}
