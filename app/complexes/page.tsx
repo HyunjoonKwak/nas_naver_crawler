@@ -647,12 +647,6 @@ export default function ComplexesPage() {
                     ⏰ 스케줄러
                   </Link>
                   <Link
-                    href="/alerts"
-                    className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors font-semibold"
-                  >
-                    🔔 알림
-                  </Link>
-                  <Link
                     href="/system"
                     className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors font-semibold"
                   >
