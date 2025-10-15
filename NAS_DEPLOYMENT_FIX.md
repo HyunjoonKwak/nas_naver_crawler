@@ -14,26 +14,13 @@ Error in PostgreSQL connection: terminating connection due to administrator comm
 
 ## 해결 방법
 
-### 문제 1: Module not found
+### 문제 1: Module not found ✅ **해결됨!**
 
-**원인**: Docker 빌드 중 `hooks` 폴더가 포함되지 않았거나, Next.js 캐시 문제
+**원인**: Dockerfile에서 `hooks` 폴더와 `instrumentation.ts` 파일이 복사되지 않음
 
-**해결**:
+**해결**: ✅ **이미 수정 완료!** (최신 코드에 포함됨)
 
-```bash
-# NAS SSH 접속 후
-cd /volume1/docker/nas_naver_crawler
-
-# 1. 완전히 클린 빌드
-docker-compose down
-docker system prune -f  # 캐시 정리
-docker-compose up -d --build --force-recreate
-
-# 또는 더 강력한 방법:
-docker-compose down -v  # 볼륨도 삭제
-docker rmi $(docker images -q nas_naver_crawler) -f  # 이미지 삭제
-docker-compose up -d --build
-```
+최신 코드를 pull 받으면 자동으로 해결됩니다.
 
 ### 문제 2: PostgreSQL 연결 풀 설정
 
@@ -56,7 +43,7 @@ DATABASE_URL="postgresql://user:password@postgres:5432/dbname?connection_limit=1
 - `pool_timeout=20`: 연결 풀에서 연결을 얻기 위한 최대 대기 시간 (초)
 - `connect_timeout=10`: PostgreSQL 연결 시도 타임아웃 (초)
 
-### NAS 배포 전체 절차
+### 🚀 NAS 배포 전체 절차 (최종 완성 버전)
 
 ```bash
 # 1. SSH 접속
@@ -65,25 +52,45 @@ ssh your-nas-user@nas-ip
 # 2. 프로젝트 디렉토리로 이동
 cd /volume1/docker/nas_naver_crawler
 
-# 3. 최신 코드 가져오기
+# 3. 최신 코드 가져오기 (Dockerfile 수정 포함)
 git pull origin main
 
-# 4. .env 파일 수정 (connection pool 파라미터 추가)
+# 4. ⭐ .env 파일 수정 (PostgreSQL connection pool 설정)
 nano .env
-# DATABASE_URL 수정 후 Ctrl+X, Y, Enter로 저장
 
-# 5. 완전히 클린 빌드
+# DATABASE_URL 끝에 다음 파라미터 추가:
+# ?connection_limit=10&pool_timeout=20&connect_timeout=10
+#
+# 예시:
+# DATABASE_URL="postgresql://user:password@postgres:5432/dbname?connection_limit=10&pool_timeout=20&connect_timeout=10"
+#
+# Ctrl+X, Y, Enter로 저장
+
+# 5. 기존 컨테이너 완전 제거
 docker-compose down
-docker system prune -f
-docker-compose up -d --build
 
-# 6. 로그 확인
+# 6. Docker 캐시 정리 (중요!)
+docker system prune -f
+
+# 7. 이미지 완전 재빌드
+docker-compose build --no-cache
+
+# 8. 컨테이너 시작
+docker-compose up -d
+
+# 9. 로그 확인 (실시간)
 docker logs nas_naver_crawler -f
 
 # 정상 작동 확인 메시지:
-# - "🚀 Server starting - Initializing schedulers..."
-# - "✅ Scheduler initialization complete"
-# - "[SSE] Client connected"
+# ✅ "🚀 Server starting - Initializing schedulers..."
+# ✅ "📅 Loading all active schedules..."
+# ✅ "✅ Schedule registered: ..."
+# ✅ "✅ Scheduler initialization complete: 1 schedule(s) loaded"
+# ✅ "[SSE] Client connected. Total clients: 1"
+#
+# ❌ 에러가 없어야 함:
+# ❌ "Module not found" - 없어야 함
+# ❌ "prisma:error" - 없어야 함
 ```
 
 ## 로그 확인 방법
