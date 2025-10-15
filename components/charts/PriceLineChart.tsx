@@ -32,15 +32,28 @@ export const PriceLineChart: React.FC<PriceLineChartProps> = ({ data, className 
     );
   }
 
-  // 데이터에서 거래유형 추출
-  const tradeTypes = Object.keys(data[0]).filter((key) => key !== 'date');
+  // 데이터에서 평형 추출 (date 제외)
+  const keys = Object.keys(data[0]).filter((key) => key !== 'date');
 
-  // 거래유형별 색상
-  const colors: { [key: string]: string } = {
-    매매: '#3b82f6', // blue-500
-    전세: '#10b981', // green-500
-    월세: '#f59e0b', // amber-500
-  };
+  // 평형별 색상 팔레트 (구별하기 쉬운 색상)
+  const colorPalette = [
+    '#3b82f6', // blue-500
+    '#10b981', // green-500
+    '#f59e0b', // amber-500
+    '#8b5cf6', // violet-500
+    '#ec4899', // pink-500
+    '#14b8a6', // teal-500
+    '#f97316', // orange-500
+    '#6366f1', // indigo-500
+    '#06b6d4', // cyan-500
+    '#84cc16', // lime-500
+  ];
+
+  // 각 평형에 색상 할당
+  const colors: { [key: string]: string } = {};
+  keys.forEach((key, index) => {
+    colors[key] = colorPalette[index % colorPalette.length];
+  });
 
   return (
     <div className={className}>
@@ -69,15 +82,16 @@ export const PriceLineChart: React.FC<PriceLineChartProps> = ({ data, className 
             formatter={(value: any) => [`${(value / 10000).toFixed(2)}억`, '']}
           />
           <Legend />
-          {tradeTypes.map((type) => (
+          {keys.map((key) => (
             <Line
-              key={type}
+              key={key}
               type="monotone"
-              dataKey={type}
-              stroke={colors[type] || '#6b7280'}
+              dataKey={key}
+              stroke={colors[key] || '#6b7280'}
               strokeWidth={2}
               dot={{ r: 4 }}
               activeDot={{ r: 6 }}
+              name={key}
             />
           ))}
         </LineChart>
