@@ -13,8 +13,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ko">
-      <body className="antialiased">
+    <html lang="ko" className="overflow-x-hidden">
+      <body className="antialiased overflow-x-hidden max-w-full">
         {children}
         <Toaster
           position="top-right"
