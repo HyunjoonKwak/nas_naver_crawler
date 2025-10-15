@@ -17,6 +17,7 @@ import {
   createPriceChangedEmbed,
   createCrawlSummaryEmbed,
 } from '@/lib/discord';
+import { eventBroadcaster } from '@/lib/eventBroadcaster';
 
 const execAsync = promisify(exec);
 
@@ -584,6 +585,9 @@ export async function POST(request: NextRequest) {
     crawlId = crawlHistory.id;
     currentCrawlId = crawlId;
 
+    // 🔔 실시간 알림: 크롤링 시작
+    eventBroadcaster.notifyCrawlStart(crawlId, complexNosArray.length);
+
     // 2. Python 크롤러 실행 (crawl_id 전달)
     const baseDir = process.env.NODE_ENV === 'production' ? '/app' : process.cwd();
     const command = `python3 ${baseDir}/logic/nas_playwright_crawler.py "${complexNos}" "${crawlId}"`;
@@ -645,6 +649,9 @@ export async function POST(request: NextRequest) {
 
     currentCrawlId = null;
 
+    // 🔔 실시간 알림: 크롤링 완료
+    eventBroadcaster.notifyCrawlComplete(crawlId, dbResult.totalArticles);
+
     console.log('✅ Crawl completed and saved to DB');
     console.log(`   - Complexes: ${dbResult.totalComplexes}`);
     console.log(`   - Articles: ${dbResult.totalArticles}`);
@@ -683,6 +690,9 @@ export async function POST(request: NextRequest) {
             currentStep: 'Failed',
           },
         });
+
+        // 🔔 실시간 알림: 크롤링 실패
+        eventBroadcaster.notifyCrawlFailed(crawlId, error.message);
       } catch (historyError) {
         console.error('Failed to update error history:', historyError);
       }

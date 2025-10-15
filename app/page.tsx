@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Navigation } from "@/components/Navigation";
-import { showSuccess, showError, showInfo } from "@/lib/toast";
+import { useCrawlEvents } from "@/hooks/useCrawlEvents";
 
 interface FavoriteComplex {
   complexNo: string;
@@ -36,19 +36,11 @@ export default function Home() {
   const [currentTime, setCurrentTime] = useState<Date | null>(null);
   const [isMounted, setIsMounted] = useState(false);
 
-  // 크롤링 상태 모니터링
-  const [crawlingStatus, setCrawlingStatus] = useState<{
-    isActive: boolean;
-    crawlId: string | null;
-    progress: number;
-    currentStep: string;
-  }>({
-    isActive: false,
-    crawlId: null,
-    progress: 0,
-    currentStep: '',
+  // SSE 기반 실시간 크롤링 상태 모니터링
+  const crawlingStatus = useCrawlEvents(() => {
+    // 크롤링 완료 시 대시보드 데이터 자동 새로고침
+    fetchDashboardData();
   });
-  const lastCrawlIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     fetchDashboardData();
@@ -81,78 +73,6 @@ export default function Home() {
     return () => clearInterval(interval);
   }, []);
 
-  // 크롤링 상태 실시간 모니터링
-  useEffect(() => {
-    const checkCrawlStatus = async () => {
-      try {
-        const response = await fetch('/api/crawl-status');
-        const data = await response.json();
-
-        if (data.found && data.status === 'in_progress') {
-          // 크롤링 진행 중
-          const newCrawlId = data.crawlId;
-          const isNewCrawl = lastCrawlIdRef.current !== newCrawlId;
-
-          setCrawlingStatus({
-            isActive: true,
-            crawlId: newCrawlId,
-            progress: data.progress?.complexProgress || 0,
-            currentStep: data.progress?.currentStep || '크롤링 중',
-          });
-
-          // 새로운 크롤링이 시작되면 토스트 알림
-          if (isNewCrawl && lastCrawlIdRef.current !== null) {
-            showInfo('🚀 크롤링이 시작되었습니다');
-          }
-
-          lastCrawlIdRef.current = newCrawlId;
-        } else if (data.found && data.status === 'completed') {
-          // 크롤링 완료
-          const wasActive = crawlingStatus.isActive;
-          const completedCrawlId = data.crawlId;
-
-          setCrawlingStatus({
-            isActive: false,
-            crawlId: null,
-            progress: 0,
-            currentStep: '',
-          });
-
-          // 방금 완료된 크롤링이면 토스트 알림 및 데이터 새로고침
-          if (wasActive && lastCrawlIdRef.current === completedCrawlId) {
-            showSuccess('✅ 크롤링이 완료되었습니다');
-            fetchDashboardData(); // 대시보드 데이터 새로고침
-            lastCrawlIdRef.current = null;
-          }
-        } else if (data.found && data.status === 'failed') {
-          // 크롤링 실패
-          const wasActive = crawlingStatus.isActive;
-
-          setCrawlingStatus({
-            isActive: false,
-            crawlId: null,
-            progress: 0,
-            currentStep: '',
-          });
-
-          if (wasActive) {
-            showError('❌ 크롤링이 실패했습니다');
-            lastCrawlIdRef.current = null;
-          }
-        }
-      } catch (error) {
-        console.error('Failed to check crawl status:', error);
-      }
-    };
-
-    // 최초 실행
-    checkCrawlStatus();
-
-    // 5초마다 크롤링 상태 체크
-    const interval = setInterval(checkCrawlStatus, 5000);
-
-    return () => clearInterval(interval);
-  }, [crawlingStatus.isActive]);
 
   const fetchDashboardData = async () => {
     console.log('[MAIN_PAGE] 대시보드 데이터 조회 시작');
