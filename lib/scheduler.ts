@@ -122,65 +122,83 @@ async function executeCrawl(scheduleId: string, complexNos: string[]) {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 1800000); // 30분
 
-    const response = await fetch(`${baseUrl}/api/crawl`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        complexNumbers: complexNos,
-      }),
-      signal: controller.signal,
-      // @ts-ignore - undici specific options
-      headersTimeout: 1800000, // 30분 (밀리초)
-      bodyTimeout: 1800000, // 30분 (밀리초)
-    });
+    let crawlId: string | null = null;
 
-    clearTimeout(timeoutId);
-
-    const data = await response.json();
-    const duration = Date.now() - startTime;
-
-    if (response.ok) {
-      const articlesCount = data.data?.articles || 0;
-      console.log(`✅ Scheduled crawl completed: ${scheduleId}`);
-      console.log(`   Duration: ${Math.floor(duration / 1000)}s`);
-      console.log(`   Articles: ${articlesCount}`);
-
-      // 스케줄 정보 조회
-      const schedule = await prisma.schedule.findUnique({
-        where: { id: scheduleId },
+    try {
+      const response = await fetch(`${baseUrl}/api/crawl`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          complexNumbers: complexNos,
+        }),
+        signal: controller.signal,
+        // @ts-ignore - undici specific options
+        headersTimeout: 1800000, // 30분 (밀리초)
+        bodyTimeout: 1800000, // 30분 (밀리초)
       });
 
-      if (!schedule) {
-        console.error(`Schedule not found: ${scheduleId}`);
+      clearTimeout(timeoutId);
+
+      const data = await response.json();
+
+      if (response.ok && data.crawlId) {
+        crawlId = data.crawlId;
+        console.log(`📝 Crawl started with ID: ${crawlId}`);
+      } else if (response.ok) {
+        // 동기 응답인 경우
+        const duration = Date.now() - startTime;
+        const articlesCount = data.data?.articles || 0;
+        console.log(`✅ Scheduled crawl completed: ${scheduleId}`);
+        console.log(`   Duration: ${Math.floor(duration / 1000)}s`);
+        console.log(`   Articles: ${articlesCount}`);
+
+        await updateScheduleSuccess(scheduleId, duration, articlesCount);
+        return;
+      } else {
+        throw new Error(data.error || 'Crawl failed');
+      }
+    } catch (fetchError: any) {
+      clearTimeout(timeoutId);
+
+      // fetch 실패 시에도 크롤링이 백그라운드에서 진행 중일 수 있음
+      // CrawlHistory에서 최근 크롤링 확인
+      console.warn(`⚠️ Fetch failed, checking crawl history...`, fetchError.message);
+
+      // 2분 대기 후 크롤링 히스토리 확인
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      const recentCrawl = await checkRecentCrawlHistory(complexNos);
+
+      if (recentCrawl) {
+        // 크롤링이 실제로 성공한 경우
+        const duration = Date.now() - startTime;
+        console.log(`✅ Scheduled crawl completed (verified from history): ${scheduleId}`);
+        console.log(`   Duration: ${Math.floor(duration / 1000)}s`);
+        console.log(`   Articles: ${recentCrawl.totalArticles}`);
+
+        await updateScheduleSuccess(scheduleId, duration, recentCrawl.totalArticles);
         return;
       }
 
-      // 다음 실행 시간 계산
-      const nextRun = getNextRunTime(schedule.cronExpr);
-      const now = new Date();
+      throw fetchError;
+    }
 
-      // 스케줄 업데이트 (lastRun, nextRun)
-      await prisma.schedule.update({
-        where: { id: scheduleId },
-        data: {
-          lastRun: now,
-          nextRun,
-        },
-      });
+    // crawlId가 있으면 폴링으로 완료 대기
+    if (crawlId) {
+      const result = await pollCrawlStatus(crawlId, 1800000); // 30분 타임아웃
+      const duration = Date.now() - startTime;
 
-      // 성공 로그 저장
-      await prisma.scheduleLog.create({
-        data: {
-          scheduleId,
-          status: 'success',
-          duration: Math.floor(duration / 1000),
-          articlesCount: articlesCount,
-        },
-      });
-    } else {
-      throw new Error(data.error || 'Crawl failed');
+      if (result.success) {
+        console.log(`✅ Scheduled crawl completed: ${scheduleId}`);
+        console.log(`   Duration: ${Math.floor(duration / 1000)}s`);
+        console.log(`   Articles: ${result.articlesCount}`);
+
+        await updateScheduleSuccess(scheduleId, duration, result.articlesCount);
+      } else {
+        throw new Error(result.error || 'Crawl failed');
+      }
     }
   } catch (error: any) {
     const duration = Date.now() - startTime;
@@ -197,6 +215,120 @@ async function executeCrawl(scheduleId: string, complexNos: string[]) {
       },
     });
   }
+}
+
+/**
+ * 스케줄 성공 업데이트 헬퍼 함수
+ */
+async function updateScheduleSuccess(scheduleId: string, duration: number, articlesCount: number) {
+  // 스케줄 정보 조회
+  const schedule = await prisma.schedule.findUnique({
+    where: { id: scheduleId },
+  });
+
+  if (!schedule) {
+    console.error(`Schedule not found: ${scheduleId}`);
+    return;
+  }
+
+  // 다음 실행 시간 계산
+  const nextRun = getNextRunTime(schedule.cronExpr);
+  const now = new Date();
+
+  // 스케줄 업데이트 (lastRun, nextRun)
+  await prisma.schedule.update({
+    where: { id: scheduleId },
+    data: {
+      lastRun: now,
+      nextRun,
+    },
+  });
+
+  // 성공 로그 저장
+  await prisma.scheduleLog.create({
+    data: {
+      scheduleId,
+      status: 'success',
+      duration: Math.floor(duration / 1000),
+      articlesCount: articlesCount,
+    },
+  });
+}
+
+/**
+ * 최근 크롤링 히스토리 확인 (fetch 실패 시 백업 확인용)
+ */
+async function checkRecentCrawlHistory(complexNos: string[]): Promise<{ totalArticles: number } | null> {
+  try {
+    // 최근 2분 이내의 크롤링 히스토리 조회
+    const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000);
+
+    const recentCrawl = await prisma.crawlHistory.findFirst({
+      where: {
+        createdAt: {
+          gte: twoMinutesAgo,
+        },
+        status: 'completed',
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
+    if (recentCrawl && recentCrawl.totalArticles > 0) {
+      return {
+        totalArticles: recentCrawl.totalArticles,
+      };
+    }
+
+    return null;
+  } catch (error) {
+    console.error('Failed to check crawl history:', error);
+    return null;
+  }
+}
+
+/**
+ * 크롤링 상태 폴링
+ */
+async function pollCrawlStatus(crawlId: string, timeout: number): Promise<{ success: boolean; articlesCount: number; error?: string }> {
+  const startTime = Date.now();
+  const checkInterval = 2000; // 2초마다 체크
+
+  while (Date.now() - startTime < timeout) {
+    try {
+      const crawlHistory = await prisma.crawlHistory.findUnique({
+        where: { id: crawlId },
+      });
+
+      if (crawlHistory) {
+        if (crawlHistory.status === 'completed') {
+          return {
+            success: true,
+            articlesCount: crawlHistory.totalArticles,
+          };
+        } else if (crawlHistory.status === 'failed') {
+          return {
+            success: false,
+            articlesCount: 0,
+            error: crawlHistory.errorMessage || 'Crawl failed',
+          };
+        }
+      }
+
+      // 아직 진행 중이면 대기
+      await new Promise(resolve => setTimeout(resolve, checkInterval));
+    } catch (error) {
+      console.error('Failed to poll crawl status:', error);
+      await new Promise(resolve => setTimeout(resolve, checkInterval));
+    }
+  }
+
+  return {
+    success: false,
+    articlesCount: 0,
+    error: 'Timeout waiting for crawl to complete',
+  };
 }
 
 /**
