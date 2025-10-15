@@ -83,8 +83,8 @@ export async function GET(request: NextRequest) {
       beopjungdong: complex.beopjungdong,
       haengjeongdong: complex.haengjeongdong,
       articleCount: complex._count.articles,
-      // favorites.json에 있거나 DB Favorite 테이블에 레코드가 있으면 즐겨찾기로 표시
-      isFavorite: favoriteComplexNos.has(complex.complexNo) || complex._count.favorites > 0,
+      // favorites.json에만 의존 (DB Favorite 테이블은 관계형 데이터용)
+      isFavorite: favoriteComplexNos.has(complex.complexNo),
       createdAt: complex.createdAt.toISOString(),
       updatedAt: complex.updatedAt.toISOString(),
     }));
