@@ -71,17 +71,18 @@ export const SingleAnalysis: React.FC<SingleAnalysisProps> = ({ analyticsData })
         </div>
       </div>
 
-      {/* 평형별 상세 통계 */}
+      {/* 평형별 + 거래유형별 상세 통계 */}
       {statisticsByArea && statisticsByArea.length > 0 && (
         <div className="bg-white dark:bg-gray-900 rounded-xl shadow-md p-6">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-            📐 평형별 상세 통계
+            📐 평형별 • 거래유형별 상세 통계
           </h3>
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-gray-200 dark:border-gray-700">
+                <tr className="border-b-2 border-gray-300 dark:border-gray-600">
                   <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">평형</th>
+                  <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">거래유형</th>
                   <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">면적(㎡)</th>
                   <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">매물수</th>
                   <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">평균가</th>
@@ -92,18 +93,32 @@ export const SingleAnalysis: React.FC<SingleAnalysisProps> = ({ analyticsData })
                 </tr>
               </thead>
               <tbody>
-                {statisticsByArea.map((areaStats: any) => (
-                  <tr key={areaStats.pyeong} className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                    <td className="py-3 px-4 font-semibold text-gray-900 dark:text-white">{areaStats.pyeong}평</td>
-                    <td className="py-3 px-4 text-right text-sm text-gray-600 dark:text-gray-400">{areaStats.area.toFixed(1)}㎡</td>
-                    <td className="py-3 px-4 text-right text-sm text-gray-900 dark:text-white">{areaStats.count}건</td>
-                    <td className="py-3 px-4 text-right font-semibold text-blue-600 dark:text-blue-400">{(areaStats.avgPrice / 10000).toFixed(2)}억</td>
-                    <td className="py-3 px-4 text-right text-sm text-gray-700 dark:text-gray-300">{(areaStats.medianPrice / 10000).toFixed(2)}억</td>
-                    <td className="py-3 px-4 text-right text-sm text-green-600 dark:text-green-400">{(areaStats.minPrice / 10000).toFixed(2)}억</td>
-                    <td className="py-3 px-4 text-right text-sm text-orange-600 dark:text-orange-400">{(areaStats.maxPrice / 10000).toFixed(2)}억</td>
-                    <td className="py-3 px-4 text-right text-sm text-purple-600 dark:text-purple-400">{(areaStats.avgPricePerPyeong / 10000).toFixed(3)}억</td>
-                  </tr>
-                ))}
+                {statisticsByArea.map((areaStats: any, index: number) => {
+                  // 거래유형별 색상
+                  const tradeTypeColors: { [key: string]: string } = {
+                    '매매': 'text-blue-600 dark:text-blue-400',
+                    '전세': 'text-green-600 dark:text-green-400',
+                    '월세': 'text-orange-600 dark:text-orange-400',
+                  };
+                  const tradeTypeColor = tradeTypeColors[areaStats.tradeType] || 'text-gray-600 dark:text-gray-400';
+
+                  return (
+                    <tr
+                      key={`${areaStats.pyeong}-${areaStats.tradeType}`}
+                      className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50"
+                    >
+                      <td className="py-3 px-4 font-semibold text-gray-900 dark:text-white">{areaStats.pyeong}평</td>
+                      <td className={`py-3 px-4 font-semibold ${tradeTypeColor}`}>{areaStats.tradeType}</td>
+                      <td className="py-3 px-4 text-right text-sm text-gray-600 dark:text-gray-400">{areaStats.area.toFixed(1)}㎡</td>
+                      <td className="py-3 px-4 text-right text-sm text-gray-900 dark:text-white">{areaStats.count}건</td>
+                      <td className="py-3 px-4 text-right font-semibold text-blue-600 dark:text-blue-400">{(areaStats.avgPrice / 10000).toFixed(2)}억</td>
+                      <td className="py-3 px-4 text-right text-sm text-gray-700 dark:text-gray-300">{(areaStats.medianPrice / 10000).toFixed(2)}억</td>
+                      <td className="py-3 px-4 text-right text-sm text-green-600 dark:text-green-400">{(areaStats.minPrice / 10000).toFixed(2)}억</td>
+                      <td className="py-3 px-4 text-right text-sm text-orange-600 dark:text-orange-400">{(areaStats.maxPrice / 10000).toFixed(2)}억</td>
+                      <td className="py-3 px-4 text-right text-sm text-purple-600 dark:text-purple-400">{(areaStats.avgPricePerPyeong / 10000).toFixed(3)}억</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

@@ -211,25 +211,28 @@ function getSingleAnalysis(complex: any, tradeTypes?: string[]) {
       }, 0) / articles.length
   );
 
-  // 5. 평형별 통계 계산
-  const articlesByArea = articles
-    .filter((a: any) => a.area1 && a.dealOrWarrantPrc)
+  // 5. 평형별 + 거래유형별 통계 계산
+  const articlesByAreaAndType = articles
+    .filter((a: any) => a.area1 && a.dealOrWarrantPrc && a.tradeTypeName)
     .reduce((acc: any, article: any) => {
       const area = article.area1; // 면적 (㎡)
       const pyeong = Math.round(area * 0.3025); // 평수로 변환
+      const tradeType = article.tradeTypeName; // 거래유형
+      const key = `${pyeong}_${tradeType}`;
 
-      if (!acc[pyeong]) {
-        acc[pyeong] = {
+      if (!acc[key]) {
+        acc[key] = {
           area,
           pyeong,
+          tradeType,
           articles: [],
         };
       }
-      acc[pyeong].articles.push(article);
+      acc[key].articles.push(article);
       return acc;
     }, {});
 
-  const statisticsByArea = Object.values(articlesByArea).map((group: any) => {
+  const statisticsByArea = Object.values(articlesByAreaAndType).map((group: any) => {
     const prices = group.articles.map((a: any) => parsePriceToNumber(a.dealOrWarrantPrc));
     const sortedPrices = [...prices].sort((a: number, b: number) => a - b);
     const avgPrice = Math.round(prices.reduce((sum: number, p: number) => sum + p, 0) / prices.length);
@@ -241,6 +244,7 @@ function getSingleAnalysis(complex: any, tradeTypes?: string[]) {
     return {
       area: group.area,
       pyeong: group.pyeong,
+      tradeType: group.tradeType,
       count: group.articles.length,
       avgPrice,
       medianPrice,
@@ -248,7 +252,13 @@ function getSingleAnalysis(complex: any, tradeTypes?: string[]) {
       maxPrice,
       avgPricePerPyeong,
     };
-  }).sort((a: any, b: any) => a.area - b.area); // 면적 기준 오름차순 정렬
+  }).sort((a: any, b: any) => {
+    // 1차: 면적 기준 오름차순
+    if (a.area !== b.area) return a.area - b.area;
+    // 2차: 거래유형 기준 (매매 > 전세 > 월세)
+    const typeOrder: { [key: string]: number } = { '매매': 1, '전세': 2, '월세': 3 };
+    return (typeOrder[a.tradeType] || 99) - (typeOrder[b.tradeType] || 99);
+  });
 
   // 6. 가격 분포 히스토그램 - 평형별로 구분
   const priceHistogramByArea = articles
