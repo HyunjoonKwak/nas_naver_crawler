@@ -42,8 +42,7 @@ export const Navigation = () => {
   const navLinks = [
     { href: '/', label: '홈', icon: '🏠' },
     { href: '/complexes', label: '단지 목록', icon: '🏘️' },
-    { href: '/scheduler', label: '스케줄러', icon: '⏰' },
-    { href: '/alerts', label: '알림', icon: '🔔' },
+    { href: '/scheduler', label: '스케줄러 & 알림', icon: '⏰' },
     { href: '/system', label: '시스템', icon: '⚙️' },
   ];
 

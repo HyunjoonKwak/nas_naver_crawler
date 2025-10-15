@@ -27,12 +27,23 @@ interface ScheduleLog {
   executedAt: string;
 }
 
+interface Alert {
+  id: string;
+  name: string;
+  complexIds: string[];
+  tradeTypes: string[];
+  isActive: boolean;
+  webhookUrl: string | null;
+  createdAt: string;
+}
+
 interface Complex {
   complexNo: string;
   complexName: string;
 }
 
 export default function SchedulerPage() {
+  const [activeTab, setActiveTab] = useState<"scheduler" | "alerts">("scheduler");
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [complexes, setComplexes] = useState<Complex[]>([]);
   const [loading, setLoading] = useState(true);
@@ -40,7 +51,12 @@ export default function SchedulerPage() {
   const [editingSchedule, setEditingSchedule] = useState<Schedule | null>(null);
   const [runningScheduleId, setRunningScheduleId] = useState<string | null>(null);
 
-  // 폼 상태
+  // 알림 상태
+  const [currentAlert, setCurrentAlert] = useState<Alert | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [testingWebhook, setTestingWebhook] = useState(false);
+
+  // 스케줄 폼 상태
   const [formData, setFormData] = useState({
     name: "",
     complexNos: [] as string[],
@@ -48,6 +64,14 @@ export default function SchedulerPage() {
     selectedDays: [0, 1, 2, 3, 4, 5, 6] as number[], // 0=일요일, 6=토요일
     selectedHour: 9,
     selectedMinute: 0,
+  });
+
+  // 알림 폼 상태
+  const [alertFormData, setAlertFormData] = useState({
+    name: "매물 변경 알림",
+    tradeTypes: [] as string[],
+    webhookUrl: "",
+    isActive: true,
   });
 
   // 요일 목록
@@ -76,6 +100,21 @@ export default function SchedulerPage() {
       const schedulesData = await schedulesResponse.json();
       setSchedules(schedulesData.schedules || []);
       console.log('[SCHEDULER] 스케줄 목록 조회 완료:', { count: schedulesData.schedules?.length || 0 });
+
+      // 알림 목록 조회
+      const alertsResponse = await fetch("/api/alerts");
+      const alertsData = await alertsResponse.json();
+      const alerts = alertsData.alerts || [];
+      if (alerts.length > 0) {
+        const existingAlert = alerts[0];
+        setCurrentAlert(existingAlert);
+        setAlertFormData({
+          name: existingAlert.name,
+          tradeTypes: existingAlert.tradeTypes,
+          webhookUrl: existingAlert.webhookUrl || "",
+          isActive: existingAlert.isActive,
+        });
+      }
 
       // 단지 목록 조회 (favorites.json에서 읽기)
       console.log('[SCHEDULER] /api/favorites 호출 (favorites.json 읽기)');
@@ -296,6 +335,115 @@ export default function SchedulerPage() {
     });
   };
 
+  // 알림 저장 핸들러
+  const handleSaveAlert = async () => {
+    if (complexes.length === 0) {
+      window.alert("관심단지가 없습니다. 먼저 단지 목록 페이지에서 관심단지를 등록해주세요.");
+      return;
+    }
+
+    if (!alertFormData.webhookUrl) {
+      window.alert("Discord 웹훅 URL을 입력해주세요.");
+      return;
+    }
+
+    try {
+      setSaving(true);
+      const complexIds = complexes.map((c) => c.complexNo);
+
+      const payload = {
+        name: alertFormData.name,
+        complexIds: complexIds,
+        tradeTypes: alertFormData.tradeTypes,
+        minPrice: null,
+        maxPrice: null,
+        minArea: null,
+        maxArea: null,
+        notifyWebhook: !!alertFormData.webhookUrl,
+        webhookUrl: alertFormData.webhookUrl || null,
+      };
+
+      const url = currentAlert ? `/api/alerts/${currentAlert.id}` : "/api/alerts";
+      const method = currentAlert ? "PUT" : "POST";
+
+      const response = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (response.ok) {
+        window.alert("알림 설정이 저장되었습니다!");
+        fetchData();
+      } else {
+        const data = await response.json();
+        window.alert(data.error || "알림 저장에 실패했습니다.");
+      }
+    } catch (error) {
+      console.error("Failed to save alert:", error);
+      window.alert("알림 저장 중 오류가 발생했습니다.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // 알림 활성화/비활성화 토글
+  const handleToggleAlert = async () => {
+    if (!currentAlert) return;
+
+    try {
+      const response = await fetch(`/api/alerts/${currentAlert.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isActive: !alertFormData.isActive }),
+      });
+
+      if (response.ok) {
+        setAlertFormData({ ...alertFormData, isActive: !alertFormData.isActive });
+        window.alert("알림 상태가 변경되었습니다.");
+        fetchData();
+      } else {
+        window.alert("알림 상태 변경에 실패했습니다.");
+      }
+    } catch (error) {
+      console.error("Failed to toggle alert:", error);
+      window.alert("알림 상태 변경 중 오류가 발생했습니다.");
+    }
+  };
+
+  // 웹훅 테스트
+  const handleTestWebhook = async () => {
+    if (!alertFormData.webhookUrl) {
+      window.alert("웹훅 URL을 입력해주세요.");
+      return;
+    }
+
+    try {
+      setTestingWebhook(true);
+
+      const response = await fetch("/api/alerts/test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          webhookUrl: alertFormData.webhookUrl,
+          testType: "summary",
+        }),
+      });
+
+      if (response.ok) {
+        window.alert("테스트 알림이 전송되었습니다! Discord를 확인해주세요.");
+      } else {
+        const data = await response.json();
+        window.alert(data.error || "테스트 알림 전송에 실패했습니다.");
+      }
+    } catch (error) {
+      console.error("Failed to test webhook:", error);
+      window.alert("테스트 알림 전송 중 오류가 발생했습니다.");
+    } finally {
+      setTestingWebhook(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-green-50 to-emerald-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950">
@@ -318,9 +466,9 @@ export default function SchedulerPage() {
                 ⏰
               </div>
               <div>
-                <h1 className="text-xl font-bold text-gray-900 dark:text-white">스케줄 크롤링</h1>
+                <h1 className="text-xl font-bold text-gray-900 dark:text-white">스케줄러 & 알림</h1>
                 <p className="text-xs text-gray-500 dark:text-gray-400">
-                  정기 자동 크롤링 설정
+                  자동 크롤링 및 알림 관리
                 </p>
               </div>
             </div>
@@ -338,12 +486,6 @@ export default function SchedulerPage() {
                 🏘️ 단지 목록
               </Link>
               <Link
-                href="/alerts"
-                className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors font-semibold"
-              >
-                🔔 알림
-              </Link>
-              <Link
                 href="/system"
                 className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors font-semibold"
               >
@@ -357,21 +499,60 @@ export default function SchedulerPage() {
       </nav>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* 헤더 */}
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">스케줄 목록</h2>
-            <p className="text-gray-600 dark:text-gray-400 mt-1">
-              {schedules.length}개의 스케줄이 등록되어 있습니다
-            </p>
+        {/* 탭 네비게이션 */}
+        <div className="mb-6">
+          <div className="flex gap-2 border-b border-gray-200 dark:border-gray-700">
+            <button
+              onClick={() => setActiveTab("scheduler")}
+              className={`px-6 py-3 font-semibold transition-all relative ${
+                activeTab === "scheduler"
+                  ? "text-green-600 dark:text-green-400"
+                  : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+              }`}
+            >
+              <span className="flex items-center gap-2">
+                ⏰ 스케줄 관리
+              </span>
+              {activeTab === "scheduler" && (
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-green-600 to-emerald-600"></div>
+              )}
+            </button>
+            <button
+              onClick={() => setActiveTab("alerts")}
+              className={`px-6 py-3 font-semibold transition-all relative ${
+                activeTab === "alerts"
+                  ? "text-purple-600 dark:text-purple-400"
+                  : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+              }`}
+            >
+              <span className="flex items-center gap-2">
+                🔔 알림 설정
+              </span>
+              {activeTab === "alerts" && (
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-purple-600 to-pink-600"></div>
+              )}
+            </button>
           </div>
-          <button
-            onClick={() => handleOpenModal()}
-            className="px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white rounded-lg transition-all font-semibold shadow-lg"
-          >
-            ➕ 새 스케줄 만들기
-          </button>
         </div>
+
+        {/* 스케줄러 탭 콘텐츠 */}
+        {activeTab === "scheduler" && (
+          <>
+            {/* 헤더 */}
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">스케줄 목록</h2>
+                <p className="text-gray-600 dark:text-gray-400 mt-1">
+                  {schedules.length}개의 스케줄이 등록되어 있습니다
+                </p>
+              </div>
+              <button
+                onClick={() => handleOpenModal()}
+                className="px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white rounded-lg transition-all font-semibold shadow-lg"
+              >
+                ➕ 새 스케줄 만들기
+              </button>
+            </div>
 
         {/* 스케줄 목록 */}
         {schedules.length === 0 ? (
@@ -557,6 +738,207 @@ export default function SchedulerPage() {
               </div>
             ))}
           </div>
+        )}
+          </>
+        )}
+
+        {/* 알림 탭 콘텐츠 */}
+        {activeTab === "alerts" && (
+          <>
+            {/* 알림 상태 표시 */}
+            <div className="mb-6 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="text-4xl">
+                    {alertFormData.isActive ? "🔔" : "🔕"}
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+                      {alertFormData.isActive ? "알림 활성화됨" : "알림 비활성화됨"}
+                    </h2>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                      {currentAlert
+                        ? `${new Date(currentAlert.createdAt).toLocaleDateString("ko-KR")} 설정됨`
+                        : "아직 알림이 설정되지 않았습니다"}
+                    </p>
+                  </div>
+                </div>
+                {currentAlert && (
+                  <button
+                    onClick={handleToggleAlert}
+                    className={`px-6 py-3 rounded-lg font-semibold transition-colors ${
+                      alertFormData.isActive
+                        ? "bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200"
+                        : "bg-green-600 hover:bg-green-700 text-white"
+                    }`}
+                  >
+                    {alertFormData.isActive ? "🔕 비활성화" : "🔔 활성화"}
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* 알림 설정 폼 */}
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6 space-y-6">
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
+                알림 설정
+              </h3>
+
+              {/* 알림 이름 */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  알림 이름
+                </label>
+                <input
+                  type="text"
+                  value={alertFormData.name}
+                  onChange={(e) => setAlertFormData({ ...alertFormData, name: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500"
+                  placeholder="예: 매물 변경 알림"
+                />
+              </div>
+
+              {/* 알림 단지 (관심단지 자동 사용) */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    알림 대상 단지
+                  </label>
+                  <span className="text-xs text-purple-600 dark:text-purple-400 font-semibold bg-purple-50 dark:bg-purple-900/20 px-3 py-1 rounded-full">
+                    ✓ 관심단지 {complexes.length}개 자동 적용
+                  </span>
+                </div>
+                <div className="bg-gray-50 dark:bg-gray-900/50 border border-gray-300 dark:border-gray-600 rounded-lg p-4">
+                  <p className="text-xs text-gray-600 dark:text-gray-400 mb-3">
+                    💡 <strong>관심단지 목록</strong>의 모든 단지에 대해 알림을 보냅니다.
+                    단지를 추가하거나 제거하려면 <strong>단지 목록</strong> 페이지에서 관심 등록을 변경하세요.
+                  </p>
+                  {complexes.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {complexes.map((complex) => (
+                        <span
+                          key={complex.complexNo}
+                          className="px-3 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300 rounded-full text-xs font-medium border border-purple-200 dark:border-purple-800"
+                        >
+                          ⭐ {complex.complexName}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-4">
+                      <p className="text-sm text-orange-600 dark:text-orange-400 font-semibold">
+                        ⚠️ 관심 등록된 단지가 없습니다
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        단지 목록 페이지에서 먼저 관심단지를 등록해주세요
+                      </p>
+                      <Link
+                        href="/complexes"
+                        className="inline-block mt-3 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold"
+                      >
+                        단지 목록으로 이동
+                      </Link>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* 거래 유형 */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  거래 유형
+                </label>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                  선택한 거래 유형의 매물만 알림을 받습니다. 선택하지 않으면 모든 거래 유형을 알립니다.
+                </p>
+                <div className="flex gap-4">
+                  {["매매", "전세", "월세"].map((type) => (
+                    <label key={type} className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={alertFormData.tradeTypes.includes(type)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setAlertFormData({
+                              ...alertFormData,
+                              tradeTypes: [...alertFormData.tradeTypes, type],
+                            });
+                          } else {
+                            setAlertFormData({
+                              ...alertFormData,
+                              tradeTypes: alertFormData.tradeTypes.filter((t) => t !== type),
+                            });
+                          }
+                        }}
+                        className="w-5 h-5 text-purple-600 rounded focus:ring-2 focus:ring-purple-500"
+                      />
+                      <span className="text-gray-900 dark:text-white font-medium">{type}</span>
+                    </label>
+                  ))}
+                </div>
+                {alertFormData.tradeTypes.length > 0 && (
+                  <p className="text-xs text-purple-600 dark:text-purple-400 mt-2">
+                    ✓ {alertFormData.tradeTypes.join(", ")} 매물만 알림
+                  </p>
+                )}
+                {alertFormData.tradeTypes.length === 0 && (
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                    → 모든 거래 유형 알림
+                  </p>
+                )}
+              </div>
+
+              {/* Discord 웹훅 URL */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Discord 웹훅 URL *
+                </label>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                  Discord 서버 설정 → 연동 → 웹훅에서 웹훅 URL을 복사하여 입력하세요.
+                </p>
+                <input
+                  type="url"
+                  value={alertFormData.webhookUrl}
+                  onChange={(e) => setAlertFormData({ ...alertFormData, webhookUrl: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500"
+                  placeholder="https://discord.com/api/webhooks/..."
+                />
+                <button
+                  type="button"
+                  onClick={handleTestWebhook}
+                  disabled={testingWebhook || !alertFormData.webhookUrl}
+                  className="mt-3 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white rounded-lg transition-colors font-semibold text-sm"
+                >
+                  {testingWebhook ? "전송 중..." : "🧪 테스트 알림 보내기"}
+                </button>
+              </div>
+
+              {/* 저장 버튼 */}
+              <div className="flex gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+                <button
+                  onClick={handleSaveAlert}
+                  disabled={saving}
+                  className="flex-1 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 disabled:from-gray-400 disabled:to-gray-400 text-white rounded-lg transition-all font-semibold shadow-lg"
+                >
+                  {saving ? "저장 중..." : currentAlert ? "💾 설정 업데이트" : "✅ 알림 설정 저장"}
+                </button>
+              </div>
+            </div>
+
+            {/* 알림 동작 안내 */}
+            <div className="mt-6 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+              <h4 className="text-sm font-semibold text-blue-900 dark:text-blue-300 mb-2">
+                💡 알림이 언제 발송되나요?
+              </h4>
+              <ul className="text-xs text-blue-800 dark:text-blue-300 space-y-1">
+                <li>• <strong>스케줄러가 크롤링을 실행</strong>할 때마다 변경사항을 감지합니다</li>
+                <li>• <strong>신규 매물</strong>이 등록되면 Discord로 알림을 보냅니다</li>
+                <li>• <strong>매물이 삭제</strong>되면 (거래 완료 가능성) 알림을 보냅니다</li>
+                <li>• <strong>가격이 변경</strong>되면 변경 내역과 함께 알림을 보냅니다</li>
+                <li>• 거래 유형을 선택하면 해당 유형의 매물만 알림합니다</li>
+              </ul>
+            </div>
+          </>
         )}
       </div>
 
