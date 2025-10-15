@@ -4,6 +4,8 @@ import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import RealPriceAnalysis from "@/components/RealPriceAnalysis";
+import { Dialog } from "@/components/ui";
+import { showSuccess, showError, showLoading, dismissToast } from "@/lib/toast";
 
 interface ComplexData {
   overview: any;
@@ -34,6 +36,9 @@ export default function ComplexDetailPage() {
   // 정렬 상태
   const [sortField, setSortField] = useState<string>('');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+
+  // Dialog 상태
+  const [deleteDialog, setDeleteDialog] = useState(false);
 
   useEffect(() => {
     fetchComplexData();
@@ -112,15 +117,15 @@ export default function ComplexDetailPage() {
         await fetchComplexData();
 
         setTimeout(() => {
-          alert(`✅ 크롤링이 완료되었습니다!\n\n수집된 매물: ${articleCount}개`);
+          showSuccess(`크롤링이 완료되었습니다!\n\n수집된 매물: ${articleCount}개`);
         }, 500);
       } else {
-        alert('❌ 크롤링에 실패했습니다.');
+        showError('크롤링에 실패했습니다.');
       }
     } catch (error) {
       clearInterval(progressInterval);
       console.error('Crawl error:', error);
-      alert('❌ 크롤링 중 오류가 발생했습니다.');
+      showError('크롤링 중 오류가 발생했습니다.');
     } finally {
       setTimeout(() => {
         setCrawling(false);
@@ -132,24 +137,32 @@ export default function ComplexDetailPage() {
   // Note: Real-time polling removed because /api/crawl is synchronous
   // Using simulated progress updates instead to provide better UX feedback
 
-  const handleDelete = async () => {
-    if (!confirm('이 단지를 즐겨찾기에서 삭제하시겠습니까?')) return;
+  const handleDelete = () => {
+    setDeleteDialog(true);
+  };
 
+  const confirmDelete = async () => {
+    const loadingToast = showLoading('단지 삭제 중...');
     try {
       const response = await fetch(`/api/favorites?complexNo=${complexNo}`, {
         method: 'DELETE',
       });
 
+      dismissToast(loadingToast);
+
       if (response.ok) {
-        alert('✅ 삭제되었습니다.');
+        showSuccess('삭제되었습니다.');
         router.push('/complexes');
       } else {
         const data = await response.json();
-        alert(`❌ 삭제에 실패했습니다: ${data.error || '알 수 없는 오류'}`);
+        showError(`삭제에 실패했습니다: ${data.error || '알 수 없는 오류'}`);
       }
     } catch (error) {
+      dismissToast(loadingToast);
       console.error('Delete error:', error);
-      alert('❌ 삭제 중 오류가 발생했습니다.');
+      showError('삭제 중 오류가 발생했습니다.');
+    } finally {
+      setDeleteDialog(false);
     }
   };
 
@@ -808,6 +821,18 @@ function StatCard({ label, value, color }: { label: string; value: number; color
       <div className={`text-3xl font-bold bg-gradient-to-r ${colorClasses[color]} bg-clip-text text-transparent`}>
         {value}
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog
+        isOpen={deleteDialog}
+        onClose={() => setDeleteDialog(false)}
+        onConfirm={confirmDelete}
+        title="단지 삭제"
+        description="이 단지를 즐겨찾기에서 삭제하시겠습니까?"
+        confirmText="삭제"
+        cancelText="취소"
+        variant="danger"
+      />
     </div>
   );
 }

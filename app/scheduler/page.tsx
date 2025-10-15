@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { ThemeToggle } from "@/components/ui";
+import { ThemeToggle, Dialog } from "@/components/ui";
+import { showSuccess, showError, showLoading, dismissToast } from "@/lib/toast";
 
 interface Schedule {
   id: string;
@@ -55,6 +56,10 @@ export default function SchedulerPage() {
   const [currentAlert, setCurrentAlert] = useState<Alert | null>(null);
   const [saving, setSaving] = useState(false);
   const [testingWebhook, setTestingWebhook] = useState(false);
+
+  // Dialog 상태
+  const [deleteScheduleDialog, setDeleteScheduleDialog] = useState<{ isOpen: boolean; id: string | null }>({ isOpen: false, id: null });
+  const [runNowDialog, setRunNowDialog] = useState<{ isOpen: boolean; id: string | null }>({ isOpen: false, id: null });
 
   // 스케줄 폼 상태
   const [formData, setFormData] = useState({
@@ -224,13 +229,14 @@ export default function SchedulerPage() {
 
     // 관심단지가 없으면 스케줄 생성 불가
     if (complexes.length === 0) {
-      alert("관심단지가 없습니다. 먼저 단지 목록 페이지에서 관심단지를 등록해주세요.");
+      showError("관심단지가 없습니다. 먼저 단지 목록 페이지에서 관심단지를 등록해주세요.");
       return;
     }
 
     // 요일/시간 선택으로부터 Cron 표현식 생성
     const cronExpr = buildCronExpr(formData.selectedDays, formData.selectedHour, formData.selectedMinute);
 
+    const loadingToast = showLoading(editingSchedule ? "스케줄 수정 중..." : "스케줄 생성 중...");
     try {
       const payload = {
         name: formData.name,
@@ -247,21 +253,25 @@ export default function SchedulerPage() {
         body: JSON.stringify(payload),
       });
 
+      dismissToast(loadingToast);
+
       if (response.ok) {
-        alert(editingSchedule ? "스케줄이 수정되었습니다!" : "스케줄이 생성되었습니다!");
+        showSuccess(editingSchedule ? "스케줄이 수정되었습니다!" : "스케줄이 생성되었습니다!");
         handleCloseModal();
         fetchData();
       } else {
         const data = await response.json();
-        alert(data.error || "스케줄 저장에 실패했습니다.");
+        showError(data.error || "스케줄 저장에 실패했습니다.");
       }
     } catch (error) {
+      dismissToast(loadingToast);
       console.error("Failed to save schedule:", error);
-      alert("스케줄 저장 중 오류가 발생했습니다.");
+      showError("스케줄 저장 중 오류가 발생했습니다.");
     }
   };
 
   const handleToggleActive = async (schedule: Schedule) => {
+    const loadingToast = showLoading("스케줄 상태 변경 중...");
     try {
       const response = await fetch(`/api/schedules/${schedule.id}`, {
         method: "PATCH",
@@ -269,57 +279,80 @@ export default function SchedulerPage() {
         body: JSON.stringify({ isActive: !schedule.isActive }),
       });
 
+      dismissToast(loadingToast);
+
       if (response.ok) {
+        showSuccess(schedule.isActive ? "스케줄이 비활성화되었습니다." : "스케줄이 활성화되었습니다.");
         fetchData();
       } else {
-        alert("스케줄 상태 변경에 실패했습니다.");
+        showError("스케줄 상태 변경에 실패했습니다.");
       }
     } catch (error) {
+      dismissToast(loadingToast);
       console.error("Failed to toggle schedule:", error);
-      alert("스케줄 상태 변경 중 오류가 발생했습니다.");
+      showError("스케줄 상태 변경 중 오류가 발생했습니다.");
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("이 스케줄을 삭제하시겠습니까?")) return;
+  const handleDelete = (id: string) => {
+    setDeleteScheduleDialog({ isOpen: true, id });
+  };
 
+  const confirmDeleteSchedule = async () => {
+    if (!deleteScheduleDialog.id) return;
+
+    const loadingToast = showLoading("스케줄 삭제 중...");
     try {
-      const response = await fetch(`/api/schedules?id=${id}`, {
+      const response = await fetch(`/api/schedules?id=${deleteScheduleDialog.id}`, {
         method: "DELETE",
       });
 
+      dismissToast(loadingToast);
+
       if (response.ok) {
-        alert("스케줄이 삭제되었습니다.");
+        showSuccess("스케줄이 삭제되었습니다.");
         fetchData();
       } else {
-        alert("스케줄 삭제에 실패했습니다.");
+        showError("스케줄 삭제에 실패했습니다.");
       }
     } catch (error) {
+      dismissToast(loadingToast);
       console.error("Failed to delete schedule:", error);
-      alert("스케줄 삭제 중 오류가 발생했습니다.");
+      showError("스케줄 삭제 중 오류가 발생했습니다.");
+    } finally {
+      setDeleteScheduleDialog({ isOpen: false, id: null });
     }
   };
 
-  const handleRunNow = async (id: string) => {
-    if (!confirm("이 스케줄을 지금 실행하시겠습니까?")) return;
+  const handleRunNow = (id: string) => {
+    setRunNowDialog({ isOpen: true, id });
+  };
 
+  const confirmRunNow = async () => {
+    if (!runNowDialog.id) return;
+
+    const loadingToast = showLoading("스케줄 실행 중...");
     try {
-      setRunningScheduleId(id);
-      const response = await fetch(`/api/schedules/${id}/run`, {
+      setRunningScheduleId(runNowDialog.id);
+      const response = await fetch(`/api/schedules/${runNowDialog.id}/run`, {
         method: "POST",
       });
 
+      dismissToast(loadingToast);
+
       if (response.ok) {
-        window.alert("스케줄이 실행되었습니다! 잠시 후 결과를 확인하세요.");
+        showSuccess("스케줄이 실행되었습니다! 잠시 후 결과를 확인하세요.");
         await fetchData();
       } else {
-        window.alert("스케줄 실행에 실패했습니다.");
+        showError("스케줄 실행에 실패했습니다.");
       }
     } catch (error) {
+      dismissToast(loadingToast);
       console.error("Failed to run schedule:", error);
-      window.alert("스케줄 실행 중 오류가 발생했습니다.");
+      showError("스케줄 실행 중 오류가 발생했습니다.");
     } finally {
       setRunningScheduleId(null);
+      setRunNowDialog({ isOpen: false, id: null });
     }
   };
 
@@ -338,15 +371,16 @@ export default function SchedulerPage() {
   // 알림 저장 핸들러
   const handleSaveAlert = async () => {
     if (complexes.length === 0) {
-      window.alert("관심단지가 없습니다. 먼저 단지 목록 페이지에서 관심단지를 등록해주세요.");
+      showError("관심단지가 없습니다. 먼저 단지 목록 페이지에서 관심단지를 등록해주세요.");
       return;
     }
 
     if (!alertFormData.webhookUrl) {
-      window.alert("Discord 웹훅 URL을 입력해주세요.");
+      showError("Discord 웹훅 URL을 입력해주세요.");
       return;
     }
 
+    const loadingToast = showLoading("알림 설정 저장 중...");
     try {
       setSaving(true);
       const complexIds = complexes.map((c) => c.complexNo);
@@ -372,16 +406,19 @@ export default function SchedulerPage() {
         body: JSON.stringify(payload),
       });
 
+      dismissToast(loadingToast);
+
       if (response.ok) {
-        window.alert("알림 설정이 저장되었습니다!");
+        showSuccess("알림 설정이 저장되었습니다!");
         fetchData();
       } else {
         const data = await response.json();
-        window.alert(data.error || "알림 저장에 실패했습니다.");
+        showError(data.error || "알림 저장에 실패했습니다.");
       }
     } catch (error) {
+      dismissToast(loadingToast);
       console.error("Failed to save alert:", error);
-      window.alert("알림 저장 중 오류가 발생했습니다.");
+      showError("알림 저장 중 오류가 발생했습니다.");
     } finally {
       setSaving(false);
     }
@@ -391,6 +428,7 @@ export default function SchedulerPage() {
   const handleToggleAlert = async () => {
     if (!currentAlert) return;
 
+    const loadingToast = showLoading("알림 상태 변경 중...");
     try {
       const response = await fetch(`/api/alerts/${currentAlert.id}`, {
         method: "PATCH",
@@ -398,26 +436,30 @@ export default function SchedulerPage() {
         body: JSON.stringify({ isActive: !alertFormData.isActive }),
       });
 
+      dismissToast(loadingToast);
+
       if (response.ok) {
         setAlertFormData({ ...alertFormData, isActive: !alertFormData.isActive });
-        window.alert("알림 상태가 변경되었습니다.");
+        showSuccess("알림 상태가 변경되었습니다.");
         fetchData();
       } else {
-        window.alert("알림 상태 변경에 실패했습니다.");
+        showError("알림 상태 변경에 실패했습니다.");
       }
     } catch (error) {
+      dismissToast(loadingToast);
       console.error("Failed to toggle alert:", error);
-      window.alert("알림 상태 변경 중 오류가 발생했습니다.");
+      showError("알림 상태 변경 중 오류가 발생했습니다.");
     }
   };
 
   // 웹훅 테스트
   const handleTestWebhook = async () => {
     if (!alertFormData.webhookUrl) {
-      window.alert("웹훅 URL을 입력해주세요.");
+      showError("웹훅 URL을 입력해주세요.");
       return;
     }
 
+    const loadingToast = showLoading("테스트 알림 전송 중...");
     try {
       setTestingWebhook(true);
 
@@ -430,15 +472,18 @@ export default function SchedulerPage() {
         }),
       });
 
+      dismissToast(loadingToast);
+
       if (response.ok) {
-        window.alert("테스트 알림이 전송되었습니다! Discord를 확인해주세요.");
+        showSuccess("테스트 알림이 전송되었습니다! Discord를 확인해주세요.");
       } else {
         const data = await response.json();
-        window.alert(data.error || "테스트 알림 전송에 실패했습니다.");
+        showError(data.error || "테스트 알림 전송에 실패했습니다.");
       }
     } catch (error) {
+      dismissToast(loadingToast);
       console.error("Failed to test webhook:", error);
-      window.alert("테스트 알림 전송 중 오류가 발생했습니다.");
+      showError("테스트 알림 전송 중 오류가 발생했습니다.");
     } finally {
       setTestingWebhook(false);
     }
@@ -1106,6 +1151,30 @@ export default function SchedulerPage() {
           </div>
         </div>
       )}
+
+      {/* Delete Schedule Confirmation Dialog */}
+      <Dialog
+        isOpen={deleteScheduleDialog.isOpen}
+        onClose={() => setDeleteScheduleDialog({ isOpen: false, id: null })}
+        onConfirm={confirmDeleteSchedule}
+        title="스케줄 삭제"
+        description="이 스케줄을 삭제하시겠습니까?"
+        confirmText="삭제"
+        cancelText="취소"
+        variant="danger"
+      />
+
+      {/* Run Now Confirmation Dialog */}
+      <Dialog
+        isOpen={runNowDialog.isOpen}
+        onClose={() => setRunNowDialog({ isOpen: false, id: null })}
+        onConfirm={confirmRunNow}
+        title="스케줄 즉시 실행"
+        description="이 스케줄을 지금 실행하시겠습니까?"
+        confirmText="실행"
+        cancelText="취소"
+        variant="default"
+      />
     </div>
   );
 }

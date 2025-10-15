@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { ThemeToggle } from "@/components/ui";
+import { ThemeToggle, Dialog } from "@/components/ui";
+import { showSuccess, showError, showLoading, dismissToast, showInfo } from "@/lib/toast";
 
 interface ComplexItem {
   id: string;
@@ -69,6 +70,11 @@ export default function ComplexesPage() {
 
   // 드래그 앤 드롭
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+
+  // Dialog 상태
+  const [deleteComplexDialog, setDeleteComplexDialog] = useState<{ isOpen: boolean; complexNo: string | null; complexName: string | null }>({ isOpen: false, complexNo: null, complexName: null });
+  const [crawlAllDialog, setCrawlAllDialog] = useState(false);
+  const [stopTrackingDialog, setStopTrackingDialog] = useState(false);
 
   // 시간을 MM:SS 형식으로 변환
   const formatTime = (seconds: number): string => {
@@ -184,32 +190,37 @@ export default function ComplexesPage() {
 
   const handleFetchComplexInfo = async () => {
     if (!newComplexNo.trim()) {
-      alert('네이버 단지 URL 또는 단지번호를 입력해주세요.');
+      showError('네이버 단지 URL 또는 단지번호를 입력해주세요.');
       return;
     }
 
     const complexNo = extractComplexNo(newComplexNo);
 
     if (!complexNo) {
-      alert('올바른 형식이 아닙니다.\n\n예시:\n- URL: https://new.land.naver.com/complexes/22065\n- 단지번호: 22065');
+      showError('올바른 형식이 아닙니다.\n\n예시:\n- URL: https://new.land.naver.com/complexes/22065\n- 단지번호: 22065');
       return;
     }
 
     setFetchingInfo(true);
     setComplexInfo(null);
 
+    const loadingToast = showLoading('단지 정보 조회 중...');
     try {
       const response = await fetch(`/api/complex-info?complexNo=${complexNo}`);
       const data = await response.json();
 
+      dismissToast(loadingToast);
+
       if (response.ok && data.success) {
         setComplexInfo(data.complex);
+        showSuccess('단지 정보를 불러왔습니다.');
       } else {
-        alert(data.error || '단지 정보를 가져올 수 없습니다.');
+        showError(data.error || '단지 정보를 가져올 수 없습니다.');
       }
     } catch (error) {
+      dismissToast(loadingToast);
       console.error('Failed to fetch complex info:', error);
-      alert('단지 정보 조회 중 오류가 발생했습니다.');
+      showError('단지 정보 조회 중 오류가 발생했습니다.');
     } finally {
       setFetchingInfo(false);
     }
@@ -218,10 +229,11 @@ export default function ComplexesPage() {
   // 단지 추가 (정보 확인 후 자동으로 매물 수집)
   const handleAddFavorite = async () => {
     if (!complexInfo) {
-      alert('먼저 단지 정보를 조회해주세요.');
+      showError('먼저 단지 정보를 조회해주세요.');
       return;
     }
 
+    const loadingToast = showLoading('단지 추가 중...');
     try {
       // 1. favorites.json에 추가
       const response = await fetch('/api/favorites', {
@@ -239,13 +251,16 @@ export default function ComplexesPage() {
         const addedComplexNo = complexInfo.complexNo;
         const addedComplexName = complexInfo.complexName;
 
+        dismissToast(loadingToast);
+        showSuccess(`${addedComplexName}이(가) 추가되었습니다!`);
+
         await fetchComplexes();
         setNewComplexNo("");
         setComplexInfo(null);
         setShowAddForm(false);
 
         // 2. 자동으로 크롤링 시작
-        alert(`✅ ${addedComplexName}이(가) 추가되었습니다!\n\n매물 정보를 수집합니다...`);
+        const crawlToast = showLoading(`${addedComplexName} 매물 수집 중...`);
 
         setCrawling(addedComplexNo);
         try {
@@ -261,22 +276,27 @@ export default function ComplexesPage() {
             // 크롤링 진행 상황 폴링
             await pollCrawlStatus(crawlData.crawlId);
             await fetchComplexes();
-            alert(`✅ ${addedComplexName} 크롤링 완료!`);
+            dismissToast(crawlToast);
+            showSuccess(`${addedComplexName} 크롤링 완료!`);
           } else {
-            alert(`⚠️ 크롤링 실패. 나중에 수동으로 크롤링해주세요.`);
+            dismissToast(crawlToast);
+            showError('크롤링 실패. 나중에 수동으로 크롤링해주세요.');
           }
         } catch (error) {
+          dismissToast(crawlToast);
           console.error('Auto-crawl failed:', error);
-          alert(`⚠️ 크롤링 실패. 나중에 수동으로 크롤링해주세요.`);
+          showError('크롤링 실패. 나중에 수동으로 크롤링해주세요.');
         } finally {
           setCrawling(null);
         }
       } else {
-        alert(data.error || '단지 추가 실패');
+        dismissToast(loadingToast);
+        showError(data.error || '단지 추가 실패');
       }
     } catch (error) {
+      dismissToast(loadingToast);
       console.error('Failed to add favorite:', error);
-      alert('단지 추가 중 오류가 발생했습니다.');
+      showError('단지 추가 중 오류가 발생했습니다.');
     }
   };
 
@@ -303,39 +323,48 @@ export default function ComplexesPage() {
       });
 
       if (response.ok) {
-        alert(data.message);
+        showInfo(data.message);
         console.log('[CLIENT_TOGGLE] 단지목록 새로고침 시작');
         await fetchComplexes();
         console.log('[CLIENT_TOGGLE] 단지목록 새로고침 완료');
       } else {
         console.error('[CLIENT_TOGGLE] API 에러:', data);
-        alert(data.error || '관심단지 설정 실패');
+        showError(data.error || '관심단지 설정 실패');
       }
     } catch (error) {
       console.error('[CLIENT_TOGGLE] 예외 발생:', error);
-      alert('관심단지 설정 중 오류가 발생했습니다.');
+      showError('관심단지 설정 중 오류가 발생했습니다.');
     }
   };
 
-  const handleDeleteComplex = async (complexNo: string) => {
-    const confirmed = window.confirm('이 단지를 완전히 삭제하시겠습니까?\n(DB와 모든 매물 데이터가 삭제됩니다)');
-    if (!confirmed) return;
+  const handleDeleteComplex = (complexNo: string, complexName: string) => {
+    setDeleteComplexDialog({ isOpen: true, complexNo, complexName });
+  };
 
+  const confirmDeleteComplex = async () => {
+    if (!deleteComplexDialog.complexNo) return;
+
+    const loadingToast = showLoading('단지 삭제 중...');
     try {
-      const response = await fetch(`/api/favorites?complexNo=${complexNo}`, {
+      const response = await fetch(`/api/favorites?complexNo=${deleteComplexDialog.complexNo}`, {
         method: 'DELETE'
       });
 
+      dismissToast(loadingToast);
+
       if (response.ok) {
         await fetchComplexes();
-        alert('단지가 삭제되었습니다.');
+        showSuccess('단지가 삭제되었습니다.');
       } else {
         const data = await response.json();
-        alert(data.error || '단지 삭제 실패');
+        showError(data.error || '단지 삭제 실패');
       }
     } catch (error) {
+      dismissToast(loadingToast);
       console.error('Failed to delete complex:', error);
-      alert('단지 삭제 중 오류가 발생했습니다.');
+      showError('단지 삭제 중 오류가 발생했습니다.');
+    } finally {
+      setDeleteComplexDialog({ isOpen: false, complexNo: null, complexName: null });
     }
   };
 
@@ -399,6 +428,7 @@ export default function ComplexesPage() {
     setCrawling(complexNo);
     setCrawlProgress(null);
 
+    const loadingToast = showLoading('크롤링 시작 중...');
     try {
       // 크롤링 시작
       const response = await fetch('/api/crawl', {
@@ -409,6 +439,8 @@ export default function ComplexesPage() {
 
       const data = await response.json();
 
+      dismissToast(loadingToast);
+
       if (response.ok && data.crawlId) {
         // 폴링으로 진행 상황 추적
         await pollCrawlStatus(data.crawlId);
@@ -417,13 +449,14 @@ export default function ComplexesPage() {
         await fetchComplexes();
 
         const complexName = complexes.find(f => f.complexNo === complexNo)?.complexName || complexNo;
-        alert(`✅ ${complexName} 크롤링 완료!`);
+        showSuccess(`${complexName} 크롤링 완료!`);
       } else {
-        alert(data.error || '크롤링 실패');
+        showError(data.error || '크롤링 실패');
       }
     } catch (error) {
+      dismissToast(loadingToast);
       console.error('Failed to crawl:', error);
-      alert('크롤링 중 오류가 발생했습니다.');
+      showError('크롤링 중 오류가 발생했습니다.');
     } finally {
       setCrawling(null);
       setCrawlProgress(null);
@@ -431,32 +464,32 @@ export default function ComplexesPage() {
   };
 
   const handleStopCrawl = () => {
-    const message = `⚠️ 중요: 크롤링을 중단하시겠습니까?\n\n` +
-      `현재 UI에서는 진행 상황 추적만 중단됩니다.\n` +
-      `백그라운드에서 실행 중인 크롤링은 계속 진행되며 완료됩니다.\n\n` +
-      `결과는 나중에 히스토리에서 확인할 수 있습니다.`;
-
-    if (confirm(message)) {
-      setCrawling(null);
-      setCrawlingAll(false);
-      setCrawlProgress(null);
-      alert('✅ UI 추적을 중단했습니다.\n\n백그라운드 크롤링은 계속 진행됩니다.');
-    }
+    setStopTrackingDialog(true);
   };
 
-  const handleCrawlAll = async () => {
+  const confirmStopTracking = () => {
+    setCrawling(null);
+    setCrawlingAll(false);
+    setCrawlProgress(null);
+    setStopTrackingDialog(false);
+    showInfo('UI 추적을 중단했습니다. 백그라운드 크롤링은 계속 진행됩니다.');
+  };
+
+  const handleCrawlAll = () => {
     if (complexes.length === 0) {
-      alert('등록된 단지가 없습니다.');
+      showError('등록된 단지가 없습니다.');
       return;
     }
+    setCrawlAllDialog(true);
+  };
 
-    const confirmed = window.confirm(`${complexes.length}개 단지를 모두 크롤링하시겠습니까?`);
-    if (!confirmed) return;
-
+  const confirmCrawlAll = async () => {
+    setCrawlAllDialog(false);
     setCrawlingAll(true);
     setCrawlProgress(null);
     const complexNos = complexes.map(f => f.complexNo).join(',');
 
+    const loadingToast = showLoading(`${complexes.length}개 단지 크롤링 시작 중...`);
     try {
       // 크롤링 시작
       const response = await fetch('/api/crawl', {
@@ -467,6 +500,8 @@ export default function ComplexesPage() {
 
       const data = await response.json();
 
+      dismissToast(loadingToast);
+
       if (response.ok && data.crawlId) {
         // 폴링으로 진행 상황 추적
         await pollCrawlStatus(data.crawlId);
@@ -474,13 +509,14 @@ export default function ComplexesPage() {
         // UI 갱신
         await fetchComplexes();
 
-        alert(`✅ 전체 크롤링 완료!\n\n크롤링된 단지: ${complexes.length}개`);
+        showSuccess(`전체 크롤링 완료! ${complexes.length}개 단지`);
       } else {
-        alert(data.error || '크롤링 실패');
+        showError(data.error || '크롤링 실패');
       }
     } catch (error) {
+      dismissToast(loadingToast);
       console.error('Failed to crawl all:', error);
-      alert('크롤링 중 오류가 발생했습니다.');
+      showError('크롤링 중 오류가 발생했습니다.');
     } finally {
       setCrawlingAll(false);
       setCrawlProgress(null);
@@ -1091,7 +1127,7 @@ export default function ComplexesPage() {
                       {crawling === complex.complexNo ? '⏳' : '🔄'}
                     </button>
                     <button
-                      onClick={() => handleDeleteComplex(complex.complexNo)}
+                      onClick={() => handleDeleteComplex(complex.complexNo, complex.complexName)}
                       className="px-4 py-2.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-sm font-semibold transition-colors"
                     >
                       🗑️
@@ -1421,6 +1457,42 @@ function SingleComplexCrawler({
           </p>
         </div>
       )}
+
+      {/* Delete Complex Confirmation Dialog */}
+      <Dialog
+        isOpen={deleteComplexDialog.isOpen}
+        onClose={() => setDeleteComplexDialog({ isOpen: false, complexNo: null, complexName: null })}
+        onConfirm={confirmDeleteComplex}
+        title="단지 삭제"
+        description={`${deleteComplexDialog.complexName}을(를) 완전히 삭제하시겠습니까?\n\n(DB와 모든 매물 데이터가 삭제됩니다)`}
+        confirmText="삭제"
+        cancelText="취소"
+        variant="danger"
+      />
+
+      {/* Crawl All Confirmation Dialog */}
+      <Dialog
+        isOpen={crawlAllDialog}
+        onClose={() => setCrawlAllDialog(false)}
+        onConfirm={confirmCrawlAll}
+        title="전체 크롤링"
+        description={`${complexes.length}개 단지를 모두 크롤링하시겠습니까?`}
+        confirmText="크롤링 시작"
+        cancelText="취소"
+        variant="default"
+      />
+
+      {/* Stop Tracking Confirmation Dialog */}
+      <Dialog
+        isOpen={stopTrackingDialog}
+        onClose={() => setStopTrackingDialog(false)}
+        onConfirm={confirmStopTracking}
+        title="크롤링 추적 중단"
+        description="⚠️ 중요: 현재 UI에서는 진행 상황 추적만 중단됩니다.\n\n백그라운드에서 실행 중인 크롤링은 계속 진행되며 완료됩니다.\n\n결과는 나중에 히스토리에서 확인할 수 있습니다."
+        confirmText="추적 중단"
+        cancelText="취소"
+        variant="default"
+      />
     </div>
   );
 }

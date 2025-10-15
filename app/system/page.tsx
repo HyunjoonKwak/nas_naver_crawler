@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import CrawlerHistory from "@/components/CrawlerHistory";
-import { ThemeToggle } from "@/components/ui";
+import { ThemeToggle, Dialog } from "@/components/ui";
+import { showSuccess, showError, showLoading, dismissToast } from "@/lib/toast";
 
 interface StatusData {
   crawler: {
@@ -93,6 +94,10 @@ export default function SystemPage() {
   const [isResetting, setIsResetting] = useState(false);
   const [deleteFilesOption, setDeleteFilesOption] = useState(true);
 
+  // Delete confirmation dialogs
+  const [deleteFileDialog, setDeleteFileDialog] = useState<{ isOpen: boolean; filename: string | null }>({ isOpen: false, filename: null });
+  const [bulkDeleteDialog, setBulkDeleteDialog] = useState(false);
+
   useEffect(() => {
     fetchStatus();
 
@@ -160,10 +165,11 @@ export default function SystemPage() {
 
   const handleDatabaseReset = async () => {
     if (resetConfirmText !== 'RESET DATABASE') {
-      alert('확인 텍스트를 정확히 입력해주세요: RESET DATABASE');
+      showError('확인 텍스트를 정확히 입력해주세요: RESET DATABASE');
       return;
     }
 
+    const loadingToast = showLoading('데이터베이스 초기화 중...');
     setIsResetting(true);
     try {
       const response = await fetch('/api/database/reset', {
@@ -177,8 +183,10 @@ export default function SystemPage() {
 
       const data = await response.json();
 
+      dismissToast(loadingToast);
+
       if (response.ok) {
-        alert('데이터베이스가 성공적으로 초기화되었습니다.');
+        showSuccess('데이터베이스가 성공적으로 초기화되었습니다.');
         setShowResetModal(false);
         setResetConfirmText('');
         // DB 통계 새로고침
@@ -186,51 +194,61 @@ export default function SystemPage() {
         // 상태 새로고침
         await fetchStatus();
       } else {
-        alert(`초기화 실패: ${data.error}`);
+        showError(`초기화 실패: ${data.error}`);
       }
     } catch (error) {
+      dismissToast(loadingToast);
       console.error('Database reset error:', error);
-      alert('데이터베이스 초기화 중 오류가 발생했습니다.');
+      showError('데이터베이스 초기화 중 오류가 발생했습니다.');
     } finally {
       setIsResetting(false);
     }
   };
 
-  const handleDelete = async (filename: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!confirm(`${filename} 파일을 삭제하시겠습니까?`)) {
-      return;
-    }
+  const handleDelete = async (filename: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setDeleteFileDialog({ isOpen: true, filename });
+  };
 
+  const confirmDelete = async () => {
+    if (!deleteFileDialog.filename) return;
+
+    const loadingToast = showLoading('파일 삭제 중...');
     try {
       const response = await fetch('/api/csv', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ filename }),
+        body: JSON.stringify({ filename: deleteFileDialog.filename }),
       });
 
+      dismissToast(loadingToast);
+
       if (response.ok) {
-        if (selectedFile?.filename === filename) {
+        showSuccess('파일이 삭제되었습니다.');
+        if (selectedFile?.filename === deleteFileDialog.filename) {
           setSelectedFile(null);
         }
         await fetchFiles();
       } else {
         const error = await response.json();
-        alert(`삭제 실패: ${error.error}`);
+        showError(`삭제 실패: ${error.error}`);
       }
     } catch (error) {
+      dismissToast(loadingToast);
       console.error('Delete error:', error);
-      alert('파일 삭제 중 오류가 발생했습니다.');
+      showError('파일 삭제 중 오류가 발생했습니다.');
+    } finally {
+      setDeleteFileDialog({ isOpen: false, filename: null });
     }
   };
 
   const handleBulkDelete = async () => {
     if (selectedFiles.size === 0) return;
+    setBulkDeleteDialog(true);
+  };
 
-    if (!confirm(`선택한 ${selectedFiles.size}개 파일을 삭제하시겠습니까?`)) {
-      return;
-    }
-
+  const confirmBulkDelete = async () => {
+    const loadingToast = showLoading(`${selectedFiles.size}개 파일 삭제 중...`);
     setIsDeleting(true);
     try {
       const deletePromises = Array.from(selectedFiles).map(filename =>
@@ -243,6 +261,9 @@ export default function SystemPage() {
 
       await Promise.all(deletePromises);
 
+      dismissToast(loadingToast);
+      showSuccess(`${selectedFiles.size}개 파일이 삭제되었습니다.`);
+
       if (selectedFile && selectedFiles.has(selectedFile.filename)) {
         setSelectedFile(null);
         setShowModal(false);
@@ -251,10 +272,12 @@ export default function SystemPage() {
       setSelectedFiles(new Set());
       await fetchFiles();
     } catch (error) {
+      dismissToast(loadingToast);
       console.error('Bulk delete error:', error);
-      alert('파일 삭제 중 오류가 발생했습니다.');
+      showError('파일 삭제 중 오류가 발생했습니다.');
     } finally {
       setIsDeleting(false);
+      setBulkDeleteDialog(false);
     }
   };
 
@@ -1351,6 +1374,30 @@ export default function SystemPage() {
           </div>
         )}
       </main>
+
+      {/* Delete File Confirmation Dialog */}
+      <Dialog
+        isOpen={deleteFileDialog.isOpen}
+        onClose={() => setDeleteFileDialog({ isOpen: false, filename: null })}
+        onConfirm={confirmDelete}
+        title="파일 삭제"
+        description={`${deleteFileDialog.filename} 파일을 삭제하시겠습니까?`}
+        confirmText="삭제"
+        cancelText="취소"
+        variant="danger"
+      />
+
+      {/* Bulk Delete Confirmation Dialog */}
+      <Dialog
+        isOpen={bulkDeleteDialog}
+        onClose={() => setBulkDeleteDialog(false)}
+        onConfirm={confirmBulkDelete}
+        title="파일 일괄 삭제"
+        description={`선택한 ${selectedFiles.size}개 파일을 삭제하시겠습니까?`}
+        confirmText="삭제"
+        cancelText="취소"
+        variant="danger"
+      />
     </div>
   );
 }

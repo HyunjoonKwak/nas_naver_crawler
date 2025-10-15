@@ -22,14 +22,14 @@ export const Badge = React.forwardRef<HTMLSpanElement, BadgeProps>(
 
     const variantClasses = {
       default: 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200',
-      primary: 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300',
-      secondary: 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-800 dark:text-indigo-300',
-      success: 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300',
-      warning: 'bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-300',
-      error: 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300',
-      sale: 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-800 dark:text-indigo-300', // 매매 (파란색 계열)
-      jeonse: 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300', // 전세 (녹색 계열)
-      monthly: 'bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-300', // 월세 (주황색 계열)
+      primary: 'bg-primary-100 dark:bg-primary-900/30 text-primary-800 dark:text-primary-300',
+      secondary: 'bg-secondary-100 dark:bg-secondary-900/30 text-secondary-800 dark:text-secondary-300',
+      success: 'bg-success-100 dark:bg-success-900/30 text-success-800 dark:text-success-300',
+      warning: 'bg-warning-100 dark:bg-warning-900/30 text-warning-800 dark:text-warning-300',
+      error: 'bg-danger-100 dark:bg-danger-900/30 text-danger-800 dark:text-danger-300',
+      sale: 'bg-secondary-100 dark:bg-secondary-900/30 text-secondary-800 dark:text-secondary-300', // 매매 (보라색 계열)
+      jeonse: 'bg-success-100 dark:bg-success-900/30 text-success-800 dark:text-success-300', // 전세 (녹색 계열)
+      monthly: 'bg-warning-100 dark:bg-warning-900/30 text-warning-800 dark:text-warning-300', // 월세 (주황색 계열)
     };
 
     const classes = `${baseClasses} ${variantClasses[variant]} ${className}`;
