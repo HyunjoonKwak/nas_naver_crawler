@@ -349,7 +349,7 @@ async function pollCrawlStatus(crawlId: string, timeout: number): Promise<{ succ
       });
 
       if (crawlHistory) {
-        if (crawlHistory.status === 'completed') {
+        if (crawlHistory.status === 'success' || crawlHistory.status === 'partial' || crawlHistory.status === 'completed') {
           return {
             success: true,
             articlesCount: crawlHistory.totalArticles,
