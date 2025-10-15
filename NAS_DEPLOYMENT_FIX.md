@@ -16,9 +16,16 @@ Error in PostgreSQL connection: terminating connection due to administrator comm
 
 ### 문제 1: Module not found ✅ **해결됨!**
 
-**원인**: Dockerfile에서 `hooks` 폴더와 `instrumentation.ts` 파일이 복사되지 않음
+**원인**: `docker-compose.yml`이 `Dockerfile`이 아닌 `Dockerfile.dev`를 사용하는데, `Dockerfile.dev`에 Next.js 애플리케이션 파일 복사 명령이 누락됨
 
 **해결**: ✅ **이미 수정 완료!** (최신 코드에 포함됨)
+
+`Dockerfile.dev`에 다음 파일들의 COPY 명령 추가:
+- `hooks` (SSE 이벤트 훅)
+- `instrumentation.ts` (스케줄러 자동 초기화)
+- `app`, `components`, `lib`, `scripts` (Next.js 앱)
+- `public` (정적 파일)
+- 설정 파일들 (next.config.js, tsconfig.json 등)
 
 최신 코드를 pull 받으면 자동으로 해결됩니다.
 

@@ -89,6 +89,15 @@ RUN npx prisma generate
 COPY logic ./logic
 COPY config.env ./
 
+# Next.js 애플리케이션 파일 복사
+COPY app ./app
+COPY components ./components
+COPY hooks ./hooks
+COPY public ./public
+COPY lib ./lib
+COPY scripts ./scripts
+COPY instrumentation.ts next.config.js tsconfig.json tailwind.config.js postcss.config.js ./
+
 # 필요한 디렉토리 생성
 RUN mkdir -p crawled_data logs && \
     chmod +x logic/nas_playwright_crawler.py
