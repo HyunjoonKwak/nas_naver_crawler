@@ -1,10 +1,13 @@
 /**
  * Server-Sent Events (SSE) 크롤링 이벤트 구독 훅
  * 모든 페이지에서 실시간 크롤링 알림을 받을 수 있음
+ *
+ * 전역 싱글톤 SSE 클라이언트를 사용하여 중복 연결 방지
  */
 
 import { useEffect, useRef, useState } from 'react';
 import { showSuccess, showError, showInfo } from '@/lib/toast';
+import { sseClient } from '@/lib/sseClient';
 
 interface CrawlEvent {
   type:
@@ -46,206 +49,153 @@ export function useCrawlEvents(onCrawlComplete?: () => void) {
     currentStep: '',
   });
 
-  const eventSourceRef = useRef<EventSource | null>(null);
-  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastCrawlIdRef = useRef<string | null>(null);
+  const onCrawlCompleteRef = useRef(onCrawlComplete);
+
+  // onCrawlComplete를 최신 상태로 유지
+  useEffect(() => {
+    onCrawlCompleteRef.current = onCrawlComplete;
+  }, [onCrawlComplete]);
 
   useEffect(() => {
-    let isMounted = true;
+    // 이벤트 핸들러
+    const handleEvent = (data: CrawlEvent) => {
+      console.log('[useCrawlEvents] Event received:', data.type);
 
-    const connect = () => {
-      if (!isMounted) return;
+      switch (data.type) {
+        case 'connected':
+          console.log('[useCrawlEvents] Connection established');
+          break;
 
-      console.log('[SSE] Connecting to event stream...');
+        case 'crawl-start':
+          if (data.crawlId) {
+            setCrawlStatus({
+              isActive: true,
+              crawlId: data.crawlId,
+              progress: 0,
+              currentStep: '크롤링 시작 중...',
+            });
 
-      try {
-        const eventSource = new EventSource('/api/events');
-        eventSourceRef.current = eventSource;
-
-        eventSource.onopen = () => {
-          console.log('[SSE] Connected');
-        };
-
-        eventSource.onmessage = (event) => {
-          try {
-            const data: CrawlEvent = JSON.parse(event.data);
-
-            console.log('[SSE] Event received:', data);
-
-            switch (data.type) {
-              case 'connected':
-                console.log('[SSE] Connection established');
-                break;
-
-              case 'crawl-start':
-                if (data.crawlId) {
-                  setCrawlStatus({
-                    isActive: true,
-                    crawlId: data.crawlId,
-                    progress: 0,
-                    currentStep: '크롤링 시작 중...',
-                  });
-
-                  // 새로운 크롤링이면 토스트 알림
-                  if (lastCrawlIdRef.current !== data.crawlId) {
-                    showInfo(`🚀 크롤링이 시작되었습니다 (${data.data?.totalComplexes}개 단지)`);
-                    lastCrawlIdRef.current = data.crawlId;
-                  }
-                }
-                break;
-
-              case 'crawl-progress':
-                if (data.crawlId && data.data) {
-                  setCrawlStatus({
-                    isActive: true,
-                    crawlId: data.crawlId,
-                    progress: data.data.progress || 0,
-                    currentStep: data.data.currentStep || '크롤링 중...',
-                  });
-                }
-                break;
-
-              case 'crawl-complete':
-                if (data.crawlId) {
-                  setCrawlStatus({
-                    isActive: false,
-                    crawlId: null,
-                    progress: 100,
-                    currentStep: '완료',
-                  });
-
-                  showSuccess(`✅ 크롤링이 완료되었습니다 (${data.data?.articlesCount || 0}개 매물)`);
-
-                  // 완료 콜백 실행
-                  if (onCrawlComplete) {
-                    setTimeout(onCrawlComplete, 500);
-                  }
-
-                  lastCrawlIdRef.current = null;
-                }
-                break;
-
-              case 'crawl-failed':
-                if (data.crawlId) {
-                  setCrawlStatus({
-                    isActive: false,
-                    crawlId: null,
-                    progress: 0,
-                    currentStep: '실패',
-                  });
-
-                  showError(`❌ 크롤링이 실패했습니다: ${data.data?.errorMessage || '알 수 없는 오류'}`);
-                  lastCrawlIdRef.current = null;
-                }
-                break;
-
-              case 'schedule-start':
-                if (data.data?.scheduleId && data.data?.scheduleName) {
-                  setCrawlStatus({
-                    isActive: true,
-                    crawlId: data.data.scheduleId,
-                    progress: 0,
-                    currentStep: '스케줄 실행 중...',
-                  });
-
-                  showInfo(
-                    `📅 스케줄 "${data.data.scheduleName}" 실행 시작 (${data.data.totalComplexes}개 단지)`
-                  );
-                  lastCrawlIdRef.current = data.data.scheduleId;
-                }
-                break;
-
-              case 'schedule-complete':
-                if (data.data?.scheduleId && data.data?.scheduleName) {
-                  setCrawlStatus({
-                    isActive: false,
-                    crawlId: null,
-                    progress: 100,
-                    currentStep: '완료',
-                  });
-
-                  const durationSec = Math.floor((data.data.duration || 0) / 1000);
-                  showSuccess(
-                    `✅ 스케줄 "${data.data.scheduleName}" 완료 (${data.data.articlesCount || 0}개 매물, ${durationSec}초)`
-                  );
-
-                  // 완료 콜백 실행 (스케줄 페이지 갱신용)
-                  if (onCrawlComplete) {
-                    setTimeout(onCrawlComplete, 500);
-                  }
-
-                  lastCrawlIdRef.current = null;
-                }
-                break;
-
-              case 'schedule-failed':
-                if (data.data?.scheduleId && data.data?.scheduleName) {
-                  setCrawlStatus({
-                    isActive: false,
-                    crawlId: null,
-                    progress: 0,
-                    currentStep: '실패',
-                  });
-
-                  showError(
-                    `❌ 스케줄 "${data.data.scheduleName}" 실패: ${data.data?.errorMessage || '알 수 없는 오류'}`
-                  );
-                  lastCrawlIdRef.current = null;
-                }
-                break;
+            // 새로운 크롤링이면 토스트 알림
+            if (lastCrawlIdRef.current !== data.crawlId) {
+              showInfo(`🚀 크롤링이 시작되었습니다 (${data.data?.totalComplexes}개 단지)`);
+              lastCrawlIdRef.current = data.crawlId;
             }
-          } catch (error) {
-            console.error('[SSE] Failed to parse event:', error);
           }
-        };
+          break;
 
-        eventSource.onerror = (error) => {
-          console.error('[SSE] Connection error:', error);
+        case 'crawl-progress':
+          if (data.crawlId && data.data) {
+            setCrawlStatus({
+              isActive: true,
+              crawlId: data.crawlId,
+              progress: data.data.progress || 0,
+              currentStep: data.data.currentStep || '크롤링 중...',
+            });
+          }
+          break;
 
-          // EventSource의 readyState 확인
-          // CLOSED(2)일 때만 재연결 시도
-          // CONNECTING(0)이나 OPEN(1)이면 브라우저가 자동 재연결 중
-          if (eventSource.readyState === EventSource.CLOSED) {
-            console.log('[SSE] Connection closed, reconnecting in 3 seconds...');
-            eventSource.close();
+        case 'crawl-complete':
+          if (data.crawlId) {
+            setCrawlStatus({
+              isActive: false,
+              crawlId: null,
+              progress: 100,
+              currentStep: '완료',
+            });
 
-            if (isMounted) {
-              reconnectTimeoutRef.current = setTimeout(() => {
-                if (isMounted) {
-                  connect();
-                }
-              }, 3000);
+            showSuccess(`✅ 크롤링이 완료되었습니다 (${data.data?.articlesCount || 0}개 매물)`);
+
+            // 완료 콜백 실행
+            if (onCrawlCompleteRef.current) {
+              setTimeout(onCrawlCompleteRef.current, 500);
             }
-          } else {
-            // 자동 재연결 중이거나 연결 중이면 로그만 남김
-            console.log(`[SSE] Connection error (state: ${eventSource.readyState}), waiting for auto-reconnect...`);
-          }
-        };
 
-      } catch (error) {
-        console.error('[SSE] Failed to create EventSource:', error);
+            lastCrawlIdRef.current = null;
+          }
+          break;
+
+        case 'crawl-failed':
+          if (data.crawlId) {
+            setCrawlStatus({
+              isActive: false,
+              crawlId: null,
+              progress: 0,
+              currentStep: '실패',
+            });
+
+            showError(`❌ 크롤링이 실패했습니다: ${data.data?.errorMessage || '알 수 없는 오류'}`);
+            lastCrawlIdRef.current = null;
+          }
+          break;
+
+        case 'schedule-start':
+          if (data.data?.scheduleId && data.data?.scheduleName) {
+            setCrawlStatus({
+              isActive: true,
+              crawlId: data.data.scheduleId,
+              progress: 0,
+              currentStep: '스케줄 실행 중...',
+            });
+
+            showInfo(
+              `📅 스케줄 "${data.data.scheduleName}" 실행 시작 (${data.data.totalComplexes}개 단지)`
+            );
+            lastCrawlIdRef.current = data.data.scheduleId;
+          }
+          break;
+
+        case 'schedule-complete':
+          if (data.data?.scheduleId && data.data?.scheduleName) {
+            setCrawlStatus({
+              isActive: false,
+              crawlId: null,
+              progress: 100,
+              currentStep: '완료',
+            });
+
+            const durationSec = Math.floor((data.data.duration || 0) / 1000);
+            showSuccess(
+              `✅ 스케줄 "${data.data.scheduleName}" 완료 (${data.data.articlesCount || 0}개 매물, ${durationSec}초)`
+            );
+
+            // 완료 콜백 실행 (스케줄 페이지 갱신용)
+            if (onCrawlCompleteRef.current) {
+              setTimeout(onCrawlCompleteRef.current, 500);
+            }
+
+            lastCrawlIdRef.current = null;
+          }
+          break;
+
+        case 'schedule-failed':
+          if (data.data?.scheduleId && data.data?.scheduleName) {
+            setCrawlStatus({
+              isActive: false,
+              crawlId: null,
+              progress: 0,
+              currentStep: '실패',
+            });
+
+            showError(
+              `❌ 스케줄 "${data.data.scheduleName}" 실패: ${data.data?.errorMessage || '알 수 없는 오류'}`
+            );
+            lastCrawlIdRef.current = null;
+          }
+          break;
       }
     };
 
-    // 초기 연결
-    connect();
+    // 싱글톤 클라이언트에 리스너 등록
+    console.log('[useCrawlEvents] Registering listener');
+    sseClient.addListener(handleEvent);
 
-    // Cleanup
+    // Cleanup: 리스너 제거
     return () => {
-      isMounted = false;
-
-      if (eventSourceRef.current) {
-        console.log('[SSE] Closing connection');
-        eventSourceRef.current.close();
-        eventSourceRef.current = null;
-      }
-
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current);
-        reconnectTimeoutRef.current = null;
-      }
+      console.log('[useCrawlEvents] Unregistering listener');
+      sseClient.removeListener(handleEvent);
     };
-  }, [onCrawlComplete]);
+  }, []); // 빈 의존성 배열: 마운트/언마운트 시에만 실행
 
   return crawlStatus;
 }
