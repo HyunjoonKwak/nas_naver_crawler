@@ -80,7 +80,13 @@ export async function GET(request: NextRequest) {
     try {
       const rawData = fs.readFileSync(filePath, 'utf-8');
       crawlData = JSON.parse(rawData);
-      console.log('[ANALYTICS] Parsed data, results count:', crawlData.results?.length || 0);
+
+      // 파일 구조 확인: 배열인지 객체인지
+      const results = Array.isArray(crawlData) ? crawlData : (crawlData.results || []);
+      console.log('[ANALYTICS] Parsed data, results count:', results.length);
+      console.log('[ANALYTICS] File structure:', Array.isArray(crawlData) ? 'array' : 'object');
+
+      crawlData = results; // 배열로 정규화
     } catch (error: any) {
       console.error('[ANALYTICS] Failed to read/parse file:', error);
       return NextResponse.json({
@@ -90,8 +96,8 @@ export async function GET(request: NextRequest) {
     }
 
     // 선택된 단지의 데이터만 필터링
-    const filteredResults = crawlData.results.filter((result: any) => {
-      const complexNo = result.overview?.complexNo || '';
+    const filteredResults = crawlData.filter((result: any) => {
+      const complexNo = result.crawling_info?.complex_no || result.overview?.complexNo || '';
       return complexNos.includes(complexNo);
     });
 
@@ -99,10 +105,13 @@ export async function GET(request: NextRequest) {
 
     if (filteredResults.length === 0) {
       // 사용 가능한 단지 목록 조회
-      const availableComplexes = crawlData.results.map((r: any) => ({
-        complexNo: r.overview?.complexNo,
-        complexName: r.overview?.complexName,
-      }));
+      const availableComplexes = crawlData.map((r: any) => {
+        const info = r.crawling_info || r.overview || {};
+        return {
+          complexNo: info.complex_no || info.complexNo || 'Unknown',
+          complexName: info.complex_name || info.complexName || r.articles?.articleList?.[0]?.articleName || 'Unknown',
+        };
+      });
 
       console.log('[ANALYTICS] Available complexes:', availableComplexes);
 
@@ -137,14 +146,22 @@ export async function GET(request: NextRequest) {
  * 단일 단지 심층 분석
  */
 function getSingleAnalysis(result: any, tradeTypes?: string[]) {
-  if (!result || !result.articles) {
+  if (!result) {
     return NextResponse.json({
       success: false,
       error: 'No data found for selected complex',
     });
   }
 
-  let articles = result.articles;
+  // 파일 구조에 따라 articles 추출
+  let articles = result.articles?.articleList || result.articles || [];
+
+  if (!articles || articles.length === 0) {
+    return NextResponse.json({
+      success: false,
+      error: 'No articles found for selected complex',
+    });
+  }
 
   // 거래유형 필터링
   if (tradeTypes && tradeTypes.length > 0) {
@@ -230,14 +247,24 @@ function getSingleAnalysis(result: any, tradeTypes?: string[]) {
       return aNum - bNum;
     });
 
+  // 단지 정보 추출 (파일 구조에 따라)
+  const complexInfo = result.crawling_info || result.overview || {};
+  const complexNo = complexInfo.complex_no || complexInfo.complexNo || 'Unknown';
+
+  // 첫 번째 article에서 단지명 추출 (overview가 없는 경우)
+  const complexName = complexInfo.complex_name ||
+                      complexInfo.complexName ||
+                      articles[0]?.articleName ||
+                      `단지 ${complexNo}`;
+
   return NextResponse.json({
     success: true,
     mode: 'single',
     complex: {
-      complexNo: result.overview.complexNo,
-      complexName: result.overview.complexName,
-      totalHousehold: result.overview.totalHousehold,
-      totalDong: result.overview.totalDong,
+      complexNo,
+      complexName,
+      totalHousehold: complexInfo.totalHousehold || null,
+      totalDong: complexInfo.totalDong || null,
     },
     statistics: {
       totalArticles: articles.length,
@@ -268,7 +295,8 @@ function getCompareAnalysis(results: any[], tradeTypes?: string[]) {
   }
 
   const comparisons = results.map((result) => {
-    let articles = result.articles || [];
+    // 파일 구조에 따라 articles 추출
+    let articles = result.articles?.articleList || result.articles || [];
 
     // 거래유형 필터링
     if (tradeTypes && tradeTypes.length > 0) {
@@ -297,9 +325,17 @@ function getCompareAnalysis(results: any[], tradeTypes?: string[]) {
       return acc;
     }, {});
 
+    // 단지 정보 추출
+    const complexInfo = result.crawling_info || result.overview || {};
+    const complexNo = complexInfo.complex_no || complexInfo.complexNo || 'Unknown';
+    const complexName = complexInfo.complex_name ||
+                        complexInfo.complexName ||
+                        articles[0]?.articleName ||
+                        `단지 ${complexNo}`;
+
     return {
-      complexNo: result.overview.complexNo,
-      complexName: result.overview.complexName,
+      complexNo,
+      complexName,
       totalArticles: articles.length,
       avgPrice,
       minPrice: allPrices.length > 0 ? Math.min(...allPrices) : 0,
