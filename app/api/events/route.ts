@@ -7,6 +7,7 @@ import { NextRequest } from 'next/server';
 import { eventBroadcaster } from '@/lib/eventBroadcaster';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 300; // 5분 (개발 모드에서는 무제한)
 
 export async function GET(request: NextRequest) {
   // SSE 스트림 생성
