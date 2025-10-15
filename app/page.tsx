@@ -4,6 +4,12 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Navigation } from "@/components/Navigation";
 import { useCrawlEvents } from "@/hooks/useCrawlEvents";
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
+import { arrayMove, SortableContext, sortableKeyboardCoordinates, rectSortingStrategy } from '@dnd-kit/sortable';
+import { useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { showSuccess, showError } from "@/lib/toast";
+import { SortableFavoriteCard } from "@/components/SortableFavoriteCard";
 
 interface FavoriteComplex {
   complexNo: string;
@@ -27,6 +33,7 @@ interface FavoriteWithStats extends FavoriteComplex {
 export default function Home() {
   const [refresh, setRefresh] = useState(0);
   const [favorites, setFavorites] = useState<FavoriteWithStats[]>([]);
+  const [showAll, setShowAll] = useState(false); // 더보기 상태
   const [stats, setStats] = useState({
     totalFavorites: 0,
     totalComplexes: 0, // 매물이 있는 단지 수
@@ -140,7 +147,7 @@ export default function Home() {
         return fav;
       });
 
-      setFavorites(favoritesWithStats.slice(0, 6)); // 최근 6개
+      setFavorites(favoritesWithStats); // 전체 저장
 
       // 최근 크롤링 시간 가져오기 (DB의 최근 크롤링 히스토리에서)
       let lastCrawlTime = null;
@@ -304,8 +311,9 @@ export default function Home() {
                 </Link>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {favorites.map((fav) => (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {(showAll ? favorites : favorites.slice(0, 6)).map((fav) => (
                   <Link
                     key={fav.complexNo}
                     href={`/complex/${fav.complexNo}`}
@@ -367,8 +375,21 @@ export default function Home() {
                       </div>
                     )}
                   </Link>
-                ))}
-              </div>
+                  ))}
+                </div>
+
+                {/* 더보기 버튼 */}
+                {favorites.length > 6 && (
+                  <div className="mt-6 text-center">
+                    <button
+                      onClick={() => setShowAll(!showAll)}
+                      className="px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-lg font-semibold shadow-lg transition-all hover:shadow-xl"
+                    >
+                      {showAll ? '접기 ▲' : `더보기 (${favorites.length - 6}개 더) ▼`}
+                    </button>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>

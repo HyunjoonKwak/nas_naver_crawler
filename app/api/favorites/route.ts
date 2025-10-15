@@ -424,3 +424,57 @@ export async function PATCH(request: NextRequest) {
   }
 }
 
+// PUT: 관심 단지 순서 변경
+export async function PUT(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const { complexNos } = body; // 새로운 순서의 complexNo 배열
+
+    if (!Array.isArray(complexNos) || complexNos.length === 0) {
+      return NextResponse.json(
+        { error: 'complexNos 배열이 필요합니다.' },
+        { status: 400 }
+      );
+    }
+
+    const favorites = await readFavorites();
+
+    // 새로운 순서대로 재정렬
+    const reorderedFavorites: FavoriteComplex[] = [];
+    complexNos.forEach((complexNo, index) => {
+      const favorite = favorites.find(f => f.complexNo === complexNo);
+      if (favorite) {
+        reorderedFavorites.push({
+          ...favorite,
+          order: index
+        });
+      }
+    });
+
+    // 순서가 지정되지 않은 단지는 뒤에 추가
+    favorites.forEach(fav => {
+      if (!complexNos.includes(fav.complexNo)) {
+        reorderedFavorites.push({
+          ...fav,
+          order: reorderedFavorites.length
+        });
+      }
+    });
+
+    await writeFavorites(reorderedFavorites);
+
+    return NextResponse.json({
+      success: true,
+      message: '관심 단지 순서가 변경되었습니다.',
+      favorites: reorderedFavorites
+    });
+
+  } catch (error: any) {
+    console.error('Favorites reorder error:', error);
+    return NextResponse.json(
+      { error: '순서 변경 중 오류가 발생했습니다.', details: error.message },
+      { status: 500 }
+    );
+  }
+}
+
