@@ -61,6 +61,9 @@ export default function ComplexesPage() {
   const [complexInfo, setComplexInfo] = useState<ComplexInfo | null>(null);
   const [fetchingInfo, setFetchingInfo] = useState(false);
 
+  // 최근 일회성 조회 단지 (빠른 등록용)
+  const [recentOneTimeCrawl, setRecentOneTimeCrawl] = useState<{complexNo: string, complexName: string} | null>(null);
+
   // 뷰 모드
   const [viewMode, setViewMode] = useState<'card' | 'list'>('card');
 
@@ -821,6 +824,35 @@ export default function ComplexesPage() {
           {showAddForm && (
             <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
               <div className="flex flex-col gap-3">
+                {/* 최근 일회성 조회 단지 빠른 등록 */}
+                {recentOneTimeCrawl && !complexInfo && (
+                  <div className="bg-green-50 dark:bg-green-900/20 border-2 border-green-400 dark:border-green-600 rounded-lg p-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-green-900 dark:text-green-200">
+                          💡 최근 조회한 단지가 있습니다
+                        </p>
+                        <p className="text-xs text-green-700 dark:text-green-300 mt-1">
+                          {recentOneTimeCrawl.complexName} ({recentOneTimeCrawl.complexNo})
+                        </p>
+                      </div>
+                      <button
+                        onClick={async () => {
+                          // 단지 정보 직접 설정 (API 조회 생략)
+                          setComplexInfo({
+                            complexNo: recentOneTimeCrawl.complexNo,
+                            complexName: recentOneTimeCrawl.complexName,
+                          });
+                          setNewComplexNo(recentOneTimeCrawl.complexNo);
+                        }}
+                        className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors font-medium text-sm whitespace-nowrap"
+                      >
+                        ⚡ 빠른 등록
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 {/* 단지번호 입력 */}
                 <div className="flex gap-3">
                   <input
@@ -1198,7 +1230,12 @@ export default function ComplexesPage() {
               </div>
             </div>
 
-            <SingleComplexCrawler onCrawlComplete={fetchComplexes} />
+            <SingleComplexCrawler
+              onCrawlComplete={fetchComplexes}
+              onCrawlSuccess={(complexNo, complexName) => {
+                setRecentOneTimeCrawl({ complexNo, complexName });
+              }}
+            />
           </div>
         </div>
       </main>
@@ -1207,7 +1244,13 @@ export default function ComplexesPage() {
 }
 
 // 단일 단지 크롤링 컴포넌트
-function SingleComplexCrawler({ onCrawlComplete }: { onCrawlComplete: () => void }) {
+function SingleComplexCrawler({
+  onCrawlComplete,
+  onCrawlSuccess
+}: {
+  onCrawlComplete: () => void;
+  onCrawlSuccess?: (complexNo: string, complexName: string) => void;
+}) {
   const [complexNo, setComplexNo] = useState("");
   const [crawling, setCrawling] = useState(false);
   const [message, setMessage] = useState("");
@@ -1249,18 +1292,34 @@ function SingleComplexCrawler({ onCrawlComplete }: { onCrawlComplete: () => void
       if (response.ok && data.crawlId) {
         // 폴링으로 결과 대기
         await pollCrawlStatus(data.crawlId);
-        setMessage(`✅ 단지 ${extracted} 크롤링 완료!`);
+
+        // DB에서 단지 정보 조회 (단지명 가져오기)
+        let complexName = extracted;
+        try {
+          const complexResponse = await fetch(`/api/complexes`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ complexNo: extracted })
+          });
+          const complexData = await complexResponse.json();
+          if (complexResponse.ok && complexData.complex) {
+            complexName = complexData.complex.complexName || extracted;
+          }
+        } catch (e) {
+          console.warn('단지명 조회 실패, 단지번호 사용:', e);
+        }
+
+        setMessage(`✅ ${complexName} 크롤링 완료!`);
         setComplexNo("");
 
-        // 크롤링된 단지 번호 저장 (결과 보기 버튼용)
-        const crawledComplexNo = extracted;
+        // 상위 컴포넌트에 크롤링 성공 정보 전달 (빠른 등록용)
+        if (onCrawlSuccess) {
+          onCrawlSuccess(extracted, complexName);
+        }
 
-        // 완료 메시지와 함께 결과 보기 버튼 표시
-        setMessage(`✅ 단지 ${extracted} 크롤링 완료!`);
-
-        // 3초 후 자동으로 상세 페이지로 이동
+        // 2초 후 자동으로 상세 페이지로 이동
         setTimeout(() => {
-          window.location.href = `/complex/${crawledComplexNo}`;
+          window.location.href = `/complex/${extracted}`;
         }, 2000);
 
         onCrawlComplete();
