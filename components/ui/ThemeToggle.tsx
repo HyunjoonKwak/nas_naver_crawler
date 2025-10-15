@@ -24,11 +24,23 @@ export const ThemeToggle: React.FC = () => {
       const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches
         ? 'dark'
         : 'light';
-      root.classList.toggle('dark', systemTheme === 'dark');
+
+      if (systemTheme === 'dark') {
+        root.classList.add('dark');
+      } else {
+        root.classList.remove('dark');
+      }
     } else {
       // 사용자 선택 적용
-      root.classList.toggle('dark', newTheme === 'dark');
+      if (newTheme === 'dark') {
+        root.classList.add('dark');
+      } else {
+        root.classList.remove('dark');
+      }
     }
+
+    // 디버깅용 콘솔 로그
+    console.log('Theme applied:', newTheme, 'HTML has dark class:', root.classList.contains('dark'));
   };
 
   const changeTheme = (newTheme: Theme) => {
@@ -143,13 +155,19 @@ export const ThemeToggle: React.FC = () => {
   };
 
   return (
-    <button
-      onClick={cycleTheme}
-      className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 transition-colors"
-      aria-label={`현재: ${getLabel()}, 클릭하여 전환`}
-      title={getLabel()}
-    >
-      {getIcon()}
-    </button>
+    <div className="flex items-center gap-2">
+      {/* 현재 모드 표시 (디버깅용) */}
+      <span className="hidden sm:inline text-xs text-gray-600 dark:text-gray-400">
+        {getLabel()}
+      </span>
+      <button
+        onClick={cycleTheme}
+        className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 transition-colors border-2 border-gray-300 dark:border-gray-600"
+        aria-label={`현재: ${getLabel()}, 클릭하여 전환`}
+        title={getLabel()}
+      >
+        {getIcon()}
+      </button>
+    </div>
   );
 };
