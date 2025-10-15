@@ -31,11 +31,14 @@ model Complex {
   updatedAt      DateTime  @updatedAt
 
   // 관계
-  articles  Article[]
-  favorites Favorite[]
+  articles      Article[]
+  favorites     Favorite[]
+  complexGroups ComplexGroup[]
 
   @@index([complexNo])
   @@index([complexName])
+  @@index([beopjungdong])
+  @@index([haengjeongdong])
   @@map("complexes")
 }
 
@@ -198,4 +201,39 @@ model ScheduleLog {
   @@index([scheduleId])
   @@index([executedAt])
   @@map("schedule_logs")
+}
+
+// 단지 그룹 테이블
+model Group {
+  id          String   @id @default(uuid())
+  name        String   // 그룹 이름 (예: "강남구", "관심지역", "투자후보")
+  description String?  // 그룹 설명
+  color       String?  // 그룹 색상 (UI 표시용, 예: "#3b82f6")
+  type        String   @default("custom") // custom(사용자 정의), auto(자동 생성)
+  autoRule    String?  // 자동 그룹 규칙 (예: "beopjungdong:강남구")
+  order       Int      @default(0) // 정렬 순서
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // 관계
+  complexGroups ComplexGroup[]
+
+  @@index([type])
+  @@index([order])
+  @@map("groups")
+}
+
+// 단지-그룹 관계 테이블 (다대다)
+model ComplexGroup {
+  id        String   @id @default(uuid())
+  complexId String   // 단지 FK
+  groupId   String   // 그룹 FK
+  complex   Complex  @relation(fields: [complexId], references: [id], onDelete: Cascade)
+  group     Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([complexId, groupId]) // 하나의 단지는 같은 그룹에 한번만
+  @@index([complexId])
+  @@index([groupId])
+  @@map("complex_groups")
 }

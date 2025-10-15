@@ -26,6 +26,9 @@ export async function GET(request: NextRequest) {
 
     // 쿼리 파라미터
     const search = searchParams.get('search'); // 단지명 또는 주소 검색
+    const groupId = searchParams.get('groupId'); // 그룹 필터
+    const sortBy = searchParams.get('sortBy') || 'updatedAt'; // 정렬 기준
+    const sortOrder = searchParams.get('sortOrder') || 'desc'; // 정렬 순서
     const limit = parseInt(searchParams.get('limit') || '50');
     const offset = parseInt(searchParams.get('offset') || '0');
 
@@ -42,6 +45,36 @@ export async function GET(request: NextRequest) {
       ];
     }
 
+    // 그룹 필터링
+    if (groupId && groupId !== 'all') {
+      where.complexGroups = {
+        some: {
+          groupId: groupId
+        }
+      };
+    }
+
+    // 정렬 조건 구성
+    let orderBy: any = {};
+    switch (sortBy) {
+      case 'name':
+        orderBy = { complexName: sortOrder };
+        break;
+      case 'region':
+        orderBy = { beopjungdong: sortOrder };
+        break;
+      case 'createdAt':
+        orderBy = { createdAt: sortOrder };
+        break;
+      case 'complexNo':
+        orderBy = { complexNo: sortOrder };
+        break;
+      case 'updatedAt':
+      default:
+        orderBy = { updatedAt: sortOrder };
+        break;
+    }
+
     // 단지 조회
     const complexes = await prisma.complex.findMany({
       where,
@@ -52,10 +85,19 @@ export async function GET(request: NextRequest) {
             favorites: true, // 즐겨찾기 여부 (DB)
           },
         },
+        complexGroups: {
+          include: {
+            group: {
+              select: {
+                id: true,
+                name: true,
+                color: true
+              }
+            }
+          }
+        }
       },
-      orderBy: {
-        updatedAt: 'desc',
-      },
+      orderBy,
       take: limit,
       skip: offset,
     });
@@ -67,7 +109,7 @@ export async function GET(request: NextRequest) {
     const favoriteComplexNos = await readFavoritesJson();
 
     // 응답 포맷팅
-    const results = complexes.map(complex => ({
+    const results = complexes.map((complex: any) => ({
       id: complex.id,
       complexNo: complex.complexNo,
       complexName: complex.complexName,
@@ -82,9 +124,15 @@ export async function GET(request: NextRequest) {
       jibunAddress: complex.jibunAddress,
       beopjungdong: complex.beopjungdong,
       haengjeongdong: complex.haengjeongdong,
-      articleCount: complex._count.articles,
+      articleCount: complex._count?.articles || 0,
       // favorites.json에만 의존 (DB Favorite 테이블은 관계형 데이터용)
       isFavorite: favoriteComplexNos.has(complex.complexNo),
+      // 그룹 정보 추가
+      groups: complex.complexGroups?.map((cg: any) => ({
+        id: cg.group.id,
+        name: cg.group.name,
+        color: cg.group.color
+      })) || [],
       createdAt: complex.createdAt.toISOString(),
       updatedAt: complex.updatedAt.toISOString(),
     }));

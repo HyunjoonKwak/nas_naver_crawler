@@ -4,7 +4,16 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Navigation } from "@/components/Navigation";
 import { ThemeToggle, Dialog } from "@/components/ui";
+import { GroupManagement } from "@/components/GroupManagement";
+import { ComplexSortFilter } from "@/components/ComplexSortFilter";
+import { ComplexGroupBadges } from "@/components/ComplexGroupBadges";
 import { showSuccess, showError, showLoading, dismissToast, showInfo } from "@/lib/toast";
+
+interface ComplexGroup {
+  id: string;
+  name: string;
+  color?: string;
+}
 
 interface ComplexItem {
   id: string;
@@ -19,8 +28,11 @@ interface ComplexItem {
   address?: string;
   roadAddress?: string;
   jibunAddress?: string;
+  beopjungdong?: string;
+  haengjeongdong?: string;
   articleCount: number;
   isFavorite: boolean;
+  groups: ComplexGroup[];
   createdAt: string;
   updatedAt: string;
   addedAt?: string;
@@ -69,6 +81,12 @@ export default function ComplexesPage() {
   // 뷰 모드
   const [viewMode, setViewMode] = useState<'card' | 'list'>('card');
 
+  // 그룹 필터 및 정렬
+  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useState<string>('updatedAt');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [showGroupSidebar, setShowGroupSidebar] = useState(false);
+
   // 드래그 앤 드롭
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
 
@@ -100,7 +118,7 @@ export default function ComplexesPage() {
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [crawlingAll, crawling]);
+  }, [crawlingAll, crawling, selectedGroupId, sortBy, sortOrder]);
 
   // Note: checkOngoingCrawl() function removed - no longer needed
 
@@ -147,13 +165,23 @@ export default function ComplexesPage() {
     console.log('[CLIENT_FETCH] 단지목록 조회 시작');
     setLoading(true);
     try {
-      const response = await fetch('/api/complexes');
+      const params = new URLSearchParams();
+      if (selectedGroupId) {
+        params.append('groupId', selectedGroupId);
+      }
+      params.append('sortBy', sortBy);
+      params.append('sortOrder', sortOrder);
+
+      const response = await fetch(`/api/complexes?${params.toString()}`);
       const data = await response.json();
 
       const favorites = (data.complexes || []).filter((c: any) => c.isFavorite);
       console.log('[CLIENT_FETCH] 단지목록 조회 완료:', {
         total: data.complexes?.length || 0,
         favorites: favorites.length,
+        groupFilter: selectedGroupId || 'all',
+        sortBy,
+        sortOrder,
         favoriteList: favorites.map((f: any) => ({
           complexNo: f.complexNo,
           complexName: f.complexName,
@@ -634,6 +662,22 @@ export default function ComplexesPage() {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="flex gap-6">
+          {/* 그룹 사이드바 */}
+          {showGroupSidebar && (
+            <div className="w-80 flex-shrink-0">
+              <div className="sticky top-8">
+                <GroupManagement
+                  selectedGroupId={selectedGroupId}
+                  onGroupSelect={setSelectedGroupId}
+                  onGroupsChange={fetchComplexes}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* 메인 컨텐츠 */}
+          <div className="flex-1 min-w-0">
         {/* Crawling Status Banner */}
         {(crawlingAll || crawling) && (
           <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-2 border-blue-400 dark:border-blue-600 rounded-lg p-4 mb-6 shadow-lg">
@@ -715,8 +759,15 @@ export default function ComplexesPage() {
 
         {/* Action Bar */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4 mb-6">
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
+          <div className="flex items-center justify-between gap-4 flex-wrap">
+            <div className="flex items-center gap-3 flex-wrap">
+              <button
+                onClick={() => setShowGroupSidebar(!showGroupSidebar)}
+                className="px-4 py-2 rounded-lg transition-colors font-medium bg-purple-600 hover:bg-purple-700 text-white"
+                title="그룹 관리"
+              >
+                📁 그룹
+              </button>
               <button
                 onClick={() => setShowAddForm(!showAddForm)}
                 disabled={crawlingAll || !!crawling}
@@ -756,7 +807,16 @@ export default function ComplexesPage() {
               </button>
             </div>
 
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-4 flex-wrap">
+              {/* 정렬 필터 */}
+              <ComplexSortFilter
+                sortBy={sortBy}
+                sortOrder={sortOrder}
+                onSortChange={(newSortBy, newSortOrder) => {
+                  setSortBy(newSortBy);
+                  setSortOrder(newSortOrder);
+                }}
+              />
               {/* View Mode Toggle */}
               <div className="flex bg-gray-200 dark:bg-gray-700 rounded-lg p-1">
                 <button
@@ -989,10 +1049,32 @@ export default function ComplexesPage() {
                   </div>
 
                   {/* 단지번호 */}
-                  <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mb-4">
+                  <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mb-2">
                     <span>📍</span>
                     <span>단지번호 {complex.complexNo}</span>
                   </div>
+
+                  {/* 그룹 배지 */}
+                  {complex.groups && complex.groups.length > 0 && (
+                    <div className="mb-3">
+                      <ComplexGroupBadges
+                        complexId={complex.id}
+                        complexName={complex.complexName}
+                        groups={complex.groups}
+                        onGroupsChange={fetchComplexes}
+                      />
+                    </div>
+                  )}
+                  {complex.groups && complex.groups.length === 0 && (
+                    <div className="mb-3">
+                      <ComplexGroupBadges
+                        complexId={complex.id}
+                        complexName={complex.complexName}
+                        groups={[]}
+                        onGroupsChange={fetchComplexes}
+                      />
+                    </div>
+                  )}
 
                   {/* 구분선 */}
                   <div className="border-t border-gray-200 dark:border-gray-700 my-4"></div>
@@ -1205,7 +1287,6 @@ export default function ComplexesPage() {
             />
           </div>
         </div>
-      </main>
 
       {/* Delete Complex Confirmation Dialog */}
       <Dialog
@@ -1424,6 +1505,9 @@ function SingleComplexCrawler({
           </p>
         </div>
       )}
+          </div> {/* 메인 컨텐츠 닫기 */}
+        </div> {/* flex 컨테이너 닫기 */}
+      </main>
     </div>
   );
 }
