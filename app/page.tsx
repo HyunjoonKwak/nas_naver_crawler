@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { Navigation } from "@/components/Navigation";
+import { showSuccess, showError, showInfo } from "@/lib/toast";
 
 interface FavoriteComplex {
   complexNo: string;
@@ -35,6 +36,20 @@ export default function Home() {
   const [currentTime, setCurrentTime] = useState<Date | null>(null);
   const [isMounted, setIsMounted] = useState(false);
 
+  // 크롤링 상태 모니터링
+  const [crawlingStatus, setCrawlingStatus] = useState<{
+    isActive: boolean;
+    crawlId: string | null;
+    progress: number;
+    currentStep: string;
+  }>({
+    isActive: false,
+    crawlId: null,
+    progress: 0,
+    currentStep: '',
+  });
+  const lastCrawlIdRef = useRef<string | null>(null);
+
   useEffect(() => {
     fetchDashboardData();
   }, [refresh]);
@@ -65,6 +80,79 @@ export default function Home() {
 
     return () => clearInterval(interval);
   }, []);
+
+  // 크롤링 상태 실시간 모니터링
+  useEffect(() => {
+    const checkCrawlStatus = async () => {
+      try {
+        const response = await fetch('/api/crawl-status');
+        const data = await response.json();
+
+        if (data.found && data.status === 'in_progress') {
+          // 크롤링 진행 중
+          const newCrawlId = data.crawlId;
+          const isNewCrawl = lastCrawlIdRef.current !== newCrawlId;
+
+          setCrawlingStatus({
+            isActive: true,
+            crawlId: newCrawlId,
+            progress: data.progress?.complexProgress || 0,
+            currentStep: data.progress?.currentStep || '크롤링 중',
+          });
+
+          // 새로운 크롤링이 시작되면 토스트 알림
+          if (isNewCrawl && lastCrawlIdRef.current !== null) {
+            showInfo('🚀 크롤링이 시작되었습니다');
+          }
+
+          lastCrawlIdRef.current = newCrawlId;
+        } else if (data.found && data.status === 'completed') {
+          // 크롤링 완료
+          const wasActive = crawlingStatus.isActive;
+          const completedCrawlId = data.crawlId;
+
+          setCrawlingStatus({
+            isActive: false,
+            crawlId: null,
+            progress: 0,
+            currentStep: '',
+          });
+
+          // 방금 완료된 크롤링이면 토스트 알림 및 데이터 새로고침
+          if (wasActive && lastCrawlIdRef.current === completedCrawlId) {
+            showSuccess('✅ 크롤링이 완료되었습니다');
+            fetchDashboardData(); // 대시보드 데이터 새로고침
+            lastCrawlIdRef.current = null;
+          }
+        } else if (data.found && data.status === 'failed') {
+          // 크롤링 실패
+          const wasActive = crawlingStatus.isActive;
+
+          setCrawlingStatus({
+            isActive: false,
+            crawlId: null,
+            progress: 0,
+            currentStep: '',
+          });
+
+          if (wasActive) {
+            showError('❌ 크롤링이 실패했습니다');
+            lastCrawlIdRef.current = null;
+          }
+        }
+      } catch (error) {
+        console.error('Failed to check crawl status:', error);
+      }
+    };
+
+    // 최초 실행
+    checkCrawlStatus();
+
+    // 5초마다 크롤링 상태 체크
+    const interval = setInterval(checkCrawlStatus, 5000);
+
+    return () => clearInterval(interval);
+  }, [crawlingStatus.isActive]);
 
   const fetchDashboardData = async () => {
     console.log('[MAIN_PAGE] 대시보드 데이터 조회 시작');
@@ -192,6 +280,37 @@ export default function Home() {
               원하는 단지의 매물 정보를 실시간으로 수집하고 분석하세요
             </p>
           </div>
+
+          {/* 크롤링 상태 배너 */}
+          {crawlingStatus.isActive && (
+            <div className="mb-6 bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-700 dark:to-indigo-700 rounded-xl shadow-lg p-4 animate-pulse">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
+                    <svg className="animate-spin h-6 w-6 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="text-white font-bold text-lg">크롤링 진행 중</h3>
+                    <p className="text-blue-100 text-sm">{crawlingStatus.currentStep}</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-white font-bold text-2xl">{crawlingStatus.progress}%</div>
+                  <div className="text-blue-100 text-xs">완료</div>
+                </div>
+              </div>
+              {/* 프로그레스 바 */}
+              <div className="mt-3 w-full bg-white/20 rounded-full h-2 overflow-hidden">
+                <div
+                  className="bg-white h-full rounded-full transition-all duration-500"
+                  style={{ width: `${crawlingStatus.progress}%` }}
+                ></div>
+              </div>
+            </div>
+          )}
 
           {/* Stats Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
