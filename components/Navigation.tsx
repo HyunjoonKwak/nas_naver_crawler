@@ -47,10 +47,14 @@ export const Navigation = () => {
     { href: '/system', label: '시스템', icon: '⚙️' },
   ];
 
-  // 현재 페이지에 따라 링크 필터링 (홈 페이지에서는 홈 링크 제외)
-  const filteredNavLinks = pathname === '/'
-    ? navLinks.filter(link => link.href !== '/')
-    : navLinks;
+  // 현재 페이지에 해당하는 링크는 표시하지 않음
+  const filteredNavLinks = navLinks.filter(link => {
+    // 홈 페이지
+    if (link.href === '/' && pathname === '/') return false;
+    // 다른 페이지들
+    if (link.href !== '/' && pathname?.startsWith(link.href)) return false;
+    return true;
+  });
 
   const isActive = (href: string) => {
     if (href === '/') {
