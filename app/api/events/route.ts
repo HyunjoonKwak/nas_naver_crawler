@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
         console.error('[SSE] Failed to send initial heartbeat:', error);
       }
 
-      // 연결 유지를 위한 heartbeat (5초마다)
+      // 연결 유지를 위한 heartbeat (60초마다)
       let heartbeatCount = 0;
       heartbeatInterval = setInterval(() => {
         try {
@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
           if (heartbeatInterval) clearInterval(heartbeatInterval);
           eventBroadcaster.removeClient(controller);
         }
-      }, 5000);
+      }, 60000);
 
       // 클라이언트 연결 종료 시 cleanup
       request.signal.addEventListener('abort', () => {
