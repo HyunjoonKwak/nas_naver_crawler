@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { ThemeToggle } from "@/components/ui";
 import { showSuccess, showError, showLoading, dismissToast } from "@/lib/toast";
@@ -14,12 +15,61 @@ interface Complex {
 }
 
 export default function AnalyticsPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
   const [mode, setMode] = useState<"single" | "compare">("single");
   const [complexes, setComplexes] = useState<Complex[]>([]);
   const [selectedComplex, setSelectedComplex] = useState<string>("");
   const [selectedComplexes, setSelectedComplexes] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [analyticsData, setAnalyticsData] = useState<any>(null);
+
+  // 필터 상태
+  const [tradeTypes, setTradeTypes] = useState<string[]>([]);
+  const [dateRange, setDateRange] = useState<string>("all"); // all, 7days, 30days
+
+  // URL 파라미터에서 상태 복원
+  useEffect(() => {
+    const urlMode = searchParams.get('mode');
+    const urlComplexNos = searchParams.get('complexNos');
+    const urlTradeTypes = searchParams.get('tradeTypes');
+    const urlDateRange = searchParams.get('dateRange');
+
+    if (urlMode) setMode(urlMode as "single" | "compare");
+    if (urlComplexNos) {
+      const complexNoArray = urlComplexNos.split(',');
+      if (urlMode === 'single') {
+        setSelectedComplex(complexNoArray[0]);
+      } else {
+        setSelectedComplexes(complexNoArray);
+      }
+    }
+    if (urlTradeTypes) setTradeTypes(urlTradeTypes.split(','));
+    if (urlDateRange) setDateRange(urlDateRange);
+  }, [searchParams]);
+
+  // 상태가 변경되면 URL 업데이트
+  useEffect(() => {
+    const params = new URLSearchParams();
+    params.set('mode', mode);
+
+    if (mode === 'single' && selectedComplex) {
+      params.set('complexNos', selectedComplex);
+    } else if (mode === 'compare' && selectedComplexes.length > 0) {
+      params.set('complexNos', selectedComplexes.join(','));
+    }
+
+    if (tradeTypes.length > 0) {
+      params.set('tradeTypes', tradeTypes.join(','));
+    }
+    if (dateRange !== 'all') {
+      params.set('dateRange', dateRange);
+    }
+
+    // URL 업데이트 (페이지 리로드 없이)
+    router.replace(`/analytics?${params.toString()}`, { scroll: false });
+  }, [mode, selectedComplex, selectedComplexes, tradeTypes, dateRange, router]);
 
   // SSE: 크롤링 완료 시 자동 갱신
   useCrawlEvents(() => {
@@ -83,9 +133,32 @@ export default function AnalyticsPage() {
         complexNos = selectedComplexes.join(',');
       }
 
-      const response = await fetch(
-        `/api/analytics?complexNos=${complexNos}&mode=${mode}`
-      );
+      // 날짜 범위 계산
+      let startDate = '';
+      let endDate = '';
+      if (dateRange === '7days') {
+        const date = new Date();
+        date.setDate(date.getDate() - 7);
+        startDate = date.toISOString().split('T')[0].replace(/-/g, '');
+      } else if (dateRange === '30days') {
+        const date = new Date();
+        date.setDate(date.getDate() - 30);
+        startDate = date.toISOString().split('T')[0].replace(/-/g, '');
+      }
+
+      // URL 파라미터 구성
+      const params = new URLSearchParams({
+        complexNos,
+        mode,
+      });
+      if (tradeTypes.length > 0) {
+        params.append('tradeTypes', tradeTypes.join(','));
+      }
+      if (startDate) {
+        params.append('startDate', startDate);
+      }
+
+      const response = await fetch(`/api/analytics?${params.toString()}`);
       const data = await response.json();
 
       if (data.success) {
@@ -115,6 +188,15 @@ export default function AnalyticsPage() {
         }
         return [...prev, complexNo];
       }
+    });
+  };
+
+  const handleCopyLink = () => {
+    const url = window.location.href;
+    navigator.clipboard.writeText(url).then(() => {
+      showSuccess('링크가 복사되었습니다');
+    }).catch(() => {
+      showError('링크 복사에 실패했습니다');
     });
   };
 
@@ -163,11 +245,25 @@ export default function AnalyticsPage() {
       {/* 메인 콘텐츠 */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* 헤더 */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">데이터 분석</h1>
-          <p className="mt-2 text-gray-600 dark:text-gray-400">
-            단지별 매물 데이터를 시각화하고 비교 분석합니다
-          </p>
+        <div className="mb-8 flex items-start justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">데이터 분석</h1>
+            <p className="mt-2 text-gray-600 dark:text-gray-400">
+              단지별 매물 데이터를 시각화하고 비교 분석합니다
+            </p>
+          </div>
+          {analyticsData && (
+            <button
+              onClick={handleCopyLink}
+              className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+              title="현재 분석 결과 공유 링크 복사"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+              </svg>
+              <span className="text-sm font-medium">링크 복사</span>
+            </button>
+          )}
         </div>
 
         {/* 모드 선택 탭 */}
@@ -269,6 +365,95 @@ export default function AnalyticsPage() {
                   {loading ? '분석 중...' : '비교 분석'}
                 </button>
               </div>
+            </div>
+          )}
+        </div>
+
+        {/* 필터 섹션 */}
+        <div className="bg-white dark:bg-gray-900 rounded-xl shadow-md p-6 mb-6">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+            필터 옵션
+          </h3>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* 거래유형 필터 */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                거래유형
+              </label>
+              <div className="flex flex-wrap gap-3">
+                {['매매', '전세', '월세'].map((type) => (
+                  <label
+                    key={type}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg border-2 cursor-pointer transition-all ${
+                      tradeTypes.includes(type)
+                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
+                        : 'border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600'
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={tradeTypes.includes(type)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setTradeTypes([...tradeTypes, type]);
+                        } else {
+                          setTradeTypes(tradeTypes.filter(t => t !== type));
+                        }
+                      }}
+                      className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                    />
+                    <span className="text-sm font-medium">{type}</span>
+                  </label>
+                ))}
+              </div>
+              {tradeTypes.length === 0 && (
+                <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                  선택하지 않으면 모든 거래유형이 포함됩니다
+                </p>
+              )}
+            </div>
+
+            {/* 날짜 범위 필터 */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                기간
+              </label>
+              <div className="flex flex-wrap gap-3">
+                {[
+                  { value: 'all', label: '전체' },
+                  { value: '7days', label: '최근 7일' },
+                  { value: '30days', label: '최근 30일' },
+                ].map((option) => (
+                  <button
+                    key={option.value}
+                    onClick={() => setDateRange(option.value)}
+                    className={`px-4 py-2 rounded-lg border-2 font-medium text-sm transition-all ${
+                      dateRange === option.value
+                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
+                        : 'border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600'
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* 필터 초기화 버튼 */}
+          {(tradeTypes.length > 0 || dateRange !== 'all') && (
+            <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+              <button
+                onClick={() => {
+                  setTradeTypes([]);
+                  setDateRange('all');
+                  showSuccess('필터가 초기화되었습니다');
+                }}
+                className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white font-medium"
+              >
+                🔄 필터 초기화
+              </button>
             </div>
           )}
         </div>
