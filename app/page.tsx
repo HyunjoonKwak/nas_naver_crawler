@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { ThemeToggle } from "@/components/ui";
+import { Navigation } from "@/components/Navigation";
 
 interface FavoriteComplex {
   complexNo: string;
@@ -178,71 +178,8 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950">
-      {/* Navigation Header */}
-      <nav className="sticky top-0 z-50 backdrop-blur-lg bg-white/70 dark:bg-gray-900/70 border-b border-gray-200 dark:border-gray-800">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center text-white text-xl font-bold shadow-lg">
-                🏠
-              </div>
-              <div>
-                <h1 className="text-xl font-bold text-gray-900 dark:text-white">
-                  네이버 부동산 크롤러
-                </h1>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  NAS 환경용 부동산 정보 수집 시스템
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              {/* Current Date & Time - 클라이언트에서만 렌더링 */}
-              {isMounted && currentTime && (
-                <div className="hidden lg:flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-                  <span className="text-blue-600 dark:text-blue-400">🕐</span>
-                  <div className="text-sm">
-                    <div className="font-semibold text-gray-900 dark:text-white">
-                      {formatCurrentTime()}
-                    </div>
-                  </div>
-                </div>
-              )}
-              <Link
-                href="/"
-                className="px-4 py-2 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-lg transition-colors font-semibold"
-              >
-                🏠 홈
-              </Link>
-              <Link
-                href="/complexes"
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-semibold"
-              >
-                🏘️ 단지 목록
-              </Link>
-              <Link
-                href="/scheduler"
-                className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors font-semibold"
-              >
-                ⏰ 스케줄러
-              </Link>
-              <Link
-                href="/alerts"
-                className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors font-semibold"
-              >
-                🔔 알림
-              </Link>
-              <Link
-                href="/system"
-                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors font-semibold"
-              >
-                ⚙️ 시스템
-              </Link>
-              {/* 다크모드 토글 버튼 */}
-              <ThemeToggle />
-            </div>
-          </div>
-        </div>
-      </nav>
+      {/* Navigation */}
+      <Navigation />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Hero Section with Quick Stats */}
