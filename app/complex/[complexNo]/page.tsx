@@ -802,6 +802,18 @@ export default function ComplexDetailPage() {
           )}
         </div>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog
+        isOpen={deleteDialog}
+        onClose={() => setDeleteDialog(false)}
+        onConfirm={confirmDelete}
+        title="단지 삭제"
+        description="이 단지를 즐겨찾기에서 삭제하시겠습니까?"
+        confirmText="삭제"
+        cancelText="취소"
+        variant="danger"
+      />
     </div>
   );
 }
@@ -821,18 +833,6 @@ function StatCard({ label, value, color }: { label: string; value: number; color
       <div className={`text-3xl font-bold bg-gradient-to-r ${colorClasses[color]} bg-clip-text text-transparent`}>
         {value}
       </div>
-
-      {/* Delete Confirmation Dialog */}
-      <Dialog
-        isOpen={deleteDialog}
-        onClose={() => setDeleteDialog(false)}
-        onConfirm={confirmDelete}
-        title="단지 삭제"
-        description="이 단지를 즐겨찾기에서 삭제하시겠습니까?"
-        confirmText="삭제"
-        cancelText="취소"
-        variant="danger"
-      />
     </div>
   );
 }
