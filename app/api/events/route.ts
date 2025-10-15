@@ -8,7 +8,7 @@ import { eventBroadcaster } from '@/lib/eventBroadcaster';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs'; // Edge runtime 대신 Node.js runtime 사용
-export const maxDuration = 300; // 5분
+export const maxDuration = 3600; // 60분 (크롤링이 길어질 수 있으므로 충분한 시간 확보)
 
 export async function GET(request: NextRequest) {
   const encoder = new TextEncoder();
