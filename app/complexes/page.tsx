@@ -212,14 +212,15 @@ export default function ComplexesPage() {
     }
   };
 
-  // 단지 추가 (정보 확인 후)
-  const handleAddFavorite = async (autoCrawl: boolean = false) => {
+  // 단지 추가 (정보 확인 후 자동으로 매물 수집)
+  const handleAddFavorite = async () => {
     if (!complexInfo) {
       alert('먼저 단지 정보를 조회해주세요.');
       return;
     }
 
     try {
+      // 1. favorites.json에 추가
       const response = await fetch('/api/favorites', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -240,32 +241,32 @@ export default function ComplexesPage() {
         setComplexInfo(null);
         setShowAddForm(false);
 
-        if (autoCrawl) {
-          // 추가 후 자동으로 크롤링 시작
-          alert(`✅ ${addedComplexName}이(가) 추가되었습니다!\n\n매물 정보를 수집합니다...`);
+        // 2. 자동으로 크롤링 시작
+        alert(`✅ ${addedComplexName}이(가) 추가되었습니다!\n\n매물 정보를 수집합니다...`);
 
-          setCrawling(addedComplexNo);
-          try {
-            const crawlResponse = await fetch('/api/crawl', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ complexNumbers: addedComplexNo })
-            });
+        setCrawling(addedComplexNo);
+        try {
+          const crawlResponse = await fetch('/api/crawl', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ complexNumbers: addedComplexNo })
+          });
 
-            if (crawlResponse.ok) {
-              await fetchComplexes();
-              alert(`✅ ${addedComplexName} 크롤링 완료!`);
-            } else {
-              alert(`⚠️ 크롤링 실패. 나중에 수동으로 크롤링해주세요.`);
-            }
-          } catch (error) {
-            console.error('Auto-crawl failed:', error);
+          const crawlData = await crawlResponse.json();
+
+          if (crawlResponse.ok && crawlData.crawlId) {
+            // 크롤링 진행 상황 폴링
+            await pollCrawlStatus(crawlData.crawlId);
+            await fetchComplexes();
+            alert(`✅ ${addedComplexName} 크롤링 완료!`);
+          } else {
             alert(`⚠️ 크롤링 실패. 나중에 수동으로 크롤링해주세요.`);
-          } finally {
-            setCrawling(null);
           }
-        } else {
-          alert(`✅ ${addedComplexName}이(가) 추가되었습니다!\n\n상세 페이지에서 매물 정보를 수집하세요.`);
+        } catch (error) {
+          console.error('Auto-crawl failed:', error);
+          alert(`⚠️ 크롤링 실패. 나중에 수동으로 크롤링해주세요.`);
+        } finally {
+          setCrawling(null);
         }
       } else {
         alert(data.error || '단지 추가 실패');
@@ -929,19 +930,16 @@ export default function ComplexesPage() {
                     )}
                   </div>
 
-                  <div className="mt-4 flex gap-3">
+                  <div className="mt-4">
                     <button
-                      onClick={() => handleAddFavorite(false)}
-                      className="flex-1 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-bold"
+                      onClick={() => handleAddFavorite()}
+                      className="w-full px-6 py-3 bg-gradient-to-r from-blue-600 to-green-600 hover:from-blue-700 hover:to-green-700 text-white rounded-lg transition-colors font-bold shadow-lg"
                     >
-                      ➕ 추가만 하기
+                      ✅ 관심 단지 추가 및 매물 수집
                     </button>
-                    <button
-                      onClick={() => handleAddFavorite(true)}
-                      className="flex-1 px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors font-bold"
-                    >
-                      ✅ 추가 + 매물 수집
-                    </button>
+                    <p className="mt-2 text-xs text-center text-gray-500 dark:text-gray-400">
+                      단지 추가 후 자동으로 매물 정보를 수집합니다
+                    </p>
                   </div>
                 </div>
               )}
@@ -1253,6 +1251,18 @@ function SingleComplexCrawler({ onCrawlComplete }: { onCrawlComplete: () => void
         await pollCrawlStatus(data.crawlId);
         setMessage(`✅ 단지 ${extracted} 크롤링 완료!`);
         setComplexNo("");
+
+        // 크롤링된 단지 번호 저장 (결과 보기 버튼용)
+        const crawledComplexNo = extracted;
+
+        // 완료 메시지와 함께 결과 보기 버튼 표시
+        setMessage(`✅ 단지 ${extracted} 크롤링 완료!`);
+
+        // 3초 후 자동으로 상세 페이지로 이동
+        setTimeout(() => {
+          window.location.href = `/complex/${crawledComplexNo}`;
+        }, 2000);
+
         onCrawlComplete();
       } else {
         setError(data.error || '크롤링 실패');
