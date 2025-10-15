@@ -38,50 +38,81 @@ export async function GET(request: NextRequest) {
       tradeTypes,
     });
 
-    // CrawlHistory에서 최근 크롤링 데이터 조회
-    const recentCrawl = await prisma.crawlHistory.findFirst({
-      where: {
-        status: 'completed',
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-    });
-
-    if (!recentCrawl) {
-      return NextResponse.json({
-        success: false,
-        error: 'No crawl data found',
-      });
-    }
-
-    // JSON 파일 읽기 (현재는 파일 기반)
+    // JSON 파일 읽기 (파일 기반)
     const fs = require('fs');
     const path = require('path');
     const crawledDataPath = path.join(process.cwd(), 'crawled_data');
 
-    // 최근 크롤링 파일 찾기
-    const files = fs.readdirSync(crawledDataPath);
-    const jsonFiles = files.filter((f: string) => f.endsWith('.json')).sort().reverse();
+    console.log('[ANALYTICS] Reading from:', crawledDataPath);
+
+    // 최근 크롤링 파일 찾기 (favorites.json 제외)
+    let files: string[] = [];
+    try {
+      files = fs.readdirSync(crawledDataPath);
+    } catch (error: any) {
+      console.error('[ANALYTICS] Failed to read directory:', error);
+      return NextResponse.json({
+        success: false,
+        error: 'Failed to access crawl data directory',
+      }, { status: 500 });
+    }
+
+    const jsonFiles = files
+      .filter((f: string) => f.startsWith('complexes_') && f.endsWith('.json'))
+      .sort()
+      .reverse();
+
+    console.log('[ANALYTICS] Found files:', jsonFiles.length);
 
     if (jsonFiles.length === 0) {
       return NextResponse.json({
         success: false,
-        error: 'No crawl data files found',
-      });
+        error: 'No crawl data found. Please run a crawl first.',
+      }, { status: 404 });
     }
 
     // 첫 번째 파일 읽기
     const latestFile = jsonFiles[0];
     const filePath = path.join(crawledDataPath, latestFile);
-    const rawData = fs.readFileSync(filePath, 'utf-8');
-    const crawlData = JSON.parse(rawData);
+    console.log('[ANALYTICS] Reading file:', latestFile);
+
+    let crawlData: any;
+    try {
+      const rawData = fs.readFileSync(filePath, 'utf-8');
+      crawlData = JSON.parse(rawData);
+      console.log('[ANALYTICS] Parsed data, results count:', crawlData.results?.length || 0);
+    } catch (error: any) {
+      console.error('[ANALYTICS] Failed to read/parse file:', error);
+      return NextResponse.json({
+        success: false,
+        error: 'Failed to read crawl data file',
+      }, { status: 500 });
+    }
 
     // 선택된 단지의 데이터만 필터링
     const filteredResults = crawlData.results.filter((result: any) => {
       const complexNo = result.overview?.complexNo || '';
       return complexNos.includes(complexNo);
     });
+
+    console.log('[ANALYTICS] Filtered results:', filteredResults.length);
+
+    if (filteredResults.length === 0) {
+      // 사용 가능한 단지 목록 조회
+      const availableComplexes = crawlData.results.map((r: any) => ({
+        complexNo: r.overview?.complexNo,
+        complexName: r.overview?.complexName,
+      }));
+
+      console.log('[ANALYTICS] Available complexes:', availableComplexes);
+
+      return NextResponse.json({
+        success: false,
+        error: `Selected complex(es) not found in crawl data. Please crawl these complexes first.`,
+        availableComplexes,
+        requestedComplexes: complexNos,
+      }, { status: 404 });
+    }
 
     if (mode === 'single') {
       // 단일 단지 분석
