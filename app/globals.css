@@ -111,6 +111,45 @@ body {
   }
 }
 
+/* ========================================
+   접근성 개선
+   ======================================== */
+
+/* 포커스 가능한 모든 요소에 기본 포커스 스타일 */
+*:focus-visible {
+  outline: 2px solid var(--primary-500);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* 다크 모드에서 포커스 스타일 */
+.dark *:focus-visible {
+  outline-color: var(--primary-400);
+}
+
+/* 스크린 리더 전용 텍스트 */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* 키보드 네비게이션 개선 */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--primary-500);
+  outline-offset: 2px;
+}
+
 /* 프로그레스 바 애니메이션 */
 @keyframes shimmer {
   0% {
