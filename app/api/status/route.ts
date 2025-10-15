@@ -3,6 +3,7 @@ import { exec } from 'child_process';
 import { promisify } from 'util';
 import fs from 'fs/promises';
 import path from 'path';
+import { prisma } from '@/lib/prisma';
 
 const execAsync = promisify(exec);
 
@@ -60,6 +61,38 @@ export async function GET() {
       crawledDataSize = '0 B';
     }
 
+    // 현재 진행 중인 크롤링 확인
+    let currentCrawl = null;
+    try {
+      const ongoingCrawl = await prisma.crawlHistory.findFirst({
+        where: {
+          status: 'crawling',
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+      });
+
+      if (ongoingCrawl) {
+        // 진행률 계산
+        const progress = ongoingCrawl.totalComplexes > 0
+          ? Math.round((ongoingCrawl.processedComplexes / ongoingCrawl.totalComplexes) * 100)
+          : 0;
+
+        currentCrawl = {
+          id: ongoingCrawl.id,
+          status: ongoingCrawl.status,
+          currentStep: ongoingCrawl.currentStep,
+          progress,
+          processedComplexes: ongoingCrawl.processedComplexes,
+          totalComplexes: ongoingCrawl.totalComplexes,
+          processedArticles: ongoingCrawl.processedArticles,
+        };
+      }
+    } catch (error) {
+      console.error('Failed to fetch current crawl:', error);
+    }
+
     return NextResponse.json({
       crawler: {
         scriptExists: crawlerExists,
@@ -73,6 +106,7 @@ export async function GET() {
       favoritesCount,
       crawledDataSize,
       status: (crawlerExists && playwrightReady) ? 'ready' : 'not_ready',
+      currentCrawl, // 현재 진행 중인 크롤링 정보
     });
 
   } catch (error: any) {
