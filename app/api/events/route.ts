@@ -17,23 +17,38 @@ export async function GET(request: NextRequest) {
   // SSE 스트림 생성
   const stream = new ReadableStream({
     start(controller) {
-      console.log('[SSE] Stream started');
+      const startTime = Date.now();
+      console.log('[SSE] Stream started at', new Date().toISOString());
 
       // 클라이언트 연결 추가
       eventBroadcaster.addClient(controller);
 
       // 연결 확인 메시지
-      controller.enqueue(
-        encoder.encode(`data: ${JSON.stringify({ type: 'connected', timestamp: new Date().toISOString() })}\n\n`)
-      );
+      try {
+        controller.enqueue(
+          encoder.encode(`data: ${JSON.stringify({ type: 'connected', timestamp: new Date().toISOString() })}\n\n`)
+        );
+        console.log('[SSE] Sent connected message');
+      } catch (error) {
+        console.error('[SSE] Failed to send connected message:', error);
+      }
 
       // 초기 heartbeat (즉시)
-      controller.enqueue(encoder.encode(': heartbeat\n\n'));
+      try {
+        controller.enqueue(encoder.encode(': heartbeat\n\n'));
+        console.log('[SSE] Sent initial heartbeat');
+      } catch (error) {
+        console.error('[SSE] Failed to send initial heartbeat:', error);
+      }
 
       // 연결 유지를 위한 heartbeat (5초마다)
+      let heartbeatCount = 0;
       heartbeatInterval = setInterval(() => {
         try {
+          heartbeatCount++;
           controller.enqueue(encoder.encode(': heartbeat\n\n'));
+          const elapsed = Math.round((Date.now() - startTime) / 1000);
+          console.log(`[SSE] Heartbeat #${heartbeatCount} sent (connection alive for ${elapsed}s)`);
         } catch (error) {
           console.error('[SSE] Heartbeat failed:', error);
           if (heartbeatInterval) clearInterval(heartbeatInterval);
@@ -43,7 +58,8 @@ export async function GET(request: NextRequest) {
 
       // 클라이언트 연결 종료 시 cleanup
       request.signal.addEventListener('abort', () => {
-        console.log('[SSE] Stream aborted');
+        const elapsed = Math.round((Date.now() - startTime) / 1000);
+        console.log(`[SSE] Stream aborted (connection lasted ${elapsed}s)`);
         if (heartbeatInterval) clearInterval(heartbeatInterval);
         eventBroadcaster.removeClient(controller);
         try {

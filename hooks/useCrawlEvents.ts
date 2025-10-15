@@ -202,19 +202,23 @@ export function useCrawlEvents(onCrawlComplete?: () => void) {
         eventSource.onerror = (error) => {
           console.error('[SSE] Connection error:', error);
 
-          // EventSource는 자동으로 재연결을 시도하므로
-          // 명시적으로 close하지 않으면 브라우저가 자동 재연결 처리
-          // 하지만 4분마다 끊기는 것은 서버측 타임아웃이므로 수동 재연결 필요
-          eventSource.close();
+          // EventSource의 readyState 확인
+          // CLOSED(2)일 때만 재연결 시도
+          // CONNECTING(0)이나 OPEN(1)이면 브라우저가 자동 재연결 중
+          if (eventSource.readyState === EventSource.CLOSED) {
+            console.log('[SSE] Connection closed, reconnecting in 3 seconds...');
+            eventSource.close();
 
-          // 1초 후 재연결 시도 (빠른 복구)
-          if (isMounted) {
-            console.log('[SSE] Reconnecting in 1 second...');
-            reconnectTimeoutRef.current = setTimeout(() => {
-              if (isMounted) {
-                connect();
-              }
-            }, 1000);
+            if (isMounted) {
+              reconnectTimeoutRef.current = setTimeout(() => {
+                if (isMounted) {
+                  connect();
+                }
+              }, 3000);
+            }
+          } else {
+            // 자동 재연결 중이거나 연결 중이면 로그만 남김
+            console.log(`[SSE] Connection error (state: ${eventSource.readyState}), waiting for auto-reconnect...`);
           }
         };
 
