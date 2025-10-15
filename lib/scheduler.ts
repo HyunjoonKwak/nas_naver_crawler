@@ -342,6 +342,7 @@ export function registerSchedule(
   try {
     // 기존 스케줄이 있으면 제거
     if (activeCronJobs.has(scheduleId)) {
+      console.log(`   Removing existing schedule: ${scheduleId}`);
       const existingJob = activeCronJobs.get(scheduleId);
       existingJob?.stop();
       activeCronJobs.delete(scheduleId);
@@ -349,14 +350,16 @@ export function registerSchedule(
 
     // Cron 표현식 검증
     if (!cron.validate(cronExpr)) {
-      console.error(`Invalid cron expression: ${cronExpr}`);
+      console.error(`   ❌ Invalid cron expression: ${cronExpr}`);
       return false;
     }
 
     // Cron Job 생성
+    console.log(`   Creating cron job with timezone: Asia/Seoul`);
     const task = cron.schedule(
       cronExpr,
       () => {
+        console.log(`🚀 Cron job triggered for schedule: ${scheduleId}`);
         executeCrawl(scheduleId, complexNos);
       },
       {
@@ -366,11 +369,12 @@ export function registerSchedule(
     );
 
     activeCronJobs.set(scheduleId, task);
-    console.log(`✅ Schedule registered: ${scheduleId} (${cronExpr})`);
+    console.log(`   ✅ Schedule registered in memory: ${scheduleId}`);
+    console.log(`   Active cron jobs count: ${activeCronJobs.size}`);
 
     return true;
   } catch (error) {
-    console.error(`Failed to register schedule ${scheduleId}:`, error);
+    console.error(`   ❌ Failed to register schedule ${scheduleId}:`, error);
     return false;
   }
 }
@@ -400,6 +404,8 @@ export function unregisterSchedule(scheduleId: string): boolean {
 export async function loadAllSchedules() {
   try {
     console.log('📅 Loading all active schedules...');
+    console.log(`   Current time: ${new Date().toISOString()}`);
+    console.log(`   KST time: ${new Date().toLocaleString('en-US', { timeZone: 'Asia/Seoul' })}`);
 
     const schedules = await prisma.schedule.findMany({
       where: {
@@ -407,27 +413,41 @@ export async function loadAllSchedules() {
       },
     });
 
+    console.log(`   Found ${schedules.length} active schedule(s) in DB`);
+
     let loadedCount = 0;
     for (const schedule of schedules) {
+      console.log(`   Registering schedule: "${schedule.name}" (${schedule.id})`);
+      console.log(`     Cron: ${schedule.cronExpr}`);
+      console.log(`     Complexes: ${schedule.complexNos.length} items`);
+
       const success = registerSchedule(
         schedule.id,
         schedule.cronExpr,
         schedule.complexNos
       );
-      if (success) loadedCount++;
+
+      if (success) {
+        loadedCount++;
+        console.log(`     ✓ Successfully registered`);
+      } else {
+        console.log(`     ✗ Failed to register`);
+      }
 
       // nextRun 업데이트
       const nextRun = getNextRunTime(schedule.cronExpr);
+      console.log(`     Next run: ${nextRun ? nextRun.toISOString() : 'null'}`);
+
       await prisma.schedule.update({
         where: { id: schedule.id },
         data: { nextRun },
       });
     }
 
-    console.log(`✅ Loaded ${loadedCount} active schedule(s)`);
+    console.log(`✅ Loaded ${loadedCount}/${schedules.length} active schedule(s)`);
     return loadedCount;
   } catch (error) {
-    console.error('Failed to load schedules:', error);
+    console.error('❌ Failed to load schedules:', error);
     return 0;
   }
 }
