@@ -12,8 +12,12 @@ interface SingleAnalysisProps {
 export const SingleAnalysis: React.FC<SingleAnalysisProps> = ({ analyticsData }) => {
   if (!analyticsData) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <p className="text-gray-500 dark:text-gray-400">단지를 선택해주세요</p>
+      <div className="flex flex-col items-center justify-center h-64 space-y-4">
+        <div className="text-6xl">📊</div>
+        <p className="text-gray-500 dark:text-gray-400 text-lg">단지를 선택해주세요</p>
+        <p className="text-gray-400 dark:text-gray-500 text-sm">
+          단지를 선택하고 "분석 시작" 버튼을 클릭하세요
+        </p>
       </div>
     );
   }

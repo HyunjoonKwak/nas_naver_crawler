@@ -154,12 +154,26 @@ function getSingleAnalysis(result: any, tradeTypes?: string[]) {
   }
 
   // 파일 구조에 따라 articles 추출
+  console.log('[ANALYTICS] Result structure:', {
+    hasArticles: !!result.articles,
+    hasArticleList: !!result.articles?.articleList,
+    articlesType: Array.isArray(result.articles) ? 'array' : typeof result.articles,
+    articleListLength: result.articles?.articleList?.length,
+    articlesLength: Array.isArray(result.articles) ? result.articles.length : 'not array',
+  });
+
   let articles = result.articles?.articleList || result.articles || [];
+
+  console.log('[ANALYTICS] Extracted articles:', {
+    length: articles.length,
+    isArray: Array.isArray(articles),
+    firstArticle: articles[0] ? Object.keys(articles[0]).slice(0, 5) : 'none',
+  });
 
   if (!articles || articles.length === 0) {
     return NextResponse.json({
       success: false,
-      error: 'No articles found for selected complex',
+      error: 'No articles found for selected complex. The complex may not have any listings.',
     });
   }
 
