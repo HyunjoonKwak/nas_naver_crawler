@@ -23,7 +23,10 @@ export async function GET(request: NextRequest) {
         encoder.encode(`data: ${JSON.stringify({ type: 'connected', timestamp: new Date().toISOString() })}\n\n`)
       );
 
-      // 연결 유지를 위한 heartbeat (15초마다)
+      // 초기 heartbeat (즉시)
+      controller.enqueue(encoder.encode(': heartbeat\n\n'));
+
+      // 연결 유지를 위한 heartbeat (5초마다)
       const heartbeat = setInterval(() => {
         try {
           controller.enqueue(encoder.encode(': heartbeat\n\n'));
@@ -32,7 +35,7 @@ export async function GET(request: NextRequest) {
           clearInterval(heartbeat);
           eventBroadcaster.removeClient(controller);
         }
-      }, 15000);
+      }, 5000);
 
       // 클라이언트 연결 종료 시 cleanup
       request.signal.addEventListener('abort', () => {
