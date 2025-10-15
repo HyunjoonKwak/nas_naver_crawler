@@ -1275,6 +1275,42 @@ export default function ComplexesPage() {
           </div>
         </div>
       </main>
+
+      {/* Delete Complex Confirmation Dialog */}
+      <Dialog
+        isOpen={deleteComplexDialog.isOpen}
+        onClose={() => setDeleteComplexDialog({ isOpen: false, complexNo: null, complexName: null })}
+        onConfirm={confirmDeleteComplex}
+        title="단지 삭제"
+        description={`${deleteComplexDialog.complexName}을(를) 완전히 삭제하시겠습니까?\n\n(DB와 모든 매물 데이터가 삭제됩니다)`}
+        confirmText="삭제"
+        cancelText="취소"
+        variant="danger"
+      />
+
+      {/* Crawl All Confirmation Dialog */}
+      <Dialog
+        isOpen={crawlAllDialog}
+        onClose={() => setCrawlAllDialog(false)}
+        onConfirm={confirmCrawlAll}
+        title="전체 크롤링"
+        description={`${complexes.length}개 단지를 모두 크롤링하시겠습니까?`}
+        confirmText="크롤링 시작"
+        cancelText="취소"
+        variant="default"
+      />
+
+      {/* Stop Tracking Confirmation Dialog */}
+      <Dialog
+        isOpen={stopTrackingDialog}
+        onClose={() => setStopTrackingDialog(false)}
+        onConfirm={confirmStopTracking}
+        title="크롤링 추적 중단"
+        description="⚠️ 중요: 현재 UI에서는 진행 상황 추적만 중단됩니다.\n\n백그라운드에서 실행 중인 크롤링은 계속 진행되며 완료됩니다.\n\n결과는 나중에 히스토리에서 확인할 수 있습니다."
+        confirmText="추적 중단"
+        cancelText="취소"
+        variant="default"
+      />
     </div>
   );
 }
@@ -1457,42 +1493,6 @@ function SingleComplexCrawler({
           </p>
         </div>
       )}
-
-      {/* Delete Complex Confirmation Dialog */}
-      <Dialog
-        isOpen={deleteComplexDialog.isOpen}
-        onClose={() => setDeleteComplexDialog({ isOpen: false, complexNo: null, complexName: null })}
-        onConfirm={confirmDeleteComplex}
-        title="단지 삭제"
-        description={`${deleteComplexDialog.complexName}을(를) 완전히 삭제하시겠습니까?\n\n(DB와 모든 매물 데이터가 삭제됩니다)`}
-        confirmText="삭제"
-        cancelText="취소"
-        variant="danger"
-      />
-
-      {/* Crawl All Confirmation Dialog */}
-      <Dialog
-        isOpen={crawlAllDialog}
-        onClose={() => setCrawlAllDialog(false)}
-        onConfirm={confirmCrawlAll}
-        title="전체 크롤링"
-        description={`${complexes.length}개 단지를 모두 크롤링하시겠습니까?`}
-        confirmText="크롤링 시작"
-        cancelText="취소"
-        variant="default"
-      />
-
-      {/* Stop Tracking Confirmation Dialog */}
-      <Dialog
-        isOpen={stopTrackingDialog}
-        onClose={() => setStopTrackingDialog(false)}
-        onConfirm={confirmStopTracking}
-        title="크롤링 추적 중단"
-        description="⚠️ 중요: 현재 UI에서는 진행 상황 추적만 중단됩니다.\n\n백그라운드에서 실행 중인 크롤링은 계속 진행되며 완료됩니다.\n\n결과는 나중에 히스토리에서 확인할 수 있습니다."
-        confirmText="추적 중단"
-        cancelText="취소"
-        variant="default"
-      />
     </div>
   );
 }
