@@ -258,7 +258,7 @@ export default function SystemPage() {
     }
   };
 
-  const toggleFileSelection = (filename: string, e: React.MouseEvent) => {
+  const toggleFileSelection = (filename: string, e: React.ChangeEvent<HTMLInputElement> | React.MouseEvent) => {
     e.stopPropagation();
     const newSelection = new Set(selectedFiles);
     if (newSelection.has(filename)) {

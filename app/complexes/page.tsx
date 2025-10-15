@@ -21,6 +21,8 @@ interface ComplexItem {
   isFavorite: boolean;
   createdAt: string;
   updatedAt: string;
+  addedAt?: string;
+  lastCrawledAt?: string;
 }
 
 interface ComplexInfo {
@@ -777,7 +779,7 @@ export default function ComplexesPage() {
                   console.log('[Complexes] Manual refresh triggered');
                   fetchComplexes();
                 }}
-                disabled={crawlingAll || crawling}
+                disabled={!!(crawlingAll || crawling)}
                 className={`px-4 py-2 rounded-lg transition-colors font-medium ${
                   crawlingAll || crawling
                     ? 'bg-gray-300 dark:bg-gray-600 cursor-not-allowed'
