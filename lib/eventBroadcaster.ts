@@ -196,5 +196,14 @@ class EventBroadcaster {
   }
 }
 
-// 싱글톤 인스턴스
-export const eventBroadcaster = new EventBroadcaster();
+// 싱글톤 인스턴스 (global에 저장하여 HMR 시에도 유지)
+declare global {
+  var eventBroadcaster: EventBroadcaster | undefined;
+}
+
+export const eventBroadcaster = globalThis.eventBroadcaster ?? new EventBroadcaster();
+
+// 개발 모드에서 HMR(Hot Module Replacement) 시 인스턴스 유지
+if (process.env.NODE_ENV !== 'production') {
+  globalThis.eventBroadcaster = eventBroadcaster;
+}
