@@ -7,7 +7,15 @@ import { useEffect, useRef, useState } from 'react';
 import { showSuccess, showError, showInfo } from '@/lib/toast';
 
 interface CrawlEvent {
-  type: 'crawl-start' | 'crawl-progress' | 'crawl-complete' | 'crawl-failed' | 'connected';
+  type:
+    | 'crawl-start'
+    | 'crawl-progress'
+    | 'crawl-complete'
+    | 'crawl-failed'
+    | 'schedule-start'
+    | 'schedule-complete'
+    | 'schedule-failed'
+    | 'connected';
   crawlId?: string;
   timestamp: string;
   data?: {
@@ -17,6 +25,9 @@ interface CrawlEvent {
     processedComplexes?: number;
     articlesCount?: number;
     errorMessage?: string;
+    scheduleId?: string;
+    scheduleName?: string;
+    duration?: number;
   };
 }
 
@@ -124,6 +135,61 @@ export function useCrawlEvents(onCrawlComplete?: () => void) {
                   });
 
                   showError(`❌ 크롤링이 실패했습니다: ${data.data?.errorMessage || '알 수 없는 오류'}`);
+                  lastCrawlIdRef.current = null;
+                }
+                break;
+
+              case 'schedule-start':
+                if (data.data?.scheduleId && data.data?.scheduleName) {
+                  setCrawlStatus({
+                    isActive: true,
+                    crawlId: data.data.scheduleId,
+                    progress: 0,
+                    currentStep: '스케줄 실행 중...',
+                  });
+
+                  showInfo(
+                    `📅 스케줄 "${data.data.scheduleName}" 실행 시작 (${data.data.totalComplexes}개 단지)`
+                  );
+                  lastCrawlIdRef.current = data.data.scheduleId;
+                }
+                break;
+
+              case 'schedule-complete':
+                if (data.data?.scheduleId && data.data?.scheduleName) {
+                  setCrawlStatus({
+                    isActive: false,
+                    crawlId: null,
+                    progress: 100,
+                    currentStep: '완료',
+                  });
+
+                  const durationSec = Math.floor((data.data.duration || 0) / 1000);
+                  showSuccess(
+                    `✅ 스케줄 "${data.data.scheduleName}" 완료 (${data.data.articlesCount || 0}개 매물, ${durationSec}초)`
+                  );
+
+                  // 완료 콜백 실행 (스케줄 페이지 갱신용)
+                  if (onCrawlComplete) {
+                    setTimeout(onCrawlComplete, 500);
+                  }
+
+                  lastCrawlIdRef.current = null;
+                }
+                break;
+
+              case 'schedule-failed':
+                if (data.data?.scheduleId && data.data?.scheduleName) {
+                  setCrawlStatus({
+                    isActive: false,
+                    crawlId: null,
+                    progress: 0,
+                    currentStep: '실패',
+                  });
+
+                  showError(
+                    `❌ 스케줄 "${data.data.scheduleName}" 실패: ${data.data?.errorMessage || '알 수 없는 오류'}`
+                  );
                   lastCrawlIdRef.current = null;
                 }
                 break;

@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { ThemeToggle, Dialog } from "@/components/ui";
 import { showSuccess, showError, showLoading, dismissToast } from "@/lib/toast";
+import { useCrawlEvents } from "@/hooks/useCrawlEvents";
 
 interface Schedule {
   id: string;
@@ -51,6 +52,12 @@ export default function SchedulerPage() {
   const [showModal, setShowModal] = useState(false);
   const [editingSchedule, setEditingSchedule] = useState<Schedule | null>(null);
   const [runningScheduleId, setRunningScheduleId] = useState<string | null>(null);
+
+  // SSE: 실시간 크롤링 이벤트 구독 (스케줄 완료 시 자동 갱신)
+  useCrawlEvents(() => {
+    console.log('[SCHEDULER] Crawl/Schedule complete event received, refreshing data...');
+    fetchData();
+  });
 
   // 알림 상태
   const [currentAlert, setCurrentAlert] = useState<Alert | null>(null);

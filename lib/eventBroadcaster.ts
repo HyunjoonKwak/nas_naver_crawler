@@ -3,7 +3,14 @@
  * 크롤링 상태를 모든 연결된 클라이언트에게 실시간으로 전송
  */
 
-type EventType = 'crawl-start' | 'crawl-progress' | 'crawl-complete' | 'crawl-failed';
+type EventType =
+  | 'crawl-start'
+  | 'crawl-progress'
+  | 'crawl-complete'
+  | 'crawl-failed'
+  | 'schedule-start'
+  | 'schedule-complete'
+  | 'schedule-failed';
 
 interface CrawlEvent {
   type: EventType;
@@ -16,6 +23,9 @@ interface CrawlEvent {
     processedComplexes?: number;
     articlesCount?: number;
     errorMessage?: string;
+    scheduleId?: string;
+    scheduleName?: string;
+    duration?: number;
   };
 }
 
@@ -119,6 +129,60 @@ class EventBroadcaster {
       crawlId,
       timestamp: new Date().toISOString(),
       data: {
+        errorMessage,
+      },
+    });
+  }
+
+  /**
+   * 스케줄 크롤링 시작 알림
+   */
+  notifyScheduleStart(scheduleId: string, scheduleName: string, totalComplexes: number) {
+    this.broadcast({
+      type: 'schedule-start',
+      crawlId: scheduleId, // 스케줄 ID를 crawlId로 사용
+      timestamp: new Date().toISOString(),
+      data: {
+        scheduleId,
+        scheduleName,
+        totalComplexes,
+      },
+    });
+  }
+
+  /**
+   * 스케줄 크롤링 완료 알림
+   */
+  notifyScheduleComplete(
+    scheduleId: string,
+    scheduleName: string,
+    articlesCount: number,
+    duration: number
+  ) {
+    this.broadcast({
+      type: 'schedule-complete',
+      crawlId: scheduleId,
+      timestamp: new Date().toISOString(),
+      data: {
+        scheduleId,
+        scheduleName,
+        articlesCount,
+        duration,
+      },
+    });
+  }
+
+  /**
+   * 스케줄 크롤링 실패 알림
+   */
+  notifyScheduleFailed(scheduleId: string, scheduleName: string, errorMessage: string) {
+    this.broadcast({
+      type: 'schedule-failed',
+      crawlId: scheduleId,
+      timestamp: new Date().toISOString(),
+      data: {
+        scheduleId,
+        scheduleName,
         errorMessage,
       },
     });

@@ -5,6 +5,7 @@
 
 import cron from 'node-cron';
 import { PrismaClient } from '@prisma/client';
+import { eventBroadcaster } from './eventBroadcaster';
 
 const prisma = new PrismaClient();
 
@@ -113,9 +114,21 @@ export function getNextRunTime(cronExpr: string): Date | null {
 async function executeCrawl(scheduleId: string, complexNos: string[]) {
   const startTime = Date.now();
 
+  // 스케줄 정보 조회 (이름 가져오기 위해)
+  const schedule = await prisma.schedule.findUnique({
+    where: { id: scheduleId },
+  });
+
+  const scheduleName = schedule?.name || 'Unknown Schedule';
+
   try {
     console.log(`🚀 Executing scheduled crawl: ${scheduleId}`);
+    console.log(`   Schedule name: ${scheduleName}`);
     console.log(`   Complexes: ${complexNos.join(', ')}`);
+
+    // SSE: 스케줄 크롤링 시작 알림
+    console.log(`   [SSE] Broadcasting schedule-start event`);
+    eventBroadcaster.notifyScheduleStart(scheduleId, scheduleName, complexNos.length);
 
     // 크롤링 API 호출 (타임아웃: 30분)
     const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
@@ -154,7 +167,7 @@ async function executeCrawl(scheduleId: string, complexNos: string[]) {
         console.log(`   Duration: ${Math.floor(duration / 1000)}s`);
         console.log(`   Articles: ${articlesCount}`);
 
-        await updateScheduleSuccess(scheduleId, duration, articlesCount);
+        await updateScheduleSuccess(scheduleId, scheduleName, duration, articlesCount);
         return;
       } else {
         throw new Error(data.error || 'Crawl failed');
@@ -178,7 +191,7 @@ async function executeCrawl(scheduleId: string, complexNos: string[]) {
         console.log(`   Duration: ${Math.floor(duration / 1000)}s`);
         console.log(`   Articles: ${recentCrawl.totalArticles}`);
 
-        await updateScheduleSuccess(scheduleId, duration, recentCrawl.totalArticles);
+        await updateScheduleSuccess(scheduleId, scheduleName, duration, recentCrawl.totalArticles);
         return;
       }
 
@@ -195,7 +208,7 @@ async function executeCrawl(scheduleId: string, complexNos: string[]) {
         console.log(`   Duration: ${Math.floor(duration / 1000)}s`);
         console.log(`   Articles: ${result.articlesCount}`);
 
-        await updateScheduleSuccess(scheduleId, duration, result.articlesCount);
+        await updateScheduleSuccess(scheduleId, scheduleName, duration, result.articlesCount);
       } else {
         throw new Error(result.error || 'Crawl failed');
       }
@@ -204,30 +217,47 @@ async function executeCrawl(scheduleId: string, complexNos: string[]) {
     const duration = Date.now() - startTime;
     console.error(`❌ Scheduled crawl failed: ${scheduleId}`, error);
 
+    // SSE: 스케줄 크롤링 실패 알림
+    console.log(`   [SSE] Broadcasting schedule-failed event`);
+    eventBroadcaster.notifyScheduleFailed(scheduleId, scheduleName, error.message || 'Unknown error');
+
     // 실패 로그 저장
-    await prisma.scheduleLog.create({
-      data: {
-        scheduleId,
-        status: 'failed',
-        duration: Math.floor(duration / 1000),
-        articlesCount: 0,
-        errorMessage: error.message || 'Unknown error',
-      },
-    });
+    console.log(`   [DB] Saving failure log to ScheduleLog table`);
+    try {
+      await prisma.scheduleLog.create({
+        data: {
+          scheduleId,
+          status: 'failed',
+          duration: Math.floor(duration / 1000),
+          articlesCount: 0,
+          errorMessage: error.message || 'Unknown error',
+        },
+      });
+      console.log(`   [DB] ✓ Failure log saved successfully`);
+    } catch (dbError: any) {
+      console.error(`   [DB] ✗ Failed to save failure log:`, dbError);
+    }
   }
 }
 
 /**
  * 스케줄 성공 업데이트 헬퍼 함수
  */
-async function updateScheduleSuccess(scheduleId: string, duration: number, articlesCount: number) {
+async function updateScheduleSuccess(
+  scheduleId: string,
+  scheduleName: string,
+  duration: number,
+  articlesCount: number
+) {
+  console.log(`   [DB] Updating schedule success...`);
+
   // 스케줄 정보 조회
   const schedule = await prisma.schedule.findUnique({
     where: { id: scheduleId },
   });
 
   if (!schedule) {
-    console.error(`Schedule not found: ${scheduleId}`);
+    console.error(`   [DB] ✗ Schedule not found: ${scheduleId}`);
     return;
   }
 
@@ -235,24 +265,41 @@ async function updateScheduleSuccess(scheduleId: string, duration: number, artic
   const nextRun = getNextRunTime(schedule.cronExpr);
   const now = new Date();
 
+  console.log(`   [DB] Next run calculated: ${nextRun ? nextRun.toISOString() : 'null'}`);
+
   // 스케줄 업데이트 (lastRun, nextRun)
-  await prisma.schedule.update({
-    where: { id: scheduleId },
-    data: {
-      lastRun: now,
-      nextRun,
-    },
-  });
+  try {
+    await prisma.schedule.update({
+      where: { id: scheduleId },
+      data: {
+        lastRun: now,
+        nextRun,
+      },
+    });
+    console.log(`   [DB] ✓ Schedule updated (lastRun, nextRun)`);
+  } catch (updateError: any) {
+    console.error(`   [DB] ✗ Failed to update schedule:`, updateError);
+  }
 
   // 성공 로그 저장
-  await prisma.scheduleLog.create({
-    data: {
-      scheduleId,
-      status: 'success',
-      duration: Math.floor(duration / 1000),
-      articlesCount: articlesCount,
-    },
-  });
+  console.log(`   [DB] Saving success log to ScheduleLog table`);
+  try {
+    const log = await prisma.scheduleLog.create({
+      data: {
+        scheduleId,
+        status: 'success',
+        duration: Math.floor(duration / 1000),
+        articlesCount: articlesCount,
+      },
+    });
+    console.log(`   [DB] ✓ Success log saved with ID: ${log.id}`);
+  } catch (logError: any) {
+    console.error(`   [DB] ✗ Failed to save success log:`, logError);
+  }
+
+  // SSE: 스케줄 크롤링 완료 알림
+  console.log(`   [SSE] Broadcasting schedule-complete event`);
+  eventBroadcaster.notifyScheduleComplete(scheduleId, scheduleName, articlesCount, duration);
 }
 
 /**
