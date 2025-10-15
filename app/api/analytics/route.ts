@@ -38,97 +38,66 @@ export async function GET(request: NextRequest) {
       tradeTypes,
     });
 
-    // JSON 파일 읽기 (파일 기반)
-    const fs = require('fs');
-    const path = require('path');
-    const crawledDataPath = path.join(process.cwd(), 'crawled_data');
-
-    console.log('[ANALYTICS] Reading from:', crawledDataPath);
-
-    // 최근 크롤링 파일 찾기 (favorites.json 제외)
-    let files: string[] = [];
-    try {
-      files = fs.readdirSync(crawledDataPath);
-    } catch (error: any) {
-      console.error('[ANALYTICS] Failed to read directory:', error);
-      return NextResponse.json({
-        success: false,
-        error: 'Failed to access crawl data directory',
-      }, { status: 500 });
-    }
-
-    const jsonFiles = files
-      .filter((f: string) => f.startsWith('complexes_') && f.endsWith('.json'))
-      .sort()
-      .reverse();
-
-    console.log('[ANALYTICS] Found files:', jsonFiles.length);
-
-    if (jsonFiles.length === 0) {
-      return NextResponse.json({
-        success: false,
-        error: 'No crawl data found. Please run a crawl first.',
-      }, { status: 404 });
-    }
-
-    // 첫 번째 파일 읽기
-    const latestFile = jsonFiles[0];
-    const filePath = path.join(crawledDataPath, latestFile);
-    console.log('[ANALYTICS] Reading file:', latestFile);
-
-    let crawlData: any;
-    try {
-      const rawData = fs.readFileSync(filePath, 'utf-8');
-      crawlData = JSON.parse(rawData);
-
-      // 파일 구조 확인: 배열인지 객체인지
-      const results = Array.isArray(crawlData) ? crawlData : (crawlData.results || []);
-      console.log('[ANALYTICS] Parsed data, results count:', results.length);
-      console.log('[ANALYTICS] File structure:', Array.isArray(crawlData) ? 'array' : 'object');
-
-      crawlData = results; // 배열로 정규화
-    } catch (error: any) {
-      console.error('[ANALYTICS] Failed to read/parse file:', error);
-      return NextResponse.json({
-        success: false,
-        error: 'Failed to read crawl data file',
-      }, { status: 500 });
-    }
-
-    // 선택된 단지의 데이터만 필터링
-    const filteredResults = crawlData.filter((result: any) => {
-      const complexNo = result.crawling_info?.complex_no || result.overview?.complexNo || '';
-      return complexNos.includes(complexNo);
+    // 데이터베이스에서 단지 및 매물 정보 조회
+    const complexes = await prisma.complex.findMany({
+      where: {
+        complexNo: {
+          in: complexNos,
+        },
+      },
+      include: {
+        articles: {
+          where: {
+            ...(tradeTypes && tradeTypes.length > 0 ? { tradeTypeName: { in: tradeTypes } } : {}),
+            ...(startDate ? { articleConfirmYmd: { gte: startDate } } : {}),
+            ...(endDate ? { articleConfirmYmd: { lte: endDate } } : {}),
+          },
+          orderBy: {
+            articleConfirmYmd: 'desc',
+          },
+        },
+      },
     });
 
-    console.log('[ANALYTICS] Filtered results:', filteredResults.length);
+    console.log('[ANALYTICS] Found complexes:', complexes.length);
+    console.log('[ANALYTICS] Articles by complex:', complexes.map(c => ({
+      complexNo: c.complexNo,
+      complexName: c.complexName,
+      articleCount: c.articles.length
+    })));
 
-    if (filteredResults.length === 0) {
+    if (complexes.length === 0) {
       // 사용 가능한 단지 목록 조회
-      const availableComplexes = crawlData.map((r: any) => {
-        const info = r.crawling_info || r.overview || {};
-        return {
-          complexNo: info.complex_no || info.complexNo || 'Unknown',
-          complexName: info.complex_name || info.complexName || r.articles?.articleList?.[0]?.articleName || 'Unknown',
-        };
+      const availableComplexes = await prisma.complex.findMany({
+        select: {
+          complexNo: true,
+          complexName: true,
+          _count: {
+            select: { articles: true },
+          },
+        },
       });
 
       console.log('[ANALYTICS] Available complexes:', availableComplexes);
 
       return NextResponse.json({
         success: false,
-        error: `Selected complex(es) not found in crawl data. Please crawl these complexes first.`,
-        availableComplexes,
+        error: `Selected complex(es) not found in database. Please crawl these complexes first.`,
+        availableComplexes: availableComplexes.map(c => ({
+          complexNo: c.complexNo,
+          complexName: c.complexName,
+          articleCount: c._count.articles,
+        })),
         requestedComplexes: complexNos,
       }, { status: 404 });
     }
 
     if (mode === 'single') {
       // 단일 단지 분석
-      return getSingleAnalysis(filteredResults[0], tradeTypes);
+      return getSingleAnalysis(complexes[0], tradeTypes);
     } else {
       // 다중 단지 비교
-      return getCompareAnalysis(filteredResults, tradeTypes);
+      return getCompareAnalysis(complexes, tradeTypes);
     }
   } catch (error: any) {
     console.error('[ANALYTICS] Error:', error);
@@ -145,24 +114,16 @@ export async function GET(request: NextRequest) {
 /**
  * 단일 단지 심층 분석
  */
-function getSingleAnalysis(result: any, tradeTypes?: string[]) {
-  if (!result) {
+function getSingleAnalysis(complex: any, tradeTypes?: string[]) {
+  if (!complex) {
     return NextResponse.json({
       success: false,
       error: 'No data found for selected complex',
     });
   }
 
-  // 파일 구조에 따라 articles 추출
-  console.log('[ANALYTICS] Result structure:', {
-    hasArticles: !!result.articles,
-    hasArticleList: !!result.articles?.articleList,
-    articlesType: Array.isArray(result.articles) ? 'array' : typeof result.articles,
-    articleListLength: result.articles?.articleList?.length,
-    articlesLength: Array.isArray(result.articles) ? result.articles.length : 'not array',
-  });
-
-  let articles = result.articles?.articleList || result.articles || [];
+  // 데이터베이스에서 조회한 articles 배열
+  const articles = complex.articles || [];
 
   console.log('[ANALYTICS] Extracted articles:', {
     length: articles.length,
@@ -175,11 +136,6 @@ function getSingleAnalysis(result: any, tradeTypes?: string[]) {
       success: false,
       error: 'No articles found for selected complex. The complex may not have any listings.',
     });
-  }
-
-  // 거래유형 필터링
-  if (tradeTypes && tradeTypes.length > 0) {
-    articles = articles.filter((a: any) => tradeTypes.includes(a.tradeTypeName));
   }
 
   // 1. 거래유형 분포
@@ -261,24 +217,14 @@ function getSingleAnalysis(result: any, tradeTypes?: string[]) {
       return aNum - bNum;
     });
 
-  // 단지 정보 추출 (파일 구조에 따라)
-  const complexInfo = result.crawling_info || result.overview || {};
-  const complexNo = complexInfo.complex_no || complexInfo.complexNo || 'Unknown';
-
-  // 첫 번째 article에서 단지명 추출 (overview가 없는 경우)
-  const complexName = complexInfo.complex_name ||
-                      complexInfo.complexName ||
-                      articles[0]?.articleName ||
-                      `단지 ${complexNo}`;
-
   return NextResponse.json({
     success: true,
     mode: 'single',
     complex: {
-      complexNo,
-      complexName,
-      totalHousehold: complexInfo.totalHousehold || null,
-      totalDong: complexInfo.totalDong || null,
+      complexNo: complex.complexNo,
+      complexName: complex.complexName,
+      totalHousehold: complex.totalHousehold,
+      totalDong: complex.totalDong,
     },
     statistics: {
       totalArticles: articles.length,
@@ -300,22 +246,17 @@ function getSingleAnalysis(result: any, tradeTypes?: string[]) {
 /**
  * 다중 단지 비교 분석
  */
-function getCompareAnalysis(results: any[], tradeTypes?: string[]) {
-  if (!results || results.length === 0) {
+function getCompareAnalysis(complexes: any[], tradeTypes?: string[]) {
+  if (!complexes || complexes.length === 0) {
     return NextResponse.json({
       success: false,
       error: 'No data found for selected complexes',
     });
   }
 
-  const comparisons = results.map((result) => {
-    // 파일 구조에 따라 articles 추출
-    let articles = result.articles?.articleList || result.articles || [];
-
-    // 거래유형 필터링
-    if (tradeTypes && tradeTypes.length > 0) {
-      articles = articles.filter((a: any) => tradeTypes.includes(a.tradeTypeName));
-    }
+  const comparisons = complexes.map((complex) => {
+    // 데이터베이스에서 조회한 articles 배열
+    const articles = complex.articles || [];
 
     const allPrices = articles
       .filter((a: any) => a.dealOrWarrantPrc)
@@ -339,17 +280,9 @@ function getCompareAnalysis(results: any[], tradeTypes?: string[]) {
       return acc;
     }, {});
 
-    // 단지 정보 추출
-    const complexInfo = result.crawling_info || result.overview || {};
-    const complexNo = complexInfo.complex_no || complexInfo.complexNo || 'Unknown';
-    const complexName = complexInfo.complex_name ||
-                        complexInfo.complexName ||
-                        articles[0]?.articleName ||
-                        `단지 ${complexNo}`;
-
     return {
-      complexNo,
-      complexName,
+      complexNo: complex.complexNo,
+      complexName: complex.complexName,
       totalArticles: articles.length,
       avgPrice,
       minPrice: allPrices.length > 0 ? Math.min(...allPrices) : 0,
