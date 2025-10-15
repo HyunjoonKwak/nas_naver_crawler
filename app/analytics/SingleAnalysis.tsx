@@ -22,7 +22,7 @@ export const SingleAnalysis: React.FC<SingleAnalysisProps> = ({ analyticsData })
     );
   }
 
-  const { complex, statistics, charts } = analyticsData;
+  const { complex, statistics, statisticsByArea, charts } = analyticsData;
 
   return (
     <div className="space-y-6">
@@ -38,45 +38,77 @@ export const SingleAnalysis: React.FC<SingleAnalysisProps> = ({ analyticsData })
         </div>
       </div>
 
-      {/* 통계 카드 그리드 */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-        <StatCard
-          title="총 매물 수"
-          value={statistics.totalArticles}
-          suffix="건"
-          icon="📊"
-        />
-        <StatCard
-          title="평균 가격"
-          value={(statistics.avgPrice / 10000).toFixed(2)}
-          suffix="억"
-          icon="💰"
-        />
-        <StatCard
-          title="중간값 가격"
-          value={(statistics.medianPrice / 10000).toFixed(2)}
-          suffix="억"
-          icon="📈"
-        />
-        <StatCard
-          title="최저가"
-          value={(statistics.minPrice / 10000).toFixed(2)}
-          suffix="억"
-          icon="⬇️"
-        />
-        <StatCard
-          title="최고가"
-          value={(statistics.maxPrice / 10000).toFixed(2)}
-          suffix="억"
-          icon="⬆️"
-        />
-        <StatCard
-          title="평당 평균가"
-          value={(statistics.avgPricePerPyeong / 10000).toFixed(2)}
-          suffix="억/평"
-          icon="📐"
-        />
+      {/* 전체 통계 요약 */}
+      <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl shadow-md p-6 border border-blue-200 dark:border-blue-800">
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+          📊 전체 통계 요약
+        </h3>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          <div className="text-center">
+            <div className="text-sm text-gray-600 dark:text-gray-400 mb-1">총 매물</div>
+            <div className="text-2xl font-bold text-gray-900 dark:text-white">{statistics.totalArticles}건</div>
+          </div>
+          <div className="text-center">
+            <div className="text-sm text-gray-600 dark:text-gray-400 mb-1">평균 가격</div>
+            <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{(statistics.avgPrice / 10000).toFixed(2)}억</div>
+          </div>
+          <div className="text-center">
+            <div className="text-sm text-gray-600 dark:text-gray-400 mb-1">중간값</div>
+            <div className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">{(statistics.medianPrice / 10000).toFixed(2)}억</div>
+          </div>
+          <div className="text-center">
+            <div className="text-sm text-gray-600 dark:text-gray-400 mb-1">최저가</div>
+            <div className="text-2xl font-bold text-green-600 dark:text-green-400">{(statistics.minPrice / 10000).toFixed(2)}억</div>
+          </div>
+          <div className="text-center">
+            <div className="text-sm text-gray-600 dark:text-gray-400 mb-1">최고가</div>
+            <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">{(statistics.maxPrice / 10000).toFixed(2)}억</div>
+          </div>
+          <div className="text-center">
+            <div className="text-sm text-gray-600 dark:text-gray-400 mb-1">평당 평균</div>
+            <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">{(statistics.avgPricePerPyeong / 10000).toFixed(2)}억</div>
+          </div>
+        </div>
       </div>
+
+      {/* 평형별 상세 통계 */}
+      {statisticsByArea && statisticsByArea.length > 0 && (
+        <div className="bg-white dark:bg-gray-900 rounded-xl shadow-md p-6">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+            📐 평형별 상세 통계
+          </h3>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-gray-200 dark:border-gray-700">
+                  <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">평형</th>
+                  <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">면적(㎡)</th>
+                  <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">매물수</th>
+                  <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">평균가</th>
+                  <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">중간값</th>
+                  <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">최저가</th>
+                  <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">최고가</th>
+                  <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">평당가</th>
+                </tr>
+              </thead>
+              <tbody>
+                {statisticsByArea.map((areaStats: any) => (
+                  <tr key={areaStats.pyeong} className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                    <td className="py-3 px-4 font-semibold text-gray-900 dark:text-white">{areaStats.pyeong}평</td>
+                    <td className="py-3 px-4 text-right text-sm text-gray-600 dark:text-gray-400">{areaStats.area.toFixed(1)}㎡</td>
+                    <td className="py-3 px-4 text-right text-sm text-gray-900 dark:text-white">{areaStats.count}건</td>
+                    <td className="py-3 px-4 text-right font-semibold text-blue-600 dark:text-blue-400">{(areaStats.avgPrice / 10000).toFixed(2)}억</td>
+                    <td className="py-3 px-4 text-right text-sm text-gray-700 dark:text-gray-300">{(areaStats.medianPrice / 10000).toFixed(2)}억</td>
+                    <td className="py-3 px-4 text-right text-sm text-green-600 dark:text-green-400">{(areaStats.minPrice / 10000).toFixed(2)}억</td>
+                    <td className="py-3 px-4 text-right text-sm text-orange-600 dark:text-orange-400">{(areaStats.maxPrice / 10000).toFixed(2)}억</td>
+                    <td className="py-3 px-4 text-right text-sm text-purple-600 dark:text-purple-400">{(areaStats.avgPricePerPyeong / 10000).toFixed(3)}억</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* 차트 섹션 */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

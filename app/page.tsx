@@ -213,47 +213,34 @@ export default function Home() {
           {/* 크롤링 상태 배너 */}
           {crawlingStatus.isActive && (
             <div className="mb-6 bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-700 dark:to-indigo-700 rounded-xl shadow-lg p-5">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
-                    <svg className="animate-spin h-6 w-6 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                  </div>
-                  <div>
-                    <h3 className="text-white font-bold text-lg">
-                      {crawlingStatus.scheduleName
-                        ? `스케줄 "${crawlingStatus.scheduleName}" 실행 중`
-                        : '크롤링 진행 중'
-                      }
-                    </h3>
-                    <div className="flex items-center gap-3 mt-1">
-                      <p className="text-blue-100 text-sm">{crawlingStatus.currentStep}</p>
-                      {crawlingStatus.startTime && (
-                        <p className="text-blue-100 text-sm font-medium">
-                          ⏱️ {formatElapsedTime(crawlingStatus.elapsedSeconds)} 경과
-                        </p>
-                      )}
-                    </div>
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center flex-shrink-0">
+                  <svg className="animate-spin h-7 w-7 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-white font-bold text-xl mb-1">
+                    {crawlingStatus.scheduleName
+                      ? `스케줄 "${crawlingStatus.scheduleName}" 실행 중`
+                      : '크롤링 진행 중'
+                    }
+                  </h3>
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <p className="text-blue-100 text-sm">{crawlingStatus.currentStep}</p>
+                    {crawlingStatus.startTime && (
+                      <p className="text-blue-100 text-sm font-medium">
+                        ⏱️ {formatElapsedTime(crawlingStatus.elapsedSeconds)} 경과
+                      </p>
+                    )}
                     {crawlingStatus.totalComplexes && (
-                      <p className="text-blue-100 text-xs mt-1">
-                        📍 {crawlingStatus.totalComplexes}개 단지 크롤링 중
+                      <p className="text-blue-100 text-sm">
+                        📍 {crawlingStatus.totalComplexes}개 단지
                       </p>
                     )}
                   </div>
                 </div>
-                <div className="text-right">
-                  <div className="text-white font-bold text-2xl">{crawlingStatus.progress}%</div>
-                  <div className="text-blue-100 text-xs">완료</div>
-                </div>
-              </div>
-              {/* 프로그레스 바 */}
-              <div className="w-full bg-white/20 rounded-full h-2 overflow-hidden">
-                <div
-                  className="bg-white h-full rounded-full transition-all duration-500"
-                  style={{ width: `${crawlingStatus.progress}%` }}
-                ></div>
               </div>
             </div>
           )}

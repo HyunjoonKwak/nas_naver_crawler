@@ -178,7 +178,7 @@ function getSingleAnalysis(complex: any, tradeTypes?: string[]) {
     }, {}),
   }];
 
-  // 4. 통계 요약
+  // 4. 통계 요약 - 전체
   const allPrices = articles
     .filter((a: any) => a.dealOrWarrantPrc)
     .map((a: any) => parsePriceToNumber(a.dealOrWarrantPrc));
@@ -189,7 +189,7 @@ function getSingleAnalysis(complex: any, tradeTypes?: string[]) {
   const minPrice = Math.min(...allPrices);
   const maxPrice = Math.max(...allPrices);
 
-  // 평당 평균가 계산
+  // 평당 평균가 계산 - 전체
   const avgPricePerPyeong = Math.round(
     articles
       .filter((a: any) => a.area1 && a.dealOrWarrantPrc)
@@ -199,6 +199,45 @@ function getSingleAnalysis(complex: any, tradeTypes?: string[]) {
         return sum + price / pyeong;
       }, 0) / articles.length
   );
+
+  // 5. 평형별 통계 계산
+  const articlesByArea = articles
+    .filter((a: any) => a.area1 && a.dealOrWarrantPrc)
+    .reduce((acc: any, article: any) => {
+      const area = article.area1; // 면적 (㎡)
+      const pyeong = Math.round(area * 0.3025); // 평수로 변환
+
+      if (!acc[pyeong]) {
+        acc[pyeong] = {
+          area,
+          pyeong,
+          articles: [],
+        };
+      }
+      acc[pyeong].articles.push(article);
+      return acc;
+    }, {});
+
+  const statisticsByArea = Object.values(articlesByArea).map((group: any) => {
+    const prices = group.articles.map((a: any) => parsePriceToNumber(a.dealOrWarrantPrc));
+    const sortedPrices = [...prices].sort((a: number, b: number) => a - b);
+    const avgPrice = Math.round(prices.reduce((sum: number, p: number) => sum + p, 0) / prices.length);
+    const medianPrice = sortedPrices[Math.floor(sortedPrices.length / 2)];
+    const minPrice = Math.min(...prices);
+    const maxPrice = Math.max(...prices);
+    const avgPricePerPyeong = Math.round(avgPrice / group.pyeong);
+
+    return {
+      area: group.area,
+      pyeong: group.pyeong,
+      count: group.articles.length,
+      avgPrice,
+      medianPrice,
+      minPrice,
+      maxPrice,
+      avgPricePerPyeong,
+    };
+  }).sort((a: any, b: any) => a.area - b.area); // 면적 기준 오름차순 정렬
 
   // 5. 가격 분포 히스토그램 (1억 단위)
   const priceHistogram = allPrices.reduce((acc: any, price: number) => {
@@ -234,6 +273,7 @@ function getSingleAnalysis(complex: any, tradeTypes?: string[]) {
       maxPrice,
       avgPricePerPyeong,
     },
+    statisticsByArea, // 평형별 통계 추가
     charts: {
       tradeTypeDistribution: tradeTypePieData,
       areaVsPrice: areaVsPriceData,
