@@ -140,7 +140,7 @@ function SignInForm() {
 
         {/* 푸터 */}
         <div className="mt-8 text-center text-sm text-gray-600 dark:text-gray-400">
-          <p>© 2025 Naver Crawler. All rights reserved.</p>
+          <p>© 2025 specialrisk. All rights reserved.</p>
         </div>
       </div>
     </div>
