@@ -337,28 +337,36 @@ export default function CrawlerHistory({ refresh }: CrawlerHistoryProps) {
                               📦 크롤링 결과 파일 ({fileContents[item.id].length}개)
                             </h4>
 
-                            {/* 파일 목록을 그리드로 표시 */}
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                              {fileContents[item.id].map((file: any, index: number) => (
-                                <div key={index} className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-                                  {/* 파일 헤더 */}
-                                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-                                    <div className="flex items-center justify-between">
-                                      <h5 className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                                        <span>{file.data.type === 'json' ? '📄' : '📊'}</span>
-                                        <span>{file.label}</span>
-                                      </h5>
-                                      <span className="text-xs text-gray-600 dark:text-gray-400">
-                                        {(file.data.size / 1024).toFixed(2)} KB
-                                      </span>
-                                    </div>
-                                    <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                      {file.name}
-                                    </div>
-                                  </div>
+                            {/* 파일 목록을 2열 가로 레이아웃으로 표시 */}
+                            <div className="space-y-8">
+                              {/* 단지 정보 파일들 (가로 2개) */}
+                              {(() => {
+                                const complexFiles = fileContents[item.id].filter((f: any) => f.label.includes('단지 정보'));
+                                if (complexFiles.length === 0) return null;
+                                return (
+                                  <div>
+                                    <h5 className="text-md font-semibold text-gray-800 dark:text-gray-200 mb-3">단지 정보</h5>
+                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                      {complexFiles.map((file: any, index: number) => (
+                                        <div key={index} className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+                                          {/* 파일 헤더 */}
+                                          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+                                            <div className="flex items-center justify-between">
+                                              <h6 className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                                                <span>{file.data.type === 'json' ? '📄' : '📊'}</span>
+                                                <span>{file.label}</span>
+                                              </h6>
+                                              <span className="text-xs text-gray-600 dark:text-gray-400">
+                                                {(file.data.size / 1024).toFixed(2)} KB
+                                              </span>
+                                            </div>
+                                            <div className="text-xs text-gray-500 dark:text-gray-400 mt-1 truncate">
+                                              {file.name}
+                                            </div>
+                                          </div>
 
-                                  {/* 파일 내용 */}
-                                  <div className="p-4 max-h-80 overflow-auto">
+                                          {/* 파일 내용 */}
+                                          <div className="p-4 max-h-96 overflow-auto">
                                     {file.data.type === 'json' ? (
                                       <div>
                                         <div className="text-xs text-gray-600 dark:text-gray-400 mb-2">
@@ -406,9 +414,96 @@ export default function CrawlerHistory({ refresh }: CrawlerHistoryProps) {
                                         </div>
                                       </div>
                                     )}
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
                                   </div>
-                                </div>
-                              ))}
+                                );
+                              })()}
+
+                              {/* 매물 정보 파일들 (가로 2개) */}
+                              {(() => {
+                                const articleFiles = fileContents[item.id].filter((f: any) => f.label.includes('매물 정보'));
+                                if (articleFiles.length === 0) return null;
+                                return (
+                                  <div>
+                                    <h5 className="text-md font-semibold text-gray-800 dark:text-gray-200 mb-3">매물 정보</h5>
+                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                      {articleFiles.map((file: any, index: number) => (
+                                        <div key={index} className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+                                          {/* 파일 헤더 */}
+                                          <div className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+                                            <div className="flex items-center justify-between">
+                                              <h6 className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                                                <span>{file.data.type === 'json' ? '📄' : '📊'}</span>
+                                                <span>{file.label}</span>
+                                              </h6>
+                                              <span className="text-xs text-gray-600 dark:text-gray-400">
+                                                {(file.data.size / 1024).toFixed(2)} KB
+                                              </span>
+                                            </div>
+                                            <div className="text-xs text-gray-500 dark:text-gray-400 mt-1 truncate">
+                                              {file.name}
+                                            </div>
+                                          </div>
+
+                                          {/* 파일 내용 */}
+                                          <div className="p-4 max-h-96 overflow-auto">
+                                            {file.data.type === 'json' ? (
+                                              <div>
+                                                <div className="text-xs text-gray-600 dark:text-gray-400 mb-2">
+                                                  {Array.isArray(file.data.data)
+                                                    ? `${file.data.data.length}개 항목`
+                                                    : 'JSON 객체'}
+                                                </div>
+                                                <pre className="text-xs text-gray-700 dark:text-gray-300 whitespace-pre-wrap font-mono">
+                                                  {JSON.stringify(file.data.data, null, 2)}
+                                                </pre>
+                                              </div>
+                                            ) : (
+                                              <div>
+                                                <div className="text-xs text-gray-600 dark:text-gray-400 mb-2">
+                                                  {file.data.rowCount}개 행 × {file.data.headers?.length || 0}개 열
+                                                </div>
+                                                <div className="overflow-x-auto">
+                                                  <table className="min-w-full text-xs">
+                                                    <thead className="bg-gray-100 dark:bg-gray-700">
+                                                      <tr>
+                                                        {file.data.headers?.map((header: string, i: number) => (
+                                                          <th key={i} className="px-2 py-1 text-left font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600">
+                                                            {header}
+                                                          </th>
+                                                        ))}
+                                                      </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                      {file.data.data?.slice(0, 10).map((row: any, i: number) => (
+                                                        <tr key={i} className="border-b border-gray-200 dark:border-gray-700">
+                                                          {file.data.headers?.map((header: string, j: number) => (
+                                                            <td key={j} className="px-2 py-1 text-gray-700 dark:text-gray-300">
+                                                              {row[header]}
+                                                            </td>
+                                                          ))}
+                                                        </tr>
+                                                      ))}
+                                                    </tbody>
+                                                  </table>
+                                                  {file.data.data?.length > 10 && (
+                                                    <div className="text-xs text-gray-500 dark:text-gray-400 mt-2 text-center">
+                                                      ... 외 {file.data.data.length - 10}개 행
+                                                    </div>
+                                                  )}
+                                                </div>
+                                              </div>
+                                            )}
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                );
+                              })()}
                             </div>
                           </div>
                         ) : (
