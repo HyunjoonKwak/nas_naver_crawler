@@ -64,10 +64,10 @@ function SignInForm() {
             </svg>
           </div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-            부동산 크롤러
+            부동산 인사이트
           </h1>
           <p className="text-gray-600 dark:text-gray-400">
-            네이버 부동산 데이터 수집 시스템
+            스마트한 부동산 정보수집 관리시스템
           </p>
         </div>
 
