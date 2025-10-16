@@ -72,7 +72,7 @@ interface DBStats {
 export default function SystemPage() {
   const [status, setStatus] = useState<StatusData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeSection, setActiveSection] = useState<'status' | 'data' | 'history' | 'database'>('status');
+  const [activeSection, setActiveSection] = useState<'data' | 'history' | 'database'>('database');
   const [refresh, setRefresh] = useState(0);
 
   // CSV/JSON viewer states
@@ -488,20 +488,7 @@ export default function SystemPage() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Section Tabs */}
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-800 mb-6 overflow-hidden">
-          <div className="grid grid-cols-4 border-b border-gray-200 dark:border-gray-700">
-            <button
-              onClick={() => setActiveSection('status')}
-              className={`px-4 py-4 text-center font-semibold transition-colors ${
-                activeSection === 'status'
-                  ? 'bg-gradient-to-r from-green-600 to-emerald-600 text-white'
-                  : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
-              }`}
-            >
-              <div className="flex items-center justify-center gap-2">
-                <span className="text-xl">⚙️</span>
-                <span>시스템 상태</span>
-              </div>
-            </button>
+          <div className="grid grid-cols-3 border-b border-gray-200 dark:border-gray-700">
             <button
               onClick={() => setActiveSection('database')}
               className={`px-4 py-4 text-center font-semibold transition-colors ${
@@ -543,38 +530,6 @@ export default function SystemPage() {
             </button>
           </div>
         </div>
-
-        {/* Status Section */}
-        {activeSection === 'status' && (
-          loading ? (
-            <div className="flex items-center justify-center py-20">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
-            </div>
-          ) : (
-            <div className="space-y-6">
-              {/* System Status section moved to DB section - redirecting message */}
-              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-2xl shadow-xl border-2 border-blue-200 dark:border-blue-800 p-8">
-                <div className="flex items-center gap-4">
-                  <div className="text-5xl">ℹ️</div>
-                  <div>
-                    <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
-                      시스템 상태는 DB 현황 탭에서 확인하세요
-                    </h3>
-                    <p className="text-gray-600 dark:text-gray-400 mb-4">
-                      시스템 상태 정보가 DB 현황 페이지 하단으로 이동되었습니다.
-                    </p>
-                    <button
-                      onClick={() => setActiveSection('database')}
-                      className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium flex items-center gap-2"
-                    >
-                      🗄️ DB 현황으로 이동
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )
-        )}
 
         {/* Data Viewer Section */}
         {activeSection === 'data' && (
