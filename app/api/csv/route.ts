@@ -9,6 +9,8 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const filename = searchParams.get('filename');
     const timestamp = searchParams.get('timestamp');
+    const startTime = searchParams.get('startTime');
+    const endTime = searchParams.get('endTime');
     const complexNos = searchParams.get('complexNos');
 
     const baseDir = process.env.NODE_ENV === 'production' ? '/app' : process.cwd();
@@ -21,14 +23,33 @@ export async function GET(request: Request) {
       return NextResponse.json({ csvFiles: [], jsonFiles: [] });
     }
 
-    // 타임스탬프와 단지번호로 파일 검색
-    if (timestamp) {
+    // 시작/종료 시간과 단지번호로 파일 검색
+    if (startTime && endTime) {
       const allFiles = await fs.readdir(crawledDataDir);
-      console.log(`[CSV API] Searching for timestamp: ${timestamp}, complexNos: ${complexNos}`);
+      console.log(`[CSV API] Searching for startTime: ${startTime}, endTime: ${endTime}, complexNos: ${complexNos}`);
       console.log(`[CSV API] All files in directory:`, allFiles);
 
       // 단지번호 배열 생성
       const complexNoArray = complexNos ? complexNos.split(',') : [];
+
+      // 시작/종료 시간을 Date 객체로 변환
+      const startDate = new Date(
+        parseInt(startTime.substring(0, 4)),
+        parseInt(startTime.substring(4, 6)) - 1,
+        parseInt(startTime.substring(6, 8)),
+        parseInt(startTime.substring(9, 11)),
+        parseInt(startTime.substring(11, 13)),
+        parseInt(startTime.substring(13, 15))
+      );
+
+      const endDate = new Date(
+        parseInt(endTime.substring(0, 4)),
+        parseInt(endTime.substring(4, 6)) - 1,
+        parseInt(endTime.substring(6, 8)),
+        parseInt(endTime.substring(9, 11)),
+        parseInt(endTime.substring(11, 13)),
+        parseInt(endTime.substring(13, 15))
+      );
 
       const matchingFiles = allFiles.filter(file => {
         // 기본 조건: JSON/CSV, favorites/crawl_status 제외
@@ -36,34 +57,33 @@ export async function GET(request: Request) {
         if (file === 'favorites.json') return false;
         if (file.includes('crawl_status')) return false;
 
-        // 단지번호로 검색 (우선순위)
+        // 모든 단지번호가 파일명에 포함되어 있는지 확인
         if (complexNoArray.length > 0) {
-          const hasComplexNo = complexNoArray.some(complexNo => file.includes(complexNo));
-          if (hasComplexNo) {
-            // 단지번호가 포함되어 있으면 타임스탬프도 비슷한지 확인 (앞뒤 5분 허용)
-            const fileTimestamp = file.match(/(\d{8}_\d{6})/)?.[1];
-            if (fileTimestamp && timestamp) {
-              const timestampPrefix = timestamp.substring(0, 13); // YYYYMMDD_HHmm
-              const filePrefix = fileTimestamp.substring(0, 13);
-              // 분 단위까지 같거나 ±1분 이내면 매칭
-              const targetMin = parseInt(timestamp.substring(11, 13));
-              const fileMin = parseInt(fileTimestamp.substring(11, 13));
-              if (filePrefix.substring(0, 11) === timestampPrefix.substring(0, 11)) {
-                // 날짜와 시간이 같으면 분만 비교
-                if (Math.abs(targetMin - fileMin) <= 5) {
-                  return true;
-                }
-              }
-            }
-          }
+          const allComplexNosIncluded = complexNoArray.every(complexNo => file.includes(complexNo));
+          if (!allComplexNosIncluded) return false;
         }
 
-        // 타임스탬프로 검색 (정확히 일치)
-        if (file.includes(timestamp)) {
-          return true;
-        }
+        // 파일의 타임스탬프 추출
+        const fileTimestampMatch = file.match(/(\d{8}_\d{6})/);
+        if (!fileTimestampMatch) return false;
 
-        return false;
+        const fileTimestamp = fileTimestampMatch[1];
+
+        // 파일 타임스탬프를 Date 객체로 변환
+        const fileDate = new Date(
+          parseInt(fileTimestamp.substring(0, 4)),
+          parseInt(fileTimestamp.substring(4, 6)) - 1,
+          parseInt(fileTimestamp.substring(6, 8)),
+          parseInt(fileTimestamp.substring(9, 11)),
+          parseInt(fileTimestamp.substring(11, 13)),
+          parseInt(fileTimestamp.substring(13, 15))
+        );
+
+        // 파일 생성 시간이 크롤링 시작 ~ 종료 시간 범위 내에 있는지 확인
+        const fileTime = fileDate.getTime();
+        const isInRange = fileTime >= startDate.getTime() && fileTime <= endDate.getTime();
+
+        return isInRange;
       });
 
       console.log(`[CSV API] Matching files:`, matchingFiles);

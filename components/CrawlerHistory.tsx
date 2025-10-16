@@ -98,7 +98,7 @@ export default function CrawlerHistory({ refresh }: CrawlerHistoryProps) {
     return `${year}${month}${day}_${hour}${minute}${second}`;
   };
 
-  const toggleRow = async (itemId: string, timestamp: string, complexNos: string[]) => {
+  const toggleRow = async (itemId: string, startTime: string, endTime: string, complexNos: string[]) => {
     const newExpandedRows = new Set(expandedRows);
 
     if (expandedRows.has(itemId)) {
@@ -112,18 +112,20 @@ export default function CrawlerHistory({ refresh }: CrawlerHistoryProps) {
 
       // 파일 내용 로드 (아직 로드하지 않은 경우)
       if (!fileContents[itemId]) {
-        await fetchFileContentsByTimestamp(itemId, timestamp, complexNos);
+        await fetchFileContentsByTimestamp(itemId, startTime, endTime, complexNos);
       }
     }
   };
 
-  const fetchFileContentsByTimestamp = async (itemId: string, timestamp: string, complexNos: string[]) => {
+  const fetchFileContentsByTimestamp = async (itemId: string, startTime: string, endTime: string, complexNos: string[]) => {
     setLoadingFiles(new Set(loadingFiles).add(itemId));
 
     try {
-      // 타임스탬프와 단지번호로 파일들을 검색
+      // 시작/종료 타임스탬프와 단지번호로 파일들을 검색
       const complexNosParam = complexNos.join(',');
-      const response = await fetch(`/api/csv?timestamp=${encodeURIComponent(timestamp)}&complexNos=${encodeURIComponent(complexNosParam)}`);
+      const startTimestamp = generateTimestamp(startTime);
+      const endTimestamp = generateTimestamp(endTime);
+      const response = await fetch(`/api/csv?startTime=${encodeURIComponent(startTimestamp)}&endTime=${encodeURIComponent(endTimestamp)}&complexNos=${encodeURIComponent(complexNosParam)}`);
 
       if (!response.ok) {
         console.error(`API error: ${response.status} ${response.statusText}`);
@@ -132,7 +134,7 @@ export default function CrawlerHistory({ refresh }: CrawlerHistoryProps) {
       }
 
       const data = await response.json();
-      console.log(`[CrawlerHistory] Fetched files for timestamp ${timestamp}, complexNos ${complexNosParam}:`, data);
+      console.log(`[CrawlerHistory] Fetched files for startTime ${startTimestamp}, endTime ${endTimestamp}, complexNos ${complexNosParam}:`, data);
 
       if (data.files && data.files.length > 0) {
         // 파일별로 레이블 추가
@@ -159,7 +161,7 @@ export default function CrawlerHistory({ refresh }: CrawlerHistoryProps) {
           [itemId]: filesWithLabels
         }));
       } else {
-        console.warn(`[CrawlerHistory] No files found for timestamp ${timestamp}`);
+        console.warn(`[CrawlerHistory] No files found for startTime ${startTimestamp}, endTime ${endTimestamp}`);
         // 빈 배열로 설정하여 "파일을 불러올 수 없습니다" 메시지 표시
         setFileContents(prev => ({
           ...prev,
@@ -311,7 +313,7 @@ export default function CrawlerHistory({ refresh }: CrawlerHistoryProps) {
                     <td className="px-4 py-3 whitespace-nowrap">
                       {(item.status === 'completed' || item.status === 'success') && (
                         <button
-                          onClick={() => toggleRow(item.id, generateTimestamp(item.createdAt), item.complexNos)}
+                          onClick={() => toggleRow(item.id, item.createdAt, item.updatedAt, item.complexNos)}
                           className="px-3 py-1 text-xs bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 text-blue-700 dark:text-blue-300 rounded-lg transition-colors font-semibold inline-flex items-center gap-1"
                           title="크롤링 결과 파일 보기"
                         >
