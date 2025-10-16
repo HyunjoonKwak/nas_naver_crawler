@@ -55,7 +55,7 @@ export const Navigation = () => {
   }, [pathname]);
 
   const navLinks = [
-    { href: '/', label: '홈', icon: '🏠' },
+    { href: '/home', label: '홈', icon: '🏠' },
     { href: '/complexes', label: '단지 목록', icon: '🏘️' },
     { href: '/analytics', label: '데이터 분석', icon: '📊' },
     { href: '/scheduler', label: '스케줄러', icon: '⏰' },
@@ -88,7 +88,7 @@ export const Navigation = () => {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link
-            href="/"
+            href="/home"
             className="flex items-center gap-3 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-lg"
             aria-label="부동산 인사이트 홈으로 이동"
           >
