@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
+import { requireAuth } from '@/lib/auth-utils';
 
 const prisma = new PrismaClient();
 
@@ -8,10 +9,16 @@ export const dynamic = 'force-dynamic';
 // GET /api/groups - 모든 그룹 조회
 export async function GET(request: NextRequest) {
   try {
+    // 사용자 인증 확인
+    const currentUser = await requireAuth();
+
     const { searchParams } = new URL(request.url);
     const includeComplexes = searchParams.get('includeComplexes') === 'true';
 
     const groups = await prisma.group.findMany({
+      where: {
+        userId: currentUser.id,
+      },
       orderBy: [
         { order: 'asc' },
         { createdAt: 'desc' }
@@ -69,6 +76,9 @@ export async function GET(request: NextRequest) {
 // POST /api/groups - 새 그룹 생성
 export async function POST(request: NextRequest) {
   try {
+    // 사용자 인증 확인
+    const currentUser = await requireAuth();
+
     const body = await request.json();
     const { name, description, color, type = 'custom', autoRule, complexIds = [] } = body;
 
@@ -79,9 +89,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 같은 이름의 그룹이 있는지 확인
+    // 같은 이름의 그룹이 있는지 확인 (본인 그룹 중에서)
     const existingGroup = await prisma.group.findFirst({
-      where: { name }
+      where: {
+        name,
+        userId: currentUser.id,
+      }
     });
 
     if (existingGroup) {
@@ -91,8 +104,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 그룹의 최대 order 값을 가져옴
+    // 본인 그룹의 최대 order 값을 가져옴
     const maxOrder = await prisma.group.findFirst({
+      where: {
+        userId: currentUser.id,
+      },
       orderBy: { order: 'desc' },
       select: { order: true }
     });
@@ -105,7 +121,8 @@ export async function POST(request: NextRequest) {
         color: color || '#3b82f6', // 기본 색상
         type,
         autoRule,
-        order: (maxOrder?.order || 0) + 1
+        order: (maxOrder?.order || 0) + 1,
+        userId: currentUser.id,
       }
     });
 

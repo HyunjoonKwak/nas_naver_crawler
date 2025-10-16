@@ -6,6 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
+import { requireAuth } from '@/lib/auth-utils';
 import {
   registerSchedule,
   unregisterSchedule,
@@ -21,7 +22,13 @@ const prisma = new PrismaClient();
  */
 export async function GET(request: NextRequest) {
   try {
+    // 사용자 인증 확인
+    const currentUser = await requireAuth();
+
     const schedules = await prisma.schedule.findMany({
+      where: {
+        userId: currentUser.id,
+      },
       orderBy: {
         createdAt: 'desc',
       },
@@ -89,6 +96,9 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
+    // 사용자 인증 확인
+    const currentUser = await requireAuth();
+
     const body = await request.json();
 
     const { name, complexNos, cronExpr } = body;
@@ -135,6 +145,7 @@ export async function POST(request: NextRequest) {
         cronExpr,
         isActive: true,
         nextRun,
+        userId: currentUser.id,
       },
     });
 
@@ -177,6 +188,9 @@ export async function POST(request: NextRequest) {
  */
 export async function DELETE(request: NextRequest) {
   try {
+    // 사용자 인증 확인
+    const currentUser = await requireAuth();
+
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
 
@@ -193,9 +207,12 @@ export async function DELETE(request: NextRequest) {
     // Cron Job 제거
     unregisterSchedule(id);
 
-    // DB에서 삭제
+    // DB에서 삭제 (본인 것만)
     await prisma.schedule.delete({
-      where: { id },
+      where: {
+        id,
+        userId: currentUser.id,
+      },
     });
 
     return NextResponse.json({

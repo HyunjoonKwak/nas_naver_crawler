@@ -6,6 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
+import { requireAuth } from '@/lib/auth-utils';
 
 const prisma = new PrismaClient();
 
@@ -14,7 +15,13 @@ const prisma = new PrismaClient();
  */
 export async function GET(request: NextRequest) {
   try {
+    // 사용자 인증 확인
+    const currentUser = await requireAuth();
+
     const alerts = await prisma.alert.findMany({
+      where: {
+        userId: currentUser.id,
+      },
       orderBy: {
         createdAt: 'desc',
       },
@@ -71,6 +78,9 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
+    // 사용자 인증 확인
+    const currentUser = await requireAuth();
+
     const body = await request.json();
 
     const {
@@ -124,6 +134,7 @@ export async function POST(request: NextRequest) {
         notifyWebhook: notifyWebhook || false,
         webhookUrl: webhookUrl || null,
         isActive: true,
+        userId: currentUser.id,
       },
     });
 
@@ -148,6 +159,9 @@ export async function POST(request: NextRequest) {
  */
 export async function DELETE(request: NextRequest) {
   try {
+    // 사용자 인증 확인
+    const currentUser = await requireAuth();
+
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
 
@@ -161,8 +175,12 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
+    // 본인 알림만 삭제 가능
     await prisma.alert.delete({
-      where: { id },
+      where: {
+        id,
+        userId: currentUser.id,
+      },
     });
 
     return NextResponse.json({

@@ -7,6 +7,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
+import { requireAuth } from '@/lib/auth-utils';
 
 const prisma = new PrismaClient();
 
@@ -18,8 +19,14 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const alert = await prisma.alert.findUnique({
-      where: { id: params.id },
+    // 사용자 인증 확인
+    const currentUser = await requireAuth();
+
+    const alert = await prisma.alert.findFirst({
+      where: {
+        id: params.id,
+        userId: currentUser.id,
+      },
       include: {
         logs: {
           take: 50,
@@ -80,6 +87,9 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
+    // 사용자 인증 확인
+    const currentUser = await requireAuth();
+
     const body = await request.json();
 
     const {
@@ -108,7 +118,10 @@ export async function PUT(
     }
 
     const alert = await prisma.alert.update({
-      where: { id: params.id },
+      where: {
+        id: params.id,
+        userId: currentUser.id,
+      },
       data: {
         name,
         complexIds,
@@ -148,6 +161,9 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
+    // 사용자 인증 확인
+    const currentUser = await requireAuth();
+
     const body = await request.json();
     const { isActive } = body;
 
@@ -162,7 +178,10 @@ export async function PATCH(
     }
 
     const alert = await prisma.alert.update({
-      where: { id: params.id },
+      where: {
+        id: params.id,
+        userId: currentUser.id,
+      },
       data: { isActive },
     });
 

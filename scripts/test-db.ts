@@ -21,11 +21,20 @@ async function testConnection() {
 
     // Test insert and delete
     console.log('\n🧪 Testing CRUD operations...')
+
+    // Get first user for testing
+    const firstUser = await prisma.user.findFirst()
+    if (!firstUser) {
+      console.log('⚠️  No user found, skipping CRUD test')
+      return
+    }
+
     const testComplex = await prisma.complex.create({
       data: {
         complexNo: 'TEST_001',
         complexName: 'Test Complex',
         address: 'Test Address',
+        userId: firstUser.id,
       },
     })
     console.log('✅ Create: Success')

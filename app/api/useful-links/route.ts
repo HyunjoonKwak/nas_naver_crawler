@@ -1,12 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { requireAuth } from '@/lib/auth-utils';
 
 // GET: 모든 유용한 링크 조회
 export async function GET() {
   try {
+    // 사용자 인증 확인
+    const currentUser = await requireAuth();
+
     const links = await prisma.usefulLink.findMany({
       where: {
         isActive: true,
+        userId: currentUser.id,
       },
       orderBy: [
         { category: 'asc' },
@@ -41,6 +46,9 @@ export async function GET() {
 // POST: 새 링크 추가
 export async function POST(request: NextRequest) {
   try {
+    // 사용자 인증 확인
+    const currentUser = await requireAuth();
+
     const body = await request.json();
     const { title, url, description, category, icon, order } = body;
 
@@ -59,6 +67,7 @@ export async function POST(request: NextRequest) {
         category,
         icon: icon || '🔗',
         order: order ?? 0,
+        userId: currentUser.id,
       },
     });
 
@@ -78,6 +87,9 @@ export async function POST(request: NextRequest) {
 // PUT: 링크 수정
 export async function PUT(request: NextRequest) {
   try {
+    // 사용자 인증 확인
+    const currentUser = await requireAuth();
+
     const body = await request.json();
     const { id, title, url, description, category, icon, order, isActive } = body;
 
@@ -98,7 +110,10 @@ export async function PUT(request: NextRequest) {
     if (isActive !== undefined) updateData.isActive = isActive;
 
     const link = await prisma.usefulLink.update({
-      where: { id },
+      where: {
+        id,
+        userId: currentUser.id,
+      },
       data: updateData,
     });
 
@@ -118,6 +133,9 @@ export async function PUT(request: NextRequest) {
 // DELETE: 링크 삭제
 export async function DELETE(request: NextRequest) {
   try {
+    // 사용자 인증 확인
+    const currentUser = await requireAuth();
+
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
 
@@ -129,7 +147,10 @@ export async function DELETE(request: NextRequest) {
     }
 
     await prisma.usefulLink.delete({
-      where: { id },
+      where: {
+        id,
+        userId: currentUser.id,
+      },
     });
 
     return NextResponse.json({

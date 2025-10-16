@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { requireAuth } from '@/lib/auth-utils';
 import fs from 'fs/promises';
 import path from 'path';
 
@@ -42,10 +43,13 @@ async function writeFavorites(favorites: any[]) {
  */
 export async function POST(request: NextRequest) {
   try {
+    // 사용자 인증 확인
+    const currentUser = await requireAuth();
+
     const body = await request.json();
     const { complexNo } = body;
 
-    console.log('[FAVORITE_TOGGLE] 요청 시작:', { complexNo });
+    console.log('[FAVORITE_TOGGLE] 요청 시작:', { complexNo, userId: currentUser.id });
 
     if (!complexNo) {
       console.log('[FAVORITE_TOGGLE] 에러: 단지번호 누락');
@@ -59,7 +63,11 @@ export async function POST(request: NextRequest) {
     const complex = await prisma.complex.findUnique({
       where: { complexNo },
       include: {
-        favorites: true,
+        favorites: {
+          where: {
+            userId: currentUser.id, // 본인 즐겨찾기만 확인
+          },
+        },
         _count: {
           select: { articles: true }
         }
@@ -90,9 +98,12 @@ export async function POST(request: NextRequest) {
       // 관심단지 해제
       console.log('[FAVORITE_TOGGLE] 관심단지 해제 시작');
 
-      // DB에서 Favorite 삭제
+      // DB에서 Favorite 삭제 (본인 것만)
       await prisma.favorite.deleteMany({
-        where: { complexId: complex.id }
+        where: {
+          complexId: complex.id,
+          userId: currentUser.id,
+        }
       });
       console.log('[FAVORITE_TOGGLE] DB에서 Favorite 삭제 완료');
 
@@ -126,7 +137,8 @@ export async function POST(request: NextRequest) {
       // DB에 Favorite 추가
       await prisma.favorite.create({
         data: {
-          complexId: complex.id
+          complexId: complex.id,
+          userId: currentUser.id,
         }
       });
       console.log('[FAVORITE_TOGGLE] DB에 Favorite 추가 완료');
