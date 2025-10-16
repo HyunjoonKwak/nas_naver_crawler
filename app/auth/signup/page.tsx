@@ -30,8 +30,10 @@ export default function SignUpPage() {
       return;
     }
 
-    if (formData.password.length < 6) {
-      showError("비밀번호는 최소 6자 이상이어야 합니다.");
+    // 비밀번호 강도 검사: 영문, 숫자 포함 8자 이상
+    const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d@$!%*#?&]{8,}$/;
+    if (!passwordRegex.test(formData.password)) {
+      showError("비밀번호는 영문과 숫자를 포함하여 8자 이상이어야 합니다.");
       return;
     }
 
@@ -144,7 +146,7 @@ export default function SignUpPage() {
                 required
               />
               <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                최소 6자 이상
+                영문과 숫자 포함 8자 이상 (특수문자 사용 가능: @$!%*#?&)
               </p>
             </div>
 
