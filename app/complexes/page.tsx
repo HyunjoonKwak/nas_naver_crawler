@@ -85,7 +85,7 @@ export default function ComplexesPage() {
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<string>('updatedAt');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
-  const [showGroupSidebar, setShowGroupSidebar] = useState(false);
+  const [showGroupSidebar, setShowGroupSidebar] = useState(false); // 모바일용 토글
 
   // 드래그 앤 드롭
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
@@ -663,18 +663,43 @@ export default function ComplexesPage() {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex gap-6">
-          {/* 그룹 사이드바 */}
-          {showGroupSidebar && (
-            <div className="w-80 flex-shrink-0">
-              <div className="sticky top-8">
-                <GroupManagement
-                  selectedGroupId={selectedGroupId}
-                  onGroupSelect={setSelectedGroupId}
-                  onGroupsChange={fetchComplexes}
-                />
-              </div>
+          {/* 그룹 사이드바 - 데스크탑: 항상 표시, 모바일: 토글 */}
+          <div className={`
+            w-80 flex-shrink-0
+            lg:block
+            ${showGroupSidebar ? 'block' : 'hidden'}
+            ${showGroupSidebar ? 'fixed inset-0 z-50 lg:relative lg:inset-auto' : ''}
+          `}>
+            {/* 모바일 오버레이 */}
+            {showGroupSidebar && (
+              <div
+                className="lg:hidden absolute inset-0 bg-black/50"
+                onClick={() => setShowGroupSidebar(false)}
+              />
+            )}
+
+            {/* 사이드바 컨텐츠 */}
+            <div className={`
+              lg:sticky lg:top-8
+              ${showGroupSidebar ? 'relative z-10 h-full bg-gray-50 dark:bg-gray-900 lg:bg-transparent p-4 lg:p-0' : ''}
+            `}>
+              {/* 모바일 닫기 버튼 */}
+              {showGroupSidebar && (
+                <button
+                  onClick={() => setShowGroupSidebar(false)}
+                  className="lg:hidden absolute top-4 right-4 p-2 rounded-lg bg-white dark:bg-gray-800 shadow-lg"
+                >
+                  ✕
+                </button>
+              )}
+
+              <GroupManagement
+                selectedGroupId={selectedGroupId}
+                onGroupSelect={setSelectedGroupId}
+                onGroupsChange={fetchComplexes}
+              />
             </div>
-          )}
+          </div>
 
           {/* 메인 컨텐츠 */}
           <div className="flex-1 min-w-0">
@@ -761,9 +786,10 @@ export default function ComplexesPage() {
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4 mb-6">
           <div className="flex items-center justify-between gap-4 flex-wrap">
             <div className="flex items-center gap-3 flex-wrap">
+              {/* 그룹 버튼 - 모바일에서만 표시 */}
               <button
                 onClick={() => setShowGroupSidebar(!showGroupSidebar)}
-                className="px-4 py-2 rounded-lg transition-colors font-medium bg-purple-600 hover:bg-purple-700 text-white"
+                className="lg:hidden px-4 py-2 rounded-lg transition-colors font-medium bg-purple-600 hover:bg-purple-700 text-white"
                 title="그룹 관리"
               >
                 📁 그룹
