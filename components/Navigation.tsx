@@ -3,12 +3,14 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useSession, signOut } from 'next-auth/react';
 import { ThemeToggle } from '@/components/ui';
 import { useCrawlEvents } from '@/hooks/useCrawlEvents';
 
 export const Navigation = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const pathname = usePathname();
+  const { data: session, status } = useSession();
 
   // SSE 기반 실시간 크롤링 상태 모니터링
   const crawlingStatus = useCrawlEvents();
@@ -119,6 +121,41 @@ export const Navigation = () => {
                 {link.icon} {link.label}
               </Link>
             ))}
+
+            {/* Auth Buttons */}
+            {status === 'loading' ? (
+              <div className="px-4 py-2">
+                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-gray-600"></div>
+              </div>
+            ) : session ? (
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-700 dark:text-gray-300">
+                  👤 {session.user?.name}
+                </span>
+                <button
+                  onClick={() => signOut({ callbackUrl: '/auth/signin' })}
+                  className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                >
+                  로그아웃
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <Link
+                  href="/auth/signin"
+                  className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                >
+                  로그인
+                </Link>
+                <Link
+                  href="/auth/signup"
+                  className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500"
+                >
+                  회원가입
+                </Link>
+              </div>
+            )}
+
             <ThemeToggle />
           </div>
 
@@ -219,6 +256,50 @@ export const Navigation = () => {
               <span>{link.label}</span>
             </Link>
           ))}
+
+          {/* Mobile Auth Buttons */}
+          <div className="pt-4 border-t border-gray-200 dark:border-gray-800 space-y-2">
+            {status === 'loading' ? (
+              <div className="flex justify-center py-4">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-600"></div>
+              </div>
+            ) : session ? (
+              <>
+                <div className="px-4 py-3 text-gray-700 dark:text-gray-300 text-sm">
+                  👤 {session.user?.name}
+                  {(session.user as any).role === 'ADMIN' && (
+                    <span className="ml-2 px-2 py-1 text-xs bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400 rounded">
+                      관리자
+                    </span>
+                  )}
+                </div>
+                <button
+                  onClick={() => signOut({ callbackUrl: '/auth/signin' })}
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-lg bg-red-600 hover:bg-red-700 text-white font-medium transition-colors"
+                >
+                  <span className="text-2xl">🚪</span>
+                  <span>로그아웃</span>
+                </button>
+              </>
+            ) : (
+              <>
+                <Link
+                  href="/auth/signin"
+                  className="flex items-center gap-3 px-4 py-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium transition-colors"
+                >
+                  <span className="text-2xl">🔐</span>
+                  <span>로그인</span>
+                </Link>
+                <Link
+                  href="/auth/signup"
+                  className="flex items-center gap-3 px-4 py-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-medium transition-colors"
+                >
+                  <span className="text-2xl">📝</span>
+                  <span>회원가입</span>
+                </Link>
+              </>
+            )}
+          </div>
         </nav>
       </div>
 

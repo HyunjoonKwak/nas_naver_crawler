@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Toaster } from 'react-hot-toast';
+import { SessionProvider } from '@/components/SessionProvider';
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -15,7 +16,9 @@ export default function RootLayout({
   return (
     <html lang="ko" className="overflow-x-hidden">
       <body className="antialiased overflow-x-hidden max-w-full">
-        {children}
+        <SessionProvider>
+          {children}
+        </SessionProvider>
         <Toaster
           position="top-right"
           reverseOrder={false}
