@@ -1390,7 +1390,8 @@ export default function SystemPage() {
                                 onChange={(e) => handleUserRoleChange(user.id, e.target.value)}
                                 className="text-xs px-2 py-1 rounded border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                               >
-                                <option value="USER">일반 사용자</option>
+                                <option value="GUEST">게스트 (격리)</option>
+                                <option value="FAMILY">패밀리 (공유)</option>
                                 <option value="ADMIN">관리자</option>
                               </select>
                             </td>

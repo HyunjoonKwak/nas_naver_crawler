@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { requireAuth, getComplexWhereCondition } from '@/lib/auth-utils';
 import fs from 'fs/promises';
 import path from 'path';
 
@@ -22,6 +23,9 @@ const readFavoritesJson = async (): Promise<Set<string>> => {
 // 단지 목록 조회 및 검색
 export async function GET(request: NextRequest) {
   try {
+    // 사용자 인증 확인
+    const currentUser = await requireAuth();
+
     const { searchParams } = new URL(request.url);
 
     // 쿼리 파라미터
@@ -32,8 +36,8 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '50');
     const offset = parseInt(searchParams.get('offset') || '0');
 
-    // WHERE 조건 구성
-    const where: any = {};
+    // WHERE 조건 구성 (사용자 권한 기반 필터링)
+    const where: any = await getComplexWhereCondition(currentUser);
 
     if (search) {
       where.OR = [
@@ -156,6 +160,9 @@ export async function GET(request: NextRequest) {
 // 특정 단지 상세 조회
 export async function POST(request: NextRequest) {
   try {
+    // 사용자 인증 확인
+    const currentUser = await requireAuth();
+
     const body = await request.json();
     const { complexNo } = body;
 
@@ -166,9 +173,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 단지 조회
-    const complex = await prisma.complex.findUnique({
-      where: { complexNo },
+    // 사용자 권한 기반 where 조건
+    const userWhereCondition = await getComplexWhereCondition(currentUser);
+
+    // 단지 조회 (권한 체크 포함)
+    const complex = await prisma.complex.findFirst({
+      where: {
+        complexNo,
+        ...userWhereCondition,
+      },
       include: {
         articles: {
           orderBy: { createdAt: 'desc' },

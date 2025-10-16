@@ -48,6 +48,7 @@ export async function POST(request: NextRequest) {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // 첫 번째 사용자는 자동으로 ADMIN 권한 및 승인
+    // 그 외 사용자는 GUEST로 가입 (관리자 승인 필요)
     const userCount = await prisma.user.count();
     const isFirstUser = userCount === 0;
 
@@ -57,7 +58,7 @@ export async function POST(request: NextRequest) {
         email,
         password: hashedPassword,
         name,
-        role: isFirstUser ? 'ADMIN' : 'USER',
+        role: isFirstUser ? 'ADMIN' : 'GUEST',
         isApproved: isFirstUser,
       },
     });

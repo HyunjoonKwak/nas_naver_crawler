@@ -27,6 +27,8 @@ model Complex {
   beopjungdong   String?   // 법정동
   haengjeongdong String?   // 행정동
   pyeongs        Json?     // 평형별 타입 정보
+  userId         String    // 생성한 사용자 ID
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
@@ -39,6 +41,7 @@ model Complex {
   @@index([complexName])
   @@index([beopjungdong])
   @@index([haengjeongdong])
+  @@index([userId])
   @@map("complexes")
 }
 
@@ -93,6 +96,8 @@ model CrawlHistory {
   duration          Int      // 소요 시간 (ms)
   status            String   // crawling, saving, success, partial, failed
   errorMessage      String?  // 에러 메시지
+  userId            String   // 실행한 사용자 ID
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   // Progress tracking fields
   currentStep       String?  @map("current_step") // current operation step
@@ -104,6 +109,7 @@ model CrawlHistory {
 
   @@index([createdAt])
   @@index([status])
+  @@index([userId])
   @@map("crawl_history")
 }
 
@@ -112,9 +118,12 @@ model Favorite {
   id        String   @id @default(uuid())
   complexId String   // 단지 FK
   complex   Complex  @relation(fields: [complexId], references: [id], onDelete: Cascade)
+  userId    String   // 사용자 ID
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
 
-  @@unique([complexId])
+  @@unique([complexId, userId])
+  @@index([userId])
   @@map("favorites")
 }
 
@@ -124,6 +133,8 @@ model Alert {
   name          String   // 알림 이름
   complexIds    String[] // 관심 단지들
   tradeTypes    String[] // 거래 유형 (매매, 전세, 월세)
+  userId        String   // 사용자 ID
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   // 가격 조건
   minPrice      Int?     // 최소 가격 (만원)
@@ -148,6 +159,7 @@ model Alert {
   logs NotificationLog[]
 
   @@index([isActive])
+  @@index([userId])
   @@map("alerts")
 }
 
@@ -176,6 +188,8 @@ model Schedule {
   isActive   Boolean   @default(true)
   lastRun    DateTime? // 마지막 실행 시간
   nextRun    DateTime? // 다음 실행 시간
+  userId     String    // 사용자 ID
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
 
@@ -184,6 +198,7 @@ model Schedule {
 
   @@index([isActive])
   @@index([nextRun])
+  @@index([userId])
   @@map("schedules")
 }
 
@@ -212,6 +227,8 @@ model Group {
   type        String   @default("custom") // custom(사용자 정의), auto(자동 생성)
   autoRule    String?  // 자동 그룹 규칙 (예: "beopjungdong:강남구")
   order       Int      @default(0) // 정렬 순서
+  userId      String   // 사용자 ID
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -220,6 +237,7 @@ model Group {
 
   @@index([type])
   @@index([order])
+  @@index([userId])
   @@map("groups")
 }
 
@@ -248,12 +266,15 @@ model UsefulLink {
   icon        String?  // 아이콘 (이모지 또는 URL)
   order       Int      @default(0) // 정렬 순서
   isActive    Boolean  @default(true) // 활성화 여부
+  userId      String   // 사용자 ID
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   @@index([category])
   @@index([isActive])
   @@index([order])
+  @@index([userId])
   @@map("useful_links")
 }
 
@@ -263,12 +284,21 @@ model User {
   email         String    @unique // 이메일 (로그인 ID)
   password      String    // 해시된 비밀번호
   name          String    // 사용자 이름
-  role          String    @default("USER") // ADMIN, USER
+  role          String    @default("GUEST") // ADMIN, FAMILY, GUEST
   isApproved    Boolean   @default(false) // 관리자 승인 여부
   isActive      Boolean   @default(true) // 활성화 여부
   lastLoginAt   DateTime? // 마지막 로그인 시간
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+
+  // 관계
+  complexes      Complex[]
+  crawlHistories CrawlHistory[]
+  favorites      Favorite[]
+  alerts         Alert[]
+  schedules      Schedule[]
+  groups         Group[]
+  usefulLinks    UsefulLink[]
 
   @@index([email])
   @@index([role])

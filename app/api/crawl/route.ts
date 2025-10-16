@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import { prisma } from '@/lib/prisma';
+import { requireAuth } from '@/lib/auth-utils';
 import fs from 'fs/promises';
 import path from 'path';
 import {
@@ -28,7 +29,7 @@ export const dynamic = 'force-dynamic';
 let currentCrawlId: string | null = null;
 
 // 크롤링 결과를 DB에 저장하는 함수 (Batch Insert 방식)
-async function saveCrawlResultsToDB(crawlId: string, complexNos: string[]) {
+async function saveCrawlResultsToDB(crawlId: string, complexNos: string[], userId: string) {
   const baseDir = process.env.NODE_ENV === 'production' ? '/app' : process.cwd();
   const crawledDataDir = path.join(baseDir, 'crawled_data');
 
@@ -111,6 +112,7 @@ async function saveCrawlResultsToDB(crawlId: string, complexNos: string[]) {
         beopjungdong: overview.beopjungdong,
         haengjeongdong: overview.haengjeongdong,
         pyeongs: overview.pyeongs || [],
+        userId: userId, // 크롤링 실행한 사용자 ID
       });
 
       // Note: processedComplexes is updated by Python crawler in real-time
@@ -551,6 +553,9 @@ export async function POST(request: NextRequest) {
   let crawlId: string | null = null;
 
   try {
+    // 사용자 인증 확인
+    const currentUser = await requireAuth();
+
     const body = await request.json();
     const { complexNumbers } = body;
 
@@ -580,6 +585,7 @@ export async function POST(request: NextRequest) {
         currentStep: 'Starting crawler',
         processedArticles: 0,
         processedComplexes: 0,
+        userId: currentUser.id, // 크롤링 실행한 사용자 ID
       },
     });
 
@@ -633,7 +639,7 @@ export async function POST(request: NextRequest) {
 
     // 3. 크롤링 결과를 DB에 저장 (Batch Insert)
     console.log('💾 Saving results to database...');
-    const dbResult = await saveCrawlResultsToDB(crawlId, complexNosArray);
+    const dbResult = await saveCrawlResultsToDB(crawlId, complexNosArray, currentUser.id);
 
     const duration = Date.now() - startTime;
     const status = dbResult.errors.length > 0 ? 'partial' : 'success';
