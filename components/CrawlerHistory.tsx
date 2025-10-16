@@ -9,6 +9,7 @@ interface CrawlerHistoryProps {
 interface CrawlHistoryItem {
   id: string;
   status: string;
+  complexNos: string[];
   totalComplexes: number;
   processedComplexes: number;
   totalArticles: number;
@@ -97,7 +98,7 @@ export default function CrawlerHistory({ refresh }: CrawlerHistoryProps) {
     return `${year}${month}${day}_${hour}${minute}${second}`;
   };
 
-  const toggleRow = async (itemId: string, timestamp: string) => {
+  const toggleRow = async (itemId: string, timestamp: string, complexNos: string[]) => {
     const newExpandedRows = new Set(expandedRows);
 
     if (expandedRows.has(itemId)) {
@@ -111,17 +112,18 @@ export default function CrawlerHistory({ refresh }: CrawlerHistoryProps) {
 
       // 파일 내용 로드 (아직 로드하지 않은 경우)
       if (!fileContents[itemId]) {
-        await fetchFileContentsByTimestamp(itemId, timestamp);
+        await fetchFileContentsByTimestamp(itemId, timestamp, complexNos);
       }
     }
   };
 
-  const fetchFileContentsByTimestamp = async (itemId: string, timestamp: string) => {
+  const fetchFileContentsByTimestamp = async (itemId: string, timestamp: string, complexNos: string[]) => {
     setLoadingFiles(new Set(loadingFiles).add(itemId));
 
     try {
-      // 타임스탬프로 파일들을 검색
-      const response = await fetch(`/api/csv?timestamp=${encodeURIComponent(timestamp)}`);
+      // 타임스탬프와 단지번호로 파일들을 검색
+      const complexNosParam = complexNos.join(',');
+      const response = await fetch(`/api/csv?timestamp=${encodeURIComponent(timestamp)}&complexNos=${encodeURIComponent(complexNosParam)}`);
 
       if (!response.ok) {
         console.error(`API error: ${response.status} ${response.statusText}`);
@@ -130,7 +132,7 @@ export default function CrawlerHistory({ refresh }: CrawlerHistoryProps) {
       }
 
       const data = await response.json();
-      console.log(`[CrawlerHistory] Fetched files for timestamp ${timestamp}:`, data);
+      console.log(`[CrawlerHistory] Fetched files for timestamp ${timestamp}, complexNos ${complexNosParam}:`, data);
 
       if (data.files && data.files.length > 0) {
         // 파일별로 레이블 추가
@@ -309,7 +311,7 @@ export default function CrawlerHistory({ refresh }: CrawlerHistoryProps) {
                     <td className="px-4 py-3 whitespace-nowrap">
                       {(item.status === 'completed' || item.status === 'success') && (
                         <button
-                          onClick={() => toggleRow(item.id, generateTimestamp(item.createdAt))}
+                          onClick={() => toggleRow(item.id, generateTimestamp(item.createdAt), item.complexNos)}
                           className="px-3 py-1 text-xs bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 text-blue-700 dark:text-blue-300 rounded-lg transition-colors font-semibold inline-flex items-center gap-1"
                           title="크롤링 결과 파일 보기"
                         >

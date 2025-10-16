@@ -9,6 +9,7 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const filename = searchParams.get('filename');
     const timestamp = searchParams.get('timestamp');
+    const complexNos = searchParams.get('complexNos');
 
     const baseDir = process.env.NODE_ENV === 'production' ? '/app' : process.cwd();
     const crawledDataDir = path.join(baseDir, 'crawled_data');
@@ -20,18 +21,50 @@ export async function GET(request: Request) {
       return NextResponse.json({ csvFiles: [], jsonFiles: [] });
     }
 
-    // 타임스탬프로 파일 검색
+    // 타임스탬프와 단지번호로 파일 검색
     if (timestamp) {
       const allFiles = await fs.readdir(crawledDataDir);
-      console.log(`[CSV API] Searching for timestamp: ${timestamp}`);
+      console.log(`[CSV API] Searching for timestamp: ${timestamp}, complexNos: ${complexNos}`);
       console.log(`[CSV API] All files in directory:`, allFiles);
 
-      const matchingFiles = allFiles.filter(file =>
-        (file.endsWith('.json') || file.endsWith('.csv')) &&
-        file.includes(timestamp) &&
-        file !== 'favorites.json' &&
-        !file.includes('crawl_status')
-      );
+      // 단지번호 배열 생성
+      const complexNoArray = complexNos ? complexNos.split(',') : [];
+
+      const matchingFiles = allFiles.filter(file => {
+        // 기본 조건: JSON/CSV, favorites/crawl_status 제외
+        if (!(file.endsWith('.json') || file.endsWith('.csv'))) return false;
+        if (file === 'favorites.json') return false;
+        if (file.includes('crawl_status')) return false;
+
+        // 단지번호로 검색 (우선순위)
+        if (complexNoArray.length > 0) {
+          const hasComplexNo = complexNoArray.some(complexNo => file.includes(complexNo));
+          if (hasComplexNo) {
+            // 단지번호가 포함되어 있으면 타임스탬프도 비슷한지 확인 (앞뒤 5분 허용)
+            const fileTimestamp = file.match(/(\d{8}_\d{6})/)?.[1];
+            if (fileTimestamp && timestamp) {
+              const timestampPrefix = timestamp.substring(0, 13); // YYYYMMDD_HHmm
+              const filePrefix = fileTimestamp.substring(0, 13);
+              // 분 단위까지 같거나 ±1분 이내면 매칭
+              const targetMin = parseInt(timestamp.substring(11, 13));
+              const fileMin = parseInt(fileTimestamp.substring(11, 13));
+              if (filePrefix.substring(0, 11) === timestampPrefix.substring(0, 11)) {
+                // 날짜와 시간이 같으면 분만 비교
+                if (Math.abs(targetMin - fileMin) <= 5) {
+                  return true;
+                }
+              }
+            }
+          }
+        }
+
+        // 타임스탬프로 검색 (정확히 일치)
+        if (file.includes(timestamp)) {
+          return true;
+        }
+
+        return false;
+      });
 
       console.log(`[CSV API] Matching files:`, matchingFiles);
 
