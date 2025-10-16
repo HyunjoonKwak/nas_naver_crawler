@@ -552,51 +552,26 @@ export default function SystemPage() {
             </div>
           ) : (
             <div className="space-y-6">
-              {/* Overall Status */}
-              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-800 p-8">
-                <div className="flex items-center justify-between flex-wrap gap-4">
+              {/* System Status section moved to DB section - redirecting message */}
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-2xl shadow-xl border-2 border-blue-200 dark:border-blue-800 p-8">
+                <div className="flex items-center gap-4">
+                  <div className="text-5xl">ℹ️</div>
                   <div>
-                    <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-                      시스템 상태
-                    </h2>
-                    <p className="text-gray-500 dark:text-gray-400 flex items-center gap-2">
-                      <span className="inline-block w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-                      10초마다 자동 업데이트
+                    <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+                      시스템 상태는 DB 현황 탭에서 확인하세요
+                    </h3>
+                    <p className="text-gray-600 dark:text-gray-400 mb-4">
+                      시스템 상태 정보가 DB 현황 페이지 하단으로 이동되었습니다.
                     </p>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <div className={`px-6 py-3 rounded-xl flex items-center gap-3 ${
-                      status?.status === 'ready'
-                        ? 'bg-green-50 dark:bg-green-900/20 border-2 border-green-200 dark:border-green-800'
-                        : 'bg-red-50 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-800'
-                    }`}>
-                      <div className="text-3xl">
-                        {status?.status === 'ready' ? '🟢' : '🔴'}
-                      </div>
-                      <div>
-                        <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">
-                          전체 상태
-                        </div>
-                        <div className={`text-xl font-bold ${
-                          status?.status === 'ready'
-                            ? 'text-green-600 dark:text-green-400'
-                            : 'text-red-600 dark:text-red-400'
-                        }`}>
-                          {status?.status === 'ready' ? '정상 작동' : '준비 필요'}
-                        </div>
-                      </div>
-                    </div>
-                    <Link
-                      href="/system/details"
-                      className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors font-medium text-sm whitespace-nowrap"
+                    <button
+                      onClick={() => setActiveSection('database')}
+                      className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium flex items-center gap-2"
                     >
-                      📋 상세 정보
-                    </Link>
+                      🗄️ DB 현황으로 이동
+                    </button>
                   </div>
                 </div>
               </div>
-
-              {/* Removed sections: Crawler Components, Data Statistics, System Information, Help - now in /system/details */}
             </div>
           )
         )}
@@ -950,6 +925,50 @@ export default function SystemPage() {
                   </div>
                 </div>
               )}
+
+              {/* System Status - integrated into DB section */}
+              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-800 p-8">
+                <div className="flex items-center justify-between flex-wrap gap-4">
+                  <div>
+                    <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+                      시스템 상태
+                    </h3>
+                    <p className="text-gray-500 dark:text-gray-400 flex items-center gap-2">
+                      <span className="inline-block w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                      10초마다 자동 업데이트
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <div className={`px-6 py-3 rounded-xl flex items-center gap-3 ${
+                      status?.status === 'ready'
+                        ? 'bg-green-50 dark:bg-green-900/20 border-2 border-green-200 dark:border-green-800'
+                        : 'bg-red-50 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-800'
+                    }`}>
+                      <div className="text-3xl">
+                        {status?.status === 'ready' ? '🟢' : '🔴'}
+                      </div>
+                      <div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+                          전체 상태
+                        </div>
+                        <div className={`text-xl font-bold ${
+                          status?.status === 'ready'
+                            ? 'text-green-600 dark:text-green-400'
+                            : 'text-red-600 dark:text-red-400'
+                        }`}>
+                          {status?.status === 'ready' ? '정상 작동' : '준비 필요'}
+                        </div>
+                      </div>
+                    </div>
+                    <Link
+                      href="/system/details"
+                      className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors font-medium text-sm whitespace-nowrap"
+                    >
+                      📋 상세 정보
+                    </Link>
+                  </div>
+                </div>
+              </div>
             </div>
           ) : null
         )}
