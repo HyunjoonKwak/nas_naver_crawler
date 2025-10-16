@@ -237,3 +237,22 @@ model ComplexGroup {
   @@index([groupId])
   @@map("complex_groups")
 }
+
+// 유용한 링크 테이블
+model UsefulLink {
+  id          String   @id @default(uuid())
+  title       String   // 링크 제목
+  url         String   // URL
+  description String?  // 설명
+  category    String   // 카테고리 (geocoding, transaction, reference, etc.)
+  icon        String?  // 아이콘 (이모지 또는 URL)
+  order       Int      @default(0) // 정렬 순서
+  isActive    Boolean  @default(true) // 활성화 여부
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([category])
+  @@index([isActive])
+  @@index([order])
+  @@map("useful_links")
+}
