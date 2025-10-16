@@ -90,17 +90,17 @@ export const Navigation = () => {
           <Link
             href="/"
             className="flex items-center gap-3 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-lg"
-            aria-label="네이버 부동산 크롤러 홈으로 이동"
+            aria-label="부동산 인사이트 홈으로 이동"
           >
             <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center text-white text-xl font-bold shadow-lg">
               🏠
             </div>
             <div className="hidden sm:block">
               <h1 className="text-xl font-bold text-gray-900 dark:text-white">
-                네이버 부동산 크롤러
+                부동산 인사이트
               </h1>
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                NAS 환경용 부동산 정보 수집 시스템
+                스마트한 부동산 정보수집 관리시스템
               </p>
             </div>
           </Link>

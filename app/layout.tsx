@@ -4,8 +4,8 @@ import { SessionProvider } from '@/components/SessionProvider';
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "네이버 부동산 크롤러",
-  description: "NAS 환경용 네이버 부동산 크롤링 관리 시스템",
+  title: "부동산 인사이트",
+  description: "스마트한 부동산 정보수집 관리시스템",
 };
 
 export default function RootLayout({
