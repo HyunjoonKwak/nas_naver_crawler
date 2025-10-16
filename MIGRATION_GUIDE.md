@@ -96,23 +96,32 @@ docker exec -t property_manager_db pg_dump -U crawler naver_crawler > backup_$(d
 cat backup_YYYYMMDD_HHMMSS.sql | docker exec -i property_manager_db psql -U crawler naver_crawler
 ```
 
-## 알려진 이슈
+## 완료된 작업
 
-### 미완성 API
-다음 API들은 아직 userId 필터링이 적용되지 않았습니다:
-- `/api/alerts/*` - 알림 관련 API
-- `/api/favorites/*` - 즐겨찾기 API
-- `/api/schedules/*` - 스케줄 API
-- `/api/groups/*` - 그룹 API
-- `/api/links/*` - 유용한 링크 API
+### ✅ 적용된 API
+모든 주요 API에 사용자 인증 및 데이터 필터링이 적용되었습니다:
+- ✅ `/api/complexes/*` - 단지 조회 API
+- ✅ `/api/crawl` - 크롤링 API
+- ✅ `/api/alerts/*` - 알림 관련 API
+- ✅ `/api/complexes/favorite` - 즐겨찾기 토글 API
+- ✅ `/api/schedules/*` - 스케줄 API
+- ✅ `/api/groups/*` - 그룹 API
+- ✅ `/api/useful-links` - 유용한 링크 API
+- ✅ `/api/auth/*` - 인증 API
+- ✅ `/api/users` - 사용자 관리 API
 
-이 API들은 현재 빌드 에러가 발생하므로, 추가 수정이 필요합니다.
+### 빌드 상태
+- ✅ TypeScript 타입 에러 없음
+- ✅ 빌드 성공
+- ⚠️ 로컬 DB 연결 에러 (NAS에서는 정상 작동 예상)
 
 ## 다음 단계
 
-1. 나머지 API에 인증 및 필터링 로직 추가
-2. 각 페이지에서 데이터 조회 시 사용자 필터링 확인
-3. 에러 처리 및 권한 체크 강화
+1. NAS에 배포
+2. DB 마이그레이션 실행
+3. 첫 사용자로 회원가입 (자동 ADMIN)
+4. 추가 사용자 승인 및 등급 부여
+5. 실제 환경에서 테스트
 
 ## 문제 해결
 
