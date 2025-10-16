@@ -85,8 +85,8 @@ export default function CrawlerHistory({ refresh }: CrawlerHistoryProps) {
     );
   };
 
-  // 크롤링 시작 시간으로 파일명 생성
-  const generateFileName = (createdAt: string, totalComplexes: number) => {
+  // 크롤링 시작 시간으로 파일명들 생성
+  const generateFileNames = (createdAt: string, totalComplexes: number, totalArticles: number) => {
     const date = new Date(createdAt);
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -94,11 +94,17 @@ export default function CrawlerHistory({ refresh }: CrawlerHistoryProps) {
     const hour = String(date.getHours()).padStart(2, '0');
     const minute = String(date.getMinutes()).padStart(2, '0');
     const second = String(date.getSeconds()).padStart(2, '0');
+    const timestamp = `${year}${month}${day}_${hour}${minute}${second}`;
 
-    return `complexes_${totalComplexes}_${year}${month}${day}_${hour}${minute}${second}.json`;
+    return {
+      complexesJson: `complexes_${totalComplexes}_${timestamp}.json`,
+      complexesCsv: `complexes_${totalComplexes}_${timestamp}.csv`,
+      articlesJson: `articles_${totalArticles}_${timestamp}.json`,
+      articlesCsv: `articles_${totalArticles}_${timestamp}.csv`,
+    };
   };
 
-  const toggleRow = async (itemId: string, filename: string) => {
+  const toggleRow = async (itemId: string, filenames: { complexesJson: string; complexesCsv: string; articlesJson: string; articlesCsv: string }) => {
     const newExpandedRows = new Set(expandedRows);
 
     if (expandedRows.has(itemId)) {
@@ -112,26 +118,44 @@ export default function CrawlerHistory({ refresh }: CrawlerHistoryProps) {
 
       // 파일 내용 로드 (아직 로드하지 않은 경우)
       if (!fileContents[itemId]) {
-        await fetchFileContent(itemId, filename);
+        await fetchFileContents(itemId, filenames);
       }
     }
   };
 
-  const fetchFileContent = async (itemId: string, filename: string) => {
+  const fetchFileContents = async (itemId: string, filenames: { complexesJson: string; complexesCsv: string; articlesJson: string; articlesCsv: string }) => {
     setLoadingFiles(new Set(loadingFiles).add(itemId));
 
     try {
-      const response = await fetch(`/api/csv?filename=${encodeURIComponent(filename)}`);
-      const data = await response.json();
+      // 모든 파일을 병렬로 로드
+      const fileList = [
+        { name: filenames.complexesJson, label: '단지 정보 (JSON)' },
+        { name: filenames.complexesCsv, label: '단지 정보 (CSV)' },
+        { name: filenames.articlesJson, label: '매물 정보 (JSON)' },
+        { name: filenames.articlesCsv, label: '매물 정보 (CSV)' },
+      ];
 
-      if (data.file) {
+      const results = await Promise.allSettled(
+        fileList.map(async (file) => {
+          const response = await fetch(`/api/csv?filename=${encodeURIComponent(file.name)}`);
+          if (!response.ok) throw new Error(`Failed to load ${file.name}`);
+          const data = await response.json();
+          return { ...file, data: data.file };
+        })
+      );
+
+      const loadedFiles = results
+        .filter((result): result is PromiseFulfilledResult<any> => result.status === 'fulfilled')
+        .map(result => result.value);
+
+      if (loadedFiles.length > 0) {
         setFileContents(prev => ({
           ...prev,
-          [itemId]: data.file
+          [itemId]: loadedFiles
         }));
       }
     } catch (error) {
-      console.error('Failed to fetch file:', error);
+      console.error('Failed to fetch files:', error);
     } finally {
       const newLoadingFiles = new Set(loadingFiles);
       newLoadingFiles.delete(itemId);
@@ -271,7 +295,7 @@ export default function CrawlerHistory({ refresh }: CrawlerHistoryProps) {
                     <td className="px-4 py-3 whitespace-nowrap">
                       {(item.status === 'completed' || item.status === 'success') && (
                         <button
-                          onClick={() => toggleRow(item.id, generateFileName(item.createdAt, item.totalComplexes))}
+                          onClick={() => toggleRow(item.id, generateFileNames(item.createdAt, item.totalComplexes, item.totalArticles))}
                           className="px-3 py-1 text-xs bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 text-blue-700 dark:text-blue-300 rounded-lg transition-colors font-semibold inline-flex items-center gap-1"
                           title="크롤링 결과 파일 보기"
                         >
@@ -289,25 +313,85 @@ export default function CrawlerHistory({ refresh }: CrawlerHistoryProps) {
                             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
                             <span className="ml-3 text-gray-600 dark:text-gray-400">파일 로딩 중...</span>
                           </div>
-                        ) : fileContents[item.id] ? (
-                          <div className="space-y-4">
-                            <div className="flex items-center justify-between">
-                              <h4 className="text-sm font-semibold text-gray-900 dark:text-white">
-                                📄 {generateFileName(item.createdAt, item.totalComplexes)}
-                              </h4>
-                              <span className="text-xs text-gray-500 dark:text-gray-400">
-                                {fileContents[item.id].type === 'json' ? 'JSON 파일' : 'CSV 파일'} • {(fileContents[item.id].size / 1024).toFixed(2)} KB
-                              </span>
-                            </div>
+                        ) : fileContents[item.id] && fileContents[item.id].length > 0 ? (
+                          <div className="space-y-6">
+                            <h4 className="text-lg font-bold text-gray-900 dark:text-white mb-4">
+                              📦 크롤링 결과 파일 ({fileContents[item.id].length}개)
+                            </h4>
 
-                            {/* JSON 파일 내용 표시 */}
-                            {fileContents[item.id].type === 'json' && (
-                              <div className="bg-white dark:bg-gray-800 rounded-lg p-4 max-h-96 overflow-auto border border-gray-200 dark:border-gray-700">
-                                <pre className="text-xs text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
-                                  {JSON.stringify(fileContents[item.id].data, null, 2)}
-                                </pre>
-                              </div>
-                            )}
+                            {/* 파일 목록을 그리드로 표시 */}
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                              {fileContents[item.id].map((file: any, index: number) => (
+                                <div key={index} className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+                                  {/* 파일 헤더 */}
+                                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+                                    <div className="flex items-center justify-between">
+                                      <h5 className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                                        <span>{file.data.type === 'json' ? '📄' : '📊'}</span>
+                                        <span>{file.label}</span>
+                                      </h5>
+                                      <span className="text-xs text-gray-600 dark:text-gray-400">
+                                        {(file.data.size / 1024).toFixed(2)} KB
+                                      </span>
+                                    </div>
+                                    <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                      {file.name}
+                                    </div>
+                                  </div>
+
+                                  {/* 파일 내용 */}
+                                  <div className="p-4 max-h-80 overflow-auto">
+                                    {file.data.type === 'json' ? (
+                                      <div>
+                                        <div className="text-xs text-gray-600 dark:text-gray-400 mb-2">
+                                          {Array.isArray(file.data.data)
+                                            ? `${file.data.data.length}개 항목`
+                                            : 'JSON 객체'}
+                                        </div>
+                                        <pre className="text-xs text-gray-700 dark:text-gray-300 whitespace-pre-wrap font-mono">
+                                          {JSON.stringify(file.data.data, null, 2)}
+                                        </pre>
+                                      </div>
+                                    ) : (
+                                      <div>
+                                        <div className="text-xs text-gray-600 dark:text-gray-400 mb-2">
+                                          {file.data.rowCount}개 행 × {file.data.headers?.length || 0}개 열
+                                        </div>
+                                        <div className="overflow-x-auto">
+                                          <table className="min-w-full text-xs">
+                                            <thead className="bg-gray-100 dark:bg-gray-700">
+                                              <tr>
+                                                {file.data.headers?.map((header: string, i: number) => (
+                                                  <th key={i} className="px-2 py-1 text-left font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600">
+                                                    {header}
+                                                  </th>
+                                                ))}
+                                              </tr>
+                                            </thead>
+                                            <tbody>
+                                              {file.data.data?.slice(0, 10).map((row: any, i: number) => (
+                                                <tr key={i} className="border-b border-gray-200 dark:border-gray-700">
+                                                  {file.data.headers?.map((header: string, j: number) => (
+                                                    <td key={j} className="px-2 py-1 text-gray-700 dark:text-gray-300">
+                                                      {row[header]}
+                                                    </td>
+                                                  ))}
+                                                </tr>
+                                              ))}
+                                            </tbody>
+                                          </table>
+                                          {file.data.data?.length > 10 && (
+                                            <div className="text-xs text-gray-500 dark:text-gray-400 mt-2 text-center">
+                                              ... 외 {file.data.data.length - 10}개 행
+                                            </div>
+                                          )}
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
                           </div>
                         ) : (
                           <div className="text-center py-8 text-gray-500 dark:text-gray-400">
