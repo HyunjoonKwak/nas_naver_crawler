@@ -104,7 +104,7 @@ export default function SignUpPage() {
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                이름
+                이름 <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
@@ -119,7 +119,7 @@ export default function SignUpPage() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                이메일
+                이메일 <span className="text-red-500">*</span>
               </label>
               <input
                 type="email"
@@ -134,7 +134,7 @@ export default function SignUpPage() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                비밀번호
+                비밀번호 <span className="text-red-500">*</span>
               </label>
               <input
                 type="password"
@@ -152,7 +152,7 @@ export default function SignUpPage() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                비밀번호 확인
+                비밀번호 확인 <span className="text-red-500">*</span>
               </label>
               <input
                 type="password"
