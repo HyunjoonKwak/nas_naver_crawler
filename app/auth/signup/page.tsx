@@ -165,19 +165,6 @@ export default function SignUpPage() {
               />
             </div>
 
-            {/* 안내 메시지 */}
-            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-              <div className="flex items-start gap-3">
-                <svg className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <div className="text-sm text-blue-800 dark:text-blue-300">
-                  <p className="font-semibold mb-1">승인 안내</p>
-                  <p className="text-xs">첫 번째 가입자는 자동으로 관리자 권한이 부여됩니다. 이후 가입자는 관리자의 승인 후 이용 가능합니다.</p>
-                </div>
-              </div>
-            </div>
-
             <button
               type="submit"
               disabled={isLoading}
