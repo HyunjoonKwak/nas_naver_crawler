@@ -18,6 +18,7 @@ import {
   createCrawlSummaryEmbed,
 } from '@/lib/discord';
 import { eventBroadcaster } from '@/lib/eventBroadcaster';
+import { calculateDynamicTimeout } from '@/lib/timeoutCalculator';
 
 const execAsync = promisify(exec);
 
@@ -596,6 +597,10 @@ export async function POST(request: NextRequest) {
     console.log(`   - Crawl ID: ${crawlId}`);
     console.log(`   - Complexes: ${complexNos}`);
 
+    // 동적 타임아웃 계산
+    const dynamicTimeout = await calculateDynamicTimeout(complexNosArray.length);
+    console.log(`   - Timeout: ${Math.floor(dynamicTimeout / 1000)}s (${Math.floor(dynamicTimeout / 60000)}min)`);
+
     await prisma.crawlHistory.update({
       where: { id: crawlId },
       data: {
@@ -606,7 +611,7 @@ export async function POST(request: NextRequest) {
     const { stdout, stderr } = await execAsync(command, {
       cwd: baseDir,
       maxBuffer: 10 * 1024 * 1024, // 10MB
-      timeout: 1800000, // 30분 타임아웃 (15분 → 30분으로 증가)
+      timeout: dynamicTimeout, // 동적 타임아웃 (크롤링 히스토리 기반 계산)
     });
 
     // Python 출력을 로그에 표시

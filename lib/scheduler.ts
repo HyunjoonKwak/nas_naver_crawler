@@ -6,6 +6,7 @@
 import cron from 'node-cron';
 import { PrismaClient } from '@prisma/client';
 import { eventBroadcaster } from './eventBroadcaster';
+import { calculateDynamicTimeout } from './timeoutCalculator';
 
 const prisma = new PrismaClient();
 
@@ -126,14 +127,17 @@ async function executeCrawl(scheduleId: string, complexNos: string[]) {
     console.log(`   Schedule name: ${scheduleName}`);
     console.log(`   Complexes: ${complexNos.join(', ')}`);
 
+    // 동적 타임아웃 계산
+    const dynamicTimeout = await calculateDynamicTimeout(complexNos.length);
+
     // SSE: 스케줄 크롤링 시작 알림
     console.log(`   [SSE] Broadcasting schedule-start event`);
     eventBroadcaster.notifyScheduleStart(scheduleId, scheduleName, complexNos.length);
 
-    // 크롤링 API 호출 (타임아웃: 30분)
+    // 크롤링 API 호출 (동적 타임아웃)
     const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 1800000); // 30분
+    const timeoutId = setTimeout(() => controller.abort(), dynamicTimeout);
 
     let crawlId: string | null = null;
 
@@ -148,8 +152,8 @@ async function executeCrawl(scheduleId: string, complexNos: string[]) {
         }),
         signal: controller.signal,
         // @ts-ignore - undici specific options
-        headersTimeout: 1800000, // 30분 (밀리초)
-        bodyTimeout: 1800000, // 30분 (밀리초)
+        headersTimeout: dynamicTimeout,
+        bodyTimeout: dynamicTimeout,
       });
 
       clearTimeout(timeoutId);
@@ -179,10 +183,10 @@ async function executeCrawl(scheduleId: string, complexNos: string[]) {
       // CrawlHistory에서 최근 크롤링 확인
       console.warn(`⚠️ Fetch failed, checking crawl history...`, fetchError.message);
 
-      // 2분 대기 후 크롤링 히스토리 확인
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // 5초 대기 후 크롤링 히스토리 확인 (크롤링이 DB에 기록될 시간 확보)
+      await new Promise(resolve => setTimeout(resolve, 5000));
 
-      const recentCrawl = await checkRecentCrawlHistory(complexNos);
+      const recentCrawl = await checkRecentCrawlHistory(complexNos, dynamicTimeout);
 
       if (recentCrawl) {
         // 크롤링이 실제로 성공한 경우
@@ -200,7 +204,7 @@ async function executeCrawl(scheduleId: string, complexNos: string[]) {
 
     // crawlId가 있으면 폴링으로 완료 대기
     if (crawlId) {
-      const result = await pollCrawlStatus(crawlId, 1800000); // 30분 타임아웃
+      const result = await pollCrawlStatus(crawlId, dynamicTimeout);
       const duration = Date.now() - startTime;
 
       if (result.success) {
@@ -305,15 +309,16 @@ async function updateScheduleSuccess(
 /**
  * 최근 크롤링 히스토리 확인 (fetch 실패 시 백업 확인용)
  */
-async function checkRecentCrawlHistory(complexNos: string[]): Promise<{ totalArticles: number } | null> {
+async function checkRecentCrawlHistory(complexNos: string[], lookbackTimeout: number): Promise<{ totalArticles: number } | null> {
   try {
-    // 최근 2분 이내의 크롤링 히스토리 조회
-    const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000);
+    // 동적 타임아웃 + 5분 여유를 두고 크롤링 히스토리 조회
+    const lookbackMs = lookbackTimeout + (5 * 60 * 1000); // 타임아웃 + 5분
+    const lookbackTime = new Date(Date.now() - lookbackMs);
 
     const recentCrawl = await prisma.crawlHistory.findFirst({
       where: {
         createdAt: {
-          gte: twoMinutesAgo,
+          gte: lookbackTime,
         },
         status: 'completed',
       },
