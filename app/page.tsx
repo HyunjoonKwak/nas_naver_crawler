@@ -102,26 +102,6 @@ export default function LandingPage() {
           </Link>
         </div>
 
-        {/* Additional Info */}
-        <div className="mt-16 text-center">
-          <div className="inline-block bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-6 max-w-2xl">
-            <div className="flex items-start gap-3">
-              <svg className="w-6 h-6 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <div className="text-left">
-                <p className="font-semibold text-blue-900 dark:text-blue-300 mb-2">
-                  첫 번째 가입자는 자동으로 관리자 권한이 부여됩니다
-                </p>
-                <p className="text-sm text-blue-800 dark:text-blue-400">
-                  이후 가입자는 관리자의 승인 후 서비스를 이용하실 수 있습니다.
-                  <br />
-                  가족/친구와 데이터를 공유하거나, 개별적으로 사용하실 수 있습니다.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
       </div>
 
       {/* Footer */}
