@@ -339,15 +339,21 @@ export default function CrawlerHistory({ refresh }: CrawlerHistoryProps) {
 
                             {/* 파일 목록을 2열 가로 레이아웃으로 표시 */}
                             <div className="space-y-8">
-                              {/* 단지 정보 파일들 (가로 2개) */}
+                              {/* 단지 정보 파일들 (위아래 세로 배치) */}
                               {(() => {
                                 const complexFiles = fileContents[item.id].filter((f: any) => f.label.includes('단지 정보'));
                                 if (complexFiles.length === 0) return null;
+
+                                // CSV와 JSON 파일 분리 (CSV 위, JSON 아래)
+                                const csvFile = complexFiles.find((f: any) => f.data.type === 'csv');
+                                const jsonFile = complexFiles.find((f: any) => f.data.type === 'json');
+                                const sortedFiles = [csvFile, jsonFile].filter(Boolean);
+
                                 return (
                                   <div>
                                     <h5 className="text-md font-semibold text-gray-800 dark:text-gray-200 mb-3">단지 정보</h5>
-                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                                      {complexFiles.map((file: any, index: number) => (
+                                    <div className="space-y-4">
+                                      {sortedFiles.map((file: any, index: number) => (
                                         <div key={index} className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
                                           {/* 파일 헤더 */}
                                           <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 px-4 py-3 border-b border-gray-200 dark:border-gray-700">
