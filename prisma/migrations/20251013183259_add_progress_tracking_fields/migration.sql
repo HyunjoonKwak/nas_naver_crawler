@@ -1,0 +1,5 @@
+-- AlterTable
+ALTER TABLE "crawl_history"
+ADD COLUMN IF NOT EXISTS "currentStep" TEXT,
+ADD COLUMN IF NOT EXISTS "processedArticles" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN IF NOT EXISTS "processedComplexes" INTEGER NOT NULL DEFAULT 0;
