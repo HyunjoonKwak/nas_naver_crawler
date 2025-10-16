@@ -256,3 +256,22 @@ model UsefulLink {
   @@index([order])
   @@map("useful_links")
 }
+
+// 사용자 테이블
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique // 이메일 (로그인 ID)
+  password      String    // 해시된 비밀번호
+  name          String    // 사용자 이름
+  role          String    @default("USER") // ADMIN, USER
+  isApproved    Boolean   @default(false) // 관리자 승인 여부
+  isActive      Boolean   @default(true) // 활성화 여부
+  lastLoginAt   DateTime? // 마지막 로그인 시간
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([email])
+  @@index([role])
+  @@index([isApproved])
+  @@map("users")
+}
