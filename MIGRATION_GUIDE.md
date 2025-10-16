@@ -12,14 +12,20 @@
 
 ### 1. 코드 업데이트
 ```bash
-cd /volume1/docker/property_manager
+cd /volume1/code_work/nas_naver_crawler
 git pull origin main
 ```
 
-### 2. 데이터베이스 마이그레이션 실행
+### 2. 데이터베이스 백업 (중요!)
+```bash
+# PostgreSQL 백업
+docker exec -t naver-crawler-db pg_dump -U crawler naver_crawler > backup_$(date +%Y%m%d_%H%M%S).sql
+```
+
+### 3. 데이터베이스 마이그레이션 실행
 ```bash
 # Docker 컨테이너 내부로 진입
-docker exec -it property_manager sh
+docker exec -it naver-crawler-web sh
 
 # 마이그레이션 실행
 npx prisma migrate deploy
@@ -31,7 +37,7 @@ npx prisma generate
 exit
 ```
 
-### 3. Docker 재빌드 및 재시작
+### 4. Docker 재빌드 및 재시작
 ```bash
 # 컨테이너 중지
 docker-compose down
@@ -43,7 +49,7 @@ docker-compose build --no-cache
 docker-compose up -d
 
 # 로그 확인
-docker-compose logs -f
+docker-compose logs -f naver-crawler-web
 ```
 
 ## 마이그레이션 내용
@@ -90,10 +96,10 @@ docker-compose logs -f
 ### 백업 명령어
 ```bash
 # PostgreSQL 백업
-docker exec -t property_manager_db pg_dump -U crawler naver_crawler > backup_$(date +%Y%m%d_%H%M%S).sql
+docker exec -t naver-crawler-db pg_dump -U crawler naver_crawler > backup_$(date +%Y%m%d_%H%M%S).sql
 
 # 복원 (필요시)
-cat backup_YYYYMMDD_HHMMSS.sql | docker exec -i property_manager_db psql -U crawler naver_crawler
+cat backup_YYYYMMDD_HHMMSS.sql | docker exec -i naver-crawler-db psql -U crawler naver_crawler
 ```
 
 ## 완료된 작업
@@ -128,17 +134,17 @@ cat backup_YYYYMMDD_HHMMSS.sql | docker exec -i property_manager_db psql -U craw
 ### 마이그레이션 실패 시
 ```bash
 # 마이그레이션 상태 확인
-docker exec property_manager npx prisma migrate status
+docker exec naver-crawler-web npx prisma migrate status
 
 # 마이그레이션 초기화 (주의: 데이터 손실 가능)
-docker exec property_manager npx prisma migrate reset
+docker exec naver-crawler-web npx prisma migrate reset
 ```
 
 ### 빌드 에러 시
 ```bash
 # Prisma Client 재생성
-docker exec property_manager npx prisma generate
+docker exec naver-crawler-web npx prisma generate
 
 # Node modules 재설치
-docker exec property_manager npm install
+docker exec naver-crawler-web npm install
 ```
