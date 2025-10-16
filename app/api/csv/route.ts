@@ -8,6 +8,7 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const filename = searchParams.get('filename');
+    const timestamp = searchParams.get('timestamp');
 
     const baseDir = process.env.NODE_ENV === 'production' ? '/app' : process.cwd();
     const crawledDataDir = path.join(baseDir, 'crawled_data');
@@ -17,6 +18,61 @@ export async function GET(request: Request) {
       await fs.access(crawledDataDir);
     } catch {
       return NextResponse.json({ csvFiles: [], jsonFiles: [] });
+    }
+
+    // 타임스탬프로 파일 검색
+    if (timestamp) {
+      const allFiles = await fs.readdir(crawledDataDir);
+      const matchingFiles = allFiles.filter(file =>
+        (file.endsWith('.json') || file.endsWith('.csv')) &&
+        file.includes(timestamp) &&
+        file !== 'favorites.json' &&
+        !file.includes('crawl_status')
+      );
+
+      const fileInfos = await Promise.all(
+        matchingFiles.map(async (filename) => {
+          const filePath = path.join(crawledDataDir, filename);
+          const stats = await fs.stat(filePath);
+          const content = await fs.readFile(filePath, 'utf-8');
+
+          if (filename.endsWith('.json')) {
+            const jsonData = JSON.parse(content);
+            return {
+              filename,
+              type: 'json',
+              size: stats.size,
+              createdAt: stats.mtime.toISOString(),
+              data: jsonData,
+            };
+          } else if (filename.endsWith('.csv')) {
+            const lines = content.split('\n').filter(line => line.trim());
+            const headers = lines[0] ? lines[0].split(',') : [];
+            const dataRows = lines.slice(1).map(line => {
+              const values = line.split(',');
+              const row: { [key: string]: string } = {};
+              headers.forEach((header, index) => {
+                row[header.trim()] = values[index]?.trim() || '';
+              });
+              return row;
+            });
+
+            return {
+              filename,
+              type: 'csv',
+              size: stats.size,
+              createdAt: stats.mtime.toISOString(),
+              headers,
+              data: dataRows,
+              rowCount: dataRows.length,
+            };
+          }
+        })
+      );
+
+      return NextResponse.json({
+        files: fileInfos.filter(f => f !== undefined)
+      });
     }
 
     // 특정 파일 조회

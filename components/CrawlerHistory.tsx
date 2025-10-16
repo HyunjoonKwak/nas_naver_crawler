@@ -85,8 +85,8 @@ export default function CrawlerHistory({ refresh }: CrawlerHistoryProps) {
     );
   };
 
-  // 크롤링 시작 시간으로 파일명들 생성
-  const generateFileNames = (createdAt: string, totalComplexes: number, totalArticles: number) => {
+  // 크롤링 시작 시간으로 타임스탬프 생성
+  const generateTimestamp = (createdAt: string) => {
     const date = new Date(createdAt);
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -94,17 +94,10 @@ export default function CrawlerHistory({ refresh }: CrawlerHistoryProps) {
     const hour = String(date.getHours()).padStart(2, '0');
     const minute = String(date.getMinutes()).padStart(2, '0');
     const second = String(date.getSeconds()).padStart(2, '0');
-    const timestamp = `${year}${month}${day}_${hour}${minute}${second}`;
-
-    return {
-      complexesJson: `complexes_${totalComplexes}_${timestamp}.json`,
-      complexesCsv: `complexes_${totalComplexes}_${timestamp}.csv`,
-      articlesJson: `articles_${totalArticles}_${timestamp}.json`,
-      articlesCsv: `articles_${totalArticles}_${timestamp}.csv`,
-    };
+    return `${year}${month}${day}_${hour}${minute}${second}`;
   };
 
-  const toggleRow = async (itemId: string, filenames: { complexesJson: string; complexesCsv: string; articlesJson: string; articlesCsv: string }) => {
+  const toggleRow = async (itemId: string, timestamp: string) => {
     const newExpandedRows = new Set(expandedRows);
 
     if (expandedRows.has(itemId)) {
@@ -118,40 +111,42 @@ export default function CrawlerHistory({ refresh }: CrawlerHistoryProps) {
 
       // 파일 내용 로드 (아직 로드하지 않은 경우)
       if (!fileContents[itemId]) {
-        await fetchFileContents(itemId, filenames);
+        await fetchFileContentsByTimestamp(itemId, timestamp);
       }
     }
   };
 
-  const fetchFileContents = async (itemId: string, filenames: { complexesJson: string; complexesCsv: string; articlesJson: string; articlesCsv: string }) => {
+  const fetchFileContentsByTimestamp = async (itemId: string, timestamp: string) => {
     setLoadingFiles(new Set(loadingFiles).add(itemId));
 
     try {
-      // 모든 파일을 병렬로 로드
-      const fileList = [
-        { name: filenames.complexesJson, label: '단지 정보 (JSON)' },
-        { name: filenames.complexesCsv, label: '단지 정보 (CSV)' },
-        { name: filenames.articlesJson, label: '매물 정보 (JSON)' },
-        { name: filenames.articlesCsv, label: '매물 정보 (CSV)' },
-      ];
+      // 타임스탬프로 파일들을 검색
+      const response = await fetch(`/api/csv?timestamp=${encodeURIComponent(timestamp)}`);
+      const data = await response.json();
 
-      const results = await Promise.allSettled(
-        fileList.map(async (file) => {
-          const response = await fetch(`/api/csv?filename=${encodeURIComponent(file.name)}`);
-          if (!response.ok) throw new Error(`Failed to load ${file.name}`);
-          const data = await response.json();
-          return { ...file, data: data.file };
-        })
-      );
+      if (data.files && data.files.length > 0) {
+        // 파일별로 레이블 추가
+        const filesWithLabels = data.files.map((file: any) => {
+          let label = file.filename;
+          if (file.filename.includes('complexes') && file.type === 'json') {
+            label = '단지 정보 (JSON)';
+          } else if (file.filename.includes('complexes') && file.type === 'csv') {
+            label = '단지 정보 (CSV)';
+          } else if (file.filename.includes('articles') && file.type === 'json') {
+            label = '매물 정보 (JSON)';
+          } else if (file.filename.includes('articles') && file.type === 'csv') {
+            label = '매물 정보 (CSV)';
+          }
+          return {
+            name: file.filename,
+            label,
+            data: file
+          };
+        });
 
-      const loadedFiles = results
-        .filter((result): result is PromiseFulfilledResult<any> => result.status === 'fulfilled')
-        .map(result => result.value);
-
-      if (loadedFiles.length > 0) {
         setFileContents(prev => ({
           ...prev,
-          [itemId]: loadedFiles
+          [itemId]: filesWithLabels
         }));
       }
     } catch (error) {
@@ -295,7 +290,7 @@ export default function CrawlerHistory({ refresh }: CrawlerHistoryProps) {
                     <td className="px-4 py-3 whitespace-nowrap">
                       {(item.status === 'completed' || item.status === 'success') && (
                         <button
-                          onClick={() => toggleRow(item.id, generateFileNames(item.createdAt, item.totalComplexes, item.totalArticles))}
+                          onClick={() => toggleRow(item.id, generateTimestamp(item.createdAt))}
                           className="px-3 py-1 text-xs bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 text-blue-700 dark:text-blue-300 rounded-lg transition-colors font-semibold inline-flex items-center gap-1"
                           title="크롤링 결과 파일 보기"
                         >
