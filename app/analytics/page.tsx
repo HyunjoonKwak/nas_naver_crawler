@@ -88,25 +88,25 @@ export default function AnalyticsPage() {
 
   const fetchComplexes = async () => {
     try {
-      // 즐겨찾기 단지 목록 조회
-      const favResponse = await fetch("/api/favorites");
-      const favData = await favResponse.json();
-      const favoriteComplexes = favData.favorites || [];
-
-      // 단지 상세 정보 조회
-      const complexResponse = await fetch("/api/results");
+      // 전체 등록된 단지 목록 조회 (DB에서 직접 조회)
+      const complexResponse = await fetch("/api/complexes");
       const complexData = await complexResponse.json();
-      const results = complexData.results || [];
 
-      const complexList = favoriteComplexes.map((fav: any) => {
-        const result = results.find((r: any) => r.overview?.complexNo === fav.complexNo);
-        return {
-          complexNo: fav.complexNo,
-          complexName: result?.overview?.complexName || fav.complexName || `단지 ${fav.complexNo}`,
-        };
-      });
+      if (complexData.success && complexData.complexes) {
+        const complexList = complexData.complexes.map((complex: any) => ({
+          complexNo: complex.complexNo,
+          complexName: complex.complexName,
+          articleCount: complex._count?.articles || 0,
+        }));
 
-      setComplexes(complexList);
+        // 매물 개수 기준 내림차순 정렬 (매물이 많은 단지가 먼저)
+        complexList.sort((a: any, b: any) => b.articleCount - a.articleCount);
+
+        setComplexes(complexList);
+        console.log('[ANALYTICS] Loaded complexes:', complexList.length);
+      } else {
+        throw new Error('Failed to load complexes');
+      }
     } catch (error) {
       console.error('[ANALYTICS] Failed to fetch complexes:', error);
       showError('단지 목록 조회 실패');
