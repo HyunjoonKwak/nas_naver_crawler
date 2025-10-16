@@ -23,6 +23,9 @@ interface CrawlHistoryItem {
 export default function CrawlerHistory({ refresh }: CrawlerHistoryProps) {
   const [history, setHistory] = useState<CrawlHistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+  const [fileContents, setFileContents] = useState<Record<string, any>>({});
+  const [loadingFiles, setLoadingFiles] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     fetchHistory();
@@ -95,9 +98,45 @@ export default function CrawlerHistory({ refresh }: CrawlerHistoryProps) {
     return `complexes_${totalComplexes}_${year}${month}${day}_${hour}${minute}${second}.json`;
   };
 
-  const viewFile = (filename: string) => {
-    // 파일 뷰어 섹션으로 이동하고 파일 선택
-    window.location.href = `/system?section=data&file=${encodeURIComponent(filename)}`;
+  const toggleRow = async (itemId: string, filename: string) => {
+    const newExpandedRows = new Set(expandedRows);
+
+    if (expandedRows.has(itemId)) {
+      // 닫기
+      newExpandedRows.delete(itemId);
+      setExpandedRows(newExpandedRows);
+    } else {
+      // 열기
+      newExpandedRows.add(itemId);
+      setExpandedRows(newExpandedRows);
+
+      // 파일 내용 로드 (아직 로드하지 않은 경우)
+      if (!fileContents[itemId]) {
+        await fetchFileContent(itemId, filename);
+      }
+    }
+  };
+
+  const fetchFileContent = async (itemId: string, filename: string) => {
+    setLoadingFiles(new Set(loadingFiles).add(itemId));
+
+    try {
+      const response = await fetch(`/api/csv?filename=${encodeURIComponent(filename)}`);
+      const data = await response.json();
+
+      if (data.file) {
+        setFileContents(prev => ({
+          ...prev,
+          [itemId]: data.file
+        }));
+      }
+    } catch (error) {
+      console.error('Failed to fetch file:', error);
+    } finally {
+      const newLoadingFiles = new Set(loadingFiles);
+      newLoadingFiles.delete(itemId);
+      setLoadingFiles(newLoadingFiles);
+    }
   };
 
   if (loading) {
@@ -166,6 +205,7 @@ export default function CrawlerHistory({ refresh }: CrawlerHistoryProps) {
                   : 0;
 
                 return (
+                  <>
                   <tr
                     key={item.id}
                     className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
@@ -231,15 +271,53 @@ export default function CrawlerHistory({ refresh }: CrawlerHistoryProps) {
                     <td className="px-4 py-3 whitespace-nowrap">
                       {(item.status === 'completed' || item.status === 'success') && (
                         <button
-                          onClick={() => viewFile(generateFileName(item.createdAt, item.totalComplexes))}
+                          onClick={() => toggleRow(item.id, generateFileName(item.createdAt, item.totalComplexes))}
                           className="px-3 py-1 text-xs bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 text-blue-700 dark:text-blue-300 rounded-lg transition-colors font-semibold inline-flex items-center gap-1"
                           title="크롤링 결과 파일 보기"
                         >
-                          📄 파일 보기
+                          {expandedRows.has(item.id) ? '📤 닫기' : '📄 파일 보기'}
                         </button>
                       )}
                     </td>
                   </tr>
+                  {/* 확장된 행 - 파일 내용 표시 */}
+                  {expandedRows.has(item.id) && (
+                    <tr key={`${item.id}-expanded`} className="bg-gray-50 dark:bg-gray-900">
+                      <td colSpan={8} className="px-4 py-4">
+                        {loadingFiles.has(item.id) ? (
+                          <div className="flex items-center justify-center py-8">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                            <span className="ml-3 text-gray-600 dark:text-gray-400">파일 로딩 중...</span>
+                          </div>
+                        ) : fileContents[item.id] ? (
+                          <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                              <h4 className="text-sm font-semibold text-gray-900 dark:text-white">
+                                📄 {generateFileName(item.createdAt, item.totalComplexes)}
+                              </h4>
+                              <span className="text-xs text-gray-500 dark:text-gray-400">
+                                {fileContents[item.id].type === 'json' ? 'JSON 파일' : 'CSV 파일'} • {(fileContents[item.id].size / 1024).toFixed(2)} KB
+                              </span>
+                            </div>
+
+                            {/* JSON 파일 내용 표시 */}
+                            {fileContents[item.id].type === 'json' && (
+                              <div className="bg-white dark:bg-gray-800 rounded-lg p-4 max-h-96 overflow-auto border border-gray-200 dark:border-gray-700">
+                                <pre className="text-xs text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+                                  {JSON.stringify(fileContents[item.id].data, null, 2)}
+                                </pre>
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                            파일을 불러올 수 없습니다.
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  )}
+                  </>
                 );
               })}
             </tbody>
