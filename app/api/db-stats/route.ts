@@ -1,15 +1,33 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import fs from 'fs/promises';
+import path from 'path';
 
 export const dynamic = 'force-dynamic';
 
+// favorites.json 읽기 함수
+const readFavoritesJson = async (): Promise<number> => {
+  try {
+    const baseDir = process.env.NODE_ENV === 'production' ? '/app' : process.cwd();
+    const favoritesPath = path.join(baseDir, 'crawled_data', 'favorites.json');
+    const content = await fs.readFile(favoritesPath, 'utf-8');
+    const data = JSON.parse(content);
+    const favoriteComplexNos = (data.favorites || []).map((f: any) => f.complexNo);
+    return new Set(favoriteComplexNos).size; // 고유 개수
+  } catch {
+    return 0; // 파일이 없으면 0 반환
+  }
+};
+
 export async function GET() {
   try {
+    // favorites.json에서 관심단지 개수 가져오기
+    const favoriteComplexes = await readFavoritesJson();
+
     // 병렬로 모든 통계 조회
     const [
       totalComplexes,
       totalArticles,
-      favoriteComplexes,
       crawlHistoryCount,
       completedCrawls,
       failedCrawls,
@@ -22,11 +40,6 @@ export async function GET() {
 
       // 전체 매물 수
       prisma.article.count(),
-
-      // 관심 단지 수 (Favorite 테이블에서 고유 complexId 개수)
-      prisma.favorite.groupBy({
-        by: ['complexId'],
-      }).then(results => results.length),
 
       // 전체 크롤링 기록 수
       prisma.crawlHistory.count(),

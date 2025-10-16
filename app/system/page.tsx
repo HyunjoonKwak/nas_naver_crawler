@@ -892,45 +892,6 @@ export default function SystemPage() {
                 </div>
               </div>
 
-              {/* Trade Type Stats */}
-              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-800 p-8">
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-6">
-                  거래 유형별 매물 분포
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  {Object.entries(dbStats.tradeTypes).map(([type, count]) => {
-                    const total = Object.values(dbStats.tradeTypes).reduce((a, b) => a + b, 0);
-                    const percentage = ((count / total) * 100).toFixed(1);
-                    const colorMap: Record<string, string> = {
-                      '매매': 'from-red-50 to-rose-50 dark:from-red-900/20 dark:to-rose-900/20 border-red-100 dark:border-red-800 text-red-600 dark:text-red-400',
-                      '전세': 'from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-blue-100 dark:border-blue-800 text-blue-600 dark:text-blue-400',
-                      '월세': 'from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border-green-100 dark:border-green-800 text-green-600 dark:text-green-400',
-                    };
-                    const colorClass = colorMap[type] || 'from-gray-50 to-slate-50 dark:from-gray-900/20 dark:to-slate-900/20 border-gray-100 dark:border-gray-800 text-gray-600 dark:text-gray-400';
-
-                    return (
-                      <div key={type} className={`bg-gradient-to-br ${colorClass} rounded-xl p-6 border`}>
-                        <h4 className="text-lg font-bold text-gray-900 dark:text-white mb-2">
-                          {type}
-                        </h4>
-                        <div className={`text-4xl font-bold mb-2`}>
-                          {count.toLocaleString()}
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <div className="flex-1 bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                            <div
-                              className="h-2 rounded-full bg-current"
-                              style={{ width: `${percentage}%` }}
-                            ></div>
-                          </div>
-                          <span className="text-sm font-semibold">{percentage}%</span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
               {/* Recent Crawls */}
               {dbStats.crawling.recentCrawls.length > 0 && (
                 <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-800 p-8">
