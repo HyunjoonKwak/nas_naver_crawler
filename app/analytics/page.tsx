@@ -90,13 +90,18 @@ export default function AnalyticsPage() {
     try {
       // 전체 등록된 단지 목록 조회 (DB에서 직접 조회)
       const complexResponse = await fetch("/api/complexes");
+
+      if (!complexResponse.ok) {
+        throw new Error(`HTTP error! status: ${complexResponse.status}`);
+      }
+
       const complexData = await complexResponse.json();
 
-      if (complexData.success && complexData.complexes) {
+      if (complexData.complexes) {
         const complexList = complexData.complexes.map((complex: any) => ({
           complexNo: complex.complexNo,
           complexName: complex.complexName,
-          articleCount: complex._count?.articles || 0,
+          articleCount: complex.articleCount || 0,
         }));
 
         // 매물 개수 기준 내림차순 정렬 (매물이 많은 단지가 먼저)
@@ -104,8 +109,10 @@ export default function AnalyticsPage() {
 
         setComplexes(complexList);
         console.log('[ANALYTICS] Loaded complexes:', complexList.length);
+      } else if (complexData.error) {
+        throw new Error(complexData.error);
       } else {
-        throw new Error('Failed to load complexes');
+        throw new Error('Invalid response format');
       }
     } catch (error) {
       console.error('[ANALYTICS] Failed to fetch complexes:', error);
