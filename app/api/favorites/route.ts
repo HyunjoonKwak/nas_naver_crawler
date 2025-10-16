@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import fs from 'fs/promises';
 import path from 'path';
 import { prisma } from '@/lib/prisma';
+import { requireAuth } from '@/lib/auth-utils';
 
 const FAVORITES_FILE = 'favorites.json';
 
@@ -140,6 +141,7 @@ export const dynamic = 'force-dynamic';
 // GET: 선호 단지 목록 조회
 export async function GET(request: NextRequest) {
   try {
+    const currentUser = await requireAuth();
     console.log('[API_FAVORITES] GET 요청 시작');
     const favorites = await readFavorites();
     console.log('[API_FAVORITES] favorites.json 읽기 완료:', {
@@ -199,6 +201,7 @@ export async function GET(request: NextRequest) {
 // POST: 선호 단지 추가
 export async function POST(request: NextRequest) {
   try {
+    const currentUser = await requireAuth();
     const body = await request.json();
     const { complexNo, complexName } = body;
 
@@ -261,6 +264,7 @@ export async function POST(request: NextRequest) {
 // DELETE: 선호 단지 삭제 (DB에서도 함께 삭제)
 export async function DELETE(request: NextRequest) {
   try {
+    const currentUser = await requireAuth();
     const { searchParams } = new URL(request.url);
     const complexNo = searchParams.get('complexNo');
 
@@ -345,6 +349,7 @@ export async function DELETE(request: NextRequest) {
 // PATCH: 선호 단지 정보 업데이트 (크롤링 후)
 export async function PATCH(request: NextRequest) {
   try {
+    const currentUser = await requireAuth();
     const body = await request.json();
     const {
       complexNo,
@@ -427,6 +432,7 @@ export async function PATCH(request: NextRequest) {
 // PUT: 관심 단지 순서 변경
 export async function PUT(request: NextRequest) {
   try {
+    const currentUser = await requireAuth();
     const body = await request.json();
     const { complexNos } = body; // 새로운 순서의 complexNo 배열
 
