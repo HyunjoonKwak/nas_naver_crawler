@@ -1397,15 +1397,42 @@ export default function SystemPage() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    아이콘
+                    아이콘 선택
                   </label>
-                  <input
-                    type="text"
-                    value={linkForm.icon}
-                    onChange={(e) => setLinkForm({ ...linkForm, icon: e.target.value })}
-                    placeholder="🔗"
-                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-emerald-500 dark:bg-gray-700 dark:text-white"
-                  />
+                  <div className="grid grid-cols-8 gap-2 p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-900 max-h-32 overflow-y-auto">
+                    {[
+                      '🗺️', '📍', '🌏', '🧭', // 지오코딩/지도
+                      '💰', '💵', '💴', '📈', '📊', // 실거래가/금융
+                      '📚', '📖', '📝', '📄', '📋', // 참고자료/문서
+                      '🔌', '⚡', '🔗', '🌐', // API/네트워크
+                      '🛠️', '⚙️', '🔧', '🔨', // 도구
+                      '🏢', '🏠', '🏘️', '🏗️', // 부동산
+                      '📱', '💻', '🖥️', '⌨️', // 디지털/기술
+                      '🔍', '🔎', '📡', '🎯', // 검색/분석
+                    ].map((emoji) => (
+                      <button
+                        key={emoji}
+                        type="button"
+                        onClick={() => setLinkForm({ ...linkForm, icon: emoji })}
+                        className={`text-2xl p-2 rounded hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition-colors ${
+                          linkForm.icon === emoji ? 'bg-emerald-200 dark:bg-emerald-900/50 ring-2 ring-emerald-500' : ''
+                        }`}
+                        title={emoji}
+                      >
+                        {emoji}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="mt-2 flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={linkForm.icon}
+                      onChange={(e) => setLinkForm({ ...linkForm, icon: e.target.value })}
+                      placeholder="또는 직접 입력"
+                      className="flex-1 px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-emerald-500 dark:bg-gray-700 dark:text-white"
+                    />
+                    <span className="text-3xl">{linkForm.icon}</span>
+                  </div>
                 </div>
               </div>
 
