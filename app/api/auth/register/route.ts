@@ -23,11 +23,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 비밀번호 강도 검사: 영문, 숫자 포함 8자 이상
-    const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d@$!%*#?&]{8,}$/;
+    // 비밀번호 강도 검사: 영문, 숫자, 특수문자 포함 8자 이상
+    const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*#?&])[A-Za-z\d@$!%*#?&]{8,}$/;
     if (!passwordRegex.test(password)) {
       return NextResponse.json(
-        { error: '비밀번호는 영문과 숫자를 포함하여 8자 이상이어야 합니다.' },
+        { error: '비밀번호는 영문, 숫자, 특수문자(@$!%*#?&)를 포함하여 8자 이상이어야 합니다.' },
         { status: 400 }
       );
     }
