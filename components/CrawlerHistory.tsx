@@ -82,6 +82,24 @@ export default function CrawlerHistory({ refresh }: CrawlerHistoryProps) {
     );
   };
 
+  // 크롤링 시작 시간으로 파일명 생성
+  const generateFileName = (createdAt: string, totalComplexes: number) => {
+    const date = new Date(createdAt);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hour = String(date.getHours()).padStart(2, '0');
+    const minute = String(date.getMinutes()).padStart(2, '0');
+    const second = String(date.getSeconds()).padStart(2, '0');
+
+    return `complexes_${totalComplexes}_${year}${month}${day}_${hour}${minute}${second}.json`;
+  };
+
+  const viewFile = (filename: string) => {
+    // 파일 뷰어 섹션으로 이동하고 파일 선택
+    window.location.href = `/system?section=data&file=${encodeURIComponent(filename)}`;
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -135,6 +153,9 @@ export default function CrawlerHistory({ refresh }: CrawlerHistoryProps) {
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   마지막 단계
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  액션
                 </th>
               </tr>
             </thead>
@@ -205,6 +226,17 @@ export default function CrawlerHistory({ refresh }: CrawlerHistoryProps) {
                         <div className="text-xs text-red-600 dark:text-red-400 mt-1 max-w-xs truncate" title={item.errorMessage}>
                           ⚠️ {item.errorMessage}
                         </div>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      {(item.status === 'completed' || item.status === 'success') && (
+                        <button
+                          onClick={() => viewFile(generateFileName(item.createdAt, item.totalComplexes))}
+                          className="px-3 py-1 text-xs bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 text-blue-700 dark:text-blue-300 rounded-lg transition-colors font-semibold inline-flex items-center gap-1"
+                          title="크롤링 결과 파일 보기"
+                        >
+                          📄 파일 보기
+                        </button>
                       )}
                     </td>
                   </tr>
