@@ -23,12 +23,17 @@ export async function GET(request: Request) {
     // 타임스탬프로 파일 검색
     if (timestamp) {
       const allFiles = await fs.readdir(crawledDataDir);
+      console.log(`[CSV API] Searching for timestamp: ${timestamp}`);
+      console.log(`[CSV API] All files in directory:`, allFiles);
+
       const matchingFiles = allFiles.filter(file =>
         (file.endsWith('.json') || file.endsWith('.csv')) &&
         file.includes(timestamp) &&
         file !== 'favorites.json' &&
         !file.includes('crawl_status')
       );
+
+      console.log(`[CSV API] Matching files:`, matchingFiles);
 
       const fileInfos = await Promise.all(
         matchingFiles.map(async (filename) => {
@@ -70,8 +75,11 @@ export async function GET(request: Request) {
         })
       );
 
+      const filteredFiles = fileInfos.filter(f => f !== undefined);
+      console.log(`[CSV API] Returning ${filteredFiles.length} files`);
+
       return NextResponse.json({
-        files: fileInfos.filter(f => f !== undefined)
+        files: filteredFiles
       });
     }
 

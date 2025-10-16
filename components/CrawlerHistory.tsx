@@ -122,7 +122,15 @@ export default function CrawlerHistory({ refresh }: CrawlerHistoryProps) {
     try {
       // 타임스탬프로 파일들을 검색
       const response = await fetch(`/api/csv?timestamp=${encodeURIComponent(timestamp)}`);
+
+      if (!response.ok) {
+        console.error(`API error: ${response.status} ${response.statusText}`);
+        setFileContents(prev => ({ ...prev, [itemId]: [] }));
+        return;
+      }
+
       const data = await response.json();
+      console.log(`[CrawlerHistory] Fetched files for timestamp ${timestamp}:`, data);
 
       if (data.files && data.files.length > 0) {
         // 파일별로 레이블 추가
@@ -148,9 +156,20 @@ export default function CrawlerHistory({ refresh }: CrawlerHistoryProps) {
           ...prev,
           [itemId]: filesWithLabels
         }));
+      } else {
+        console.warn(`[CrawlerHistory] No files found for timestamp ${timestamp}`);
+        // 빈 배열로 설정하여 "파일을 불러올 수 없습니다" 메시지 표시
+        setFileContents(prev => ({
+          ...prev,
+          [itemId]: []
+        }));
       }
     } catch (error) {
       console.error('Failed to fetch files:', error);
+      setFileContents(prev => ({
+        ...prev,
+        [itemId]: []
+      }));
     } finally {
       const newLoadingFiles = new Set(loadingFiles);
       newLoadingFiles.delete(itemId);
