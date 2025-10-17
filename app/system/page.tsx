@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { Navigation } from "@/components/Navigation";
+import { MobileNavigation } from "@/components/MobileNavigation";
 import CrawlerHistory from "@/components/CrawlerHistory";
 import { ThemeToggle, Dialog } from "@/components/ui";
 import { showSuccess, showError, showLoading, dismissToast } from "@/lib/toast";
@@ -721,7 +722,7 @@ export default function SystemPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pb-20 md:pb-0">
       {/* Header */}
       <Navigation />
 
@@ -1726,6 +1727,9 @@ export default function SystemPage() {
           </div>
         </div>
       )}
+
+      {/* Mobile Navigation */}
+      <MobileNavigation />
     </div>
   );
 }

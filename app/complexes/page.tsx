@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Navigation } from "@/components/Navigation";
+import { MobileNavigation } from "@/components/MobileNavigation";
 import { ThemeToggle, Dialog } from "@/components/ui";
 import { GroupManagement } from "@/components/GroupManagement";
 import { ComplexSortFilter } from "@/components/ComplexSortFilter";
@@ -656,7 +657,7 @@ export default function ComplexesPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pb-20 md:pb-0">
       {/* Header */}
       <Navigation />
 
@@ -1534,6 +1535,9 @@ function SingleComplexCrawler({
           </p>
         </div>
       )}
+
+      {/* Mobile Navigation */}
+      <MobileNavigation />
     </div>
   );
 }

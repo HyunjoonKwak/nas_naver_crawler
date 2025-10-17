@@ -128,6 +128,15 @@ body {
     max-width: 100%;
     overflow-x: auto;
   }
+
+  /* Safe Area 지원 (iOS 노치, 하단 바) */
+  .safe-area-inset-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .safe-area-inset-top {
+    padding-top: env(safe-area-inset-top);
+  }
 }
 
 /* 모든 메인 컨테이너 요소에 대해 너비 제한 */

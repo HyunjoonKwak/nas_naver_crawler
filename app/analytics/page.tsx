@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Navigation } from "@/components/Navigation";
+import { MobileNavigation } from "@/components/MobileNavigation";
 import { ThemeToggle } from "@/components/ui";
 import { showSuccess, showError, showLoading, dismissToast } from "@/lib/toast";
 import { useCrawlEvents } from "@/hooks/useCrawlEvents";
@@ -209,7 +210,7 @@ export default function AnalyticsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-black">
+    <div className="min-h-screen bg-gray-50 dark:bg-black pb-20 md:pb-0">
       {/* 네비게이션 */}
       <Navigation />
 
@@ -443,6 +444,9 @@ export default function AnalyticsPage() {
           <CompareAnalysis analyticsData={analyticsData} />
         )}
       </main>
+
+      {/* Mobile Navigation */}
+      <MobileNavigation />
     </div>
   );
 }
