@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { Navigation } from "@/components/Navigation";
 import { MobileNavigation } from "@/components/MobileNavigation";
@@ -9,6 +10,7 @@ import { GroupManagement } from "@/components/GroupManagement";
 import { ComplexSortFilter } from "@/components/ComplexSortFilter";
 import { ComplexGroupBadges } from "@/components/ComplexGroupBadges";
 import { showSuccess, showError, showLoading, dismissToast, showInfo } from "@/lib/toast";
+import { AuthGuard } from "@/components/AuthGuard";
 
 interface ComplexGroup {
   id: string;
@@ -54,6 +56,7 @@ interface ComplexInfo {
 }
 
 export default function ComplexesPage() {
+  const { data: session, status } = useSession();
   const [complexes, setComplexes] = useState<ComplexItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [crawling, setCrawling] = useState<string | null>(null);
@@ -657,9 +660,10 @@ export default function ComplexesPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pb-20 md:pb-0">
-      {/* Header */}
-      <Navigation />
+    <AuthGuard>
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pb-20 md:pb-0">
+        {/* Header */}
+        <Navigation />
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -1353,7 +1357,8 @@ export default function ComplexesPage() {
           </div> {/* 메인 컨텐츠 닫기 */}
         </div> {/* flex 컨테이너 닫기 */}
       </main>
-    </div>
+      </div>
+    </AuthGuard>
   );
 }
 
