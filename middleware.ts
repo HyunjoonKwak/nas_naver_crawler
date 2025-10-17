@@ -11,10 +11,9 @@ export default withAuth(
       authorized: ({ token, req }) => {
         const { pathname } = req.nextUrl;
 
-        // 공개 페이지: 랜딩페이지, 로그인, 회원가입
+        // 공개 페이지: 랜딩페이지(로그인 포함), 회원가입
         const publicPaths = [
           '/',
-          '/auth/signin',
           '/auth/signup',
           '/api/auth',
         ];
