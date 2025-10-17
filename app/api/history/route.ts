@@ -1,11 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { requireAuth, getAccessibleUserIds } from '@/lib/auth-utils';
 
 export const dynamic = 'force-dynamic';
 
 // 크롤링 히스토리 조회
 export async function GET(request: NextRequest) {
   try {
+    // 인증 확인
+    const currentUser = await requireAuth();
+
+    // 사용자가 접근 가능한 userId 목록 가져오기
+    const accessibleUserIds = await getAccessibleUserIds(currentUser.id, currentUser.role);
+
     const { searchParams } = new URL(request.url);
 
     // 쿼리 파라미터
@@ -13,8 +20,10 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '50');
     const offset = parseInt(searchParams.get('offset') || '0');
 
-    // WHERE 조건 구성
-    const where: any = {};
+    // WHERE 조건 구성 (사용자 필터링 추가)
+    const where: any = {
+      userId: { in: accessibleUserIds }
+    };
 
     if (status) {
       where.status = status;
@@ -33,16 +42,21 @@ export async function GET(request: NextRequest) {
     // 총 개수
     const total = await prisma.crawlHistory.count({ where });
 
-    // 통계 계산
+    // 사용자 필터 조건
+    const userFilter = { userId: { in: accessibleUserIds } };
+
+    // 통계 계산 (사용자 필터링 적용)
     const stats = {
-      total: await prisma.crawlHistory.count(),
-      success: await prisma.crawlHistory.count({ where: { status: 'success' } }),
-      error: await prisma.crawlHistory.count({ where: { status: 'error' } }),
-      partialSuccess: await prisma.crawlHistory.count({ where: { status: 'partial_success' } }),
+      total: await prisma.crawlHistory.count({ where: userFilter }),
+      success: await prisma.crawlHistory.count({ where: { ...userFilter, status: 'success' } }),
+      error: await prisma.crawlHistory.count({ where: { ...userFilter, status: 'error' } }),
+      partialSuccess: await prisma.crawlHistory.count({ where: { ...userFilter, status: 'partial_success' } }),
       totalArticles: await prisma.crawlHistory.aggregate({
+        where: userFilter,
         _sum: { totalArticles: true },
       }),
       avgDuration: await prisma.crawlHistory.aggregate({
+        where: userFilter,
         _avg: { duration: true },
       }),
     };
@@ -85,6 +99,10 @@ export async function GET(request: NextRequest) {
 // 특정 히스토리 상세 조회
 export async function POST(request: NextRequest) {
   try {
+    // 인증 확인
+    const currentUser = await requireAuth();
+    const accessibleUserIds = await getAccessibleUserIds(currentUser.id, currentUser.role);
+
     const body = await request.json();
     const { id } = body;
 
@@ -95,9 +113,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 히스토리 조회
-    const history = await prisma.crawlHistory.findUnique({
-      where: { id },
+    // 히스토리 조회 (사용자 필터링)
+    const history = await prisma.crawlHistory.findFirst({
+      where: {
+        id,
+        userId: { in: accessibleUserIds }
+      },
     });
 
     if (!history) {
@@ -153,6 +174,10 @@ export async function POST(request: NextRequest) {
 // 히스토리 삭제
 export async function DELETE(request: NextRequest) {
   try {
+    // 인증 확인
+    const currentUser = await requireAuth();
+    const accessibleUserIds = await getAccessibleUserIds(currentUser.id, currentUser.role);
+
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
 
@@ -163,9 +188,20 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    await prisma.crawlHistory.delete({
-      where: { id },
+    // 본인 또는 접근 가능한 사용자의 히스토리만 삭제 가능
+    const deleted = await prisma.crawlHistory.deleteMany({
+      where: {
+        id,
+        userId: { in: accessibleUserIds }
+      },
     });
+
+    if (deleted.count === 0) {
+      return NextResponse.json(
+        { error: '히스토리를 찾을 수 없거나 삭제 권한이 없습니다.' },
+        { status: 404 }
+      );
+    }
 
     return NextResponse.json({
       success: true,

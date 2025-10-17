@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { Navigation } from "@/components/Navigation";
 import CrawlerHistory from "@/components/CrawlerHistory";
@@ -70,6 +71,9 @@ interface DBStats {
 }
 
 export default function SystemPage() {
+  const { data: session } = useSession();
+  const isAdmin = session?.user?.role === 'ADMIN';
+
   const [status, setStatus] = useState<StatusData | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeSection, setActiveSection] = useState<'data' | 'history' | 'database' | 'info' | 'users'>('database');
@@ -778,19 +782,21 @@ export default function SystemPage() {
                 <span>유용한 정보</span>
               </div>
             </button>
-            <button
-              onClick={() => setActiveSection('users')}
-              className={`px-4 py-4 text-center font-semibold transition-colors ${
-                activeSection === 'users'
-                  ? 'bg-gradient-to-r from-rose-600 to-pink-600 text-white'
-                  : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
-              }`}
-            >
-              <div className="flex items-center justify-center gap-2">
-                <span className="text-xl">👥</span>
-                <span>사용자 관리</span>
-              </div>
-            </button>
+            {isAdmin && (
+              <button
+                onClick={() => setActiveSection('users')}
+                className={`px-4 py-4 text-center font-semibold transition-colors ${
+                  activeSection === 'users'
+                    ? 'bg-gradient-to-r from-rose-600 to-pink-600 text-white'
+                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
+                }`}
+              >
+                <div className="flex items-center justify-center gap-2">
+                  <span className="text-xl">👥</span>
+                  <span>사용자 관리</span>
+                </div>
+              </button>
+            )}
           </div>
         </div>
 
@@ -1031,7 +1037,7 @@ export default function SystemPage() {
                       즐겨찾기 등록 단지
                     </p>
                     <div className="mt-3 pt-3 border-t border-pink-200 dark:border-pink-700 text-xs text-gray-500 dark:text-gray-400">
-                      전체의 {((dbStats.database.favoriteComplexes / dbStats.database.totalComplexes) * 100).toFixed(1)}%
+                      전체의 {dbStats.database.totalComplexes > 0 ? ((dbStats.database.favoriteComplexes / dbStats.database.totalComplexes) * 100).toFixed(1) : '0.0'}%
                     </div>
                   </div>
                 </div>
