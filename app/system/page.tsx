@@ -11,6 +11,9 @@ import { SchedulerSettings } from "@/components/SchedulerSettings";
 import { ThemeToggle, Dialog } from "@/components/ui";
 import { showSuccess, showError, showLoading, dismissToast } from "@/lib/toast";
 import { AuthGuard } from "@/components/AuthGuard";
+import { useApiCall } from "@/hooks/useApiCall";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
+import { EmptyState } from "@/components/EmptyState";
 
 interface StatusData {
   crawler: {
@@ -77,6 +80,7 @@ interface DBStats {
 export default function SystemPage() {
   const { data: session } = useSession();
   const isAdmin = session?.user?.role === 'ADMIN';
+  const { handleApiCall } = useApiCall();
 
   const [status, setStatus] = useState<StatusData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -240,59 +244,36 @@ export default function SystemPage() {
   };
 
   const handleSaveLink = async () => {
-    const loadingToast = showLoading(editingLink ? '링크 수정 중...' : '링크 추가 중...');
-    try {
-      const method = editingLink ? 'PUT' : 'POST';
-      const body = editingLink
-        ? { id: editingLink.id, ...linkForm }
-        : linkForm;
+    const method = editingLink ? 'PUT' : 'POST';
+    const body = editingLink
+      ? { id: editingLink.id, ...linkForm }
+      : linkForm;
 
-      const response = await fetch('/api/useful-links', {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-
-      dismissToast(loadingToast);
-
-      if (response.ok) {
-        showSuccess(editingLink ? '링크가 수정되었습니다.' : '링크가 추가되었습니다.');
+    const result = await handleApiCall({
+      method,
+      url: '/api/useful-links',
+      body,
+      loadingMessage: editingLink ? '링크 수정 중...' : '링크 추가 중...',
+      successMessage: editingLink ? '링크가 수정되었습니다.' : '링크가 추가되었습니다.',
+      errorPrefix: '저장 실패',
+      onSuccess: async () => {
         setShowLinkModal(false);
         await fetchLinks();
-      } else {
-        const error = await response.json();
-        showError(`저장 실패: ${error.error}`);
       }
-    } catch (error) {
-      dismissToast(loadingToast);
-      console.error('Save link error:', error);
-      showError('링크 저장 중 오류가 발생했습니다.');
-    }
+    });
   };
 
   const handleDeleteLink = async (id: string) => {
     if (!confirm('이 링크를 삭제하시겠습니까?')) return;
 
-    const loadingToast = showLoading('링크 삭제 중...');
-    try {
-      const response = await fetch(`/api/useful-links?id=${id}`, {
-        method: 'DELETE',
-      });
-
-      dismissToast(loadingToast);
-
-      if (response.ok) {
-        showSuccess('링크가 삭제되었습니다.');
-        await fetchLinks();
-      } else {
-        const error = await response.json();
-        showError(`삭제 실패: ${error.error}`);
-      }
-    } catch (error) {
-      dismissToast(loadingToast);
-      console.error('Delete link error:', error);
-      showError('링크 삭제 중 오류가 발생했습니다.');
-    }
+    await handleApiCall({
+      method: 'DELETE',
+      url: `/api/useful-links?id=${id}`,
+      loadingMessage: '링크 삭제 중...',
+      successMessage: '링크가 삭제되었습니다.',
+      errorPrefix: '삭제 실패',
+      onSuccess: fetchLinks
+    });
   };
 
   const fetchUsers = async () => {
@@ -312,103 +293,52 @@ export default function SystemPage() {
   };
 
   const handleUserApprove = async (userId: string, isApproved: boolean) => {
-    const loadingToast = showLoading(isApproved ? '승인 중...' : '승인 취소 중...');
-    try {
-      const response = await fetch('/api/users', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId, isApproved }),
-      });
-
-      dismissToast(loadingToast);
-
-      if (response.ok) {
-        showSuccess(isApproved ? '사용자가 승인되었습니다.' : '승인이 취소되었습니다.');
-        await fetchUsers();
-      } else {
-        const error = await response.json();
-        showError(`실패: ${error.error}`);
-      }
-    } catch (error) {
-      dismissToast(loadingToast);
-      console.error('User approve error:', error);
-      showError('처리 중 오류가 발생했습니다.');
-    }
+    await handleApiCall({
+      method: 'PUT',
+      url: '/api/users',
+      body: { userId, isApproved },
+      loadingMessage: isApproved ? '승인 중...' : '승인 취소 중...',
+      successMessage: isApproved ? '사용자가 승인되었습니다.' : '승인이 취소되었습니다.',
+      errorPrefix: '실패',
+      onSuccess: fetchUsers
+    });
   };
 
   const handleUserActivate = async (userId: string, isActive: boolean) => {
-    const loadingToast = showLoading(isActive ? '활성화 중...' : '비활성화 중...');
-    try {
-      const response = await fetch('/api/users', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId, isActive }),
-      });
-
-      dismissToast(loadingToast);
-
-      if (response.ok) {
-        showSuccess(isActive ? '사용자가 활성화되었습니다.' : '사용자가 비활성화되었습니다.');
-        await fetchUsers();
-      } else {
-        const error = await response.json();
-        showError(`실패: ${error.error}`);
-      }
-    } catch (error) {
-      dismissToast(loadingToast);
-      console.error('User activate error:', error);
-      showError('처리 중 오류가 발생했습니다.');
-    }
+    await handleApiCall({
+      method: 'PUT',
+      url: '/api/users',
+      body: { userId, isActive },
+      loadingMessage: isActive ? '활성화 중...' : '비활성화 중...',
+      successMessage: isActive ? '사용자가 활성화되었습니다.' : '사용자가 비활성화되었습니다.',
+      errorPrefix: '실패',
+      onSuccess: fetchUsers
+    });
   };
 
   const handleUserRoleChange = async (userId: string, role: string) => {
-    const loadingToast = showLoading('역할 변경 중...');
-    try {
-      const response = await fetch('/api/users', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId, role }),
-      });
-
-      dismissToast(loadingToast);
-
-      if (response.ok) {
-        showSuccess('역할이 변경되었습니다.');
-        await fetchUsers();
-      } else {
-        const error = await response.json();
-        showError(`실패: ${error.error}`);
-      }
-    } catch (error) {
-      dismissToast(loadingToast);
-      console.error('User role change error:', error);
-      showError('처리 중 오류가 발생했습니다.');
-    }
+    await handleApiCall({
+      method: 'PUT',
+      url: '/api/users',
+      body: { userId, role },
+      loadingMessage: '역할 변경 중...',
+      successMessage: '역할이 변경되었습니다.',
+      errorPrefix: '실패',
+      onSuccess: fetchUsers
+    });
   };
 
   const handleUserDelete = async (userId: string) => {
     if (!confirm('정말 이 사용자를 삭제하시겠습니까?')) return;
 
-    const loadingToast = showLoading('사용자 삭제 중...');
-    try {
-      const response = await fetch(`/api/users?userId=${userId}`, {
-        method: 'DELETE',
-      });
-
-      dismissToast(loadingToast);
-
-      if (response.ok) {
-        showSuccess('사용자가 삭제되었습니다.');
-        await fetchUsers();
-      } else {
-        const error = await response.json();
-        showError(`삭제 실패: ${error.error}`);
-      }
-    } catch (error) {
-      dismissToast(loadingToast);
-      console.error('User delete error:', error);
-      showError('삭제 중 오류가 발생했습니다.');
-    }
+    await handleApiCall({
+      method: 'DELETE',
+      url: `/api/users?userId=${userId}`,
+      loadingMessage: '사용자 삭제 중...',
+      successMessage: '사용자가 삭제되었습니다.',
+      errorPrefix: '삭제 실패',
+      onSuccess: fetchUsers
+    });
   };
 
   const handleDatabaseReset = async () => {
@@ -606,22 +536,15 @@ export default function SystemPage() {
 
   const renderFileList = (files: FileType[], fileType: 'csv' | 'json') => {
     if (filesLoading) {
-      return (
-        <div className="text-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-500 dark:text-gray-400">로딩 중...</p>
-        </div>
-      );
+      return <LoadingSpinner message="로딩 중..." />;
     }
 
     if (files.length === 0) {
       return (
-        <div className="text-center py-16">
-          <div className="text-7xl mb-4">📂</div>
-          <p className="text-xl font-semibold text-gray-500 dark:text-gray-400">
-            {fileType === 'csv' ? 'CSV' : 'JSON'} 파일이 없습니다
-          </p>
-        </div>
+        <EmptyState
+          icon="📂"
+          title={`${fileType === 'csv' ? 'CSV' : 'JSON'} 파일이 없습니다`}
+        />
       );
     }
 
@@ -810,9 +733,7 @@ export default function SystemPage() {
         {/* Database Section */}
         {activeSection === 'database' && (
           dbLoading ? (
-            <div className="flex items-center justify-center py-20">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-600"></div>
-            </div>
+            <LoadingSpinner color="cyan-600" />
           ) : dbStats ? (
             <div className="space-y-6">
               {/* Page Header */}
@@ -1128,27 +1049,147 @@ export default function SystemPage() {
                       </p>
                     </div>
 
-        {/* History Section */}
-        {activeSection === 'history' && (
-          <div className="space-y-6">
-            {/* Page Header */}
-            <div className="mb-8">
-              <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-                전체 크롤링 히스토리
-              </h2>
-              <p className="text-gray-600 dark:text-gray-400">
-                지금까지 수집한 모든 크롤링 데이터를 확인하세요
-              </p>
-            </div>
+                    {/* Tab Navigation */}
+                    <div className="border-b border-gray-200 dark:border-gray-700">
+                      <div className="flex items-center justify-between">
+                        <div className="flex">
+                          <button
+                            onClick={() => setActiveTab('csv')}
+                            className={`px-6 py-3 text-sm font-medium transition-colors ${
+                              activeTab === 'csv'
+                                ? 'border-b-2 border-green-600 text-green-600 dark:text-green-400'
+                                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                            }`}
+                          >
+                            📊 CSV 파일 ({csvFiles.length})
+                          </button>
+                          <button
+                            onClick={() => setActiveTab('json')}
+                            className={`px-6 py-3 text-sm font-medium transition-colors ${
+                              activeTab === 'json'
+                                ? 'border-b-2 border-blue-600 text-blue-600 dark:text-blue-400'
+                                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                            }`}
+                          >
+                            📄 JSON 파일 ({jsonFiles.length})
+                          </button>
+                        </div>
+                        {selectedFiles.size > 0 && (
+                          <div className="flex items-center gap-3 px-6">
+                            <span className="text-sm text-gray-600 dark:text-gray-400">
+                              {selectedFiles.size}개 선택됨
+                            </span>
+                            <button
+                              onClick={handleBulkDelete}
+                              disabled={isDeleting}
+                              className="px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
+                            >
+                              {isDeleting ? (
+                                <>
+                                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                                  삭제 중...
+                                </>
+                              ) : (
+                                <>
+                                  🗑️ 선택 삭제
+                                </>
+                              )}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
 
-            {/* History Content */}
-            <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
-              <div className="p-6">
-                <CrawlerHistory refresh={refresh} />
-              </div>
+                    <div className="p-6">
+                      {activeTab === 'csv' ? renderFileList(csvFiles, 'csv') : renderFileList(jsonFiles, 'json')}
+                    </div>
+                  </div>
+
+                  {/* Modal for File Viewing */}
+                  {showModal && selectedFile && (
+                    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowModal(false)}>
+                      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-800 max-w-7xl w-full max-h-[90vh] overflow-hidden" onClick={(e) => e.stopPropagation()}>
+                        <div className="bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-4 flex items-center justify-between">
+                          <div>
+                            <h3 className="text-2xl font-bold text-white flex items-center gap-2">
+                              {selectedFile.type === 'csv' ? '📊' : '📄'} {selectedFile.filename}
+                            </h3>
+                            <p className="text-indigo-100 text-sm mt-1">
+                              {selectedFile.type === 'csv'
+                                ? `총 ${selectedFile.rowCount}행의 데이터`
+                                : 'JSON 원본 데이터'}
+                            </p>
+                          </div>
+                          <button
+                            onClick={() => setShowModal(false)}
+                            className="text-white hover:bg-white/20 rounded-lg p-2 transition-colors"
+                          >
+                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        </div>
+
+                        <div className="p-6 overflow-auto max-h-[calc(90vh-120px)]">
+                          {selectedFile.type === 'csv' ? (
+                            <div className="overflow-x-auto">
+                              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                                <thead className="bg-gray-50 dark:bg-gray-900 sticky top-0">
+                                  <tr>
+                                    {selectedFile.headers.map((header) => (
+                                      <th
+                                        key={header}
+                                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                                        onClick={() => handleSort(header)}
+                                      >
+                                        <div className="flex items-center gap-2">
+                                          {header}
+                                          {sortColumn === header && (
+                                            <span className="text-blue-600 dark:text-blue-400">
+                                              {sortDirection === 'asc' ? '↑' : '↓'}
+                                            </span>
+                                          )}
+                                        </div>
+                                      </th>
+                                    ))}
+                                  </tr>
+                                </thead>
+                                <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                                  {getSortedData().map((row, index) => (
+                                    <tr
+                                      key={index}
+                                      className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                                    >
+                                      {selectedFile.headers.map((header) => (
+                                        <td
+                                          key={header}
+                                          className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300"
+                                        >
+                                          {row[header] || '-'}
+                                        </td>
+                                      ))}
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          ) : (
+                            <div className="overflow-x-auto">
+                              <pre className="bg-gray-50 dark:bg-gray-900 p-4 rounded-lg text-sm text-gray-900 dark:text-gray-100 overflow-auto">
+                                {JSON.stringify(selectedFile.data, null, 2)}
+                              </pre>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
-          </div>
+          ) : null
         )}
+
 
         {/* Info Section - Useful Links */}
         {activeSection === 'info' && (
@@ -1172,15 +1213,13 @@ export default function SystemPage() {
             </div>
 
             {linksLoading ? (
-              <div className="flex items-center justify-center py-20">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600"></div>
-              </div>
+              <LoadingSpinner color="emerald-600" />
             ) : Object.keys(groupedLinks).length === 0 ? (
-              <div className="text-center py-16 text-gray-500 dark:text-gray-400">
-                <div className="text-7xl mb-4">📌</div>
-                <p className="text-xl font-semibold mb-2">등록된 링크가 없습니다</p>
-                <p className="text-sm">유용한 사이트를 추가해보세요</p>
-              </div>
+              <EmptyState
+                icon="📌"
+                title="등록된 링크가 없습니다"
+                description="유용한 사이트를 추가해보세요"
+              />
             ) : (
               <div className="space-y-8">
                 {Object.entries(groupedLinks).map(([category, categoryLinks]) => {
@@ -1275,15 +1314,13 @@ export default function SystemPage() {
             </div>
 
             {usersLoading ? (
-              <div className="flex items-center justify-center py-20">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-rose-600"></div>
-              </div>
+              <LoadingSpinner color="rose-600" />
             ) : users.length === 0 ? (
-              <div className="text-center py-16 text-gray-500 dark:text-gray-400">
-                <div className="text-7xl mb-4">👥</div>
-                <p className="text-xl font-semibold mb-2">등록된 사용자가 없습니다</p>
-                <p className="text-sm">첫 번째 사용자를 등록해보세요</p>
-              </div>
+              <EmptyState
+                icon="👥"
+                title="등록된 사용자가 없습니다"
+                description="첫 번째 사용자를 등록해보세요"
+              />
             ) : (
               <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
                 <div className="bg-gradient-to-r from-rose-600 to-pink-600 px-6 py-4">
