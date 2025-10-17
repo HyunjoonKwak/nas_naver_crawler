@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { requireAuth, getAccessibleUserIds } from '@/lib/auth-utils';
 import { spawn } from 'child_process';
 import path from 'path';
 import fs from 'fs/promises';
@@ -9,12 +10,16 @@ export const dynamic = 'force-dynamic';
 /**
  * GET /api/complex-info?complexNo=123456
  * 단지 정보를 조회합니다.
- * 1. DB에서 먼저 조회
+ * 1. DB에서 먼저 조회 (사용자 권한 확인)
  * 2. CSV 파일에서 조회 (크롤링된 데이터)
  * 3. 없으면 Python 크롤러를 통해 네이버에서 가져오기
  */
 export async function GET(request: NextRequest) {
   try {
+    // 사용자 인증 확인
+    const currentUser = await requireAuth();
+    const accessibleUserIds = await getAccessibleUserIds(currentUser.id, currentUser.role);
+
     const { searchParams } = new URL(request.url);
     const complexNo = searchParams.get('complexNo');
 
@@ -25,9 +30,12 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // 1. DB에서 먼저 조회
-    const complex = await prisma.complex.findUnique({
-      where: { complexNo },
+    // 1. DB에서 먼저 조회 (사용자 필터링 적용)
+    const complex = await prisma.complex.findFirst({
+      where: {
+        complexNo,
+        userId: { in: accessibleUserIds }, // 사용자 권한 확인
+      },
       include: {
         articles: {
           orderBy: { updatedAt: 'desc' },

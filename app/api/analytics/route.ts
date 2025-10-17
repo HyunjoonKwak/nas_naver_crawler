@@ -6,16 +6,21 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
+import { requireAuth, getAccessibleUserIds } from '@/lib/auth-utils';
 
 const prisma = new PrismaClient();
 
 export const dynamic = 'force-dynamic';
 
 /**
- * GET /api/analytics - 단지 분석 데이터 조회
+ * GET /api/analytics - 단지 분석 데이터 조회 (사용자 권한 확인)
  */
 export async function GET(request: NextRequest) {
   try {
+    // 사용자 인증 확인
+    const currentUser = await requireAuth();
+    const accessibleUserIds = await getAccessibleUserIds(currentUser.id, currentUser.role);
+
     const { searchParams } = new URL(request.url);
     const complexNosParam = searchParams.get('complexNos');
     const mode = searchParams.get('mode') || 'single';
@@ -38,13 +43,18 @@ export async function GET(request: NextRequest) {
       startDate,
       endDate,
       tradeTypes,
+      userId: currentUser.id,
+      role: currentUser.role,
     });
 
-    // 데이터베이스에서 단지 및 매물 정보 조회
+    // 데이터베이스에서 단지 및 매물 정보 조회 (사용자 필터링 적용)
     const complexes = await prisma.complex.findMany({
       where: {
         complexNo: {
           in: complexNos,
+        },
+        userId: {
+          in: accessibleUserIds, // 사용자 권한 확인
         },
       },
       include: {
