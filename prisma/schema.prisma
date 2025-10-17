@@ -300,8 +300,210 @@ model User {
   groups         Group[]
   usefulLinks    UsefulLink[]
 
+  // 커뮤니티 관계
+  posts          Post[]
+  comments       Comment[]
+  postLikes      PostLike[]
+  postReports    PostReport[]
+  commentReports CommentReport[]
+  notifications  Notification[]
+
   @@index([email])
   @@index([role])
   @@index([isApproved])
   @@map("users")
+}
+
+// ============================================
+// 커뮤니티 모델
+// ============================================
+
+// 게시글
+model Post {
+  id            String       @id @default(cuid())
+  title         String
+  content       String       @db.Text
+  category      PostCategory
+
+  // 작성자
+  authorId      String
+  author        User         @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  // 통계
+  views         Int          @default(0)
+  likesCount    Int          @default(0)
+
+  // Q&A 전용
+  isResolved    Boolean      @default(false)
+  acceptedCommentId String?
+
+  // 관계
+  likes         PostLike[]
+  comments      Comment[]
+  reports       PostReport[]
+  images        PostImage[]
+
+  // 상태
+  isPinned      Boolean      @default(false)  // 공지 고정
+  isDeleted     Boolean      @default(false)  // 소프트 삭제
+
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@index([category])
+  @@index([authorId])
+  @@index([createdAt])
+  @@index([isPinned])
+  @@index([likesCount])
+  @@map("posts")
+}
+
+// 게시글 카테고리
+enum PostCategory {
+  FREE      // 자유게시판
+  QNA       // Q&A
+  NOTICE    // 공지사항
+}
+
+// 게시글 이미지
+model PostImage {
+  id        String   @id @default(cuid())
+  postId    String
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  url       String
+  filename  String
+  size      Int
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([postId])
+  @@map("post_images")
+}
+
+// 댓글
+model Comment {
+  id        String    @id @default(cuid())
+  content   String    @db.Text
+
+  // 게시글
+  postId    String
+  post      Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  // 작성자
+  authorId  String
+  author    User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  // 채택 여부 (Q&A용)
+  isAccepted Boolean  @default(false)
+
+  // 관계
+  reports   CommentReport[]
+
+  // 상태
+  isDeleted Boolean   @default(false)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([postId])
+  @@index([authorId])
+  @@map("comments")
+}
+
+// 게시글 좋아요
+model PostLike {
+  id        String   @id @default(cuid())
+  postId    String
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([postId, userId])
+  @@index([postId])
+  @@index([userId])
+  @@map("post_likes")
+}
+
+// 게시글 신고
+model PostReport {
+  id          String       @id @default(cuid())
+  postId      String
+  post        Post         @relation(fields: [postId], references: [id], onDelete: Cascade)
+  reporterId  String
+  reporter    User         @relation(fields: [reporterId], references: [id], onDelete: Cascade)
+  reason      ReportReason
+  description String?      @db.Text
+  status      ReportStatus @default(PENDING)
+  adminNote   String?      @db.Text
+  resolvedAt  DateTime?
+  createdAt   DateTime     @default(now())
+
+  @@index([postId])
+  @@index([reporterId])
+  @@index([status])
+  @@map("post_reports")
+}
+
+// 댓글 신고
+model CommentReport {
+  id          String       @id @default(cuid())
+  commentId   String
+  comment     Comment      @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  reporterId  String
+  reporter    User         @relation(fields: [reporterId], references: [id], onDelete: Cascade)
+  reason      ReportReason
+  description String?      @db.Text
+  status      ReportStatus @default(PENDING)
+  adminNote   String?      @db.Text
+  resolvedAt  DateTime?
+  createdAt   DateTime     @default(now())
+
+  @@index([commentId])
+  @@index([reporterId])
+  @@index([status])
+  @@map("comment_reports")
+}
+
+// 신고 사유
+enum ReportReason {
+  SPAM          // 스팸
+  ABUSE         // 욕설/비방
+  INAPPROPRIATE // 부적절한 내용
+  COPYRIGHT     // 저작권 침해
+  FRAUD         // 사기/허위정보
+  ETC           // 기타
+}
+
+// 신고 상태
+enum ReportStatus {
+  PENDING    // 대기중
+  IN_REVIEW  // 검토중
+  RESOLVED   // 처리완료
+  REJECTED   // 반려
+}
+
+// 알림
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      NotificationType
+  message   String
+  postId    String?
+  commentId String?
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  @@index([userId])
+  @@index([isRead])
+  @@index([createdAt])
+  @@map("notifications")
+}
+
+// 알림 타입
+enum NotificationType {
+  COMMENT       // 댓글
+  ACCEPTED      // 채택
+  NOTICE        // 공지사항
 }
