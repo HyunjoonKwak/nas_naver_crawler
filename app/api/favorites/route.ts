@@ -1,193 +1,77 @@
 import { NextRequest, NextResponse } from 'next/server';
-import fs from 'fs/promises';
-import path from 'path';
 import { prisma } from '@/lib/prisma';
-import { requireAuth } from '@/lib/auth-utils';
-
-const FAVORITES_FILE = 'favorites.json';
-
-interface FavoriteComplex {
-  complexNo: string;
-  complexName?: string;
-  addedAt: string;
-  lastCrawledAt?: string;
-  articleCount?: number;
-  // 크롤링 데이터가 있을 때 추가 정보
-  totalHouseHoldCount?: number;
-  totalDongCount?: number;
-  minArea?: number;
-  maxArea?: number;
-  minPrice?: number;
-  maxPrice?: number;
-  order?: number;
-}
-
-// 선호 단지 파일 경로
-const getFavoritesPath = () => {
-  const baseDir = process.env.NODE_ENV === 'production' ? '/app' : process.cwd();
-  return path.join(baseDir, 'crawled_data', FAVORITES_FILE);
-};
-
-// 선호 단지 읽기
-const readFavorites = async (): Promise<FavoriteComplex[]> => {
-  try {
-    const filePath = getFavoritesPath();
-    const content = await fs.readFile(filePath, 'utf-8');
-    const data = JSON.parse(content);
-    return data.favorites || [];
-  } catch {
-    return [];
-  }
-};
-
-// 선호 단지 저장
-const writeFavorites = async (favorites: FavoriteComplex[]) => {
-  const filePath = getFavoritesPath();
-  const dirPath = path.dirname(filePath);
-  
-  // 디렉토리가 없으면 생성
-  try {
-    await fs.access(dirPath);
-  } catch {
-    await fs.mkdir(dirPath, { recursive: true });
-  }
-  
-  await fs.writeFile(filePath, JSON.stringify({ favorites }, null, 2), 'utf-8');
-};
-
-// CSV에서 단지 정보 읽기
-const readCSVComplexInfo = async (): Promise<Map<string, any>> => {
-  const complexMap = new Map();
-
-  try {
-    const baseDir = process.env.NODE_ENV === 'production' ? '/app' : process.cwd();
-    const crawledDataDir = path.join(baseDir, 'crawled_data');
-
-    const files = await fs.readdir(crawledDataDir);
-    const csvFiles = files
-      .filter(f => f.endsWith('.csv') && f.startsWith('complexes_'))
-      .sort()
-      .reverse(); // 최신 파일 우선
-
-    if (csvFiles.length === 0) {
-      console.log('[CSV] No CSV files found');
-      return complexMap;
-    }
-
-    console.log(`[CSV] Reading latest CSV: ${csvFiles[0]}`);
-    const csvPath = path.join(crawledDataDir, csvFiles[0]);
-    const csvContent = await fs.readFile(csvPath, 'utf-8');
-    const lines = csvContent.split('\n');
-
-    if (lines.length < 2) return complexMap;
-
-    const headers = lines[0].split(',').map(h => h.trim());
-    const complexNoIdx = headers.indexOf('단지번호');
-    const complexNameIdx = headers.indexOf('단지명');
-    const totalHouseholdIdx = headers.indexOf('세대수');
-    const totalDongIdx = headers.indexOf('동수');
-    const minAreaIdx = headers.indexOf('최소면적');
-    const maxAreaIdx = headers.indexOf('최대면적');
-    const minPriceIdx = headers.indexOf('최소가격');
-    const maxPriceIdx = headers.indexOf('최대가격');
-
-    if (complexNoIdx === -1) {
-      console.error('[CSV] Invalid CSV format: missing 단지번호 column');
-      return complexMap;
-    }
-
-    for (let i = 1; i < lines.length; i++) {
-      const line = lines[i].trim();
-      if (!line) continue;
-
-      const values = line.split(',').map(v => v.trim());
-      const complexNo = values[complexNoIdx];
-
-      if (complexNo) {
-        complexMap.set(complexNo, {
-          complexName: complexNameIdx !== -1 ? values[complexNameIdx] : undefined,
-          totalHouseHoldCount: totalHouseholdIdx !== -1 && values[totalHouseholdIdx]
-            ? parseInt(values[totalHouseholdIdx])
-            : undefined,
-          totalDongCount: totalDongIdx !== -1 && values[totalDongIdx]
-            ? parseInt(values[totalDongIdx])
-            : undefined,
-          minArea: minAreaIdx !== -1 && values[minAreaIdx]
-            ? parseFloat(values[minAreaIdx])
-            : undefined,
-          maxArea: maxAreaIdx !== -1 && values[maxAreaIdx]
-            ? parseFloat(values[maxAreaIdx])
-            : undefined,
-          minPrice: minPriceIdx !== -1 && values[minPriceIdx]
-            ? parseFloat(values[minPriceIdx])
-            : undefined,
-          maxPrice: maxPriceIdx !== -1 && values[maxPriceIdx]
-            ? parseFloat(values[maxPriceIdx])
-            : undefined,
-        });
-      }
-    }
-
-    console.log(`[CSV] Loaded ${complexMap.size} complexes from CSV`);
-  } catch (error) {
-    console.error('[CSV] Failed to read CSV file:', error);
-  }
-
-  return complexMap;
-};
+import { requireAuth, getAccessibleUserIds } from '@/lib/auth-utils';
 
 export const dynamic = 'force-dynamic';
 
-// GET: 선호 단지 목록 조회
+// GET: 선호 단지 목록 조회 (DB 기반, 사용자별 필터링)
 export async function GET(request: NextRequest) {
   try {
     const currentUser = await requireAuth();
-    console.log('[API_FAVORITES] GET 요청 시작');
-    const favorites = await readFavorites();
-    console.log('[API_FAVORITES] favorites.json 읽기 완료:', {
-      count: favorites.length,
-      favorites: favorites.map(f => ({
-        complexNo: f.complexNo,
-        complexName: f.complexName,
-        order: f.order
-      }))
+    console.log('[API_FAVORITES] GET 요청 시작 - User:', currentUser.id);
+
+    // 사용자가 접근 가능한 userId 목록 가져오기
+    const accessibleUserIds = await getAccessibleUserIds(currentUser.id, currentUser.role);
+
+    // DB에서 즐겨찾기 조회 (사용자 필터링)
+    const favorites = await prisma.favorite.findMany({
+      where: {
+        userId: { in: accessibleUserIds }
+      },
+      include: {
+        complex: {
+          include: {
+            articles: {
+              select: {
+                id: true,
+                tradeTypeName: true,
+              }
+            }
+          }
+        }
+      },
+      orderBy: {
+        createdAt: 'asc' // 추가된 순서대로
+      }
     });
 
-    // CSV 파일에서 단지 정보 읽기
-    const csvComplexInfo = await readCSVComplexInfo();
+    // 응답 형태로 변환
+    const formattedFavorites = favorites.map((fav, index) => {
+      const complex = fav.complex;
+      const articles = complex.articles || [];
 
-    // CSV 정보로 enrichment
-    const enrichedFavorites = favorites.map(fav => {
-      const csvInfo = csvComplexInfo.get(fav.complexNo);
+      // 거래 유형별 매물 수 계산
+      const tradeTypeCount = articles.reduce((acc, article) => {
+        const type = article.tradeTypeName || '기타';
+        acc[type] = (acc[type] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
 
-      if (csvInfo) {
-        return {
-          ...fav,
-          complexName: fav.complexName || csvInfo.complexName,
-          totalHouseHoldCount: csvInfo.totalHouseHoldCount,
-          totalDongCount: csvInfo.totalDongCount,
-          minArea: csvInfo.minArea,
-          maxArea: csvInfo.maxArea,
-          minPrice: csvInfo.minPrice,
-          maxPrice: csvInfo.maxPrice,
-        };
-      }
-
-      return fav;
-    });
-
-    // order 필드로 정렬 (없으면 addedAt으로)
-    const sortedFavorites = enrichedFavorites.sort((a, b) => {
-      if (a.order !== undefined && b.order !== undefined) {
-        return a.order - b.order;
-      }
-      // order가 없으면 추가된 순서대로
-      return new Date(a.addedAt).getTime() - new Date(b.addedAt).getTime();
+      return {
+        complexNo: complex.complexNo,
+        complexName: complex.complexName,
+        addedAt: fav.createdAt.toISOString(),
+        lastCrawledAt: complex.updatedAt.toISOString(),
+        articleCount: articles.length,
+        totalHouseHoldCount: complex.totalHousehold,
+        totalDongCount: complex.totalDongCount,
+        minArea: complex.minArea,
+        maxArea: complex.maxArea,
+        minPrice: complex.minPrice,
+        maxPrice: complex.maxPrice,
+        order: index, // 순서
+        stats: {
+          total: articles.length,
+          A1: tradeTypeCount['매매'] || 0,
+          B1: tradeTypeCount['전세'] || 0,
+          B2: tradeTypeCount['월세'] || 0,
+        }
+      };
     });
 
     return NextResponse.json({
-      favorites: sortedFavorites,
-      total: sortedFavorites.length
+      favorites: formattedFavorites,
+      total: formattedFavorites.length
     });
   } catch (error: any) {
     console.error('Favorites fetch error:', error);
@@ -198,7 +82,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST: 선호 단지 추가
+// POST: 선호 단지 추가 (DB 기반)
 export async function POST(request: NextRequest) {
   try {
     const currentUser = await requireAuth();
@@ -212,44 +96,59 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const favorites = await readFavorites();
+    // 단지가 DB에 있는지 확인
+    let complex = await prisma.complex.findUnique({
+      where: { complexNo }
+    });
 
-    // 중복 확인
-    if (favorites.some(f => f.complexNo === complexNo)) {
+    // 없으면 생성 (userId는 현재 사용자)
+    if (!complex) {
+      complex = await prisma.complex.create({
+        data: {
+          complexNo,
+          complexName: complexName || `단지 ${complexNo}`,
+          address: '',
+          userId: currentUser.id,
+        }
+      });
+    }
+
+    // 이미 즐겨찾기에 있는지 확인
+    const existingFavorite = await prisma.favorite.findUnique({
+      where: {
+        complexId_userId: {
+          complexId: complex.id,
+          userId: currentUser.id
+        }
+      }
+    });
+
+    if (existingFavorite) {
       return NextResponse.json(
         { error: '이미 등록된 단지입니다.' },
         { status: 400 }
       );
     }
 
-    // CSV에서 단지 정보 가져오기
-    const csvComplexInfo = await readCSVComplexInfo();
-    const csvInfo = csvComplexInfo.get(complexNo);
-
-    // 새 단지 추가 (CSV 정보가 있으면 포함)
-    const newFavorite: FavoriteComplex = {
-      complexNo,
-      complexName: complexName || csvInfo?.complexName || `단지 ${complexNo}`,
-      addedAt: new Date().toISOString(),
-      order: favorites.length, // 현재 길이를 order로 설정
-      // CSV 정보가 있으면 추가
-      ...(csvInfo && {
-        totalHouseHoldCount: csvInfo.totalHouseHoldCount,
-        totalDongCount: csvInfo.totalDongCount,
-        minArea: csvInfo.minArea,
-        maxArea: csvInfo.maxArea,
-        minPrice: csvInfo.minPrice,
-        maxPrice: csvInfo.maxPrice,
-      }),
-    };
-
-    favorites.push(newFavorite);
-    await writeFavorites(favorites);
+    // 즐겨찾기 추가
+    const favorite = await prisma.favorite.create({
+      data: {
+        complexId: complex.id,
+        userId: currentUser.id,
+      },
+      include: {
+        complex: true
+      }
+    });
 
     return NextResponse.json({
       success: true,
       message: '선호 단지가 추가되었습니다.',
-      favorite: newFavorite
+      favorite: {
+        complexNo: favorite.complex.complexNo,
+        complexName: favorite.complex.complexName,
+        addedAt: favorite.createdAt.toISOString(),
+      }
     });
 
   } catch (error: any) {
@@ -261,7 +160,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// DELETE: 선호 단지 삭제 (DB에서도 함께 삭제)
+// DELETE: 선호 단지 삭제 (DB 기반)
 export async function DELETE(request: NextRequest) {
   try {
     const currentUser = await requireAuth();
@@ -275,66 +174,37 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // 1. favorites.json에서 삭제
-    const favorites = await readFavorites();
-    const filtered = favorites.filter(f => f.complexNo !== complexNo);
+    // 단지 찾기
+    const complex = await prisma.complex.findUnique({
+      where: { complexNo }
+    });
 
-    if (filtered.length === favorites.length) {
+    if (!complex) {
       return NextResponse.json(
         { error: '해당 단지를 찾을 수 없습니다.' },
         { status: 404 }
       );
     }
 
-    // order 재정렬
-    const reordered = filtered.map((fav, index) => ({
-      ...fav,
-      order: index
-    }));
-
-    await writeFavorites(reordered);
-
-    // 2. DB에서 단지와 관련 매물 삭제
-    let deletedArticlesCount = 0;
-    let deletedFavoritesCount = 0;
-
-    try {
-      const complex = await prisma.complex.findUnique({
-        where: { complexNo },
-        include: {
-          _count: {
-            select: {
-              articles: true,
-              favorites: true,
-            }
-          }
-        }
-      });
-
-      if (complex) {
-        deletedArticlesCount = complex._count.articles;
-        deletedFavoritesCount = complex._count.favorites;
-
-        // Cascade로 Article과 Favorite도 함께 삭제됨
-        await prisma.complex.delete({
-          where: { complexNo }
-        });
-
-        console.log(`✓ DB 삭제 완료: Complex(1), Articles(${deletedArticlesCount}), Favorites(${deletedFavoritesCount})`);
+    // 즐겨찾기 삭제 (본인 것만)
+    const deleted = await prisma.favorite.deleteMany({
+      where: {
+        complexId: complex.id,
+        userId: currentUser.id
       }
-    } catch (dbError) {
-      console.warn('DB 삭제 실패 (단지가 DB에 없을 수 있음):', dbError);
-      // DB에 없어도 favorites.json 삭제는 성공으로 처리
+    });
+
+    if (deleted.count === 0) {
+      return NextResponse.json(
+        { error: '즐겨찾기에 없는 단지입니다.' },
+        { status: 404 }
+      );
     }
 
     return NextResponse.json({
       success: true,
       message: '선호 단지가 삭제되었습니다.',
       complexNo,
-      deletedFromDB: {
-        articles: deletedArticlesCount,
-        favorites: deletedFavoritesCount,
-      }
     });
 
   } catch (error: any) {
@@ -347,21 +217,12 @@ export async function DELETE(request: NextRequest) {
 }
 
 // PATCH: 선호 단지 정보 업데이트 (크롤링 후)
+// 이제 DB에서 자동으로 업데이트되므로 필요 없지만 호환성을 위해 유지
 export async function PATCH(request: NextRequest) {
   try {
     const currentUser = await requireAuth();
     const body = await request.json();
-    const {
-      complexNo,
-      complexName,
-      articleCount,
-      totalHouseHoldCount,
-      totalDongCount,
-      minArea,
-      maxArea,
-      minPrice,
-      maxPrice
-    } = body;
+    const { complexNo } = body;
 
     if (!complexNo) {
       return NextResponse.json(
@@ -370,56 +231,29 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
-    const favorites = await readFavorites();
-    const index = favorites.findIndex(f => f.complexNo === complexNo);
+    // 단지가 존재하는지만 확인
+    const complex = await prisma.complex.findUnique({
+      where: { complexNo },
+      include: {
+        favorites: {
+          where: { userId: currentUser.id }
+        }
+      }
+    });
 
-    if (index === -1) {
+    if (!complex || complex.favorites.length === 0) {
       return NextResponse.json(
-        { error: '해당 단지를 찾을 수 없습니다.' },
+        { error: '즐겨찾기에 없는 단지입니다.' },
         { status: 404 }
       );
     }
 
-    // 정보 업데이트
-    if (complexName) favorites[index].complexName = complexName;
-    if (articleCount !== undefined) favorites[index].articleCount = articleCount;
-    if (totalHouseHoldCount !== undefined) favorites[index].totalHouseHoldCount = totalHouseHoldCount;
-    if (totalDongCount !== undefined) favorites[index].totalDongCount = totalDongCount;
-    if (minArea !== undefined) favorites[index].minArea = minArea;
-    if (maxArea !== undefined) favorites[index].maxArea = maxArea;
-    if (minPrice !== undefined) favorites[index].minPrice = minPrice;
-    if (maxPrice !== undefined) favorites[index].maxPrice = maxPrice;
-
-    // DB에서 실제 마지막 크롤링 시간 조회
-    try {
-      const complex = await prisma.complex.findUnique({
-        where: { complexNo },
-        include: {
-          articles: {
-            orderBy: { updatedAt: 'desc' },
-            take: 1,
-            select: { updatedAt: true }
-          }
-        }
-      });
-
-      if (complex?.articles[0]?.updatedAt) {
-        favorites[index].lastCrawledAt = complex.articles[0].updatedAt.toISOString();
-      }
-    } catch (error) {
-      console.error('Failed to fetch last crawl time from DB:', error);
-      // DB 조회 실패 시 현재 시간 사용 (fallback)
-      favorites[index].lastCrawledAt = new Date().toISOString();
-    }
-
-    await writeFavorites(favorites);
-    
+    // DB는 자동으로 updatedAt을 업데이트하므로 별도 작업 불필요
     return NextResponse.json({
       success: true,
       message: '선호 단지 정보가 업데이트되었습니다.',
-      favorite: favorites[index]
     });
-    
+
   } catch (error: any) {
     console.error('Favorite update error:', error);
     return NextResponse.json(
@@ -430,49 +264,15 @@ export async function PATCH(request: NextRequest) {
 }
 
 // PUT: 관심 단지 순서 변경
+// DB 기반에서는 createdAt으로 정렬되므로 순서 변경 기능 제거
+// 호환성을 위해 API는 유지하되 아무 동작 안 함
 export async function PUT(request: NextRequest) {
   try {
-    const currentUser = await requireAuth();
-    const body = await request.json();
-    const { complexNos } = body; // 새로운 순서의 complexNo 배열
-
-    if (!Array.isArray(complexNos) || complexNos.length === 0) {
-      return NextResponse.json(
-        { error: 'complexNos 배열이 필요합니다.' },
-        { status: 400 }
-      );
-    }
-
-    const favorites = await readFavorites();
-
-    // 새로운 순서대로 재정렬
-    const reorderedFavorites: FavoriteComplex[] = [];
-    complexNos.forEach((complexNo, index) => {
-      const favorite = favorites.find(f => f.complexNo === complexNo);
-      if (favorite) {
-        reorderedFavorites.push({
-          ...favorite,
-          order: index
-        });
-      }
-    });
-
-    // 순서가 지정되지 않은 단지는 뒤에 추가
-    favorites.forEach(fav => {
-      if (!complexNos.includes(fav.complexNo)) {
-        reorderedFavorites.push({
-          ...fav,
-          order: reorderedFavorites.length
-        });
-      }
-    });
-
-    await writeFavorites(reorderedFavorites);
+    await requireAuth();
 
     return NextResponse.json({
       success: true,
-      message: '관심 단지 순서가 변경되었습니다.',
-      favorites: reorderedFavorites
+      message: '순서 변경 기능은 더 이상 지원되지 않습니다.',
     });
 
   } catch (error: any) {
@@ -483,4 +283,3 @@ export async function PUT(request: NextRequest) {
     );
   }
 }
-

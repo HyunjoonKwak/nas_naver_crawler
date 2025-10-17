@@ -1,24 +1,8 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAuth, getAccessibleUserIds } from '@/lib/auth-utils';
-import fs from 'fs/promises';
-import path from 'path';
 
 export const dynamic = 'force-dynamic';
-
-// favorites.json 읽기 함수
-const readFavoritesJson = async (): Promise<number> => {
-  try {
-    const baseDir = process.env.NODE_ENV === 'production' ? '/app' : process.cwd();
-    const favoritesPath = path.join(baseDir, 'crawled_data', 'favorites.json');
-    const content = await fs.readFile(favoritesPath, 'utf-8');
-    const data = JSON.parse(content);
-    const favoriteComplexNos = (data.favorites || []).map((f: any) => f.complexNo);
-    return new Set(favoriteComplexNos).size; // 고유 개수
-  } catch {
-    return 0; // 파일이 없으면 0 반환
-  }
-};
 
 export async function GET() {
   try {
@@ -28,11 +12,13 @@ export async function GET() {
     // 사용자가 접근 가능한 userId 목록 가져오기
     const accessibleUserIds = await getAccessibleUserIds(currentUser.id, currentUser.role);
 
-    // favorites.json에서 관심단지 개수 가져오기
-    const favoriteComplexes = await readFavoritesJson();
-
     // 사용자 필터 조건
     const userFilter = { userId: { in: accessibleUserIds } };
+
+    // DB에서 즐겨찾기 단지 개수 가져오기
+    const favoriteComplexes = await prisma.favorite.count({
+      where: userFilter,
+    });
 
     // 병렬로 모든 통계 조회
     const [
