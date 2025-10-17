@@ -69,7 +69,7 @@ export default function LandingPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
       <div className="container mx-auto px-4 py-12">
-        <div className="grid lg:grid-cols-2 gap-12 items-center max-w-7xl mx-auto">
+        <div className="grid lg:grid-cols-2 gap-12 items-end max-w-7xl mx-auto min-h-[calc(100vh-12rem)]">
 
           {/* Left: Hero Section */}
           <div className="text-center lg:text-left">
