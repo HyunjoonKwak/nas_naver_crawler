@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import fs from 'fs/promises';
 import path from 'path';
+import { requireAuth } from '@/lib/auth-utils';
 
 const CRAWLED_DATA_DIR = 'crawled_data';
 
@@ -8,6 +9,15 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {
+    // ADMIN만 파일 다운로드 가능
+    const currentUser = await requireAuth();
+    if (currentUser.role !== 'ADMIN') {
+      return NextResponse.json(
+        { error: '관리자만 파일을 다운로드할 수 있습니다.' },
+        { status: 403 }
+      );
+    }
+
     const { searchParams } = new URL(request.url);
     const filename = searchParams.get('filename');
 

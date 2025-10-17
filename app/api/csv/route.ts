@@ -1,11 +1,21 @@
 import { NextResponse } from 'next/server';
 import { promises as fs } from 'fs';
 import path from 'path';
+import { requireAuth } from '@/lib/auth-utils';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
   try {
+    // ADMIN만 파일 뷰어 접근 가능
+    const currentUser = await requireAuth();
+    if (currentUser.role !== 'ADMIN') {
+      return NextResponse.json(
+        { error: '관리자만 파일 뷰어에 접근할 수 있습니다.' },
+        { status: 403 }
+      );
+    }
+
     const { searchParams } = new URL(request.url);
     const filename = searchParams.get('filename');
     const timestamp = searchParams.get('timestamp');
@@ -263,6 +273,15 @@ export async function GET(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
+    // ADMIN만 파일 삭제 가능
+    const currentUser = await requireAuth();
+    if (currentUser.role !== 'ADMIN') {
+      return NextResponse.json(
+        { error: '관리자만 파일을 삭제할 수 있습니다.' },
+        { status: 403 }
+      );
+    }
+
     const { filename } = await request.json();
 
     if (!filename || (!filename.endsWith('.csv') && !filename.endsWith('.json'))) {

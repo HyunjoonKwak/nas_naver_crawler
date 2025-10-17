@@ -756,19 +756,21 @@ export default function SystemPage() {
                 <span>크롤링 히스토리</span>
               </div>
             </button>
-            <button
-              onClick={() => setActiveSection('data')}
-              className={`px-4 py-4 text-center font-semibold transition-colors ${
-                activeSection === 'data'
-                  ? 'bg-gradient-to-r from-orange-600 to-amber-600 text-white'
-                  : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
-              }`}
-            >
-              <div className="flex items-center justify-center gap-2">
-                <span className="text-xl">📊</span>
-                <span>파일 뷰어</span>
-              </div>
-            </button>
+            {isAdmin && (
+              <button
+                onClick={() => setActiveSection('data')}
+                className={`px-4 py-4 text-center font-semibold transition-colors ${
+                  activeSection === 'data'
+                    ? 'bg-gradient-to-r from-orange-600 to-amber-600 text-white'
+                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
+                }`}
+              >
+                <div className="flex items-center justify-center gap-2">
+                  <span className="text-xl">📊</span>
+                  <span>파일 뷰어</span>
+                </div>
+              </button>
+            )}
             <button
               onClick={() => setActiveSection('info')}
               className={`px-4 py-4 text-center font-semibold transition-colors ${
