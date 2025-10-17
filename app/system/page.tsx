@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Navigation } from "@/components/Navigation";
 import { MobileNavigation } from "@/components/MobileNavigation";
 import CrawlerHistory from "@/components/CrawlerHistory";
+import { NotificationSettings } from "@/components/NotificationSettings";
 import { ThemeToggle, Dialog } from "@/components/ui";
 import { showSuccess, showError, showLoading, dismissToast } from "@/lib/toast";
 
@@ -77,7 +78,7 @@ export default function SystemPage() {
 
   const [status, setStatus] = useState<StatusData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeSection, setActiveSection] = useState<'data' | 'history' | 'database' | 'info' | 'users'>('database');
+  const [activeSection, setActiveSection] = useState<'data' | 'history' | 'database' | 'info' | 'users' | 'settings'>('database');
   const [refresh, setRefresh] = useState(0);
 
   // CSV/JSON viewer states
@@ -730,7 +731,7 @@ export default function SystemPage() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Section Tabs */}
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-800 mb-6 overflow-hidden">
-          <div className="grid grid-cols-5 border-b border-gray-200 dark:border-gray-700">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 border-b border-gray-200 dark:border-gray-700">
             <button
               onClick={() => setActiveSection('database')}
               className={`px-4 py-4 text-center font-semibold transition-colors ${
@@ -800,6 +801,19 @@ export default function SystemPage() {
                 </div>
               </button>
             )}
+            <button
+              onClick={() => setActiveSection('settings')}
+              className={`px-4 py-4 text-center font-semibold transition-colors ${
+                activeSection === 'settings'
+                  ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white'
+                  : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
+              }`}
+            >
+              <div className="flex items-center justify-center gap-2">
+                <span className="text-xl">⚙️</span>
+                <span>설정</span>
+              </div>
+            </button>
           </div>
         </div>
 
@@ -1458,6 +1472,35 @@ export default function SystemPage() {
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {/* Settings Section */}
+        {activeSection === 'settings' && (
+          <div className="space-y-6">
+            {/* Page Header */}
+            <div className="mb-8">
+              <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+                시스템 설정
+              </h2>
+              <p className="text-gray-600 dark:text-gray-400">
+                알림 및 기타 설정을 관리하세요
+              </p>
+            </div>
+
+            {/* Notification Settings */}
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
+              <div className="bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-4">
+                <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                  <span>🔔</span>
+                  <span>브라우저 알림 설정</span>
+                </h3>
+              </div>
+
+              <div className="p-6">
+                <NotificationSettings />
+              </div>
+            </div>
           </div>
         )}
 
