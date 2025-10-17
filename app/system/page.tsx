@@ -80,7 +80,8 @@ export default function SystemPage() {
 
   const [status, setStatus] = useState<StatusData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeSection, setActiveSection] = useState<'data' | 'history' | 'database' | 'info' | 'users' | 'scheduler' | 'settings'>('database');
+  const [activeSection, setActiveSection] = useState<'database' | 'info' | 'users' | 'scheduler' | 'settings'>('database');
+  const [databaseTab, setDatabaseTab] = useState<'stats' | 'history' | 'files'>('stats');
   const [refresh, setRefresh] = useState(0);
 
   // CSV/JSON viewer states
@@ -734,7 +735,7 @@ export default function SystemPage() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Section Tabs */}
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-800 mb-6 overflow-hidden">
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 border-b border-gray-200 dark:border-gray-700">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 border-b border-gray-200 dark:border-gray-700">
             <button
               onClick={() => setActiveSection('database')}
               className={`px-4 py-4 text-center font-semibold transition-colors ${
@@ -748,34 +749,6 @@ export default function SystemPage() {
                 <span>DB 현황</span>
               </div>
             </button>
-            <button
-              onClick={() => setActiveSection('history')}
-              className={`px-4 py-4 text-center font-semibold transition-colors ${
-                activeSection === 'history'
-                  ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white'
-                  : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
-              }`}
-            >
-              <div className="flex items-center justify-center gap-2">
-                <span className="text-xl">📚</span>
-                <span>크롤링 히스토리</span>
-              </div>
-            </button>
-            {isAdmin && (
-              <button
-                onClick={() => setActiveSection('data')}
-                className={`px-4 py-4 text-center font-semibold transition-colors ${
-                  activeSection === 'data'
-                    ? 'bg-gradient-to-r from-orange-600 to-amber-600 text-white'
-                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
-                }`}
-              >
-                <div className="flex items-center justify-center gap-2">
-                  <span className="text-xl">📊</span>
-                  <span>파일 뷰어</span>
-                </div>
-              </button>
-            )}
             <button
               onClick={() => setActiveSection('info')}
               className={`px-4 py-4 text-center font-semibold transition-colors ${
@@ -1011,6 +984,60 @@ export default function SystemPage() {
                 </button>
               </div>
 
+              {/* Database Sub-Tabs */}
+              <div className="flex gap-2 border-b border-gray-200 dark:border-gray-700 mb-6">
+                <button
+                  onClick={() => setDatabaseTab('stats')}
+                  className={`px-6 py-3 font-semibold transition-all relative ${
+                    databaseTab === 'stats'
+                      ? 'text-cyan-600 dark:text-cyan-400'
+                      : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                  }`}
+                >
+                  <span className="flex items-center gap-2">
+                    📊 통계
+                  </span>
+                  {databaseTab === 'stats' && (
+                    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-cyan-600 to-blue-600"></div>
+                  )}
+                </button>
+                <button
+                  onClick={() => setDatabaseTab('history')}
+                  className={`px-6 py-3 font-semibold transition-all relative ${
+                    databaseTab === 'history'
+                      ? 'text-purple-600 dark:text-purple-400'
+                      : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                  }`}
+                >
+                  <span className="flex items-center gap-2">
+                    📚 크롤링 히스토리
+                  </span>
+                  {databaseTab === 'history' && (
+                    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-purple-600 to-pink-600"></div>
+                  )}
+                </button>
+                {isAdmin && (
+                  <button
+                    onClick={() => setDatabaseTab('files')}
+                    className={`px-6 py-3 font-semibold transition-all relative ${
+                      databaseTab === 'files'
+                        ? 'text-orange-600 dark:text-orange-400'
+                        : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                    }`}
+                  >
+                    <span className="flex items-center gap-2">
+                      📁 파일 뷰어
+                    </span>
+                    {databaseTab === 'files' && (
+                      <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-orange-600 to-amber-600"></div>
+                    )}
+                  </button>
+                )}
+              </div>
+
+              {/* Stats Tab Content */}
+              {databaseTab === 'stats' && (
+                <>
               {/* Database Stats */}
               <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-800 p-8">
                 <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-6">

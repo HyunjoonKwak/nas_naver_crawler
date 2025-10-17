@@ -13,18 +13,15 @@ export function SystemSettings() {
 
   // 사용자 설정 (향후 DB 저장 가능)
   const [emailNotifications, setEmailNotifications] = useState(false);
-  const [webhookUrl, setWebhookUrl] = useState("");
   const [language, setLanguage] = useState("ko");
 
   useEffect(() => {
     setMounted(true);
     // LocalStorage에서 설정 로드
     const savedTheme = (localStorage.getItem('theme') as Theme) || 'system';
-    const savedWebhook = localStorage.getItem('webhookUrl') || "";
     const savedLanguage = localStorage.getItem('language') || "ko";
 
     setTheme(savedTheme);
-    setWebhookUrl(savedWebhook);
     setLanguage(savedLanguage);
   }, []);
 
@@ -55,11 +52,6 @@ export function SystemSettings() {
     localStorage.setItem('theme', newTheme);
     applyTheme(newTheme);
     showSuccess(`테마가 ${newTheme === 'light' ? '라이트' : newTheme === 'dark' ? '다크' : '시스템'} 모드로 변경되었습니다`);
-  };
-
-  const handleWebhookSave = () => {
-    localStorage.setItem('webhookUrl', webhookUrl);
-    showSuccess("웹훅 URL이 저장되었습니다");
   };
 
   const handleLanguageChange = (newLang: string) => {
@@ -187,46 +179,6 @@ export function SystemSettings() {
                 </div>
               )}
             </button>
-          </div>
-        </div>
-      </div>
-
-      {/* 웹훅 설정 */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-        <div className="bg-gradient-to-r from-green-600 to-emerald-600 px-6 py-4">
-          <h3 className="text-xl font-bold text-white flex items-center gap-2">
-            <span>🔗</span>
-            <span>웹훅 설정</span>
-          </h3>
-        </div>
-
-        <div className="p-6 space-y-4">
-          <p className="text-gray-600 dark:text-gray-400">
-            크롤링 완료, 에러 발생 등의 이벤트를 웹훅으로 전송합니다.
-          </p>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              웹훅 URL
-            </label>
-            <div className="flex gap-2">
-              <input
-                type="url"
-                value={webhookUrl}
-                onChange={(e) => setWebhookUrl(e.target.value)}
-                placeholder="https://your-webhook-url.com/endpoint"
-                className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-green-500"
-              />
-              <button
-                onClick={handleWebhookSave}
-                className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors"
-              >
-                저장
-              </button>
-            </div>
-            <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-              Slack, Discord, Teams 등의 웹훅 URL을 입력하세요
-            </p>
           </div>
         </div>
       </div>
