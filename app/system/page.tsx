@@ -6,7 +6,7 @@ import Link from "next/link";
 import { Navigation } from "@/components/Navigation";
 import { MobileNavigation } from "@/components/MobileNavigation";
 import CrawlerHistory from "@/components/CrawlerHistory";
-import { NotificationSettings } from "@/components/NotificationSettings";
+import { SystemSettings } from "@/components/SystemSettings";
 import { ThemeToggle, Dialog } from "@/components/ui";
 import { showSuccess, showError, showLoading, dismissToast } from "@/lib/toast";
 import { AuthGuard } from "@/components/AuthGuard";
@@ -1486,23 +1486,11 @@ export default function SystemPage() {
                 시스템 설정
               </h2>
               <p className="text-gray-600 dark:text-gray-400">
-                알림 및 기타 설정을 관리하세요
+                테마, 알림, 언어 및 개인정보 설정을 관리하세요
               </p>
             </div>
 
-            {/* Notification Settings */}
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
-              <div className="bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-4">
-                <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                  <span>🔔</span>
-                  <span>브라우저 알림 설정</span>
-                </h3>
-              </div>
-
-              <div className="p-6">
-                <NotificationSettings />
-              </div>
-            </div>
+            <SystemSettings />
           </div>
         )}
 
