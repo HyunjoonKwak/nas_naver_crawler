@@ -129,8 +129,8 @@ export default function SchedulerPage() {
         });
       }
 
-      // 단지 목록 조회 (favorites.json에서 읽기)
-      console.log('[SCHEDULER] /api/favorites 호출 (favorites.json 읽기)');
+      // 단지 목록 조회 (DB에서 읽기)
+      console.log('[SCHEDULER] /api/favorites 호출 (DB에서 읽기)');
       const favResponse = await fetch("/api/favorites");
       const favData = await favResponse.json();
       const favoriteComplexes = favData.favorites || [];

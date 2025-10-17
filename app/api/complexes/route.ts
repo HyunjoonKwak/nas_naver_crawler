@@ -1,24 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAuth, getComplexWhereCondition } from '@/lib/auth-utils';
-import fs from 'fs/promises';
-import path from 'path';
 
 export const dynamic = 'force-dynamic';
-
-// favorites.json 읽기 함수
-const readFavoritesJson = async (): Promise<Set<string>> => {
-  try {
-    const baseDir = process.env.NODE_ENV === 'production' ? '/app' : process.cwd();
-    const favoritesPath = path.join(baseDir, 'crawled_data', 'favorites.json');
-    const content = await fs.readFile(favoritesPath, 'utf-8');
-    const data = JSON.parse(content);
-    const favoriteComplexNos = (data.favorites || []).map((f: any) => f.complexNo);
-    return new Set(favoriteComplexNos);
-  } catch {
-    return new Set(); // 파일이 없으면 빈 Set 반환
-  }
-};
 
 // 단지 목록 조회 및 검색
 export async function GET(request: NextRequest) {
@@ -79,14 +63,21 @@ export async function GET(request: NextRequest) {
         break;
     }
 
-    // 단지 조회
+    // 단지 조회 (현재 사용자의 즐겨찾기 포함)
     const complexes = await prisma.complex.findMany({
       where,
       include: {
         _count: {
           select: {
             articles: true, // 매물 개수
-            favorites: true, // 즐겨찾기 여부 (DB)
+          },
+        },
+        favorites: {
+          where: {
+            userId: currentUser.id, // 본인의 즐겨찾기만 조회
+          },
+          select: {
+            id: true,
           },
         },
         complexGroups: {
@@ -109,9 +100,6 @@ export async function GET(request: NextRequest) {
     // 총 개수
     const total = await prisma.complex.count({ where });
 
-    // favorites.json에서 즐겨찾기 목록 가져오기
-    const favoriteComplexNos = await readFavoritesJson();
-
     // 응답 포맷팅
     const results = complexes.map((complex: any) => ({
       id: complex.id,
@@ -129,8 +117,8 @@ export async function GET(request: NextRequest) {
       beopjungdong: complex.beopjungdong,
       haengjeongdong: complex.haengjeongdong,
       articleCount: complex._count?.articles || 0,
-      // favorites.json에만 의존 (DB Favorite 테이블은 관계형 데이터용)
-      isFavorite: favoriteComplexNos.has(complex.complexNo),
+      // DB Favorite 테이블 사용 (사용자별 즐겨찾기)
+      isFavorite: complex.favorites.length > 0,
       // 그룹 정보 추가
       groups: complex.complexGroups?.map((cg: any) => ({
         id: cg.group.id,

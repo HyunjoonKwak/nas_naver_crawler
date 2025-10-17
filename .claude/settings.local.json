@@ -8,7 +8,10 @@
       "Bash(docker-compose restart:*)",
       "Bash(docker ps:*)",
       "Bash(docker exec:*)",
-      "Bash(npx next build:*)"
+      "Bash(npx next build:*)",
+      "Bash(while read file)",
+      "Bash(do echo \"=== $file ===\" if grep -q \"requireAuth\" \"$file\")",
+      "Bash(then echo \"✅ Has requireAuth\" else echo \"❌ NO requireAuth\" fi done)"
     ],
     "deny": [],
     "ask": []

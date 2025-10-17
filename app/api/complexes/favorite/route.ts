@@ -1,41 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAuth } from '@/lib/auth-utils';
-import fs from 'fs/promises';
-import path from 'path';
-
-// favorites.json 경로 - /api/favorites와 동일한 경로 사용
-const getFavoritesPath = () => {
-  const baseDir = process.env.NODE_ENV === 'production' ? '/app' : process.cwd();
-  return path.join(baseDir, 'crawled_data', 'favorites.json');
-};
-const favoritesPath = getFavoritesPath();
-
-// favorites.json 읽기
-async function readFavorites() {
-  try {
-    const data = await fs.readFile(favoritesPath, 'utf-8');
-    const parsed = JSON.parse(data);
-    // /api/favorites와 동일하게 favorites 배열 반환
-    return parsed.favorites || parsed || [];
-  } catch (error) {
-    return [];
-  }
-}
-
-// favorites.json 쓰기
-async function writeFavorites(favorites: any[]) {
-  try {
-    // data 디렉토리가 없으면 생성
-    const dataDir = path.dirname(favoritesPath);
-    await fs.mkdir(dataDir, { recursive: true });
-    // /api/favorites와 동일하게 {favorites: []} 형식으로 저장
-    await fs.writeFile(favoritesPath, JSON.stringify({ favorites }, null, 2), 'utf-8');
-  } catch (error) {
-    console.error('Failed to write favorites.json:', error);
-    throw error;
-  }
-}
 
 /**
  * POST /api/complexes/favorite
@@ -107,24 +72,6 @@ export async function POST(request: NextRequest) {
       });
       console.log('[FAVORITE_TOGGLE] DB에서 Favorite 삭제 완료');
 
-      // favorites.json에서 제거
-      const favorites = await readFavorites();
-      console.log('[FAVORITE_TOGGLE] favorites.json 읽기 완료:', { count: favorites.length });
-
-      const filtered = favorites.filter((f: any) => f.complexNo !== complexNo);
-      console.log('[FAVORITE_TOGGLE] 필터링 후:', {
-        before: favorites.length,
-        after: filtered.length,
-        removed: favorites.length - filtered.length
-      });
-
-      const reordered = filtered.map((fav: any, index: number) => ({
-        ...fav,
-        order: index
-      }));
-      await writeFavorites(reordered);
-      console.log('[FAVORITE_TOGGLE] favorites.json 쓰기 완료:', { finalCount: reordered.length });
-
       return NextResponse.json({
         success: true,
         isFavorite: false,
@@ -142,26 +89,6 @@ export async function POST(request: NextRequest) {
         }
       });
       console.log('[FAVORITE_TOGGLE] DB에 Favorite 추가 완료');
-
-      // favorites.json에 추가
-      const favorites = await readFavorites();
-      console.log('[FAVORITE_TOGGLE] favorites.json 읽기 완료:', { count: favorites.length });
-
-      const newFavorite = {
-        complexNo: complex.complexNo,
-        complexName: complex.complexName,
-        addedAt: new Date().toISOString(),
-        order: favorites.length,
-        articleCount: complex._count.articles,
-      };
-      favorites.push(newFavorite);
-      console.log('[FAVORITE_TOGGLE] favorites.json에 추가:', {
-        newFavorite,
-        newCount: favorites.length
-      });
-
-      await writeFavorites(favorites);
-      console.log('[FAVORITE_TOGGLE] favorites.json 쓰기 완료');
 
       return NextResponse.json({
         success: true,

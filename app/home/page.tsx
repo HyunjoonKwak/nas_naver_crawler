@@ -104,11 +104,8 @@ export default function Home() {
         resultsCount: results.length
       });
 
-      // Note: favorites.json sync removed - now handled by /api/crawl automatically
-      // This prevents file-based data from overwriting accurate DB-based counts
-
-      // 관심 단지 조회
-      console.log('[MAIN_PAGE] /api/favorites 호출 (favorites.json 읽기)');
+      // 관심 단지 조회 (DB 기반)
+      console.log('[MAIN_PAGE] /api/favorites 호출 (DB에서 읽기)');
       const favResponse = await fetch('/api/favorites');
       const favData = await favResponse.json();
       const favList = favData.favorites || [];

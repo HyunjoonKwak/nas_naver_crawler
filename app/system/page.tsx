@@ -1511,7 +1511,7 @@ export default function SystemPage() {
                         className="w-4 h-4 text-red-600 bg-gray-100 border-gray-300 rounded focus:ring-red-500"
                       />
                       <span className="text-gray-700 dark:text-gray-300">
-                        favorites.json 파일도 초기화
+                        레거시 파일도 초기화 (favorites.json 등)
                       </span>
                     </label>
                   </div>

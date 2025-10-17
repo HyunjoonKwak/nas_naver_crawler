@@ -264,7 +264,7 @@ export default function ComplexesPage() {
 
     const loadingToast = showLoading('단지 추가 중...');
     try {
-      // 1. favorites.json에 추가
+      // 1. DB에 추가
       const response = await fetch('/api/favorites', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

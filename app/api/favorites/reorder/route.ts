@@ -1,70 +1,61 @@
 import { NextResponse } from 'next/server';
-import fs from 'fs/promises';
-import path from 'path';
-
-const favoritesFilePath = path.join(process.cwd(), 'crawled_data', 'favorites.json');
-
-interface FavoriteComplex {
-  complexNo: string;
-  complexName?: string;
-  addedAt: string;
-  lastCrawledAt?: string;
-  articleCount?: number;
-  totalHouseHoldCount?: number;
-  totalDongCount?: number;
-  minArea?: number;
-  maxArea?: number;
-  minPrice?: number;
-  maxPrice?: number;
-  order?: number;
-}
+import { prisma } from '@/lib/prisma';
+import { requireAuth } from '@/lib/auth-utils';
 
 export const dynamic = 'force-dynamic';
 
+/**
+ * POST /api/favorites/reorder
+ * 관심단지 순서 변경 (DB 기반)
+ *
+ * 순서 변경 방법: 각 favorite의 createdAt을 업데이트하여 순서 반영
+ * - 새로운 순서대로 createdAt을 1초 간격으로 업데이트
+ * - 이후 GET /api/favorites에서 createdAt 기준 정렬 시 원하는 순서로 표시됨
+ */
 export async function POST(request: Request) {
   try {
+    const currentUser = await requireAuth();
     const body = await request.json();
-    const { favorites } = body;
+    const { complexNos } = body; // complexNo 배열 (새로운 순서대로)
 
-    if (!Array.isArray(favorites)) {
+    if (!Array.isArray(complexNos)) {
       return NextResponse.json(
-        { error: 'favorites must be an array' },
+        { error: 'complexNos must be an array' },
         { status: 400 }
       );
     }
 
-    // 기존 favorites 파일 읽기
-    let existingFavorites: FavoriteComplex[] = [];
-    try {
-      const fileContent = await fs.readFile(favoritesFilePath, 'utf-8');
-      const parsed = JSON.parse(fileContent);
-      // favorites.json 파일 구조가 { favorites: [...] } 형태인 경우 처리
-      existingFavorites = Array.isArray(parsed) ? parsed : (parsed.favorites || []);
-    } catch (error) {
-      // 파일이 없으면 빈 배열로 시작
-      existingFavorites = [];
+    // 현재 사용자의 즐겨찾기만 순서 변경 가능
+    // 각 complexNo에 대해 순서대로 createdAt 업데이트
+    const baseTime = new Date();
+
+    for (let i = 0; i < complexNos.length; i++) {
+      const complexNo = complexNos[i];
+
+      // 해당 단지 찾기
+      const complex = await prisma.complex.findUnique({
+        where: { complexNo },
+      });
+
+      if (!complex) continue;
+
+      // 사용자의 favorite 업데이트 (createdAt을 순서에 맞게 변경)
+      const newCreatedAt = new Date(baseTime.getTime() + i * 1000); // 1초 간격
+
+      await prisma.favorite.updateMany({
+        where: {
+          complexId: complex.id,
+          userId: currentUser.id, // 본인 것만 수정
+        },
+        data: {
+          createdAt: newCreatedAt,
+        },
+      });
     }
-
-    // 순서 정보만 업데이트 (다른 데이터는 유지)
-    const updatedFavorites = favorites.map((fav: FavoriteComplex, index: number) => {
-      const existing = existingFavorites.find(f => f.complexNo === fav.complexNo);
-      return {
-        ...(existing || fav),
-        order: index
-      };
-    });
-
-    // 파일에 저장 (기존 포맷 유지)
-    await fs.writeFile(
-      favoritesFilePath,
-      JSON.stringify({ favorites: updatedFavorites }, null, 2),
-      'utf-8'
-    );
 
     return NextResponse.json({
       success: true,
       message: 'Order updated successfully',
-      favorites: updatedFavorites
     });
   } catch (error) {
     console.error('Failed to update order:', error);
