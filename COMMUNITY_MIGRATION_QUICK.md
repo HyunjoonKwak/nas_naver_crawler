@@ -69,7 +69,7 @@ docker exec -it naver-crawler-web sh
 rm -rf node_modules/.prisma
 rm -rf node_modules/@prisma/client
 rm -rf .next
-npx prisma generate --force
+npx prisma generate
 
 # 생성 확인
 ls -la node_modules/.prisma/client/
@@ -151,7 +151,7 @@ docker exec -it naver-crawler-db psql -U crawler -d naver_crawler
 # Prisma 캐시 완전 삭제 후 재생성
 docker exec naver-crawler-web rm -rf node_modules/.prisma
 docker exec naver-crawler-web rm -rf node_modules/@prisma/client
-docker exec naver-crawler-web npx prisma generate --force
+docker exec naver-crawler-web npx prisma generate
 docker-compose restart
 ```
 

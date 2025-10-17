@@ -92,7 +92,7 @@ rm -rf node_modules/@prisma/client
 rm -rf .next
 
 # Prisma Client 완전 재생성
-npx prisma generate --force
+npx prisma generate
 
 # 생성 확인
 ls -la node_modules/.prisma/client/
@@ -258,8 +258,8 @@ docker-compose build --no-cache
 # 4. 재시작
 docker-compose up -d
 
-# 5. Prisma Client 강제 재생성
-docker exec naver-crawler-web npx prisma generate --force
+# 5. Prisma Client 재생성
+docker exec naver-crawler-web npx prisma generate
 
 # 6. 마이그레이션 다시 실행
 docker exec naver-crawler-web npx prisma migrate deploy
@@ -293,8 +293,8 @@ SELECT * FROM "_prisma_migrations" ORDER BY finished_at DESC LIMIT 10;
 
 **해결**:
 ```bash
-# Prisma Client 강제 재생성
-docker exec naver-crawler-web npx prisma generate --force
+# Prisma Client 재생성
+docker exec naver-crawler-web npx prisma generate
 
 # 개발 서버 재시작
 docker-compose restart naver-crawler-web

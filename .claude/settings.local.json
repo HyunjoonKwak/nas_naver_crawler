@@ -11,7 +11,11 @@
       "Bash(npx next build:*)",
       "Bash(while read file)",
       "Bash(do echo \"=== $file ===\" if grep -q \"requireAuth\" \"$file\")",
-      "Bash(then echo \"✅ Has requireAuth\" else echo \"❌ NO requireAuth\" fi done)"
+      "Bash(then echo \"✅ Has requireAuth\" else echo \"❌ NO requireAuth\" fi done)",
+      "Bash(lsof:*)",
+      "Bash(xargs kill:*)",
+      "Bash(npx prisma generate:*)",
+      "Bash(npx prisma migrate dev:*)"
     ],
     "deny": [],
     "ask": []
