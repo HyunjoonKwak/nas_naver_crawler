@@ -1,12 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSession } from "next-auth/react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Navigation } from "@/components/Navigation";
 import RealPriceAnalysis from "@/components/RealPriceAnalysis";
 import { Dialog } from "@/components/ui";
 import { showSuccess, showError, showLoading, dismissToast } from "@/lib/toast";
+import { AuthGuard } from "@/components/AuthGuard";
 
 interface ComplexData {
   overview: any;
@@ -15,6 +17,7 @@ interface ComplexData {
 }
 
 export default function ComplexDetailPage() {
+  const { data: session, status } = useSession();
   const params = useParams();
   const router = useRouter();
   const complexNo = params.complexNo as string;
@@ -302,8 +305,9 @@ export default function ComplexDetailPage() {
   )).sort();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950">
-      <Navigation />
+    <AuthGuard>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950">
+        <Navigation />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {/* 상단: 단지 개요 및 통계 */}
@@ -786,7 +790,8 @@ export default function ComplexDetailPage() {
         cancelText="취소"
         variant="danger"
       />
-    </div>
+      </div>
+    </AuthGuard>
   );
 }
 

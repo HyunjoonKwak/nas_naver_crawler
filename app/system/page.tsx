@@ -9,6 +9,7 @@ import CrawlerHistory from "@/components/CrawlerHistory";
 import { NotificationSettings } from "@/components/NotificationSettings";
 import { ThemeToggle, Dialog } from "@/components/ui";
 import { showSuccess, showError, showLoading, dismissToast } from "@/lib/toast";
+import { AuthGuard } from "@/components/AuthGuard";
 
 interface StatusData {
   crawler: {
@@ -723,9 +724,10 @@ export default function SystemPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pb-20 md:pb-0">
-      {/* Header */}
-      <Navigation />
+    <AuthGuard>
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pb-20 md:pb-0">
+        {/* Header */}
+        <Navigation />
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -1771,8 +1773,9 @@ export default function SystemPage() {
         </div>
       )}
 
-      {/* Mobile Navigation */}
-      <MobileNavigation />
-    </div>
+        {/* Mobile Navigation */}
+        <MobileNavigation />
+      </div>
+    </AuthGuard>
   );
 }

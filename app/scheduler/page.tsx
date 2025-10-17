@@ -1,12 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { Navigation } from "@/components/Navigation";
 import { MobileNavigation } from "@/components/MobileNavigation";
 import { ThemeToggle, Dialog } from "@/components/ui";
 import { showSuccess, showError, showLoading, dismissToast } from "@/lib/toast";
 import { useCrawlEvents } from "@/hooks/useCrawlEvents";
+import { AuthGuard } from "@/components/AuthGuard";
 
 interface Schedule {
   id: string;
@@ -47,6 +49,7 @@ interface Complex {
 }
 
 export default function SchedulerPage() {
+  const { data: session, status } = useSession();
   const [activeTab, setActiveTab] = useState<"scheduler" | "alerts">("scheduler");
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [complexes, setComplexes] = useState<Complex[]>([]);
@@ -510,9 +513,10 @@ export default function SchedulerPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-green-50 to-emerald-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950 pb-20 md:pb-0">
-      {/* Navigation Header */}
-      <Navigation />
+    <AuthGuard>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-green-50 to-emerald-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950 pb-20 md:pb-0">
+        {/* Navigation Header */}
+        <Navigation />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* 탭 네비게이션 */}
@@ -1147,8 +1151,9 @@ export default function SchedulerPage() {
         variant="default"
       />
 
-      {/* Mobile Navigation */}
-      <MobileNavigation />
-    </div>
+        {/* Mobile Navigation */}
+        <MobileNavigation />
+      </div>
+    </AuthGuard>
   );
 }

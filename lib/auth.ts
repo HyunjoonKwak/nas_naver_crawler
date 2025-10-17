@@ -77,7 +77,12 @@ export const authOptions: NextAuthOptions = {
   },
   session: {
     strategy: 'jwt',
-    maxAge: 30 * 24 * 60 * 60, // 30일
+    maxAge: 7 * 24 * 60 * 60, // 7일 (세션 만료)
+    updateAge: 24 * 60 * 60, // 24시간마다 세션 갱신
   },
   secret: process.env.NEXTAUTH_SECRET,
+  // JWT 토큰 설정
+  jwt: {
+    maxAge: 7 * 24 * 60 * 60, // 7일
+  },
 };
