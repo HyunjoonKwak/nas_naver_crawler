@@ -6,7 +6,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from "@/lib/prisma";
 import {
   registerSchedule,
   unregisterSchedule,
@@ -14,7 +14,6 @@ import {
   getNextRunTime,
 } from '@/lib/scheduler';
 
-const prisma = new PrismaClient();
 
 /**
  * GET /api/schedules/[id] - 스케줄 상세 조회

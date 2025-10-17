@@ -4,10 +4,9 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from "@/lib/prisma";
 import { getActiveSchedules } from '@/lib/scheduler';
 
-const prisma = new PrismaClient();
 
 /**
  * GET /api/schedules/debug - 스케줄러 디버깅 정보

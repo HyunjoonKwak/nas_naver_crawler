@@ -4,6 +4,7 @@ import { promisify } from 'util';
 import fs from 'fs/promises';
 import path from 'path';
 import { prisma } from '@/lib/prisma';
+import { requireAuth } from '@/lib/auth-utils';
 
 const execAsync = promisify(exec);
 
@@ -11,6 +12,9 @@ export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
+    // 인증 확인
+    await requireAuth();
+
     const baseDir = process.env.NODE_ENV === 'production' ? '/app' : process.cwd();
     
     // Python 크롤러 존재 확인

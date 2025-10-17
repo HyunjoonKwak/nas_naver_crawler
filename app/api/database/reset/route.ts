@@ -1,16 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
+import { requireAuth } from '@/lib/auth-utils';
 import fs from 'fs/promises';
 import path from 'path';
-
-const prisma = new PrismaClient();
 
 /**
  * POST /api/database/reset
  * 데이터베이스 초기화 (모든 테이블 데이터 삭제)
+ * ADMIN 전용
  */
 export async function POST(request: NextRequest) {
   try {
+    // ADMIN 권한 확인
+    const currentUser = await requireAuth();
+    if (currentUser.role !== 'ADMIN') {
+      return NextResponse.json(
+        { error: '관리자만 데이터베이스를 초기화할 수 있습니다.' },
+        { status: 403 }
+      );
+    }
+
     const body = await request.json();
     const { confirmText, deleteFiles } = body;
 

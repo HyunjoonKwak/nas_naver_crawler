@@ -5,7 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
 import { requireAuth } from '@/lib/auth-utils';
 import {
   registerSchedule,
@@ -14,8 +14,6 @@ import {
   getNextRunTime,
 } from '@/lib/scheduler';
 import cronstrue from 'cronstrue/i18n';
-
-const prisma = new PrismaClient();
 
 /**
  * GET /api/schedules - 스케줄 목록 조회

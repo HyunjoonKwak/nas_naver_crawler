@@ -1,17 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { requireAuth, getAccessibleUserIds } from '@/lib/auth-utils';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {
+    // 인증 및 사용자 필터링
+    const currentUser = await requireAuth();
+    const accessibleUserIds = await getAccessibleUserIds(currentUser.id, currentUser.role);
+
     const { searchParams } = new URL(request.url);
     const crawlId = searchParams.get('crawlId');
 
     if (crawlId) {
-      // 특정 크롤링 작업의 상태 조회
-      const crawlHistory = await prisma.crawlHistory.findUnique({
-        where: { id: crawlId },
+      // 특정 크롤링 작업의 상태 조회 (사용자 필터링 적용)
+      const crawlHistory = await prisma.crawlHistory.findFirst({
+        where: {
+          id: crawlId,
+          userId: { in: accessibleUserIds }, // 사용자 권한 확인
+        },
       });
 
       if (!crawlHistory) {

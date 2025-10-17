@@ -5,10 +5,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
 import { requireAuth } from '@/lib/auth-utils';
-
-const prisma = new PrismaClient();
 
 /**
  * GET /api/alerts - 알림 목록 조회
