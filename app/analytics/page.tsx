@@ -10,6 +10,7 @@ import { showSuccess, showError, showLoading, dismissToast } from "@/lib/toast";
 import { useCrawlEvents } from "@/hooks/useCrawlEvents";
 import { SingleAnalysis } from "./SingleAnalysis";
 import { CompareAnalysis } from "./CompareAnalysis";
+import { AuthGuard } from "@/components/AuthGuard";
 
 interface Complex {
   complexNo: string;
@@ -210,9 +211,10 @@ export default function AnalyticsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-black pb-20 md:pb-0">
-      {/* 네비게이션 */}
-      <Navigation />
+    <AuthGuard>
+      <div className="min-h-screen bg-gray-50 dark:bg-black pb-20 md:pb-0">
+        {/* 네비게이션 */}
+        <Navigation />
 
       {/* 메인 콘텐츠 */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -447,6 +449,7 @@ export default function AnalyticsPage() {
 
       {/* Mobile Navigation */}
       <MobileNavigation />
-    </div>
+      </div>
+    </AuthGuard>
   );
 }

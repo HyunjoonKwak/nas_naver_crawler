@@ -13,6 +13,7 @@ import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { showSuccess, showError } from "@/lib/toast";
 import { SortableFavoriteCard } from "@/components/SortableFavoriteCard";
+import { AuthGuard } from "@/components/AuthGuard";
 
 interface FavoriteComplex {
   complexNo: string;
@@ -219,9 +220,10 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950 pb-20 md:pb-0">
-      {/* Navigation */}
-      <Navigation />
+    <AuthGuard>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950 pb-20 md:pb-0">
+        {/* Navigation */}
+        <Navigation />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Hero Section with Quick Stats */}
@@ -415,8 +417,9 @@ export default function Home() {
       </div>
 
       {/* Mobile Navigation */}
-      <MobileNavigation />
-    </div>
+        <MobileNavigation />
+      </div>
+    </AuthGuard>
   );
 }
 
