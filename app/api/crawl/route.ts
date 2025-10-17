@@ -3,6 +3,8 @@ import { exec } from 'child_process';
 import { promisify } from 'util';
 import { prisma } from '@/lib/prisma';
 import { requireAuth } from '@/lib/auth-utils';
+import { rateLimit, rateLimitPresets } from '@/lib/rate-limit';
+import { createLogger } from '@/lib/logger';
 import fs from 'fs/promises';
 import path from 'path';
 import {
@@ -22,6 +24,7 @@ import { eventBroadcaster } from '@/lib/eventBroadcaster';
 import { calculateDynamicTimeout } from '@/lib/timeoutCalculator';
 
 const execAsync = promisify(exec);
+const logger = createLogger('CRAWL');
 
 export const dynamic = 'force-dynamic';
 
@@ -153,7 +156,7 @@ async function saveCrawlResultsToDB(crawlId: string, complexNos: string[], userI
       const complexId = complexNoToIdMap.get(overview.complexNo);
 
       if (!complexId) {
-        console.error(`Complex ID not found for ${overview.complexNo}`);
+        logger.error(`Complex ID not found for ${overview.complexNo}`);
         continue;
       }
 
@@ -231,7 +234,7 @@ async function saveCrawlResultsToDB(crawlId: string, complexNos: string[], userI
     console.log(`✅ Batch save completed: ${totalComplexes} complexes, ${totalArticles} articles`);
 
   } catch (error: any) {
-    console.error('Failed to process crawl data:', error);
+    logger.error('Failed to process crawl data', error);
     errors.push(`Database save error: ${error.message}`);
 
     await prisma.crawlHistory.update({
@@ -398,6 +401,10 @@ export async function POST(request: NextRequest) {
   let crawlId: string | null = null;
 
   try {
+    // Rate Limiting (분당 10회)
+    const rateLimitResponse = rateLimit(request, rateLimitPresets.crawl);
+    if (rateLimitResponse) return rateLimitResponse;
+
     // 사용자 인증 확인
     const currentUser = await requireAuth();
 
@@ -444,13 +451,14 @@ export async function POST(request: NextRequest) {
     const baseDir = process.env.NODE_ENV === 'production' ? '/app' : process.cwd();
     const command = `python3 ${baseDir}/logic/nas_playwright_crawler.py "${complexNos}" "${crawlId}"`;
 
-    console.log('🚀 Starting crawler...');
-    console.log(`   - Crawl ID: ${crawlId}`);
-    console.log(`   - Complexes: ${complexNos}`);
+    logger.info('Starting crawler', { crawlId, complexNos: complexNosArray.length });
 
     // 동적 타임아웃 계산
     const dynamicTimeout = await calculateDynamicTimeout(complexNosArray.length);
-    console.log(`   - Timeout: ${Math.floor(dynamicTimeout / 1000)}s (${Math.floor(dynamicTimeout / 60000)}min)`);
+    logger.info('Dynamic timeout calculated', {
+      seconds: Math.floor(dynamicTimeout / 1000),
+      minutes: Math.floor(dynamicTimeout / 60000)
+    });
 
     await prisma.crawlHistory.update({
       where: { id: crawlId },
@@ -483,7 +491,7 @@ export async function POST(request: NextRequest) {
     });
 
     // 3. 크롤링 결과를 DB에 저장 (Batch Insert)
-    console.log('💾 Saving results to database...');
+    logger.info('Saving results to database');
     const dbResult = await saveCrawlResultsToDB(crawlId, complexNosArray, currentUser.id);
 
     const duration = Date.now() - startTime;
@@ -508,14 +516,16 @@ export async function POST(request: NextRequest) {
     // 🔔 실시간 알림: 크롤링 완료
     eventBroadcaster.notifyCrawlComplete(crawlId, dbResult.totalArticles);
 
-    console.log('✅ Crawl completed and saved to DB');
-    console.log(`   - Complexes: ${dbResult.totalComplexes}`);
-    console.log(`   - Articles: ${dbResult.totalArticles}`);
-    console.log(`   - Duration: ${Math.floor(duration / 1000)}s`);
+    logger.info('Crawl completed and saved to DB', {
+      complexes: dbResult.totalComplexes,
+      articles: dbResult.totalArticles,
+      durationSeconds: Math.floor(duration / 1000),
+      status
+    });
 
     // 5. 알림 발송 (비동기로 실행하여 응답 지연 방지)
     sendAlertsForChanges(complexNosArray).catch((error) => {
-      console.error('Failed to send alerts:', error);
+      logger.error('Failed to send alerts', error);
     });
 
     return NextResponse.json({
@@ -531,7 +541,7 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error: any) {
-    console.error('❌ Crawling error:', error);
+    logger.error('Crawling error', error);
 
     // 에러 히스토리 업데이트
     if (crawlId) {
@@ -550,7 +560,7 @@ export async function POST(request: NextRequest) {
         // 🔔 실시간 알림: 크롤링 실패
         eventBroadcaster.notifyCrawlFailed(crawlId, error.message);
       } catch (historyError) {
-        console.error('Failed to update error history:', historyError);
+        logger.error('Failed to update error history', historyError);
       }
     }
 

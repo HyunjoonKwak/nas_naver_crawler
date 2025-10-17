@@ -51,11 +51,7 @@ export async function GET(request: NextRequest) {
         lastCrawledAt: complex.updatedAt.toISOString(),
         articleCount: articles.length,
         totalHouseHoldCount: complex.totalHousehold,
-        totalDongCount: complex.totalDongCount,
-        minArea: complex.minArea,
-        maxArea: complex.maxArea,
-        minPrice: complex.minPrice,
-        maxPrice: complex.maxPrice,
+        totalDongCount: complex.totalDong,
         order: index, // 순서
         stats: {
           total: articles.length,

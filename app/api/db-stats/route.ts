@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAuth, getAccessibleUserIds } from '@/lib/auth-utils';
+import { getCached, cacheTTL } from '@/lib/cache';
+import { createLogger } from '@/lib/logger';
+
+const logger = createLogger('DB-STATS');
 
 export const dynamic = 'force-dynamic';
 
@@ -14,6 +18,13 @@ export async function GET() {
 
     // 사용자 필터 조건
     const userFilter = { userId: { in: accessibleUserIds } };
+
+    // 캐시 키 (사용자별로 다른 캐시)
+    const cacheKey = `db-stats:${currentUser.id}`;
+
+    // 캐시된 데이터가 있으면 반환 (1분 캐시)
+    const stats = await getCached(cacheKey, cacheTTL.short, async () => {
+      logger.debug('Fetching DB stats from database', { userId: currentUser.id });
 
     // DB에서 즐겨찾기 단지 개수 가져오기
     const favoriteComplexes = await prisma.favorite.count({
@@ -137,31 +148,36 @@ export async function GET() {
         )
       : 0;
 
-    // 거래 유형별 통계를 객체로 변환
-    const tradeTypeStatsMap = tradeTypeStats.reduce((acc, stat) => {
-      acc[stat.tradeTypeName || '기타'] = stat._count.tradeTypeName;
-      return acc;
-    }, {} as Record<string, number>);
+      // 거래 유형별 통계를 객체로 변환
+      const tradeTypeStatsMap = tradeTypeStats.reduce((acc, stat) => {
+        acc[stat.tradeTypeName || '기타'] = stat._count.tradeTypeName;
+        return acc;
+      }, {} as Record<string, number>);
 
-    return NextResponse.json({
-      database: {
-        totalComplexes,
-        totalArticles,
-        favoriteComplexes,
-        recentComplexes,
-        recentArticles,
-      },
-      crawling: {
-        totalCrawls: crawlHistoryCount,
-        completedCrawls,
-        failedCrawls,
-        avgDuration,
-        recentCrawls,
-      },
-      tradeTypes: tradeTypeStatsMap,
+      return {
+        database: {
+          totalComplexes,
+          totalArticles,
+          favoriteComplexes,
+          recentComplexes,
+          recentArticles,
+        },
+        crawling: {
+          totalCrawls: crawlHistoryCount,
+          completedCrawls,
+          failedCrawls,
+          avgDuration,
+          recentCrawls,
+        },
+        tradeTypes: tradeTypeStatsMap,
+      };
     });
+
+    logger.debug('DB stats fetched successfully', { cached: stats ? 'yes' : 'no' });
+
+    return NextResponse.json(stats);
   } catch (error: any) {
-    console.error('Error fetching database stats:', error);
+    logger.error('Error fetching database stats', error);
     return NextResponse.json(
       {
         error: 'DB 통계 조회 중 오류가 발생했습니다.',

@@ -1,9 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { rateLimit, rateLimitPresets } from '@/lib/rate-limit';
+import { createLogger } from '@/lib/logger';
 import bcrypt from 'bcryptjs';
+
+const logger = createLogger('AUTH-REGISTER');
 
 export async function POST(request: NextRequest) {
   try {
+    // Rate Limiting (5분당 5회 - 브루트포스 방지)
+    const rateLimitResponse = rateLimit(request, rateLimitPresets.auth);
+    if (rateLimitResponse) return rateLimitResponse;
+
     const { email, password, name } = await request.json();
 
     // 유효성 검사
@@ -63,6 +71,13 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    logger.info('User registered', {
+      userId: user.id,
+      email: user.email,
+      role: user.role,
+      isFirstUser,
+    });
+
     return NextResponse.json({
       success: true,
       message: isFirstUser
@@ -77,7 +92,7 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('Register error:', error);
+    logger.error('User registration failed', error);
     return NextResponse.json(
       { error: '회원가입 중 오류가 발생했습니다.' },
       { status: 500 }

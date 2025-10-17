@@ -1,7 +1,14 @@
 import type { Metadata } from "next";
 import { Toaster } from 'react-hot-toast';
 import { SessionProvider } from '@/components/SessionProvider';
+import { validateEnv, logEnvInfo } from '@/lib/env';
 import "./globals.css";
+
+// 환경 변수 검증 (서버 사이드)
+if (typeof window === 'undefined') {
+  validateEnv();
+  logEnvInfo();
+}
 
 export const metadata: Metadata = {
   title: "부동산 인사이트",

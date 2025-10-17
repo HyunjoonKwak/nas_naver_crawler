@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAuth } from '@/lib/auth-utils';
+import { rateLimit, rateLimitPresets } from '@/lib/rate-limit';
+import { createLogger } from '@/lib/logger';
 import fs from 'fs/promises';
 import path from 'path';
+
+const logger = createLogger('DB-RESET');
 
 /**
  * POST /api/database/reset
@@ -11,6 +15,10 @@ import path from 'path';
  */
 export async function POST(request: NextRequest) {
   try {
+    // Rate Limiting (시간당 3회 - 위험한 작업 방지)
+    const rateLimitResponse = rateLimit(request, rateLimitPresets.dangerous);
+    if (rateLimitResponse) return rateLimitResponse;
+
     // ADMIN 권한 확인
     const currentUser = await requireAuth();
     if (currentUser.role !== 'ADMIN') {
@@ -31,39 +39,41 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    logger.warn('Database reset initiated', { userId: currentUser.id, email: currentUser.email });
+
     // 트랜잭션으로 모든 테이블 삭제
     await prisma.$transaction(async (tx) => {
       // 1. 알림 로그 삭제
       await tx.notificationLog.deleteMany({});
-      console.log('✓ NotificationLog 삭제 완료');
+      logger.info('NotificationLog deleted');
 
       // 2. 스케줄 로그 삭제
       await tx.scheduleLog.deleteMany({});
-      console.log('✓ ScheduleLog 삭제 완료');
+      logger.info('ScheduleLog deleted');
 
       // 3. 알림 삭제
       await tx.alert.deleteMany({});
-      console.log('✓ Alert 삭제 완료');
+      logger.info('Alert deleted');
 
       // 4. 스케줄 삭제
       await tx.schedule.deleteMany({});
-      console.log('✓ Schedule 삭제 완료');
+      logger.info('Schedule deleted');
 
       // 5. 크롤링 히스토리 삭제
       await tx.crawlHistory.deleteMany({});
-      console.log('✓ CrawlHistory 삭제 완료');
+      logger.info('CrawlHistory deleted');
 
       // 6. 즐겨찾기 삭제
       await tx.favorite.deleteMany({});
-      console.log('✓ Favorite 삭제 완료');
+      logger.info('Favorite deleted');
 
       // 7. 매물 삭제
       await tx.article.deleteMany({});
-      console.log('✓ Article 삭제 완료');
+      logger.info('Article deleted');
 
       // 8. 단지 삭제
       await tx.complex.deleteMany({});
-      console.log('✓ Complex 삭제 완료');
+      logger.info('Complex deleted');
     });
 
     // favorites.json 파일 초기화 (선택적)
@@ -72,11 +82,13 @@ export async function POST(request: NextRequest) {
       const favoritesPath = path.join(baseDir, 'crawled_data', 'favorites.json');
       try {
         await fs.writeFile(favoritesPath, JSON.stringify({ favorites: [] }, null, 2));
-        console.log('✓ favorites.json 초기화 완료');
-      } catch (error) {
-        console.warn('favorites.json 초기화 실패 (무시):', error);
+        logger.info('favorites.json initialized');
+      } catch (error: any) {
+        logger.warn('Failed to initialize favorites.json (ignored)', { error: error.message });
       }
     }
+
+    logger.info('Database reset completed successfully');
 
     return NextResponse.json({
       success: true,
@@ -93,7 +105,7 @@ export async function POST(request: NextRequest) {
       ],
     });
   } catch (error) {
-    console.error('Database reset error:', error);
+    logger.error('Database reset failed', error);
     return NextResponse.json(
       { error: '데이터베이스 초기화 중 오류가 발생했습니다.' },
       { status: 500 }
@@ -125,6 +137,9 @@ export async function GET(request: NextRequest) {
       prisma.schedule.count(),
     ]);
 
+    const total = complexCount + articleCount + favoriteCount + crawlHistoryCount + alertCount + scheduleCount;
+    logger.debug('Database status checked', { total });
+
     return NextResponse.json({
       tables: {
         Complex: complexCount,
@@ -134,10 +149,10 @@ export async function GET(request: NextRequest) {
         Alert: alertCount,
         Schedule: scheduleCount,
       },
-      total: complexCount + articleCount + favoriteCount + crawlHistoryCount + alertCount + scheduleCount,
+      total,
     });
   } catch (error) {
-    console.error('Database status check error:', error);
+    logger.error('Database status check failed', error);
     return NextResponse.json(
       { error: '데이터베이스 상태 확인 중 오류가 발생했습니다.' },
       { status: 500 }
