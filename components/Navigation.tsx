@@ -6,9 +6,11 @@ import { usePathname } from 'next/navigation';
 import { useSession, signOut } from 'next-auth/react';
 import { ThemeToggle } from '@/components/ui';
 import { useCrawlEvents } from '@/hooks/useCrawlEvents';
+import { GlobalSearch } from '@/components/GlobalSearch';
 
 export const Navigation = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const pathname = usePathname();
   const { data: session, status } = useSession();
 
@@ -24,17 +26,34 @@ export const Navigation = () => {
     return `${minutes}분 ${secs}초`;
   };
 
-  // ESC 키로 모바일 메뉴 닫기
+  // ESC 키로 모바일 메뉴 및 검색 닫기
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isMobileMenuOpen) {
-        setIsMobileMenuOpen(false);
+      if (e.key === 'Escape') {
+        if (isSearchOpen) {
+          setIsSearchOpen(false);
+        } else if (isMobileMenuOpen) {
+          setIsMobileMenuOpen(false);
+        }
       }
     };
 
     document.addEventListener('keydown', handleEscape);
     return () => document.removeEventListener('keydown', handleEscape);
-  }, [isMobileMenuOpen]);
+  }, [isMobileMenuOpen, isSearchOpen]);
+
+  // Cmd/Ctrl+K로 검색 열기
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setIsSearchOpen(true);
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   // 모바일 메뉴 열릴 때 body 스크롤 방지
   useEffect(() => {
@@ -105,6 +124,22 @@ export const Navigation = () => {
             </div>
           </Link>
 
+          {/* Search Button */}
+          <div className="flex-1 max-w-md mx-4 hidden sm:block">
+            <button
+              onClick={() => setIsSearchOpen(true)}
+              className="w-full px-4 py-2 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center gap-3 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              <span className="text-sm">검색...</span>
+              <kbd className="ml-auto hidden lg:inline-block px-2 py-1 text-xs font-semibold bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded">
+                ⌘K
+              </kbd>
+            </button>
+          </div>
+
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center gap-3">
             {filteredNavLinks.map((link) => (
@@ -161,6 +196,15 @@ export const Navigation = () => {
 
           {/* Mobile Menu Button */}
           <div className="flex md:hidden items-center gap-2">
+            <button
+              onClick={() => setIsSearchOpen(true)}
+              className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+              aria-label="검색"
+            >
+              <svg className="w-6 h-6 text-gray-700 dark:text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </button>
             <ThemeToggle />
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -329,6 +373,24 @@ export const Navigation = () => {
                 </span>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Global Search Modal */}
+      {isSearchOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-start justify-center pt-20 px-4 bg-black/50 backdrop-blur-sm"
+          onClick={() => setIsSearchOpen(false)}
+        >
+          <div
+            className="w-full max-w-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <GlobalSearch
+              onClose={() => setIsSearchOpen(false)}
+              autoFocus={true}
+            />
           </div>
         </div>
       )}
