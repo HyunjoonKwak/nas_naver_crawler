@@ -46,6 +46,16 @@ open http://localhost:3000
 |------|------|------|
 | **[PERFORMANCE.md](PERFORMANCE.md)** | 성능 최적화 (51.3% 개선) | 개발자 |
 | **[CHANGELOG.md](CHANGELOG.md)** | 버전별 변경 이력 | 모든 사용자 |
+| **[IMPROVEMENTS_COMPLETED.md](IMPROVEMENTS_COMPLETED.md)** | 완료된 개선사항 목록 | 개발자 |
+| **[ALERT_SYSTEM.md](ALERT_SYSTEM.md)** | Discord 알림 시스템 가이드 | 사용자 |
+| **[SWIPE_GESTURE_GUIDE.md](SWIPE_GESTURE_GUIDE.md)** | 모바일 스와이프 기능 | 사용자 |
+| **[MIGRATION.md](MIGRATION.md)** | 데이터베이스 마이그레이션 | 개발자 |
+
+### 설계 문서
+
+| 문서 | 설명 | 대상 |
+|------|------|------|
+| **[COMMUNITY_DESIGN.md](COMMUNITY_DESIGN.md)** | 커뮤니티 기능 전체 설계 📝 | 개발자 |
 
 ---
 
