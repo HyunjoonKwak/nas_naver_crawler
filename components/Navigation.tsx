@@ -168,7 +168,7 @@ export const Navigation = () => {
                   👤 {session.user?.name}
                 </span>
                 <button
-                  onClick={() => signOut({ callbackUrl: '/auth/signin' })}
+                  onClick={() => signOut({ callbackUrl: '/' })}
                   className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
                 >
                   로그아웃
@@ -318,7 +318,7 @@ export const Navigation = () => {
                   )}
                 </div>
                 <button
-                  onClick={() => signOut({ callbackUrl: '/auth/signin' })}
+                  onClick={() => signOut({ callbackUrl: '/' })}
                   className="w-full flex items-center gap-3 px-4 py-3 rounded-lg bg-red-600 hover:bg-red-700 text-white font-medium transition-colors"
                 >
                   <span className="text-2xl">🚪</span>
