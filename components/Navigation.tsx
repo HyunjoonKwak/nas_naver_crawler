@@ -78,7 +78,6 @@ export const Navigation = () => {
     { href: '/complexes', label: '단지 목록', icon: '🏘️' },
     { href: '/analytics', label: '데이터 분석', icon: '📊' },
     { href: '/community', label: '커뮤니티', icon: '💬' },
-    { href: '/scheduler', label: '스케줄러', icon: '⏰' },
     { href: '/system', label: '시스템', icon: '⚙️' },
   ];
 

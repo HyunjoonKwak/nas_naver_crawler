@@ -7,6 +7,7 @@ import { Navigation } from "@/components/Navigation";
 import { MobileNavigation } from "@/components/MobileNavigation";
 import CrawlerHistory from "@/components/CrawlerHistory";
 import { SystemSettings } from "@/components/SystemSettings";
+import { SchedulerSettings } from "@/components/SchedulerSettings";
 import { ThemeToggle, Dialog } from "@/components/ui";
 import { showSuccess, showError, showLoading, dismissToast } from "@/lib/toast";
 import { AuthGuard } from "@/components/AuthGuard";
@@ -79,7 +80,7 @@ export default function SystemPage() {
 
   const [status, setStatus] = useState<StatusData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeSection, setActiveSection] = useState<'data' | 'history' | 'database' | 'info' | 'users' | 'settings'>('database');
+  const [activeSection, setActiveSection] = useState<'data' | 'history' | 'database' | 'info' | 'users' | 'scheduler' | 'settings'>('database');
   const [refresh, setRefresh] = useState(0);
 
   // CSV/JSON viewer states
@@ -804,6 +805,19 @@ export default function SystemPage() {
               </button>
             )}
             <button
+              onClick={() => setActiveSection('scheduler')}
+              className={`px-4 py-4 text-center font-semibold transition-colors ${
+                activeSection === 'scheduler'
+                  ? 'bg-gradient-to-r from-green-600 to-emerald-600 text-white'
+                  : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
+              }`}
+            >
+              <div className="flex items-center justify-center gap-2">
+                <span className="text-xl">⏰</span>
+                <span>스케줄러</span>
+              </div>
+            </button>
+            <button
               onClick={() => setActiveSection('settings')}
               className={`px-4 py-4 text-center font-semibold transition-colors ${
                 activeSection === 'settings'
@@ -1474,6 +1488,23 @@ export default function SystemPage() {
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {/* Scheduler Section */}
+        {activeSection === 'scheduler' && (
+          <div className="space-y-6">
+            {/* Page Header */}
+            <div className="mb-8">
+              <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+                스케줄러 및 알림 관리
+              </h2>
+              <p className="text-gray-600 dark:text-gray-400">
+                자동 크롤링 스케줄과 Discord 알림을 설정하세요
+              </p>
+            </div>
+
+            <SchedulerSettings />
           </div>
         )}
 
