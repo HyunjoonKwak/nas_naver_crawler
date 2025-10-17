@@ -84,13 +84,28 @@ export default function SignUpPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
+        {/* 뒤로가기 버튼 */}
+        <div className="mb-6">
+          <Link
+            href="/"
+            className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition-colors"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            <span className="font-medium">홈으로 돌아가기</span>
+          </Link>
+        </div>
+
         {/* 로고 및 타이틀 */}
         <div className="text-center mb-8">
-          <div className="inline-block p-4 bg-gradient-to-br from-emerald-600 to-teal-600 rounded-2xl mb-4">
-            <svg className="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
-            </svg>
-          </div>
+          <Link href="/" className="inline-block">
+            <div className="inline-block p-4 bg-gradient-to-br from-emerald-600 to-teal-600 rounded-2xl mb-4 hover:shadow-lg transition-shadow">
+              <svg className="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+              </svg>
+            </div>
+          </Link>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
             회원가입
           </h1>
@@ -186,7 +201,7 @@ export default function SignUpPage() {
             <p className="text-sm text-gray-600 dark:text-gray-400">
               이미 계정이 있으신가요?{" "}
               <Link
-                href="/auth/signin"
+                href="/"
                 className="text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 font-semibold"
               >
                 로그인
