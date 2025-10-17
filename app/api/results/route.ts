@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { requireAuth, getComplexWhereCondition } from '@/lib/auth-utils';
 import fs from 'fs/promises';
 import path from 'path';
 
@@ -70,6 +71,9 @@ async function readCSVComplexInfo(): Promise<Map<string, any>> {
 
 export async function GET(request: NextRequest) {
   try {
+    // 인증 확인
+    const currentUser = await requireAuth();
+
     const { searchParams } = new URL(request.url);
 
     // 쿼리 파라미터
@@ -82,13 +86,18 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '10000'); // 충분히 큰 기본값으로 변경
     const offset = parseInt(searchParams.get('offset') || '0');
 
+    // 사용자 기반 Complex 필터링 조건 가져오기
+    const userComplexFilter = await getComplexWhereCondition(currentUser);
+
     // WHERE 조건 구성
-    const where: any = {};
+    const where: any = {
+      complex: {
+        ...userComplexFilter, // 사용자 필터링 추가
+      }
+    };
 
     if (complexNo) {
-      where.complex = {
-        complexNo: complexNo,
-      };
+      where.complex.complexNo = complexNo;
     }
 
     if (tradeType) {
