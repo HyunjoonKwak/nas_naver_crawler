@@ -29,8 +29,8 @@ export async function getCurrentUser() {
 /**
  * 사용자 role에 따라 접근 가능한 userId 목록을 반환합니다.
  *
- * - ADMIN: 모든 사용자 데이터 접근 가능
- * - FAMILY: ADMIN과 FAMILY 사용자들의 데이터 공유
+ * - ADMIN: 모든 사용자 데이터 접근 가능 (관리 목적)
+ * - FAMILY: 본인 데이터만 접근 가능 (완전 독립 운영)
  * - GUEST: 본인 데이터만 접근 가능
  */
 export async function getAccessibleUserIds(currentUserId: string, currentUserRole: string): Promise<string[]> {
@@ -42,20 +42,7 @@ export async function getAccessibleUserIds(currentUserId: string, currentUserRol
     return allUsers.map((u) => u.id);
   }
 
-  if (currentUserRole === 'FAMILY') {
-    // FAMILY는 ADMIN과 FAMILY 사용자들의 데이터 공유
-    const familyUsers = await prisma.user.findMany({
-      where: {
-        role: {
-          in: ['ADMIN', 'FAMILY'],
-        },
-      },
-      select: { id: true },
-    });
-    return familyUsers.map((u) => u.id);
-  }
-
-  // GUEST는 본인 데이터만
+  // FAMILY와 GUEST 모두 본인 데이터만 접근 (완전 독립 정책)
   return [currentUserId];
 }
 

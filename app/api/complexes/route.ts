@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
         break;
     }
 
-    // 단지 조회 (현재 사용자의 즐겨찾기 포함)
+    // 단지 조회 (현재 사용자의 즐겨찾기 및 그룹만 포함)
     const complexes = await prisma.complex.findMany({
       where,
       include: {
@@ -81,6 +81,11 @@ export async function GET(request: NextRequest) {
           },
         },
         complexGroups: {
+          where: {
+            group: {
+              userId: currentUser.id, // 본인의 그룹만 조회 (완전 독립 정책)
+            },
+          },
           include: {
             group: {
               select: {

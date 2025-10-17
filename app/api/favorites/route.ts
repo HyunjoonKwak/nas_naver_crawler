@@ -1,22 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requireAuth, getAccessibleUserIds } from '@/lib/auth-utils';
+import { requireAuth } from '@/lib/auth-utils';
 
 export const dynamic = 'force-dynamic';
 
-// GET: 선호 단지 목록 조회 (DB 기반, 사용자별 필터링)
+// GET: 선호 단지 목록 조회 (DB 기반, 본인 즐겨찾기만)
 export async function GET(request: NextRequest) {
   try {
     const currentUser = await requireAuth();
     console.log('[API_FAVORITES] GET 요청 시작 - User:', currentUser.id);
 
-    // 사용자가 접근 가능한 userId 목록 가져오기
-    const accessibleUserIds = await getAccessibleUserIds(currentUser.id, currentUser.role);
-
-    // DB에서 즐겨찾기 조회 (사용자 필터링)
+    // DB에서 본인 즐겨찾기만 조회 (완전 독립 정책)
     const favorites = await prisma.favorite.findMany({
       where: {
-        userId: { in: accessibleUserIds }
+        userId: currentUser.id // 본인 것만
       },
       include: {
         complex: {
