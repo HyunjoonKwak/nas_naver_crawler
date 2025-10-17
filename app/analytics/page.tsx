@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { Navigation } from "@/components/Navigation";
 import { MobileNavigation } from "@/components/MobileNavigation";
@@ -18,6 +19,7 @@ interface Complex {
 }
 
 export default function AnalyticsPage() {
+  const { data: session, status } = useSession();
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -85,8 +87,12 @@ export default function AnalyticsPage() {
   });
 
   useEffect(() => {
+    // 세션이 로딩 중이거나 없으면 API 호출하지 않음
+    if (status === 'loading' || !session) {
+      return;
+    }
     fetchComplexes();
-  }, []);
+  }, [session, status]);
 
   const fetchComplexes = async () => {
     try {
