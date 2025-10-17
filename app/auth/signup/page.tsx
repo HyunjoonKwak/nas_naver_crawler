@@ -58,15 +58,15 @@ export default function SignUpPage() {
       if (response.ok) {
         showSuccess(data.message);
 
-        // 첫 번째 사용자(관리자)인 경우 바로 로그인 페이지로
+        // 첫 번째 사용자(관리자)인 경우 바로 홈으로
         if (data.user.role === "ADMIN") {
           setTimeout(() => {
-            router.push("/auth/signin");
+            router.push("/");
           }, 2000);
         } else {
-          // 일반 사용자인 경우 승인 대기 안내
+          // 일반 사용자인 경우 승인 대기 안내 후 메인으로
           setTimeout(() => {
-            router.push("/auth/signin");
+            router.push("/");
           }, 3000);
         }
       } else {

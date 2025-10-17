@@ -178,7 +178,7 @@ export const Navigation = () => {
             ) : (
               <div className="flex items-center gap-2">
                 <Link
-                  href="/auth/signin"
+                  href="/"
                   className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                 >
                   로그인
@@ -329,7 +329,7 @@ export const Navigation = () => {
             ) : (
               <>
                 <Link
-                  href="/auth/signin"
+                  href="/"
                   className="flex items-center gap-3 px-4 py-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium transition-colors"
                 >
                   <span className="text-2xl">🔐</span>
