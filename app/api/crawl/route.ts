@@ -401,15 +401,41 @@ export async function POST(request: NextRequest) {
   let crawlId: string | null = null;
 
   try {
-    // Rate Limiting (분당 10회)
-    const rateLimitResponse = rateLimit(request, rateLimitPresets.crawl);
-    if (rateLimitResponse) return rateLimitResponse;
+    // 내부 스케줄러 호출 확인 (특별한 헤더로 식별)
+    const internalSecret = request.headers.get('x-internal-secret');
+    const isInternalCall = internalSecret === process.env.INTERNAL_API_SECRET;
 
-    // 사용자 인증 확인
-    const currentUser = await requireAuth();
+    // Rate Limiting (내부 호출이 아닌 경우만)
+    if (!isInternalCall) {
+      const rateLimitResponse = rateLimit(request, rateLimitPresets.crawl);
+      if (rateLimitResponse) return rateLimitResponse;
+    }
 
     const body = await request.json();
-    const { complexNumbers } = body;
+    const { complexNumbers, userId: requestUserId } = body;
+
+    // 사용자 인증 확인 (내부 호출이 아닌 경우)
+    let currentUser;
+    if (isInternalCall) {
+      // 내부 호출: body에서 전달된 userId 사용
+      if (!requestUserId) {
+        return NextResponse.json(
+          { error: 'Internal call requires userId' },
+          { status: 400 }
+        );
+      }
+      const user = await prisma.user.findUnique({ where: { id: requestUserId } });
+      if (!user) {
+        return NextResponse.json(
+          { error: 'User not found' },
+          { status: 404 }
+        );
+      }
+      currentUser = { id: user.id, email: user.email, name: user.name, role: user.role };
+    } else {
+      // 외부 호출: 세션 인증 필요
+      currentUser = await requireAuth();
+    }
 
     if (!complexNumbers || complexNumbers.length === 0) {
       return NextResponse.json(

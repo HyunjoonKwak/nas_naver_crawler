@@ -193,9 +193,11 @@ async function executeCrawl(scheduleId: string) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'x-internal-secret': process.env.INTERNAL_API_SECRET || 'default-secret-change-me',
         },
         body: JSON.stringify({
           complexNumbers: complexNos,
+          userId: schedule.userId, // 스케줄 소유자의 userId 전달
         }),
         signal: controller.signal,
         // @ts-ignore - undici specific options
