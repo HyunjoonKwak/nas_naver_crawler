@@ -65,19 +65,27 @@ export default function PostDetailPage() {
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editingContent, setEditingContent] = useState("");
+  const [viewIncremented, setViewIncremented] = useState(false);
 
   useEffect(() => {
     if (session && postId) {
-      fetchPost();
+      fetchPost(true); // 첫 로드시 조회수 증가
       checkLikeStatus();
     }
   }, [session, postId]);
 
-  const fetchPost = async () => {
+  const fetchPost = async (incrementView = false) => {
     setIsLoading(true);
     try {
-      const response = await fetch(`/api/posts/${postId}`);
+      const url = incrementView && !viewIncremented
+        ? `/api/posts/${postId}?incrementView=true`
+        : `/api/posts/${postId}`;
+      const response = await fetch(url);
       const data = await response.json();
+
+      if (incrementView && !viewIncremented) {
+        setViewIncremented(true);
+      }
 
       if (data.success) {
         setPost(data.post);
@@ -242,6 +250,27 @@ export default function PostDetailPage() {
     }
   };
 
+  const handleTogglePin = async () => {
+    try {
+      const response = await fetch(`/api/posts/${postId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isPinned: !post?.isPinned }),
+      });
+      const data = await response.json();
+
+      if (data.success) {
+        showSuccess(post?.isPinned ? "상단 고정이 해제되었습니다" : "상단에 고정되었습니다");
+        await fetchPost();
+      } else {
+        showError(data.error || "상단 고정 처리에 실패했습니다");
+      }
+    } catch (error) {
+      console.error("Failed to toggle pin:", error);
+      showError("상단 고정 처리에 실패했습니다");
+    }
+  };
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleString("ko-KR", {
       year: "numeric",
@@ -384,6 +413,14 @@ export default function PostDetailPage() {
                   </div>
                   {canEdit && (
                     <div className="flex gap-2">
+                      {(session?.user as any)?.role === 'ADMIN' && (
+                        <button
+                          onClick={handleTogglePin}
+                          className="text-sm text-blue-600 dark:text-blue-400 hover:underline font-medium"
+                        >
+                          {post.isPinned ? '📌 고정 해제' : '📍 상단 고정'}
+                        </button>
+                      )}
                       <Link
                         href={`/community/edit/${post.id}`}
                         className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline"

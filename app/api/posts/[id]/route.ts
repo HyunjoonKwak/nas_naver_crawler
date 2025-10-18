@@ -18,18 +18,30 @@ export async function GET(
 ) {
   try {
     const { id } = params;
+    const currentUser = await requireAuth();
 
-    // 게시글 조회 및 조회수 증가
+    // 조회수 증가 여부 확인 (쿼리 파라미터로 제어)
+    const url = new URL(request.url);
+    const incrementView = url.searchParams.get('incrementView') === 'true';
+
+    // 게시글 조회
     const post = await prisma.$transaction(async (tx) => {
-      // 조회수 증가
-      await tx.post.update({
+      // 조회수 증가 (작성자 본인이 아니고, incrementView가 true인 경우만)
+      const existingPost = await tx.post.findUnique({
         where: { id },
-        data: {
-          views: {
-            increment: 1,
-          },
-        },
+        select: { authorId: true },
       });
+
+      if (incrementView && existingPost && existingPost.authorId !== currentUser.id) {
+        await tx.post.update({
+          where: { id },
+          data: {
+            views: {
+              increment: 1,
+            },
+          },
+        });
+      }
 
       // 게시글 상세 조회
       return await tx.post.findUnique({
@@ -107,7 +119,7 @@ export async function PATCH(
     const currentUser = await requireAuth();
     const { id } = params;
     const body = await request.json();
-    const { title, content, isResolved } = body;
+    const { title, content, isResolved, isPinned } = body;
 
     // 게시글 존재 확인 및 권한 체크
     const existingPost = await prisma.post.findUnique({
@@ -146,6 +158,11 @@ export async function PATCH(
     // Q&A 카테고리인 경우만 isResolved 업데이트 가능
     if (isResolved !== undefined && existingPost.category === 'QNA') {
       updateData.isResolved = isResolved;
+    }
+
+    // 관리자만 isPinned 업데이트 가능
+    if (isPinned !== undefined && currentUser.role === 'ADMIN') {
+      updateData.isPinned = isPinned;
     }
 
     const post = await prisma.post.update({
