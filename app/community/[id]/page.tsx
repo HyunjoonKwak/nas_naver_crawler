@@ -75,6 +75,7 @@ export default function PostDetailPage() {
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [reportReason, setReportReason] = useState("SPAM");
   const [reportDescription, setReportDescription] = useState("");
+  const [reportingCommentId, setReportingCommentId] = useState<string | null>(null);
 
   useEffect(() => {
     if (session && postId) {
@@ -307,6 +308,38 @@ export default function PostDetailPage() {
       }
     } catch (error) {
       console.error("Failed to report post:", error);
+      showError("신고 접수에 실패했습니다");
+    }
+  };
+
+  const handleReportComment = async () => {
+    if (!reportReason || !reportingCommentId) {
+      showError("신고 사유를 선택해주세요");
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/comments/${reportingCommentId}/report`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          reason: reportReason,
+          description: reportDescription.trim() || null,
+        }),
+      });
+      const data = await response.json();
+
+      if (data.success) {
+        showSuccess("신고가 접수되었습니다");
+        setIsReportModalOpen(false);
+        setReportingCommentId(null);
+        setReportReason("SPAM");
+        setReportDescription("");
+      } else {
+        showError(data.error || "신고 접수에 실패했습니다");
+      }
+    } catch (error) {
+      console.error("Failed to report comment:", error);
       showError("신고 접수에 실패했습니다");
     }
   };
@@ -617,7 +650,7 @@ export default function PostDetailPage() {
                             채택
                           </button>
                         )}
-                        {(session?.user?.id === comment.author.id || isAdmin) && (
+                        {(session?.user?.id === comment.author.id || isAdmin) ? (
                           <>
                             <button
                               onClick={() => {
@@ -635,6 +668,17 @@ export default function PostDetailPage() {
                               삭제
                             </button>
                           </>
+                        ) : (
+                          // Report button for other users' comments
+                          <button
+                            onClick={() => {
+                              setReportingCommentId(comment.id);
+                              setIsReportModalOpen(true);
+                            }}
+                            className="text-sm text-gray-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400"
+                          >
+                            신고
+                          </button>
                         )}
                       </div>
                     </div>
@@ -688,7 +732,7 @@ export default function PostDetailPage() {
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6">
               <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">
-                게시글 신고
+                {reportingCommentId ? "댓글 신고" : "게시글 신고"}
               </h3>
 
               {/* Report Reason */}
@@ -729,6 +773,7 @@ export default function PostDetailPage() {
                 <button
                   onClick={() => {
                     setIsReportModalOpen(false);
+                    setReportingCommentId(null);
                     setReportReason("SPAM");
                     setReportDescription("");
                   }}
@@ -737,7 +782,7 @@ export default function PostDetailPage() {
                   취소
                 </button>
                 <button
-                  onClick={handleReportPost}
+                  onClick={reportingCommentId ? handleReportComment : handleReportPost}
                   className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors"
                 >
                   신고하기
