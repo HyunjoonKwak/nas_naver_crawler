@@ -1390,6 +1390,27 @@ export default function ComplexesPage() {
           </div> {/* 메인 컨텐츠 닫기 */}
         </div> {/* flex 컨테이너 닫기 */}
       </main>
+
+      {/* Mobile Navigation */}
+      <MobileNavigation />
+
+      {/* Global Search Modal */}
+      {isSearchOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-start justify-center pt-20 px-4 bg-black/50 backdrop-blur-sm"
+          onClick={() => setIsSearchOpen(false)}
+        >
+          <div
+            className="w-full max-w-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <GlobalSearch
+              onClose={() => setIsSearchOpen(false)}
+              autoFocus={true}
+            />
+          </div>
+        </div>
+      )}
       </div>
     </AuthGuard>
   );
@@ -1571,27 +1592,6 @@ function SingleComplexCrawler({
           <p className="text-red-800 dark:text-red-300 text-sm font-medium whitespace-pre-line">
             ❌ {error}
           </p>
-        </div>
-      )}
-
-      {/* Mobile Navigation */}
-      <MobileNavigation />
-
-      {/* Global Search Modal */}
-      {isSearchOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-start justify-center pt-20 px-4 bg-black/50 backdrop-blur-sm"
-          onClick={() => setIsSearchOpen(false)}
-        >
-          <div
-            className="w-full max-w-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <GlobalSearch
-              onClose={() => setIsSearchOpen(false)}
-              autoFocus={true}
-            />
-          </div>
         </div>
       )}
     </div>
