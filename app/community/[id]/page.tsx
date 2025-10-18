@@ -79,13 +79,45 @@ export default function PostDetailPage() {
   const [reportingCommentId, setReportingCommentId] = useState<string | null>(null);
   const [replyingToCommentId, setReplyingToCommentId] = useState<string | null>(null);
   const [replyContent, setReplyContent] = useState("");
+  const [isBookmarked, setIsBookmarked] = useState(false);
 
   useEffect(() => {
     if (session && postId) {
       fetchPost(true); // 첫 로드시 조회수 증가
       checkLikeStatus();
+      checkBookmarkStatus();
     }
   }, [session, postId]);
+
+  const checkBookmarkStatus = async () => {
+    try {
+      const response = await fetch(`/api/posts/${postId}/bookmark`);
+      const data = await response.json();
+      if (data.success) {
+        setIsBookmarked(data.isBookmarked);
+      }
+    } catch (error) {
+      console.error("Failed to check bookmark:", error);
+    }
+  };
+
+  const handleToggleBookmark = async () => {
+    try {
+      const method = isBookmarked ? "DELETE" : "POST";
+      const response = await fetch(`/api/posts/${postId}/bookmark`, { method });
+      const data = await response.json();
+
+      if (data.success) {
+        setIsBookmarked(!isBookmarked);
+        showSuccess(isBookmarked ? "북마크가 해제되었습니다" : "북마크에 추가되었습니다");
+      } else {
+        showError(data.error || "북마크 처리에 실패했습니다");
+      }
+    } catch (error) {
+      console.error("Failed to toggle bookmark:", error);
+      showError("북마크 처리에 실패했습니다");
+    }
+  };
 
   const fetchPost = async (incrementView = false) => {
     setIsLoading(true);
@@ -574,7 +606,8 @@ export default function PostDetailPage() {
               {/* Actions */}
               <div className="p-6 border-t border-gray-200 dark:border-gray-800">
                 <div className="flex items-center justify-between">
-                  <button
+                  <div className="flex items-center gap-2">
+                    <button
                     onClick={handleLike}
                     className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
                       isLiked
@@ -597,6 +630,21 @@ export default function PostDetailPage() {
                     </svg>
                     좋아요 {post.likesCount}
                   </button>
+
+                    <button
+                      onClick={handleToggleBookmark}
+                      className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+                        isBookmarked
+                          ? "bg-yellow-100 text-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-400"
+                          : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
+                      }`}
+                    >
+                      <svg className="w-5 h-5" fill={isBookmarked ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                      </svg>
+                      북마크
+                    </button>
+                  </div>
 
                   {/* Report Button - Only if not own post */}
                   {session?.user?.id !== post.author.id && (
