@@ -281,7 +281,7 @@ async function fetchComplexInfoViaCrawler(complexNo: string): Promise<any> {
 
     console.log('[complex-info] Spawning Python:', pythonScript, '--info-only', complexNo);
 
-    const pythonProcess = spawn('python3', [pythonScript, '--info-only', complexNo], {
+    const pythonProcess = spawn('python3', ['-u', pythonScript, '--info-only', complexNo], {
       cwd: baseDir,
       env: { ...process.env }
     });

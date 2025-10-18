@@ -561,7 +561,7 @@ class NASNaverRealEstateCrawler:
                 else:
                     print("✅ 동일매물 묶기 이미 활성화됨")
                 
-                # 5. 매물 목록 컨테이너 찾기
+                # 5. 매물 목록 컨테이너 찾기 (재시도 로직 포함)
                 print("매물 목록 컨테이너 찾는 중...")
                 list_container = None
                 container_selectors = [
@@ -569,15 +569,54 @@ class NASNaverRealEstateCrawler:
                     '[class*="article"]',
                     '[class*="item"]',
                 ]
-                
-                for selector in container_selectors:
-                    try:
-                        list_container = await self.page.wait_for_selector(selector, timeout=5000)
-                        if list_container:
-                            print(f"매물 목록 컨테이너 발견: {selector}")
-                            break
-                    except:
-                        continue
+
+                # 최대 3회 재시도
+                container_retry_count = 0
+                max_container_retries = 3
+
+                while not list_container and container_retry_count < max_container_retries:
+                    if container_retry_count > 0:
+                        print(f"⚠️  컨테이너를 찾지 못했습니다. 페이지 새로고침 후 재시도 ({container_retry_count}/{max_container_retries})...")
+                        await self.page.reload(wait_until='domcontentloaded', timeout=30000)
+                        await asyncio.sleep(3)
+
+                        # 매물 탭 다시 클릭
+                        try:
+                            tab_selectors = [
+                                'a[href*="article"]',
+                                'button:has-text("매물")',
+                                '[class*="article"]',
+                            ]
+
+                            for tab_selector in tab_selectors:
+                                try:
+                                    element = await self.page.wait_for_selector(tab_selector, timeout=5000)
+                                    if element:
+                                        await element.click()
+                                        print(f"매물 탭 다시 클릭 성공")
+                                        await asyncio.sleep(2)
+                                        break
+                                except:
+                                    continue
+                        except Exception as e:
+                            print(f"매물 탭 재클릭 중 오류: {e}")
+
+                    for selector in container_selectors:
+                        try:
+                            list_container = await self.page.wait_for_selector(selector, timeout=5000)
+                            if list_container:
+                                print(f"✅ 매물 목록 컨테이너 발견: {selector}")
+                                break
+                        except:
+                            continue
+
+                    if not list_container:
+                        container_retry_count += 1
+
+                if not list_container:
+                    print(f"❌ {max_container_retries}회 재시도 후에도 컨테이너를 찾지 못했습니다.")
+                    print(f"   → 이 단지는 매물이 없거나, 네이버 페이지 구조가 변경되었을 수 있습니다.")
+                    return None
                 
                 # 4. 초기 데이터 수집 대기
                 await asyncio.sleep(3)

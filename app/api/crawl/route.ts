@@ -447,9 +447,9 @@ export async function POST(request: NextRequest) {
     // 🔔 실시간 알림: 크롤링 시작
     eventBroadcaster.notifyCrawlStart(crawlId, complexNosArray.length);
 
-    // 2. Python 크롤러 실행 (crawl_id 전달)
+    // 2. Python 크롤러 실행 (crawl_id 전달, -u 플래그로 unbuffered 출력)
     const baseDir = process.env.NODE_ENV === 'production' ? '/app' : process.cwd();
-    const command = `python3 ${baseDir}/logic/nas_playwright_crawler.py "${complexNos}" "${crawlId}"`;
+    const command = `python3 -u ${baseDir}/logic/nas_playwright_crawler.py "${complexNos}" "${crawlId}"`;
 
     logger.info('Starting crawler', { crawlId, complexNos: complexNosArray.length });
 
