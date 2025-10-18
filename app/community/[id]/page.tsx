@@ -27,6 +27,12 @@ interface Post {
     email: string;
   };
   comments: Comment[];
+  images?: {
+    id: string;
+    url: string;
+    filename: string;
+    order: number;
+  }[];
   _count: {
     likes: number;
     comments: number;
@@ -445,6 +451,29 @@ export default function PostDetailPage() {
                     {post.content}
                   </p>
                 </div>
+
+                {/* Images */}
+                {post.images && post.images.length > 0 && (
+                  <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                    {post.images
+                      .sort((a, b) => a.order - b.order)
+                      .map((image) => (
+                        <a
+                          key={image.id}
+                          href={image.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="block rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 hover:opacity-90 transition-opacity"
+                        >
+                          <img
+                            src={image.url}
+                            alt={image.filename}
+                            className="w-full h-48 object-cover"
+                          />
+                        </a>
+                      ))}
+                  </div>
+                )}
               </div>
 
               {/* Actions */}

@@ -145,7 +145,7 @@ export async function POST(request: NextRequest) {
     const currentUser = await requireAuth();
 
     const body = await request.json();
-    const { title, content, category } = body;
+    const { title, content, category, images } = body;
 
     // 필수 필드 검증
     if (!title || !content || !category) {
@@ -180,24 +180,42 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 게시글 생성
-    const post = await prisma.post.create({
-      data: {
-        title,
-        content,
-        category,
-        authorId: currentUser.id,
-        isPinned: category === 'NOTICE', // 공지사항은 자동으로 고정
-      },
-      include: {
-        author: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
+    // 게시글 생성 및 이미지 저장 (트랜잭션)
+    const post = await prisma.$transaction(async (tx) => {
+      // 게시글 생성
+      const newPost = await tx.post.create({
+        data: {
+          title,
+          content,
+          category,
+          authorId: currentUser.id,
+          isPinned: category === 'NOTICE', // 공지사항은 자동으로 고정
+        },
+        include: {
+          author: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
           },
         },
-      },
+      });
+
+      // 이미지가 있으면 저장
+      if (images && Array.isArray(images) && images.length > 0) {
+        await tx.postImage.createMany({
+          data: images.map((img: any, index: number) => ({
+            postId: newPost.id,
+            url: img.url,
+            filename: img.filename,
+            size: img.size,
+            order: index,
+          })),
+        });
+      }
+
+      return newPost;
     });
 
     return NextResponse.json({

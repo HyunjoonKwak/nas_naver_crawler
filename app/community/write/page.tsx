@@ -18,6 +18,42 @@ export default function WritePostPage() {
   const [content, setContent] = useState("");
   const [category, setCategory] = useState<"FREE" | "QNA" | "NOTICE">("FREE");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [uploadedImages, setUploadedImages] = useState<any[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    setIsUploading(true);
+    try {
+      const uploadPromises = Array.from(files).map(async (file) => {
+        const formData = new FormData();
+        formData.append("file", file);
+
+        const response = await fetch("/api/upload", {
+          method: "POST",
+          body: formData,
+        });
+        return await response.json();
+      });
+
+      const results = await Promise.all(uploadPromises);
+      const successResults = results.filter((r) => r.success);
+
+      setUploadedImages([...uploadedImages, ...successResults]);
+      showSuccess(`${successResults.length}개의 이미지가 업로드되었습니다`);
+    } catch (error) {
+      console.error("Failed to upload images:", error);
+      showError("이미지 업로드에 실패했습니다");
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleRemoveImage = (index: number) => {
+    setUploadedImages(uploadedImages.filter((_, i) => i !== index));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,6 +72,7 @@ export default function WritePostPage() {
           title: title.trim(),
           content: content.trim(),
           category,
+          images: uploadedImages,
         }),
       });
       const data = await response.json();
@@ -155,6 +192,48 @@ export default function WritePostPage() {
                   <p className="mt-1 text-xs text-gray-400 text-right">
                     {content.length}자
                   </p>
+                </div>
+
+                {/* Image Upload */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    이미지 첨부 (최대 5MB, 여러 장 가능)
+                  </label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={handleImageUpload}
+                    disabled={isUploading}
+                    className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 dark:file:bg-indigo-900/30 dark:file:text-indigo-400"
+                  />
+                  {isUploading && (
+                    <p className="mt-2 text-sm text-blue-600 dark:text-blue-400">
+                      이미지 업로드 중...
+                    </p>
+                  )}
+                  {uploadedImages.length > 0 && (
+                    <div className="mt-3 grid grid-cols-3 gap-3">
+                      {uploadedImages.map((img, index) => (
+                        <div key={index} className="relative group">
+                          <img
+                            src={img.url}
+                            alt={`Upload ${index + 1}`}
+                            className="w-full h-24 object-cover rounded-lg border border-gray-200 dark:border-gray-700"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveImage(index)}
+                            className="absolute top-1 right-1 p-1 bg-red-600 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 {/* Buttons */}
