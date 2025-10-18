@@ -72,6 +72,9 @@ export default function PostDetailPage() {
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editingContent, setEditingContent] = useState("");
   const [viewIncremented, setViewIncremented] = useState(false);
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [reportReason, setReportReason] = useState("SPAM");
+  const [reportDescription, setReportDescription] = useState("");
 
   useEffect(() => {
     if (session && postId) {
@@ -277,6 +280,37 @@ export default function PostDetailPage() {
     }
   };
 
+  const handleReportPost = async () => {
+    if (!reportReason) {
+      showError("신고 사유를 선택해주세요");
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/posts/${postId}/report`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          reason: reportReason,
+          description: reportDescription.trim() || null,
+        }),
+      });
+      const data = await response.json();
+
+      if (data.success) {
+        showSuccess("신고가 접수되었습니다");
+        setIsReportModalOpen(false);
+        setReportReason("SPAM");
+        setReportDescription("");
+      } else {
+        showError(data.error || "신고 접수에 실패했습니다");
+      }
+    } catch (error) {
+      console.error("Failed to report post:", error);
+      showError("신고 접수에 실패했습니다");
+    }
+  };
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleString("ko-KR", {
       year: "numeric",
@@ -478,29 +512,44 @@ export default function PostDetailPage() {
 
               {/* Actions */}
               <div className="p-6 border-t border-gray-200 dark:border-gray-800">
-                <button
-                  onClick={handleLike}
-                  className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
-                    isLiked
-                      ? "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400"
-                      : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
-                  }`}
-                >
-                  <svg
-                    className="w-5 h-5"
-                    fill={isLiked ? "currentColor" : "none"}
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
+                <div className="flex items-center justify-between">
+                  <button
+                    onClick={handleLike}
+                    className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+                      isLiked
+                        ? "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400"
+                        : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
+                    }`}
                   >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-                    />
-                  </svg>
-                  좋아요 {post.likesCount}
-                </button>
+                    <svg
+                      className="w-5 h-5"
+                      fill={isLiked ? "currentColor" : "none"}
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                      />
+                    </svg>
+                    좋아요 {post.likesCount}
+                  </button>
+
+                  {/* Report Button - Only if not own post */}
+                  {session?.user?.id !== post.author.id && (
+                    <button
+                      onClick={() => setIsReportModalOpen(true)}
+                      className="inline-flex items-center gap-2 px-4 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9" />
+                      </svg>
+                      신고
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -633,6 +682,70 @@ export default function PostDetailPage() {
             </div>
           </div>
         </main>
+
+        {/* Report Modal */}
+        {isReportModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6">
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">
+                게시글 신고
+              </h3>
+
+              {/* Report Reason */}
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  신고 사유
+                </label>
+                <select
+                  value={reportReason}
+                  onChange={(e) => setReportReason(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                >
+                  <option value="SPAM">스팸/도배</option>
+                  <option value="ABUSE">욕설/비방</option>
+                  <option value="INAPPROPRIATE">부적절한 내용</option>
+                  <option value="COPYRIGHT">저작권 침해</option>
+                  <option value="FRAUD">사기/허위정보</option>
+                  <option value="ETC">기타</option>
+                </select>
+              </div>
+
+              {/* Description */}
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  상세 설명 (선택)
+                </label>
+                <textarea
+                  value={reportDescription}
+                  onChange={(e) => setReportDescription(e.target.value)}
+                  placeholder="신고 사유에 대해 자세히 설명해주세요"
+                  rows={4}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white resize-none"
+                />
+              </div>
+
+              {/* Buttons */}
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setIsReportModalOpen(false);
+                    setReportReason("SPAM");
+                    setReportDescription("");
+                  }}
+                  className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                >
+                  취소
+                </button>
+                <button
+                  onClick={handleReportPost}
+                  className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors"
+                >
+                  신고하기
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </AuthGuard>
   );
