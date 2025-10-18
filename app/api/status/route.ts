@@ -12,8 +12,15 @@ export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    // 인증 확인
-    await requireAuth();
+    // 인증 확인 (선택적 - 실패해도 계속 진행)
+    let isAuthenticated = false;
+    try {
+      await requireAuth();
+      isAuthenticated = true;
+    } catch (error) {
+      // 인증 실패 시 기본 정보만 제공
+      isAuthenticated = false;
+    }
 
     const baseDir = process.env.NODE_ENV === 'production' ? '/app' : process.cwd();
     
@@ -94,6 +101,7 @@ export async function GET() {
     }
 
     return NextResponse.json({
+      isAuthenticated,
       crawler: {
         scriptExists: crawlerExists,
         playwrightReady: playwrightReady,
@@ -103,10 +111,10 @@ export async function GET() {
         crawledFilesCount: crawledDataCount,
       },
       crawledDataCount,
-      favoritesCount,
+      favoritesCount: isAuthenticated ? favoritesCount : null,
       crawledDataSize,
       status: (crawlerExists && playwrightReady) ? 'ready' : 'not_ready',
-      currentCrawl, // 현재 진행 중인 크롤링 정보
+      currentCrawl: isAuthenticated ? currentCrawl : null, // 인증된 사용자만 크롤링 정보 제공
     });
 
   } catch (error: any) {

@@ -17,6 +17,7 @@ interface StatusData {
 export default function CrawlerStatus() {
   const [status, setStatus] = useState<StatusData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchStatus();
@@ -27,10 +28,15 @@ export default function CrawlerStatus() {
   const fetchStatus = async () => {
     try {
       const response = await fetch('/api/status');
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
       const data = await response.json();
       setStatus(data);
-    } catch (error) {
+      setError(null);
+    } catch (error: any) {
       console.error('Failed to fetch status:', error);
+      setError(error.message || '상태 조회 실패');
     } finally {
       setLoading(false);
     }
@@ -45,6 +51,28 @@ export default function CrawlerStatus() {
         <div className="flex items-center justify-center py-8">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
         </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-red-200 dark:border-red-800 p-6">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 bg-red-100 dark:bg-red-900/30 rounded-lg flex items-center justify-center text-xl">
+            ⚠️
+          </div>
+          <div>
+            <h2 className="text-lg font-bold text-gray-900 dark:text-white">시스템 상태</h2>
+            <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+          </div>
+        </div>
+        <button
+          onClick={fetchStatus}
+          className="w-full px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
+        >
+          다시 시도
+        </button>
       </div>
     );
   }
