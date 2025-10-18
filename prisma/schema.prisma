@@ -393,6 +393,11 @@ model Comment {
   authorId  String
   author    User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
 
+  // 대댓글 (자기 참조)
+  parentId  String?
+  parent    Comment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies   Comment[] @relation("CommentReplies")
+
   // 채택 여부 (Q&A용)
   isAccepted Boolean  @default(false)
 
@@ -407,6 +412,7 @@ model Comment {
 
   @@index([postId])
   @@index([authorId])
+  @@index([parentId])
   @@map("comments")
 }
 

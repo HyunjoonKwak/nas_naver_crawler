@@ -80,7 +80,7 @@ export async function POST(
     const currentUser = await requireAuth();
     const { id: postId } = params;
     const body = await request.json();
-    const { content } = body;
+    const { content, parentId } = body;
 
     // 필수 필드 검증
     if (!content || content.trim().length === 0) {
@@ -113,12 +113,23 @@ export async function POST(
 
     // 댓글 생성 및 알림 생성을 트랜잭션으로 처리
     const comment = await prisma.$transaction(async (tx) => {
+      // 대댓글인 경우 부모 댓글 확인
+      if (parentId) {
+        const parentComment = await tx.comment.findUnique({
+          where: { id: parentId },
+        });
+        if (!parentComment || parentComment.postId !== postId) {
+          throw new Error('Invalid parent comment');
+        }
+      }
+
       // 댓글 생성
       const newComment = await tx.comment.create({
         data: {
           content,
           postId,
           authorId: currentUser.id,
+          parentId: parentId || null,
         },
         include: {
           author: {

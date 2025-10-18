@@ -50,6 +50,7 @@ interface Comment {
     name: string;
     email: string;
   };
+  replies?: Comment[];
 }
 
 const CATEGORY_LABELS = {
@@ -76,6 +77,8 @@ export default function PostDetailPage() {
   const [reportReason, setReportReason] = useState("SPAM");
   const [reportDescription, setReportDescription] = useState("");
   const [reportingCommentId, setReportingCommentId] = useState<string | null>(null);
+  const [replyingToCommentId, setReplyingToCommentId] = useState<string | null>(null);
+  const [replyContent, setReplyContent] = useState("");
 
   useEffect(() => {
     if (session && postId) {
@@ -169,6 +172,31 @@ export default function PostDetailPage() {
       showError("댓글 작성에 실패했습니다");
     } finally {
       setIsSubmittingComment(false);
+    }
+  };
+
+  const handleSubmitReply = async (parentId: string) => {
+    if (!replyContent.trim()) return;
+
+    try {
+      const response = await fetch(`/api/posts/${postId}/comments`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: replyContent, parentId }),
+      });
+      const data = await response.json();
+
+      if (data.success) {
+        setReplyContent("");
+        setReplyingToCommentId(null);
+        await fetchPost();
+        showSuccess("답글이 작성되었습니다");
+      } else {
+        showError(data.error || "답글 작성에 실패했습니다");
+      }
+    } catch (error) {
+      console.error("Failed to submit reply:", error);
+      showError("답글 작성에 실패했습니다");
     }
   };
 
@@ -680,6 +708,13 @@ export default function PostDetailPage() {
                             신고
                           </button>
                         )}
+                        {/* Reply button */}
+                        <button
+                          onClick={() => setReplyingToCommentId(comment.id)}
+                          className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                        >
+                          답글
+                        </button>
                       </div>
                     </div>
 
@@ -713,6 +748,58 @@ export default function PostDetailPage() {
                       <p className="whitespace-pre-wrap text-gray-900 dark:text-white">
                         {comment.content}
                       </p>
+                    )}
+
+                    {/* Reply Form */}
+                    {replyingToCommentId === comment.id && (
+                      <div className="mt-4 pl-8 border-l-2 border-blue-500">
+                        <textarea
+                          value={replyContent}
+                          onChange={(e) => setReplyContent(e.target.value)}
+                          placeholder="답글을 입력하세요"
+                          rows={3}
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white resize-none"
+                        />
+                        <div className="mt-2 flex gap-2 justify-end">
+                          <button
+                            onClick={() => {
+                              setReplyingToCommentId(null);
+                              setReplyContent("");
+                            }}
+                            className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-700 rounded text-gray-700 dark:text-gray-300"
+                          >
+                            취소
+                          </button>
+                          <button
+                            onClick={() => handleSubmitReply(comment.id)}
+                            disabled={!replyContent.trim()}
+                            className="px-3 py-1 text-sm bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white rounded"
+                          >
+                            답글 작성
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Replies */}
+                    {comment.replies && comment.replies.length > 0 && (
+                      <div className="mt-4 pl-8 border-l-2 border-gray-200 dark:border-gray-700 space-y-4">
+                        {comment.replies.map((reply) => (
+                          <div key={reply.id} className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4">
+                            <div className="flex items-center gap-2 mb-2">
+                              <span className="text-sm font-medium text-gray-900 dark:text-white">
+                                {reply.author.name}
+                              </span>
+                              <span className="text-xs text-gray-500 dark:text-gray-400">
+                                {formatDate(reply.createdAt)}
+                              </span>
+                            </div>
+                            <p className="text-sm text-gray-900 dark:text-white whitespace-pre-wrap">
+                              {reply.content}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
                     )}
                   </div>
                 ))}

@@ -57,6 +57,7 @@ export async function GET(
           comments: {
             where: {
               isDeleted: false,
+              parentId: null, // Only fetch top-level comments
             },
             include: {
               author: {
@@ -64,6 +65,23 @@ export async function GET(
                   id: true,
                   name: true,
                   email: true,
+                },
+              },
+              replies: {
+                where: {
+                  isDeleted: false,
+                },
+                include: {
+                  author: {
+                    select: {
+                      id: true,
+                      name: true,
+                      email: true,
+                    },
+                  },
+                },
+                orderBy: {
+                  createdAt: 'asc',
                 },
               },
             },
