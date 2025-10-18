@@ -239,109 +239,87 @@ export const Navigation = () => {
       {/* Mobile Menu Overlay */}
       {isMobileMenuOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm md:hidden"
+          className="fixed inset-0 z-40 bg-black/30 md:hidden"
           onClick={() => setIsMobileMenuOpen(false)}
           aria-hidden="true"
         />
       )}
 
-      {/* Mobile Menu Sidebar */}
-      <div
-        id="mobile-menu"
-        className={`fixed top-0 right-0 h-full w-64 bg-white dark:bg-gray-900 shadow-2xl transform transition-transform duration-300 ease-in-out z-50 md:hidden ${
-          isMobileMenuOpen ? 'translate-x-0' : 'translate-x-full'
-        }`}
-        role="dialog"
-        aria-modal="true"
-        aria-label="모바일 메뉴"
-      >
-        {/* Mobile Menu Header */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-800">
-          <h2 className="text-lg font-bold text-gray-900 dark:text-white">메뉴</h2>
-          <button
-            onClick={() => setIsMobileMenuOpen(false)}
-            className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
-            aria-label="메뉴 닫기"
-          >
-            <svg
-              className="w-6 h-6 text-gray-700 dark:text-gray-200"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
-          </button>
-        </div>
+      {/* Mobile Dropdown Menu */}
+      {isMobileMenuOpen && (
+        <div
+          id="mobile-menu"
+          className="absolute top-full left-0 right-0 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 shadow-lg md:hidden z-50"
+          role="dialog"
+          aria-modal="true"
+          aria-label="모바일 메뉴"
+        >
+          <div className="max-w-7xl mx-auto px-4 py-3">
+            {/* Mobile Menu Links */}
+            <nav className="space-y-1 mb-3" aria-label="모바일 네비게이션">
+              {filteredNavLinks.map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                    isActive(link.href)
+                      ? 'bg-blue-600 text-white'
+                      : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800'
+                  }`}
+                  aria-current={isActive(link.href) ? 'page' : undefined}
+                >
+                  <span className="text-lg">{link.icon}</span>
+                  <span>{link.label}</span>
+                </Link>
+              ))}
+            </nav>
 
-        {/* Mobile Menu Links */}
-        <nav className="p-4 space-y-2" aria-label="모바일 네비게이션">
-          {filteredNavLinks.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                isActive(link.href)
-                  ? 'bg-blue-600 text-white'
-                  : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800'
-              }`}
-              aria-current={isActive(link.href) ? 'page' : undefined}
-            >
-              <span className="text-2xl">{link.icon}</span>
-              <span>{link.label}</span>
-            </Link>
-          ))}
-
-          {/* Mobile Auth Buttons */}
-          <div className="pt-4 border-t border-gray-200 dark:border-gray-800 space-y-2">
-            {status === 'loading' ? (
-              <div className="flex justify-center py-4">
-                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-600"></div>
-              </div>
-            ) : session ? (
-              <>
-                <div className="px-4 py-3 text-gray-700 dark:text-gray-300 text-sm">
-                  👤 {session.user?.name}
-                  {(session.user as any).role === 'ADMIN' && (
-                    <span className="ml-2 px-2 py-1 text-xs bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400 rounded">
-                      관리자
-                    </span>
-                  )}
+            {/* Mobile Auth Buttons */}
+            <div className="pt-3 border-t border-gray-200 dark:border-gray-800 space-y-1">
+              {status === 'loading' ? (
+                <div className="flex justify-center py-2">
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-gray-600"></div>
                 </div>
-                <button
-                  onClick={() => signOut({ callbackUrl: '/' })}
-                  className="w-full flex items-center gap-3 px-4 py-3 rounded-lg bg-red-600 hover:bg-red-700 text-white font-medium transition-colors"
-                >
-                  <span className="text-2xl">🚪</span>
-                  <span>로그아웃</span>
-                </button>
-              </>
-            ) : (
-              <>
-                <Link
-                  href="/"
-                  className="flex items-center gap-3 px-4 py-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium transition-colors"
-                >
-                  <span className="text-2xl">🔐</span>
-                  <span>로그인</span>
-                </Link>
-                <Link
-                  href="/auth/signup"
-                  className="flex items-center gap-3 px-4 py-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-medium transition-colors"
-                >
-                  <span className="text-2xl">📝</span>
-                  <span>회원가입</span>
-                </Link>
-              </>
-            )}
+              ) : session ? (
+                <>
+                  <div className="px-3 py-2 text-gray-700 dark:text-gray-300 text-sm">
+                    👤 {session.user?.name}
+                    {(session.user as any).role === 'ADMIN' && (
+                      <span className="ml-2 px-2 py-0.5 text-xs bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400 rounded">
+                        관리자
+                      </span>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => signOut({ callbackUrl: '/' })}
+                    className="w-full flex items-center gap-3 px-3 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white font-medium transition-colors text-sm"
+                  >
+                    <span className="text-lg">🚪</span>
+                    <span>로그아웃</span>
+                  </button>
+                </>
+              ) : (
+                <div className="flex gap-2">
+                  <Link
+                    href="/"
+                    className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium transition-colors text-sm"
+                  >
+                    <span>🔐</span>
+                    <span>로그인</span>
+                  </Link>
+                  <Link
+                    href="/auth/signup"
+                    className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-medium transition-colors text-sm"
+                  >
+                    <span>📝</span>
+                    <span>회원가입</span>
+                  </Link>
+                </div>
+              )}
+            </div>
           </div>
-        </nav>
-      </div>
+        </div>
+      )}
 
       {/* 크롤링 상태 인디케이터 (모든 페이지에 표시) */}
       {crawlingStatus.isActive && (

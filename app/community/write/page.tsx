@@ -55,135 +55,105 @@ export default function WritePostPage() {
 
   return (
     <AuthGuard>
-      <div className="min-h-screen bg-gray-50 dark:bg-black pb-20 md:pb-0">
-        {/* Desktop Navigation */}
-        <div className="hidden md:block">
-          <Navigation />
-        </div>
-
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
         {/* Mobile Navigation */}
         <div className="md:hidden">
           <MobileNavigation />
         </div>
 
-        {/* Main Content */}
-        <main className="md:ml-64 p-4 md:p-8">
-          <div className="max-w-4xl mx-auto">
-            {/* Back Button */}
-            <Link
-              href="/community"
-              className="inline-flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white mb-6"
-            >
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
+        {/* Main Content - Full Width for Focus */}
+        <main className="min-h-screen p-4 md:p-8">
+          <div className="max-w-3xl mx-auto">
+            {/* Header with Back Button */}
+            <div className="flex items-center justify-between mb-6">
+              <Link
+                href="/community"
+                className="inline-flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M15 19l-7-7 7-7"
-                />
-              </svg>
-              목록으로
-            </Link>
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+                목록으로
+              </Link>
+              <h1 className="text-xl font-bold text-gray-900 dark:text-white">
+                게시글 작성
+              </h1>
+              <div className="w-20"></div> {/* Spacer for centering */}
+            </div>
 
             {/* Form */}
-            <div className="bg-white dark:bg-gray-900 rounded-lg shadow overflow-hidden">
-              <div className="p-6 border-b border-gray-200 dark:border-gray-800">
-                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-                  게시글 작성
-                </h1>
-              </div>
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
 
-              <form onSubmit={handleSubmit} className="p-6 space-y-6">
+              <form onSubmit={handleSubmit} className="p-6 space-y-5">
                 {/* Category */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    게시판 선택
+                <div className="flex gap-6 pb-4 border-b border-gray-200 dark:border-gray-700">
+                  <label className="flex items-center cursor-pointer">
+                    <input
+                      type="radio"
+                      value="FREE"
+                      checked={category === "FREE"}
+                      onChange={(e) => setCategory(e.target.value as any)}
+                      className="w-4 h-4 text-indigo-600 border-gray-300 focus:ring-indigo-500"
+                    />
+                    <span className="ml-2 text-sm text-gray-900 dark:text-white font-medium">
+                      자유게시판
+                    </span>
                   </label>
-                  <div className="flex gap-4">
-                    <label className="flex items-center">
-                      <input
-                        type="radio"
-                        value="FREE"
-                        checked={category === "FREE"}
-                        onChange={(e) => setCategory(e.target.value as any)}
-                        className="w-4 h-4 text-indigo-600 border-gray-300 focus:ring-indigo-500"
-                      />
-                      <span className="ml-2 text-gray-900 dark:text-white">
-                        자유게시판
-                      </span>
-                    </label>
-                    <label className="flex items-center">
-                      <input
-                        type="radio"
-                        value="QNA"
-                        checked={category === "QNA"}
-                        onChange={(e) => setCategory(e.target.value as any)}
-                        className="w-4 h-4 text-indigo-600 border-gray-300 focus:ring-indigo-500"
-                      />
-                      <span className="ml-2 text-gray-900 dark:text-white">
-                        Q&A
-                      </span>
-                    </label>
-                  </div>
-                  {category === "QNA" && (
-                    <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-                      Q&A 게시판에서는 질문에 대한 답변을 채택할 수 있습니다
-                    </p>
-                  )}
+                  <label className="flex items-center cursor-pointer">
+                    <input
+                      type="radio"
+                      value="QNA"
+                      checked={category === "QNA"}
+                      onChange={(e) => setCategory(e.target.value as any)}
+                      className="w-4 h-4 text-indigo-600 border-gray-300 focus:ring-indigo-500"
+                    />
+                    <span className="ml-2 text-sm text-gray-900 dark:text-white font-medium">
+                      Q&A
+                    </span>
+                  </label>
                 </div>
 
                 {/* Title */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    제목
-                  </label>
                   <input
                     type="text"
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
                     placeholder="제목을 입력하세요"
                     maxLength={200}
-                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-base"
                   />
-                  <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                  <p className="mt-1 text-xs text-gray-400 text-right">
                     {title.length}/200
                   </p>
                 </div>
 
                 {/* Content */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    내용
-                  </label>
                   <textarea
                     value={content}
                     onChange={(e) => setContent(e.target.value)}
                     placeholder="내용을 입력하세요"
-                    rows={15}
-                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
+                    rows={18}
+                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none text-base"
                   />
-                  <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                  <p className="mt-1 text-xs text-gray-400 text-right">
                     {content.length}자
                   </p>
                 </div>
 
                 {/* Buttons */}
-                <div className="flex gap-3 justify-end">
+                <div className="flex gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
                   <Link
                     href="/community"
-                    className="px-6 py-3 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-700 dark:text-gray-300 font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                    className="flex-1 px-6 py-3 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-center"
                   >
                     취소
                   </Link>
                   <button
                     type="submit"
                     disabled={isSubmitting || !title.trim() || !content.trim()}
-                    className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white rounded-lg font-medium transition-colors"
+                    className="flex-1 px-6 py-3 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-colors"
                   >
                     {isSubmitting ? "작성 중..." : "작성 완료"}
                   </button>
