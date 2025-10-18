@@ -9,6 +9,8 @@ import { prisma } from '@/lib/prisma';
 import { requireAuth } from '@/lib/auth-utils';
 import { createLogger } from '@/lib/logger';
 import { rateLimit, rateLimitPresets } from '@/lib/rate-limit';
+import { validateRequest } from '@/lib/validation';
+import { createPostSchema } from '@/lib/schemas';
 
 const logger = createLogger('POSTS');
 
@@ -125,30 +127,11 @@ export async function POST(request: NextRequest) {
 
     const currentUser = await requireAuth();
 
-    const body = await request.json();
-    const { title, content, category, images } = body;
+    // Zod 스키마 검증
+    const validation = await validateRequest(request, createPostSchema);
+    if (!validation.success) return validation.response;
 
-    // 필수 필드 검증
-    if (!title || !content || !category) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Title, content, and category are required',
-        },
-        { status: 400 }
-      );
-    }
-
-    // 카테고리 검증
-    if (!['FREE', 'QNA', 'NOTICE'].includes(category)) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Invalid category',
-        },
-        { status: 400 }
-      );
-    }
+    const { title, content, category, images } = validation.data;
 
     // 공지사항은 관리자만 작성 가능
     if (category === 'NOTICE' && currentUser.role !== 'ADMIN') {

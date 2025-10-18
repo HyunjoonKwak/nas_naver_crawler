@@ -9,6 +9,8 @@ import { prisma } from '@/lib/prisma';
 import { requireAuth } from '@/lib/auth-utils';
 import { rateLimit, rateLimitPresets } from '@/lib/rate-limit';
 import { createLogger } from '@/lib/logger';
+import { validateRequest } from '@/lib/validation';
+import { createCommentSchema } from '@/lib/schemas';
 
 const logger = createLogger('COMMENTS');
 
@@ -87,19 +89,12 @@ export async function POST(
 
     const currentUser = await requireAuth();
     const { id: postId } = params;
-    const body = await request.json();
-    const { content, parentId } = body;
 
-    // 필수 필드 검증
-    if (!content || content.trim().length === 0) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Comment content is required',
-        },
-        { status: 400 }
-      );
-    }
+    // Zod 스키마 검증
+    const validation = await validateRequest(request, createCommentSchema);
+    if (!validation.success) return validation.response;
+
+    const { content, parentId } = validation.data;
 
     // 게시글 존재 확인
     const post = await prisma.post.findUnique({
