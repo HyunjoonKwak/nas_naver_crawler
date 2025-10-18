@@ -68,32 +68,32 @@ export default function LandingPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
-      <div className="container mx-auto px-4 py-8">
-        <div className="grid lg:grid-cols-2 gap-8 items-center max-w-6xl mx-auto min-h-[calc(100vh-8rem)]">
+      <div className="container mx-auto px-4 py-6">
+        <div className="grid lg:grid-cols-2 gap-8 items-center max-w-6xl mx-auto min-h-[calc(100vh-6rem)]">
 
           {/* Left: Hero Section */}
           <div className="text-center lg:text-left">
             {/* Logo & Title */}
-            <div className="mb-6">
-              <div className="inline-block p-5 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-3xl shadow-2xl mb-4">
-                <svg className="w-14 h-14 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="mb-5">
+              <div className="inline-block p-4 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-3xl shadow-2xl mb-3">
+                <svg className="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
                 </svg>
               </div>
-              <h1 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-3">
+              <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 dark:text-white mb-2">
                 부동산 인사이트
               </h1>
-              <p className="text-lg md:text-xl text-gray-600 dark:text-gray-400 mb-2">
+              <p className="text-base md:text-lg text-gray-600 dark:text-gray-400 mb-1.5">
                 스마트한 부동산 정보 관리시스템
               </p>
-              <p className="text-sm md:text-base text-gray-500 dark:text-gray-500 max-w-xl mx-auto lg:mx-0">
+              <p className="text-sm text-gray-500 dark:text-gray-500 max-w-xl mx-auto lg:mx-0">
                 관심 아파트 단지의 매물 정보를 자동으로 수집하고 분석하여
                 효율적인 투자 결정을 도와드립니다
               </p>
             </div>
 
             {/* Features */}
-            <div className="grid gap-2.5 max-w-xl mx-auto lg:mx-0">
+            <div className="grid gap-2 max-w-xl mx-auto lg:mx-0">
               <div className="flex items-start gap-3 text-left p-3 bg-white/50 dark:bg-gray-800/50 rounded-xl backdrop-blur-sm">
                 <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center flex-shrink-0">
                   <svg className="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -140,14 +140,14 @@ export default function LandingPage() {
 
           {/* Right: Login Form */}
           <div className="w-full max-w-md mx-auto">
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 p-6">
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-5 text-center">
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 p-5">
+              <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4 text-center">
                 로그인
               </h2>
 
-              <form onSubmit={handleSubmit} className="space-y-4">
+              <form onSubmit={handleSubmit} className="space-y-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
                     이메일
                   </label>
                   <input
@@ -156,13 +156,13 @@ export default function LandingPage() {
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     placeholder="example@email.com"
                     disabled={isLoading}
-                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder:text-gray-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    className="w-full px-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder:text-gray-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
                     비밀번호
                   </label>
                   <input
@@ -171,7 +171,7 @@ export default function LandingPage() {
                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                     placeholder="••••••••"
                     disabled={isLoading}
-                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder:text-gray-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    className="w-full px-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder:text-gray-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     required
                   />
                 </div>
@@ -179,7 +179,7 @@ export default function LandingPage() {
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold py-3 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg"
+                  className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold py-2.5 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg"
                 >
                   {isLoading ? (
                     <>
@@ -193,7 +193,7 @@ export default function LandingPage() {
               </form>
 
               {/* 아이디/비밀번호 찾기 */}
-              <div className="mt-4 flex justify-center gap-3 text-sm">
+              <div className="mt-3 flex justify-center gap-3 text-xs">
                 <Link
                   href="/auth/find-email"
                   className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200"
@@ -210,8 +210,8 @@ export default function LandingPage() {
               </div>
 
               {/* 회원가입 링크 */}
-              <div className="mt-6 text-center">
-                <p className="text-sm text-gray-600 dark:text-gray-400">
+              <div className="mt-4 text-center">
+                <p className="text-xs text-gray-600 dark:text-gray-400">
                   계정이 없으신가요?{" "}
                   <Link
                     href="/auth/signup"
@@ -227,9 +227,9 @@ export default function LandingPage() {
       </div>
 
       {/* Footer */}
-      <footer className="border-t border-gray-200 dark:border-gray-800 py-6 mt-8">
+      <footer className="border-t border-gray-200 dark:border-gray-800 py-4 mt-6">
         <div className="container mx-auto px-4 text-center">
-          <p className="text-xs text-gray-600 dark:text-gray-400">
+          <p className="text-xs text-gray-500 dark:text-gray-500">
             © 2025 specialrisk. All rights reserved.
           </p>
         </div>
