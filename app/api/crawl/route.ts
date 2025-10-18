@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { exec } from 'child_process';
-import { promisify } from 'util';
+import { spawn } from 'child_process';
 import { prisma } from '@/lib/prisma';
 import { requireAuth } from '@/lib/auth-utils';
 import { rateLimit, rateLimitPresets } from '@/lib/rate-limit';
@@ -23,7 +22,6 @@ import {
 import { eventBroadcaster } from '@/lib/eventBroadcaster';
 import { calculateDynamicTimeout } from '@/lib/timeoutCalculator';
 
-const execAsync = promisify(exec);
 const logger = createLogger('CRAWL');
 
 export const dynamic = 'force-dynamic';
@@ -493,21 +491,61 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    const { stdout, stderr } = await execAsync(command, {
-      cwd: baseDir,
-      maxBuffer: 10 * 1024 * 1024, // 10MB
-      timeout: dynamicTimeout, // 동적 타임아웃 (크롤링 히스토리 기반 계산)
-    });
+    // Python 크롤러를 spawn으로 실행 (실시간 로그 출력)
+    await new Promise<void>((resolve, reject) => {
+      const pythonProcess = spawn('python3', [
+        '-u',  // unbuffered output
+        `${baseDir}/logic/nas_playwright_crawler.py`,
+        complexNos,
+        crawlId
+      ], {
+        cwd: baseDir,
+        env: process.env,
+      });
 
-    // Python 출력을 로그에 표시
-    if (stdout) {
-      console.log('=== Python Crawler Output ===');
-      console.log(stdout);
-    }
-    if (stderr) {
-      console.error('=== Python Crawler Errors ===');
-      console.error(stderr);
-    }
+      let hasOutput = false;
+
+      // stdout 실시간 출력
+      pythonProcess.stdout.on('data', (data) => {
+        const output = data.toString();
+        if (!hasOutput) {
+          console.log('=== Python Crawler Output ===');
+          hasOutput = true;
+        }
+        process.stdout.write(output);  // 실시간 출력
+      });
+
+      // stderr 실시간 출력
+      pythonProcess.stderr.on('data', (data) => {
+        const output = data.toString();
+        process.stderr.write(output);  // 실시간 에러 출력
+      });
+
+      // 프로세스 종료 처리
+      pythonProcess.on('close', (code) => {
+        if (code === 0) {
+          resolve();
+        } else {
+          reject(new Error(`Python crawler exited with code ${code}`));
+        }
+      });
+
+      // 프로세스 에러 처리
+      pythonProcess.on('error', (error) => {
+        reject(error);
+      });
+
+      // 타임아웃 설정
+      const timeoutId = setTimeout(() => {
+        pythonProcess.kill('SIGTERM');
+        reject(new Error('Crawler timeout'));
+      }, dynamicTimeout);
+
+      // 프로세스 종료 시 타임아웃 클리어
+      pythonProcess.on('close', () => {
+        clearTimeout(timeoutId);
+      });
+    });
 
     await prisma.crawlHistory.update({
       where: { id: crawlId },
