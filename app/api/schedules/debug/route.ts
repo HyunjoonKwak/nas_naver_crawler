@@ -6,6 +6,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from "@/lib/prisma";
 import { getActiveSchedules } from '@/lib/scheduler';
+import { createLogger } from '@/lib/logger';
+
+const logger = createLogger('SCHEDULER_DEBUG');
 
 
 /**
@@ -98,7 +101,7 @@ export async function GET(request: NextRequest) {
       memorySchedules: activeSchedulesInMemory,
     });
   } catch (error: any) {
-    console.error('Failed to get scheduler debug info:', error);
+    logger.error('Failed to get scheduler debug info', error);
     return NextResponse.json(
       {
         success: false,

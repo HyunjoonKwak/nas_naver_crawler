@@ -1,11 +1,17 @@
-import { NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
+import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { rateLimit, rateLimitPresets } from "@/lib/rate-limit";
+import { createLogger } from "@/lib/logger";
 import bcrypt from "bcryptjs";
 
-const prisma = new PrismaClient();
+const logger = createLogger('AUTH-RESET-PASSWORD');
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
+    // Rate Limiting: 10분당 3회
+    const rateLimitResponse = rateLimit(request, rateLimitPresets.passwordReset);
+    if (rateLimitResponse) return rateLimitResponse;
+
     const { email, name, newPassword } = await request.json();
 
     if (!email || !name || !newPassword) {
@@ -50,17 +56,20 @@ export async function POST(request: Request) {
       },
     });
 
+    logger.info('Password reset successful', {
+      userId: user.id,
+      email: user.email
+    });
+
     return NextResponse.json({
       success: true,
       message: "비밀번호가 성공적으로 재설정되었습니다.",
     });
   } catch (error) {
-    console.error("Reset password error:", error);
+    logger.error("Reset password error", error);
     return NextResponse.json(
       { success: false, error: "서버 오류가 발생했습니다." },
       { status: 500 }
     );
-  } finally {
-    await prisma.$disconnect();
   }
 }

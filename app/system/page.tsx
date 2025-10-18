@@ -40,7 +40,6 @@ export default function SystemPage() {
     // Refresh when page becomes visible (탭 전환 시에만)
     const handleVisibilityChange = () => {
       if (!document.hidden) {
-        console.log('[System] Page visible, refreshing status...');
         fetchStatus();
       }
     };
@@ -58,7 +57,7 @@ export default function SystemPage() {
       const data = await response.json();
       setStatus(data);
     } catch (error) {
-      console.error('Failed to fetch status:', error);
+      // 상태 조회 실패는 조용히 처리 (페이지는 계속 표시)
     }
   };
 

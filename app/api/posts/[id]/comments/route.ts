@@ -7,6 +7,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAuth } from '@/lib/auth-utils';
+import { rateLimit, rateLimitPresets } from '@/lib/rate-limit';
+import { createLogger } from '@/lib/logger';
+
+const logger = createLogger('COMMENTS');
 
 /**
  * GET /api/posts/[id]/comments - 댓글 목록 조회
@@ -58,7 +62,7 @@ export async function GET(
       comments,
     });
   } catch (error: any) {
-    console.error('Failed to fetch comments:', error);
+    logger.error('Failed to fetch comments', error, { postId: params.id });
     return NextResponse.json(
       {
         success: false,
@@ -77,6 +81,10 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
+    // Rate Limiting: 분당 10회
+    const rateLimitResponse = rateLimit(request, rateLimitPresets.comment);
+    if (rateLimitResponse) return rateLimitResponse;
+
     const currentUser = await requireAuth();
     const { id: postId } = params;
     const body = await request.json();
@@ -158,12 +166,22 @@ export async function POST(
       return newComment;
     });
 
+    logger.info('Comment created successfully', {
+      commentId: comment.id,
+      postId: params.id,
+      authorId: currentUser.id,
+      isReply: !!parentId
+    });
+
     return NextResponse.json({
       success: true,
       comment,
     });
   } catch (error: any) {
-    console.error('Failed to create comment:', error);
+    logger.error('Failed to create comment', error, {
+      postId: params.id,
+      userId: currentUser?.id
+    });
     return NextResponse.json(
       {
         success: false,

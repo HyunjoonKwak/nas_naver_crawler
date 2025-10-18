@@ -7,6 +7,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAuth } from '@/lib/auth-utils';
+import { createLogger } from '@/lib/logger';
+import { rateLimit, rateLimitPresets } from '@/lib/rate-limit';
+
+const logger = createLogger('POSTS');
 
 /**
  * GET /api/posts - 게시글 목록 조회
@@ -40,55 +44,25 @@ export async function GET(request: NextRequest) {
       ];
     }
 
-    // 정렬 조건
-    let orderBy: any = {};
+    // 정렬 조건 (고정 게시글이 항상 상단에 오도록 설정)
+    let orderBy: any[] = [];
     switch (sortBy) {
       case 'popular':
-        orderBy = { views: 'desc' };
+        orderBy = [{ isPinned: 'desc' }, { views: 'desc' }];
         break;
       case 'likes':
-        orderBy = { likesCount: 'desc' };
+        orderBy = [{ isPinned: 'desc' }, { likesCount: 'desc' }];
         break;
       case 'recent':
       default:
-        orderBy = { createdAt: 'desc' };
+        orderBy = [{ isPinned: 'desc' }, { createdAt: 'desc' }];
         break;
     }
 
-    // 공지사항은 항상 상단 고정
-    const pinnedPosts = category === 'NOTICE' || !category
-      ? await prisma.post.findMany({
-          where: {
-            ...where,
-            isPinned: true,
-          },
-          include: {
-            author: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-              },
-            },
-            _count: {
-              select: {
-                comments: true,
-              },
-            },
-          },
-          orderBy: {
-            createdAt: 'desc',
-          },
-        })
-      : [];
-
-    // 일반 게시글 조회
+    // 고정 게시글과 일반 게시글을 하나의 쿼리로 조회 (DB 요청 횟수 감소)
     const [posts, total] = await Promise.all([
       prisma.post.findMany({
-        where: {
-          ...where,
-          isPinned: false,
-        },
+        where,
         include: {
           author: {
             select: {
@@ -103,21 +77,24 @@ export async function GET(request: NextRequest) {
             },
           },
         },
-        orderBy,
+        orderBy, // 고정 게시글이 항상 상단에 표시됨
         skip,
         take: limit,
       }),
-      prisma.post.count({
-        where: {
-          ...where,
-          isPinned: false,
-        },
-      }),
+      prisma.post.count({ where }),
     ]);
+
+    logger.debug('Posts fetched successfully', {
+      count: posts.length,
+      total,
+      page,
+      category,
+      sortBy
+    });
 
     return NextResponse.json({
       success: true,
-      posts: [...pinnedPosts, ...posts],
+      posts,
       pagination: {
         page,
         limit,
@@ -126,7 +103,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error: any) {
-    console.error('Failed to fetch posts:', error);
+    logger.error('Failed to fetch posts', error, { category, search, sortBy });
     return NextResponse.json(
       {
         success: false,
@@ -142,6 +119,10 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
+    // Rate Limiting: 분당 5회
+    const rateLimitResponse = rateLimit(request, rateLimitPresets.post);
+    if (rateLimitResponse) return rateLimitResponse;
+
     const currentUser = await requireAuth();
 
     const body = await request.json();
@@ -218,12 +199,20 @@ export async function POST(request: NextRequest) {
       return newPost;
     });
 
+    logger.info('Post created successfully', {
+      postId: post.id,
+      category: post.category,
+      authorId: currentUser.id
+    });
+
     return NextResponse.json({
       success: true,
       post,
     });
   } catch (error: any) {
-    console.error('Failed to create post:', error);
+    logger.error('Failed to create post', error, {
+      userId: (error as any).userId
+    });
     return NextResponse.json(
       {
         success: false,

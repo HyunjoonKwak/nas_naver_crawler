@@ -83,9 +83,9 @@ class Logger {
 
       console.error(this.format('error', message, errorContext));
 
-      // 프로덕션: 외부 로깅 서비스 전송
-      if (process.env.NODE_ENV === 'production') {
-        // TODO: Sentry.captureException(error)
+      // 프로덕션: 외부 로깅 서비스 전송 (Sentry, LogRocket 등)
+      if (process.env.NODE_ENV === 'production' && error instanceof Error) {
+        // 향후 Sentry 설정 시: Sentry.captureException(error, { extra: context })
       }
     }
   }

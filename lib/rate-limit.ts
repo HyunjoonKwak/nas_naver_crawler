@@ -117,6 +117,18 @@ export const rateLimitPresets = {
   // 인증 API: 5분당 5회 (브루트포스 방지)
   auth: { max: 5, windowMs: 5 * 60 * 1000 },
 
+  // 회원가입: 시간당 3회
+  register: { max: 3, windowMs: 60 * 60 * 1000 },
+
+  // 게시글 작성: 분당 5회
+  post: { max: 5, windowMs: 60 * 1000 },
+
+  // 댓글 작성: 분당 10회
+  comment: { max: 10, windowMs: 60 * 1000 },
+
+  // 비밀번호 재설정: 10분당 3회
+  passwordReset: { max: 3, windowMs: 10 * 60 * 1000 },
+
   // DB 초기화: 시간당 3회
   dangerous: { max: 3, windowMs: 60 * 60 * 1000 },
 };

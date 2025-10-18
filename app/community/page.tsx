@@ -103,7 +103,6 @@ export default function CommunityPage() {
         showError(data.error || "게시글 목록을 불러오는데 실패했습니다");
       }
     } catch (error) {
-      console.error("Failed to fetch posts:", error);
       showError("게시글 목록을 불러오는데 실패했습니다");
     } finally {
       setIsLoading(false);

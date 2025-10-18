@@ -88,7 +88,7 @@ export const Navigation = () => {
         setUnreadCount(data.unreadCount);
       }
     } catch (error) {
-      console.error('Failed to fetch notifications:', error);
+      // 알림 조회 실패는 조용히 처리 (UX 방해 방지)
     }
   };
 
@@ -103,7 +103,7 @@ export const Navigation = () => {
         fetchNotifications();
       }
     } catch (error) {
-      console.error('Failed to mark notification as read:', error);
+      // 읽음 표시 실패는 조용히 처리
     }
   };
 
@@ -118,7 +118,7 @@ export const Navigation = () => {
         fetchNotifications();
       }
     } catch (error) {
-      console.error('Failed to mark all as read:', error);
+      // 전체 읽음 표시 실패는 조용히 처리
     }
   };
 
