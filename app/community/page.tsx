@@ -201,9 +201,9 @@ export default function CommunityPage() {
           </div>
 
           {/* Controls */}
-          <div className="mb-6 flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
+          <div className="mb-6 flex flex-col md:flex-row gap-4 justify-between items-start md:items-center">
             {/* Search */}
-            <form onSubmit={handleSearch} className="w-full sm:flex-1 sm:max-w-md">
+            <form onSubmit={handleSearch} className="w-full md:flex-1 md:max-w-sm">
               <div className="relative">
                 <input
                   type="text"
@@ -229,11 +229,11 @@ export default function CommunityPage() {
             </form>
 
             {/* Sort & Write */}
-            <div className="flex gap-2 items-center flex-shrink-0 w-full sm:w-auto">
+            <div className="flex gap-2 items-center flex-shrink-0 w-full md:w-auto">
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as any)}
-                className="flex-1 sm:flex-none px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white text-sm"
+                className="flex-1 md:flex-none px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white text-sm"
               >
                 <option value="recent">최신순</option>
                 <option value="popular">조회순</option>
@@ -242,7 +242,7 @@ export default function CommunityPage() {
 
               <Link
                 href="/community/write"
-                className="flex-1 sm:flex-none px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium transition-colors text-sm whitespace-nowrap text-center"
+                className="flex-1 md:flex-none px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium transition-colors text-sm whitespace-nowrap text-center"
               >
                 ✏️ 글쓰기
               </Link>
