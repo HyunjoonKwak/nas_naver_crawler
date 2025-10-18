@@ -398,29 +398,29 @@ export const DatabaseSection = ({
                     className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
                   />
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap">
+                <td className="px-4 py-3 whitespace-nowrap">
                   <div className="text-sm font-medium text-gray-900 dark:text-white">
                     {file.filename}
                   </div>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap">
+                <td className="px-4 py-3 whitespace-nowrap">
                   <div className="text-sm text-gray-500 dark:text-gray-400">
                     {formatDate(file.createdAt)}
                   </div>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap">
+                <td className="px-4 py-3 whitespace-nowrap">
                   <div className="text-sm text-gray-500 dark:text-gray-400">
                     {formatSize(file.size)}
                   </div>
                 </td>
                 {fileType === 'csv' && file.type === 'csv' && (
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-4 py-3 whitespace-nowrap">
                     <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
                       {file.rowCount}행
                     </span>
                   </td>
                 )}
-                <td className="px-6 py-4 whitespace-nowrap text-sm">
+                <td className="px-4 py-3 whitespace-nowrap text-sm">
                   <div className="flex items-center gap-2">
                     {file.type === 'json' && (
                       <a
@@ -453,81 +453,68 @@ export const DatabaseSection = ({
       {dbLoading ? (
         <LoadingSpinner color="cyan-600" />
       ) : dbStats ? (
-        <div className="space-y-6">
+        <div className="space-y-4">
           {/* Page Header */}
-          <div className="mb-8 flex items-start justify-between">
+          <div className="mb-4 flex items-start justify-between">
             <div>
-              <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+              <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-1">
                 데이터베이스 현황
               </h2>
-              <p className="text-gray-600 dark:text-gray-400">
+              <p className="text-sm text-gray-500 dark:text-gray-400">
                 저장된 데이터와 크롤링 통계를 확인하세요
               </p>
             </div>
             <button
               onClick={() => setShowResetModal(true)}
-              className="px-6 py-3 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition-colors flex items-center gap-2 shadow-lg"
+              className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-md transition-colors flex items-center gap-1.5"
             >
-              🗑️ 데이터베이스 초기화
+              🗑️ DB 초기화
             </button>
           </div>
 
           {/* Database Sub-Tabs */}
-          <div className="flex gap-2 border-b border-gray-200 dark:border-gray-700 mb-6">
-            <button
-              onClick={() => setDatabaseTab('stats')}
-              className={`px-6 py-3 font-semibold transition-all relative ${
-                databaseTab === 'stats'
-                  ? 'text-cyan-600 dark:text-cyan-400'
-                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
-              }`}
-            >
-              <span className="flex items-center gap-2">
-                📊 통계
-              </span>
-              {databaseTab === 'stats' && (
-                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-cyan-600 to-blue-600"></div>
-              )}
-            </button>
-            <button
-              onClick={() => setDatabaseTab('history')}
-              className={`px-6 py-3 font-semibold transition-all relative ${
-                databaseTab === 'history'
-                  ? 'text-purple-600 dark:text-purple-400'
-                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
-              }`}
-            >
-              <span className="flex items-center gap-2">
-                📚 크롤링 히스토리
-              </span>
-              {databaseTab === 'history' && (
-                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-purple-600 to-pink-600"></div>
-              )}
-            </button>
-            {isAdmin && (
+          <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 mb-4">
+            <div className="flex gap-1 p-2">
               <button
-                onClick={() => setDatabaseTab('files')}
-                className={`px-6 py-3 font-semibold transition-all relative ${
-                  databaseTab === 'files'
-                    ? 'text-orange-600 dark:text-orange-400'
-                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                onClick={() => setDatabaseTab('stats')}
+                className={`flex-1 px-3 py-2 rounded-md text-sm font-medium transition-all ${
+                  databaseTab === 'stats'
+                    ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
+                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/50'
                 }`}
               >
-                <span className="flex items-center gap-2">
-                  📁 파일 뷰어
-                </span>
-                {databaseTab === 'files' && (
-                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-orange-600 to-amber-600"></div>
-                )}
+                📊 통계
               </button>
-            )}
+              <button
+                onClick={() => setDatabaseTab('history')}
+                className={`flex-1 px-3 py-2 rounded-md text-sm font-medium transition-all ${
+                  databaseTab === 'history'
+                    ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
+                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/50'
+                }`}
+              >
+                📚 히스토리
+              </button>
+              {isAdmin && (
+                <button
+                  onClick={() => setDatabaseTab('files')}
+                  className={`flex-1 px-3 py-2 rounded-md text-sm font-medium transition-all ${
+                    databaseTab === 'files'
+                      ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
+                      : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/50'
+                  }`}
+                >
+                  📁 파일
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Stats Tab Content */}
           {databaseTab === 'stats' && (
             <>
               {/* Database Stats */}
-              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-800 p-8">
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 p-4">
                 <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-6">
                   데이터 통계
                 </h3>
@@ -592,47 +579,47 @@ export const DatabaseSection = ({
               </div>
 
               {/* Crawling Stats */}
-              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-800 p-8">
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 p-4">
                 <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-6">
                   크롤링 통계
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                   <div className="bg-gradient-to-br from-purple-50 to-violet-50 dark:from-purple-900/20 dark:to-violet-900/20 rounded-xl p-6 border border-purple-100 dark:border-purple-800">
-                    <div className="text-3xl mb-3">📊</div>
+                    <div className="text-xl mb-3">📊</div>
                     <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">
                       전체 크롤링
                     </h4>
-                    <div className="text-3xl font-bold text-purple-600 dark:text-purple-400">
+                    <div className="text-xl font-bold text-purple-600 dark:text-purple-400">
                       {dbStats.crawling.totalCrawls}
                     </div>
                   </div>
 
                   <div className="bg-gradient-to-br from-green-50 to-teal-50 dark:from-green-900/20 dark:to-teal-900/20 rounded-xl p-6 border border-green-100 dark:border-green-800">
-                    <div className="text-3xl mb-3">✅</div>
+                    <div className="text-xl mb-3">✅</div>
                     <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">
                       완료
                     </h4>
-                    <div className="text-3xl font-bold text-green-600 dark:text-green-400">
+                    <div className="text-xl font-bold text-green-600 dark:text-green-400">
                       {dbStats.crawling.completedCrawls}
                     </div>
                   </div>
 
                   <div className="bg-gradient-to-br from-red-50 to-orange-50 dark:from-red-900/20 dark:to-orange-900/20 rounded-xl p-6 border border-red-100 dark:border-red-800">
-                    <div className="text-3xl mb-3">❌</div>
+                    <div className="text-xl mb-3">❌</div>
                     <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">
                       실패
                     </h4>
-                    <div className="text-3xl font-bold text-red-600 dark:text-red-400">
+                    <div className="text-xl font-bold text-red-600 dark:text-red-400">
                       {dbStats.crawling.failedCrawls}
                     </div>
                   </div>
 
                   <div className="bg-gradient-to-br from-cyan-50 to-blue-50 dark:from-cyan-900/20 dark:to-blue-900/20 rounded-xl p-6 border border-cyan-100 dark:border-cyan-800">
-                    <div className="text-3xl mb-3">⏱️</div>
+                    <div className="text-xl mb-3">⏱️</div>
                     <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">
                       평균 소요시간
                     </h4>
-                    <div className="text-2xl font-bold text-cyan-600 dark:text-cyan-400">
+                    <div className="text-lg font-bold text-cyan-600 dark:text-cyan-400">
                       {Math.floor(dbStats.crawling.avgDuration / 60)}분 {dbStats.crawling.avgDuration % 60}초
                     </div>
                   </div>
@@ -641,7 +628,7 @@ export const DatabaseSection = ({
 
               {/* Recent Crawls */}
               {dbStats.crawling.recentCrawls.length > 0 && (
-                <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-800 p-8">
+                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 p-4">
                   <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-6">
                     최근 크롤링 기록 (최근 5개)
                   </h3>
@@ -699,7 +686,7 @@ export const DatabaseSection = ({
               )}
 
               {/* System Status - integrated into DB section */}
-              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-800 p-8">
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 p-4">
                 <div className="flex items-center justify-between flex-wrap gap-4">
                   <div>
                     <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
@@ -716,7 +703,7 @@ export const DatabaseSection = ({
                         ? 'bg-green-50 dark:bg-green-900/20 border-2 border-green-200 dark:border-green-800'
                         : 'bg-red-50 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-800'
                     }`}>
-                      <div className="text-3xl">
+                      <div className="text-xl">
                         {status?.status === 'ready' ? '🟢' : '🔴'}
                       </div>
                       <div>
@@ -746,7 +733,7 @@ export const DatabaseSection = ({
 
           {/* History Tab Content */}
           {databaseTab === 'history' && (
-            <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
+            <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 overflow-hidden">
               <div className="p-6">
                 <CrawlerHistory refresh={refresh} />
               </div>
@@ -757,9 +744,9 @@ export const DatabaseSection = ({
           {isAdmin && databaseTab === 'files' && (
             <div className="space-y-6">
               {/* File List */}
-              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
-                <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-4">
-                  <h3 className="text-2xl font-bold text-white flex items-center gap-2">
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 overflow-hidden">
+                <div className="bg-blue-600 px-4 py-3">
+                  <h3 className="text-lg font-bold text-white flex items-center gap-2">
                     📊 데이터 파일 목록
                   </h3>
                   <p className="text-blue-100 text-sm mt-1">
@@ -827,9 +814,9 @@ export const DatabaseSection = ({
               {showModal && selectedFile && (
                 <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowModal(false)}>
                   <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-800 max-w-7xl w-full max-h-[90vh] overflow-hidden" onClick={(e) => e.stopPropagation()}>
-                    <div className="bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-4 flex items-center justify-between">
+                    <div className="bg-indigo-600 px-4 py-3 flex items-center justify-between">
                       <div>
-                        <h3 className="text-2xl font-bold text-white flex items-center gap-2">
+                        <h3 className="text-lg font-bold text-white flex items-center gap-2">
                           {selectedFile.type === 'csv' ? '📊' : '📄'} {selectedFile.filename}
                         </h3>
                         <p className="text-indigo-100 text-sm mt-1">
@@ -881,7 +868,7 @@ export const DatabaseSection = ({
                                   {selectedFile.headers.map((header) => (
                                     <td
                                       key={header}
-                                      className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300"
+                                      className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300"
                                     >
                                       {row[header] || '-'}
                                     </td>
@@ -911,9 +898,9 @@ export const DatabaseSection = ({
       {showResetModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowResetModal(false)}>
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-800 max-w-2xl w-full overflow-hidden" onClick={(e) => e.stopPropagation()}>
-            <div className="bg-gradient-to-r from-red-600 to-rose-600 px-6 py-4 flex items-center justify-between">
+            <div className="bg-red-600 px-4 py-3 flex items-center justify-between">
               <div>
-                <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                <h2 className="text-lg font-bold text-white flex items-center gap-2">
                   ⚠️ 데이터베이스 초기화
                 </h2>
                 <p className="text-red-100 text-sm mt-1">

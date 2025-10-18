@@ -63,17 +63,17 @@ export default function SystemPage() {
   };
 
   const tabs = [
-    { id: 'database' as const, icon: '🗄️', label: 'DB 현황', gradient: 'from-cyan-600 to-blue-600' },
-    { id: 'info' as const, icon: '📌', label: '유용한 정보', gradient: 'from-emerald-600 to-teal-600' },
-    ...(isAdmin ? [{ id: 'users' as const, icon: '👥', label: '사용자 관리', gradient: 'from-rose-600 to-pink-600' }] : []),
-    { id: 'scheduler' as const, icon: '⏰', label: '스케줄러', gradient: 'from-green-600 to-emerald-600' },
-    { id: 'settings' as const, icon: '⚙️', label: '설정', gradient: 'from-indigo-600 to-purple-600' },
+    { id: 'database' as const, icon: '🗄️', label: 'DB 현황' },
+    { id: 'info' as const, icon: '📌', label: '유용한 정보' },
+    ...(isAdmin ? [{ id: 'users' as const, icon: '👥', label: '사용자 관리' }] : []),
+    { id: 'scheduler' as const, icon: '⏰', label: '스케줄러' },
+    { id: 'settings' as const, icon: '⚙️', label: '설정' },
   ];
 
   const SectionHeader = ({ title, description }: { title: string; description: string }) => (
-    <div className="mb-8">
-      <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">{title}</h2>
-      <p className="text-gray-600 dark:text-gray-400">{description}</p>
+    <div className="mb-6">
+      <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-1">{title}</h2>
+      <p className="text-sm text-gray-500 dark:text-gray-400">{description}</p>
     </div>
   );
 
@@ -84,23 +84,23 @@ export default function SystemPage() {
         <Navigation />
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {/* Section Tabs */}
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-800 mb-6 overflow-hidden">
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 border-b border-gray-200 dark:border-gray-700">
+        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 mb-6">
+          <div className="flex gap-1 p-2">
             {tabs.map(tab => (
               <button
                 key={tab.id}
                 onClick={() => setActiveSection(tab.id)}
-                className={`px-4 py-4 text-center font-semibold transition-colors ${
+                className={`flex-1 px-3 py-2 rounded-md text-sm font-medium transition-all ${
                   activeSection === tab.id
-                    ? `bg-gradient-to-r ${tab.gradient} text-white`
-                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
+                    ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 shadow-sm'
+                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/50'
                 }`}
               >
-                <div className="flex items-center justify-center gap-2">
-                  <span className="text-xl">{tab.icon}</span>
-                  <span>{tab.label}</span>
+                <div className="flex items-center justify-center gap-1.5">
+                  <span className="text-base">{tab.icon}</span>
+                  <span className="hidden sm:inline">{tab.label}</span>
                 </div>
               </button>
             ))}

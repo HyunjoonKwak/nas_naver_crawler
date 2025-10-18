@@ -81,13 +81,13 @@ export const UserManagementSection = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Page Header */}
-      <div className="mb-8">
-        <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+      <div className="mb-4">
+        <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-1">
           사용자 관리
         </h2>
-        <p className="text-gray-600 dark:text-gray-400">
+        <p className="text-sm text-gray-500 dark:text-gray-400">
           시스템 사용자 계정을 관리하세요
         </p>
       </div>
@@ -101,8 +101,8 @@ export const UserManagementSection = () => {
           description="첫 번째 사용자를 등록해보세요"
         />
       ) : (
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
-          <div className="bg-gradient-to-r from-rose-600 to-pink-600 px-6 py-4">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 overflow-hidden">
+          <div className="bg-rose-600 px-4 py-3">
             <h3 className="text-xl font-bold text-white flex items-center gap-2">
               <span>👥</span>
               <span>전체 사용자 ({users.length})</span>
@@ -127,17 +127,17 @@ export const UserManagementSection = () => {
                 <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                   {users.map((user) => (
                     <tr key={user.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-4 py-3 whitespace-nowrap">
                         <div className="text-sm font-medium text-gray-900 dark:text-white">
                           {user.name}
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-4 py-3 whitespace-nowrap">
                         <div className="text-sm text-gray-500 dark:text-gray-400">
                           {user.email}
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-4 py-3 whitespace-nowrap">
                         <select
                           value={user.role}
                           onChange={(e) => handleUserRoleChange(user.id, e.target.value)}
@@ -148,7 +148,7 @@ export const UserManagementSection = () => {
                           <option value="ADMIN">관리자</option>
                         </select>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-4 py-3 whitespace-nowrap">
                         {user.isApproved ? (
                           <span className="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
                             ✅ 승인됨
@@ -162,7 +162,7 @@ export const UserManagementSection = () => {
                           </button>
                         )}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-4 py-3 whitespace-nowrap">
                         <button
                           onClick={() => handleUserActivate(user.id, !user.isActive)}
                           className={`px-2 py-1 text-xs font-semibold rounded-full transition-colors ${
@@ -174,19 +174,19 @@ export const UserManagementSection = () => {
                           {user.isActive ? '🟢 활성화' : '⚫ 비활성화'}
                         </button>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-4 py-3 whitespace-nowrap">
                         <div className="text-sm text-gray-500 dark:text-gray-400">
                           {user.lastLoginAt
                             ? new Date(user.lastLoginAt).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })
                             : '-'}
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-4 py-3 whitespace-nowrap">
                         <div className="text-sm text-gray-500 dark:text-gray-400">
                           {new Date(user.createdAt).toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul' })}
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-4 py-3 whitespace-nowrap">
                         <button
                           onClick={() => handleUserDelete(user.id)}
                           className="px-3 py-1 text-xs bg-red-100 hover:bg-red-200 dark:bg-red-900/30 dark:hover:bg-red-900/50 text-red-700 dark:text-red-400 rounded transition-colors font-medium"

@@ -104,20 +104,20 @@ export const UsefulLinksSection = () => {
 
   return (
     <>
-      <div className="space-y-6">
+      <div className="space-y-4">
         {/* Page Header */}
-        <div className="mb-8 flex items-start justify-between">
+        <div className="mb-4 flex items-start justify-between">
           <div>
-            <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+            <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-1">
               유용한 정보
             </h2>
-            <p className="text-gray-600 dark:text-gray-400">
+            <p className="text-sm text-gray-500 dark:text-gray-400">
               부동산 크롤링 및 분석에 도움이 되는 사이트 모음
             </p>
           </div>
           <button
             onClick={handleAddLink}
-            className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-lg transition-colors flex items-center gap-2 shadow-lg"
+            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-md transition-colors flex items-center gap-1.5"
           >
             ➕ 링크 추가
           </button>
@@ -145,8 +145,8 @@ export const UsefulLinksSection = () => {
               const info = categoryInfo[category] || { title: category, icon: '🔗', color: 'gray' };
 
               return (
-                <div key={category} className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
-                  <div className={`bg-gradient-to-r from-${info.color}-600 to-${info.color}-700 px-6 py-4`}>
+                <div key={category} className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 overflow-hidden">
+                  <div className={`bg-gradient-to-r from-${info.color}-600 to-${info.color}-700 px-4 py-3`}>
                     <h3 className="text-xl font-bold text-white flex items-center gap-2">
                       <span>{info.icon}</span>
                       <span>{info.title}</span>
@@ -162,7 +162,7 @@ export const UsefulLinksSection = () => {
                       >
                         <div className="flex items-start justify-between mb-2">
                           <div className="flex items-center gap-2">
-                            <span className="text-2xl">{link.icon || '🔗'}</span>
+                            <span className="text-lg">{link.icon || '🔗'}</span>
                             <h4 className="font-semibold text-gray-900 dark:text-white">
                               {link.title}
                             </h4>
@@ -214,9 +214,9 @@ export const UsefulLinksSection = () => {
       {showLinkModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowLinkModal(false)}>
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-800 max-w-2xl w-full overflow-hidden" onClick={(e) => e.stopPropagation()}>
-            <div className="bg-gradient-to-r from-emerald-600 to-teal-600 px-6 py-4 flex items-center justify-between">
+            <div className="bg-emerald-600 px-4 py-3 flex items-center justify-between">
               <div>
-                <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                <h2 className="text-lg font-bold text-white flex items-center gap-2">
                   {editingLink ? '✏️ 링크 수정' : '➕ 링크 추가'}
                 </h2>
                 <p className="text-emerald-100 text-sm mt-1">
@@ -310,7 +310,7 @@ export const UsefulLinksSection = () => {
                         key={emoji}
                         type="button"
                         onClick={() => setLinkForm({ ...linkForm, icon: emoji })}
-                        className={`text-2xl p-2 rounded hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition-colors ${
+                        className={`text-lg p-2 rounded hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition-colors ${
                           linkForm.icon === emoji ? 'bg-emerald-200 dark:bg-emerald-900/50 ring-2 ring-emerald-500' : ''
                         }`}
                         title={emoji}
@@ -327,7 +327,7 @@ export const UsefulLinksSection = () => {
                       placeholder="또는 직접 입력"
                       className="flex-1 px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-emerald-500 dark:bg-gray-700 dark:text-white"
                     />
-                    <span className="text-3xl">{linkForm.icon}</span>
+                    <span className="text-xl">{linkForm.icon}</span>
                   </div>
                 </div>
               </div>
