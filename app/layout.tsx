@@ -11,8 +11,25 @@ if (typeof window === 'undefined') {
 }
 
 export const metadata: Metadata = {
-  title: "부동산 인사이트",
+  title: {
+    default: "부동산 인사이트",
+    template: "%s | 부동산 인사이트",
+  },
   description: "스마트한 부동산 정보수집 관리시스템",
+  icons: {
+    icon: [
+      { url: '/icon.svg', type: 'image/svg+xml' },
+    ],
+    apple: [
+      { url: '/icon.svg', type: 'image/svg+xml' },
+    ],
+  },
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: '부동산 인사이트',
+  },
 };
 
 export default function RootLayout({
