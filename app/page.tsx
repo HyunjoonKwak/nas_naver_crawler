@@ -189,6 +189,23 @@ export default function LandingPage() {
                 </button>
               </form>
 
+              {/* 아이디/비밀번호 찾기 */}
+              <div className="mt-4 flex justify-center gap-3 text-sm">
+                <Link
+                  href="/auth/find-email"
+                  className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200"
+                >
+                  아이디 찾기
+                </Link>
+                <span className="text-gray-300 dark:text-gray-600">|</span>
+                <Link
+                  href="/auth/reset-password"
+                  className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200"
+                >
+                  비밀번호 찾기
+                </Link>
+              </div>
+
               {/* 회원가입 링크 */}
               <div className="mt-6 text-center">
                 <p className="text-sm text-gray-600 dark:text-gray-400">
