@@ -229,25 +229,23 @@ export default function CommunityPage() {
             </form>
 
             {/* Sort & Write */}
-            <div className="flex gap-3">
+            <div className="flex gap-3 items-center">
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as any)}
-                className="px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                className="px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white text-sm"
               >
                 <option value="recent">최신순</option>
                 <option value="popular">조회순</option>
                 <option value="likes">좋아요순</option>
               </select>
 
-              {activeTab !== "NOTICE" && (
-                <Link
-                  href="/community/write"
-                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium transition-colors"
-                >
-                  글쓰기
-                </Link>
-              )}
+              <Link
+                href="/community/write"
+                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium transition-colors text-sm whitespace-nowrap"
+              >
+                ✏️ 글쓰기
+              </Link>
             </div>
           </div>
 
