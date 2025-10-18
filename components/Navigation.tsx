@@ -8,6 +8,9 @@ import { useCrawlEvents } from '@/hooks/useCrawlEvents';
 
 export const Navigation = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [notifications, setNotifications] = useState<any[]>([]);
   const pathname = usePathname();
   const { data: session, status } = useSession();
 
@@ -23,17 +26,29 @@ export const Navigation = () => {
     return `${minutes}분 ${secs}초`;
   };
 
-  // ESC 키로 모바일 메뉴 닫기
+  // ESC 키로 메뉴/알림 닫기
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isMobileMenuOpen) {
-        setIsMobileMenuOpen(false);
+      if (e.key === 'Escape') {
+        if (isMobileMenuOpen) setIsMobileMenuOpen(false);
+        if (isNotificationOpen) setIsNotificationOpen(false);
+      }
+    };
+
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (isNotificationOpen && !target.closest('.notification-dropdown')) {
+        setIsNotificationOpen(false);
       }
     };
 
     document.addEventListener('keydown', handleEscape);
-    return () => document.removeEventListener('keydown', handleEscape);
-  }, [isMobileMenuOpen]);
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('keydown', handleEscape);
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isMobileMenuOpen, isNotificationOpen]);
 
   // 모바일 메뉴 열릴 때 body 스크롤 방지
   useEffect(() => {
@@ -51,7 +66,61 @@ export const Navigation = () => {
   // 경로 변경 시 모바일 메뉴 닫기
   useEffect(() => {
     setIsMobileMenuOpen(false);
+    setIsNotificationOpen(false);
   }, [pathname]);
+
+  // 알림 가져오기
+  useEffect(() => {
+    if (session) {
+      fetchNotifications();
+      // 30초마다 알림 갱신
+      const interval = setInterval(fetchNotifications, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [session]);
+
+  const fetchNotifications = async () => {
+    try {
+      const response = await fetch('/api/notifications?limit=5&unreadOnly=true');
+      const data = await response.json();
+      if (data.success) {
+        setNotifications(data.notifications);
+        setUnreadCount(data.unreadCount);
+      }
+    } catch (error) {
+      console.error('Failed to fetch notifications:', error);
+    }
+  };
+
+  const handleMarkAsRead = async (notificationId: string) => {
+    try {
+      const response = await fetch('/api/notifications', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notificationId }),
+      });
+      if (response.ok) {
+        fetchNotifications();
+      }
+    } catch (error) {
+      console.error('Failed to mark notification as read:', error);
+    }
+  };
+
+  const handleMarkAllAsRead = async () => {
+    try {
+      const response = await fetch('/api/notifications', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ markAllAsRead: true }),
+      });
+      if (response.ok) {
+        fetchNotifications();
+      }
+    } catch (error) {
+      console.error('Failed to mark all as read:', error);
+    }
+  };
 
   const navLinks = [
     { href: '/home', label: '홈', icon: '🏠' },
@@ -119,6 +188,94 @@ export const Navigation = () => {
               </div>
             ) : session ? (
               <div className="flex items-center gap-2 ml-2 pl-2 border-l border-gray-300 dark:border-gray-600">
+                {/* Notification Bell */}
+                <div className="relative notification-dropdown">
+                  <button
+                    onClick={() => setIsNotificationOpen(!isNotificationOpen)}
+                    className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 relative"
+                    aria-label="알림"
+                  >
+                    <svg
+                      className="w-5 h-5 text-gray-700 dark:text-gray-300"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
+                      />
+                    </svg>
+                    {unreadCount > 0 && (
+                      <span className="absolute top-0 right-0 inline-flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-red-600 rounded-full">
+                        {unreadCount > 9 ? '9+' : unreadCount}
+                      </span>
+                    )}
+                  </button>
+
+                  {/* Notification Dropdown */}
+                  {isNotificationOpen && (
+                    <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50">
+                      <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+                        <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
+                          알림
+                        </h3>
+                        {unreadCount > 0 && (
+                          <button
+                            onClick={handleMarkAllAsRead}
+                            className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+                          >
+                            모두 읽음
+                          </button>
+                        )}
+                      </div>
+                      <div className="max-h-96 overflow-y-auto">
+                        {notifications.length === 0 ? (
+                          <div className="p-8 text-center text-sm text-gray-500 dark:text-gray-400">
+                            새로운 알림이 없습니다
+                          </div>
+                        ) : (
+                          notifications.map((notification) => (
+                            <div
+                              key={notification.id}
+                              className="p-4 border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
+                              onClick={() => {
+                                handleMarkAsRead(notification.id);
+                                if (notification.postId) {
+                                  window.location.href = `/community/${notification.postId}`;
+                                }
+                              }}
+                            >
+                              <p className="text-sm text-gray-900 dark:text-white mb-1">
+                                {notification.message}
+                              </p>
+                              <p className="text-xs text-gray-500 dark:text-gray-400">
+                                {new Date(notification.createdAt).toLocaleDateString('ko-KR', {
+                                  month: 'short',
+                                  day: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                })}
+                              </p>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                      <div className="p-3 border-t border-gray-200 dark:border-gray-700">
+                        <Link
+                          href="/notifications"
+                          className="block text-center text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                          onClick={() => setIsNotificationOpen(false)}
+                        >
+                          모든 알림 보기
+                        </Link>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
                 <span className="text-sm text-gray-700 dark:text-gray-300">
                   {session.user?.name}
                 </span>
