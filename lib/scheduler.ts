@@ -112,15 +112,62 @@ export function getNextRunTime(cronExpr: string): Date | null {
 /**
  * 크롤링 실행 함수
  */
-async function executeCrawl(scheduleId: string, complexNos: string[]) {
+async function executeCrawl(scheduleId: string) {
   const startTime = Date.now();
 
-  // 스케줄 정보 조회 (이름 가져오기 위해)
+  // 스케줄 정보 조회
   const schedule = await prisma.schedule.findUnique({
     where: { id: scheduleId },
   });
 
-  const scheduleName = schedule?.name || 'Unknown Schedule';
+  if (!schedule) {
+    console.error(`❌ Schedule not found: ${scheduleId}`);
+    return;
+  }
+
+  const scheduleName = schedule.name;
+  let complexNos: string[] = [];
+
+  // 관심단지 실시간 조회 vs 고정 단지 목록
+  if (schedule.useBookmarkedComplexes) {
+    console.log(`🔖 Using bookmarked complexes for schedule: ${scheduleName}`);
+
+    // 사용자의 관심단지(즐겨찾기) 조회
+    const favorites = await prisma.favorite.findMany({
+      where: { userId: schedule.userId },
+      include: {
+        complex: {
+          select: {
+            complexNo: true,
+            complexName: true,
+          },
+        },
+      },
+    });
+
+    complexNos = favorites.map(f => f.complex.complexNo);
+
+    if (complexNos.length === 0) {
+      console.warn(`⚠️  No bookmarked complexes found for user ${schedule.userId}`);
+      console.warn(`   Skipping scheduled crawl: ${scheduleName}`);
+      return;
+    }
+
+    console.log(`   Found ${complexNos.length} bookmarked complexes:`);
+    favorites.forEach(f => {
+      console.log(`     - ${f.complex.complexName} (${f.complex.complexNo})`);
+    });
+  } else {
+    console.log(`📌 Using fixed complexes for schedule: ${scheduleName}`);
+    complexNos = schedule.complexNos;
+
+    if (complexNos.length === 0) {
+      console.warn(`⚠️  No complexes configured for schedule: ${scheduleName}`);
+      return;
+    }
+
+    console.log(`   Using ${complexNos.length} fixed complexes`);
+  }
 
   try {
     console.log(`🚀 Executing scheduled crawl: ${scheduleId}`);
@@ -388,8 +435,7 @@ async function pollCrawlStatus(crawlId: string, timeout: number): Promise<{ succ
  */
 export function registerSchedule(
   scheduleId: string,
-  cronExpr: string,
-  complexNos: string[]
+  cronExpr: string
 ): boolean {
   try {
     // 기존 스케줄이 있으면 제거
@@ -412,7 +458,7 @@ export function registerSchedule(
       cronExpr,
       () => {
         console.log(`🚀 Cron job triggered for schedule: ${scheduleId}`);
-        executeCrawl(scheduleId, complexNos);
+        executeCrawl(scheduleId);
       },
       {
         scheduled: true,
@@ -471,12 +517,14 @@ export async function loadAllSchedules() {
     for (const schedule of schedules) {
       console.log(`   Registering schedule: "${schedule.name}" (${schedule.id})`);
       console.log(`     Cron: ${schedule.cronExpr}`);
-      console.log(`     Complexes: ${schedule.complexNos.length} items`);
+      console.log(`     Mode: ${schedule.useBookmarkedComplexes ? 'Bookmarked' : 'Fixed'}`);
+      if (!schedule.useBookmarkedComplexes) {
+        console.log(`     Complexes: ${schedule.complexNos.length} items`);
+      }
 
       const success = registerSchedule(
         schedule.id,
-        schedule.cronExpr,
-        schedule.complexNos
+        schedule.cronExpr
       );
 
       if (success) {
@@ -519,7 +567,7 @@ export async function runScheduleNow(scheduleId: string): Promise<boolean> {
     }
 
     console.log(`▶️ Running schedule immediately: ${schedule.name}`);
-    await executeCrawl(scheduleId, schedule.complexNos);
+    await executeCrawl(scheduleId);
     return true;
   } catch (error) {
     console.error(`Failed to run schedule ${scheduleId}:`, error);

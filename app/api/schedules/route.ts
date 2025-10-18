@@ -99,14 +99,25 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
 
-    const { name, complexNos, cronExpr } = body;
+    const { name, complexNos, cronExpr, useBookmarkedComplexes = true } = body;
 
     // 필수 필드 검증
-    if (!name || !complexNos || complexNos.length === 0 || !cronExpr) {
+    if (!name || !cronExpr) {
       return NextResponse.json(
         {
           success: false,
-          error: 'Name, complexes, and cron expression are required',
+          error: 'Name and cron expression are required',
+        },
+        { status: 400 }
+      );
+    }
+
+    // 고정 모드일 때는 complexNos 필수
+    if (!useBookmarkedComplexes && (!complexNos || complexNos.length === 0)) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Complexes are required when not using bookmarked mode',
         },
         { status: 400 }
       );
@@ -139,7 +150,8 @@ export async function POST(request: NextRequest) {
     const schedule = await prisma.schedule.create({
       data: {
         name,
-        complexNos,
+        complexNos: complexNos || [],
+        useBookmarkedComplexes,
         cronExpr,
         isActive: true,
         nextRun,
@@ -148,7 +160,7 @@ export async function POST(request: NextRequest) {
     });
 
     // Cron Job 등록
-    const registered = registerSchedule(schedule.id, cronExpr, complexNos);
+    const registered = registerSchedule(schedule.id, cronExpr);
 
     if (!registered) {
       // 등록 실패 시 DB에서도 삭제

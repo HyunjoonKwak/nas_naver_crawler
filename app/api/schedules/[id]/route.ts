@@ -86,7 +86,7 @@ export async function PUT(
 ) {
   try {
     const body = await request.json();
-    const { name, complexNos, cronExpr } = body;
+    const { name, complexNos, cronExpr, useBookmarkedComplexes } = body;
 
     // Cron 표현식 검증
     if (cronExpr && !validateCronExpression(cronExpr)) {
@@ -114,6 +114,21 @@ export async function PUT(
       );
     }
 
+    // 고정 모드로 변경 시 complexNos 필수 검증
+    const finalUseBookmarked = useBookmarkedComplexes !== undefined
+      ? useBookmarkedComplexes
+      : existingSchedule.useBookmarkedComplexes;
+
+    if (!finalUseBookmarked && (!complexNos || complexNos.length === 0)) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Complexes are required when not using bookmarked mode',
+        },
+        { status: 400 }
+      );
+    }
+
     // 다음 실행 시간 계산 (cronExpr이 변경된 경우)
     let nextRun = existingSchedule.nextRun;
     if (cronExpr && cronExpr !== existingSchedule.cronExpr) {
@@ -136,6 +151,7 @@ export async function PUT(
       data: {
         name,
         complexNos,
+        useBookmarkedComplexes,
         cronExpr,
         nextRun,
       },
@@ -144,7 +160,7 @@ export async function PUT(
     // Cron Job 재등록
     if (schedule.isActive) {
       unregisterSchedule(params.id);
-      registerSchedule(params.id, schedule.cronExpr, schedule.complexNos);
+      registerSchedule(params.id, schedule.cronExpr);
     }
 
     return NextResponse.json({
@@ -206,7 +222,7 @@ export async function PATCH(
 
     // Cron Job 등록/해제
     if (isActive) {
-      registerSchedule(params.id, schedule.cronExpr, schedule.complexNos);
+      registerSchedule(params.id, schedule.cronExpr);
     } else {
       unregisterSchedule(params.id);
     }

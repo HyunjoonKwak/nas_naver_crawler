@@ -181,17 +181,18 @@ model NotificationLog {
 
 // 스케줄 테이블
 model Schedule {
-  id         String    @id @default(uuid())
-  name       String    // 스케줄 이름
-  complexNos String[]  // 크롤링할 단지들
-  cronExpr   String    // Cron 표현식
-  isActive   Boolean   @default(true)
-  lastRun    DateTime? // 마지막 실행 시간
-  nextRun    DateTime? // 다음 실행 시간
-  userId     String    // 사용자 ID
-  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
+  id                      String    @id @default(uuid())
+  name                    String    // 스케줄 이름
+  complexNos              String[]  // 크롤링할 단지들 (고정 모드용)
+  useBookmarkedComplexes  Boolean   @default(true) @map("use_bookmarked_complexes") // true: 관심단지 실시간 조회, false: complexNos 사용
+  cronExpr                String    // Cron 표현식
+  isActive                Boolean   @default(true)
+  lastRun                 DateTime? // 마지막 실행 시간
+  nextRun                 DateTime? // 다음 실행 시간
+  userId                  String    // 사용자 ID
+  user                    User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
 
   // 관계
   logs ScheduleLog[]
