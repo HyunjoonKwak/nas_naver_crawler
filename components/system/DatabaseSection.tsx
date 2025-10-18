@@ -514,113 +514,74 @@ export const DatabaseSection = ({
           {databaseTab === 'stats' && (
             <>
               {/* Database Stats */}
-              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 p-4">
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-6">
+              <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+                <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
                   데이터 통계
                 </h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  {/* Total Complexes */}
-                  <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl p-6 border border-blue-100 dark:border-blue-800">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="text-4xl">🏢</div>
-                    </div>
-                    <h4 className="text-lg font-bold text-gray-900 dark:text-white mb-2">
-                      등록 단지
-                    </h4>
-                    <div className="text-4xl font-bold text-blue-600 dark:text-blue-400 mb-2">
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">등록 단지</div>
+                    <div className="text-2xl font-bold text-gray-900 dark:text-white">
                       {dbStats.database.totalComplexes.toLocaleString()}
                     </div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      전체 단지 수
-                    </p>
-                    <div className="mt-3 pt-3 border-t border-blue-200 dark:border-blue-700 text-xs text-gray-500 dark:text-gray-400">
-                      최근 7일: <span className="font-semibold text-blue-600 dark:text-blue-400">+{dbStats.database.recentComplexes}</span>
+                    <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      최근 7일 +{dbStats.database.recentComplexes}
                     </div>
                   </div>
 
-                  {/* Total Articles */}
-                  <div className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-xl p-6 border border-green-100 dark:border-green-800">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="text-4xl">📋</div>
-                    </div>
-                    <h4 className="text-lg font-bold text-gray-900 dark:text-white mb-2">
-                      등록 매물
-                    </h4>
-                    <div className="text-4xl font-bold text-green-600 dark:text-green-400 mb-2">
+                  <div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">등록 매물</div>
+                    <div className="text-2xl font-bold text-gray-900 dark:text-white">
                       {dbStats.database.totalArticles.toLocaleString()}
                     </div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      전체 매물 수
-                    </p>
-                    <div className="mt-3 pt-3 border-t border-green-200 dark:border-green-700 text-xs text-gray-500 dark:text-gray-400">
-                      최근 7일: <span className="font-semibold text-green-600 dark:text-green-400">+{dbStats.database.recentArticles}</span>
+                    <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      최근 7일 +{dbStats.database.recentArticles}
                     </div>
                   </div>
 
-                  {/* Favorite Complexes */}
-                  <div className="bg-gradient-to-br from-pink-50 to-rose-50 dark:from-pink-900/20 dark:to-rose-900/20 rounded-xl p-6 border border-pink-100 dark:border-pink-800">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="text-4xl">⭐</div>
-                    </div>
-                    <h4 className="text-lg font-bold text-gray-900 dark:text-white mb-2">
-                      관심 단지
-                    </h4>
-                    <div className="text-4xl font-bold text-pink-600 dark:text-pink-400 mb-2">
+                  <div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">관심 단지</div>
+                    <div className="text-2xl font-bold text-gray-900 dark:text-white">
                       {dbStats.database.favoriteComplexes.toLocaleString()}
                     </div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      즐겨찾기 등록 단지
-                    </p>
-                    <div className="mt-3 pt-3 border-t border-pink-200 dark:border-pink-700 text-xs text-gray-500 dark:text-gray-400">
-                      전체의 {dbStats.database.totalComplexes > 0 ? ((dbStats.database.favoriteComplexes / dbStats.database.totalComplexes) * 100).toFixed(1) : '0.0'}%
+                    <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      {dbStats.database.totalComplexes > 0 ? ((dbStats.database.favoriteComplexes / dbStats.database.totalComplexes) * 100).toFixed(1) : '0.0'}%
                     </div>
                   </div>
                 </div>
               </div>
 
               {/* Crawling Stats */}
-              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 p-4">
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-6">
+              <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+                <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
                   크롤링 통계
                 </h3>
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                  <div className="bg-gradient-to-br from-purple-50 to-violet-50 dark:from-purple-900/20 dark:to-violet-900/20 rounded-xl p-6 border border-purple-100 dark:border-purple-800">
-                    <div className="text-xl mb-3">📊</div>
-                    <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">
-                      전체 크롤링
-                    </h4>
-                    <div className="text-xl font-bold text-purple-600 dark:text-purple-400">
+                <div className="grid grid-cols-4 gap-4">
+                  <div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">전체</div>
+                    <div className="text-xl font-bold text-gray-900 dark:text-white">
                       {dbStats.crawling.totalCrawls}
                     </div>
                   </div>
 
-                  <div className="bg-gradient-to-br from-green-50 to-teal-50 dark:from-green-900/20 dark:to-teal-900/20 rounded-xl p-6 border border-green-100 dark:border-green-800">
-                    <div className="text-xl mb-3">✅</div>
-                    <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">
-                      완료
-                    </h4>
+                  <div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">완료</div>
                     <div className="text-xl font-bold text-green-600 dark:text-green-400">
                       {dbStats.crawling.completedCrawls}
                     </div>
                   </div>
 
-                  <div className="bg-gradient-to-br from-red-50 to-orange-50 dark:from-red-900/20 dark:to-orange-900/20 rounded-xl p-6 border border-red-100 dark:border-red-800">
-                    <div className="text-xl mb-3">❌</div>
-                    <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">
-                      실패
-                    </h4>
+                  <div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">실패</div>
                     <div className="text-xl font-bold text-red-600 dark:text-red-400">
                       {dbStats.crawling.failedCrawls}
                     </div>
                   </div>
 
-                  <div className="bg-gradient-to-br from-cyan-50 to-blue-50 dark:from-cyan-900/20 dark:to-blue-900/20 rounded-xl p-6 border border-cyan-100 dark:border-cyan-800">
-                    <div className="text-xl mb-3">⏱️</div>
-                    <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">
-                      평균 소요시간
-                    </h4>
-                    <div className="text-lg font-bold text-cyan-600 dark:text-cyan-400">
-                      {Math.floor(dbStats.crawling.avgDuration / 60)}분 {dbStats.crawling.avgDuration % 60}초
+                  <div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">평균 소요시간</div>
+                    <div className="text-lg font-bold text-gray-900 dark:text-white">
+                      {Math.floor(dbStats.crawling.avgDuration / 60)}:{String(dbStats.crawling.avgDuration % 60).padStart(2, '0')}
                     </div>
                   </div>
                 </div>

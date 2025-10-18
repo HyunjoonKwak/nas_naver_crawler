@@ -65,239 +65,116 @@ export function SystemSettings() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* 다크모드 설정 */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-        <div className="bg-gradient-to-r from-purple-600 to-indigo-600 px-6 py-4">
-          <h3 className="text-xl font-bold text-white flex items-center gap-2">
-            <span>🎨</span>
-            <span>테마 설정</span>
-          </h3>
-        </div>
+    <div className="space-y-4">
+      {/* 테마 설정 */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+        <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+          테마 설정
+        </h3>
 
-        <div className="p-6 space-y-4">
-          <p className="text-gray-600 dark:text-gray-400 mb-4">
-            원하는 테마를 선택하세요. 시스템 설정을 따르거나 수동으로 선택할 수 있습니다.
-          </p>
+        <div className="flex gap-2">
+          <button
+            onClick={() => handleThemeChange('system')}
+            className={`flex-1 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+              theme === 'system'
+                ? 'bg-blue-600 text-white'
+                : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+            }`}
+          >
+            시스템
+          </button>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* 시스템 설정 */}
-            <button
-              onClick={() => handleThemeChange('system')}
-              className={`flex flex-col items-center gap-3 p-6 rounded-lg border-2 transition-all ${
-                theme === 'system'
-                  ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                  : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500'
-              }`}
-            >
-              <svg
-                className="w-10 h-10 text-gray-600 dark:text-gray-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-                />
-              </svg>
-              <div className="text-center">
-                <div className="font-semibold text-gray-900 dark:text-white">시스템 설정</div>
-                <div className="text-sm text-gray-500 dark:text-gray-400">기기 설정 따라가기</div>
-              </div>
-              {theme === 'system' && (
-                <div className="w-full py-1 bg-blue-500 text-white text-xs font-medium rounded">
-                  현재 선택됨
-                </div>
-              )}
-            </button>
+          <button
+            onClick={() => handleThemeChange('light')}
+            className={`flex-1 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+              theme === 'light'
+                ? 'bg-blue-600 text-white'
+                : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+            }`}
+          >
+            라이트
+          </button>
 
-            {/* 라이트 모드 */}
-            <button
-              onClick={() => handleThemeChange('light')}
-              className={`flex flex-col items-center gap-3 p-6 rounded-lg border-2 transition-all ${
-                theme === 'light'
-                  ? 'border-yellow-500 bg-yellow-50 dark:bg-yellow-900/20'
-                  : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500'
-              }`}
-            >
-              <svg
-                className="w-10 h-10 text-yellow-500"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"
-                />
-              </svg>
-              <div className="text-center">
-                <div className="font-semibold text-gray-900 dark:text-white">라이트 모드</div>
-                <div className="text-sm text-gray-500 dark:text-gray-400">밝은 테마</div>
-              </div>
-              {theme === 'light' && (
-                <div className="w-full py-1 bg-yellow-500 text-white text-xs font-medium rounded">
-                  현재 선택됨
-                </div>
-              )}
-            </button>
-
-            {/* 다크 모드 */}
-            <button
-              onClick={() => handleThemeChange('dark')}
-              className={`flex flex-col items-center gap-3 p-6 rounded-lg border-2 transition-all ${
-                theme === 'dark'
-                  ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20'
-                  : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500'
-              }`}
-            >
-              <svg
-                className="w-10 h-10 text-indigo-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
-                />
-              </svg>
-              <div className="text-center">
-                <div className="font-semibold text-gray-900 dark:text-white">다크 모드</div>
-                <div className="text-sm text-gray-500 dark:text-gray-400">어두운 테마</div>
-              </div>
-              {theme === 'dark' && (
-                <div className="w-full py-1 bg-indigo-500 text-white text-xs font-medium rounded">
-                  현재 선택됨
-                </div>
-              )}
-            </button>
-          </div>
+          <button
+            onClick={() => handleThemeChange('dark')}
+            className={`flex-1 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+              theme === 'dark'
+                ? 'bg-blue-600 text-white'
+                : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+            }`}
+          >
+            다크
+          </button>
         </div>
       </div>
 
       {/* 언어 설정 */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-        <div className="bg-gradient-to-r from-orange-600 to-red-600 px-6 py-4">
-          <h3 className="text-xl font-bold text-white flex items-center gap-2">
-            <span>🌍</span>
-            <span>언어 설정</span>
-          </h3>
+      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+        <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+          언어 설정
+        </h3>
+
+        <div className="flex gap-2">
+          <button
+            onClick={() => handleLanguageChange('ko')}
+            className={`flex-1 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+              language === 'ko'
+                ? 'bg-blue-600 text-white'
+                : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+            }`}
+          >
+            한국어
+          </button>
+
+          <button
+            onClick={() => handleLanguageChange('en')}
+            className={`flex-1 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+              language === 'en'
+                ? 'bg-blue-600 text-white'
+                : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+            }`}
+          >
+            English
+          </button>
         </div>
 
-        <div className="p-6 space-y-4">
-          <p className="text-gray-600 dark:text-gray-400 mb-4">
-            표시 언어를 선택하세요
-          </p>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <button
-              onClick={() => handleLanguageChange('ko')}
-              className={`flex items-center gap-3 p-4 rounded-lg border-2 transition-all ${
-                language === 'ko'
-                  ? 'border-orange-500 bg-orange-50 dark:bg-orange-900/20'
-                  : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500'
-              }`}
-            >
-              <span className="text-3xl">🇰🇷</span>
-              <div className="flex-1 text-left">
-                <div className="font-semibold text-gray-900 dark:text-white">한국어</div>
-                <div className="text-sm text-gray-500 dark:text-gray-400">Korean</div>
-              </div>
-              {language === 'ko' && (
-                <div className="w-6 h-6 bg-orange-500 rounded-full flex items-center justify-center">
-                  <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                  </svg>
-                </div>
-              )}
-            </button>
-
-            <button
-              onClick={() => handleLanguageChange('en')}
-              className={`flex items-center gap-3 p-4 rounded-lg border-2 transition-all ${
-                language === 'en'
-                  ? 'border-orange-500 bg-orange-50 dark:bg-orange-900/20'
-                  : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500'
-              }`}
-            >
-              <span className="text-3xl">🇺🇸</span>
-              <div className="flex-1 text-left">
-                <div className="font-semibold text-gray-900 dark:text-white">English</div>
-                <div className="text-sm text-gray-500 dark:text-gray-400">영어</div>
-              </div>
-              {language === 'en' && (
-                <div className="w-6 h-6 bg-orange-500 rounded-full flex items-center justify-center">
-                  <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                  </svg>
-                </div>
-              )}
-            </button>
-          </div>
-
-          <div className="mt-4 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
-            <p className="text-sm text-yellow-800 dark:text-yellow-200">
-              ℹ️ 언어 변경 기능은 현재 개발 중입니다. 설정은 저장되지만 UI는 한국어로 표시됩니다.
-            </p>
-          </div>
+        <div className="mt-3 text-xs text-gray-500 dark:text-gray-400">
+          언어 변경 기능은 현재 개발 중입니다
         </div>
       </div>
 
       {/* 개인정보 설정 */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-        <div className="bg-gradient-to-r from-pink-600 to-rose-600 px-6 py-4">
-          <h3 className="text-xl font-bold text-white flex items-center gap-2">
-            <span>🔒</span>
-            <span>개인정보 설정</span>
-          </h3>
+      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+        <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+          계정 정보
+        </h3>
+
+        <div className="space-y-3">
+          <div className="flex justify-between text-sm">
+            <span className="text-gray-500 dark:text-gray-400">이메일</span>
+            <span className="text-gray-900 dark:text-white font-medium">{session?.user?.email}</span>
+          </div>
+
+          <div className="flex justify-between text-sm">
+            <span className="text-gray-500 dark:text-gray-400">이름</span>
+            <span className="text-gray-900 dark:text-white font-medium">{session?.user?.name}</span>
+          </div>
+
+          <div className="flex justify-between text-sm">
+            <span className="text-gray-500 dark:text-gray-400">권한</span>
+            <span className="text-gray-900 dark:text-white font-medium">
+              {session?.user?.role === 'ADMIN' ? '관리자' : session?.user?.role === 'FAMILY' ? '패밀리' : '게스트'}
+            </span>
+          </div>
         </div>
 
-        <div className="p-6 space-y-4">
-          <div className="space-y-3">
-            <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900 rounded-lg">
-              <div>
-                <div className="font-medium text-gray-900 dark:text-white">이메일</div>
-                <div className="text-sm text-gray-500 dark:text-gray-400">
-                  {session?.user?.email}
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900 rounded-lg">
-              <div>
-                <div className="font-medium text-gray-900 dark:text-white">이름</div>
-                <div className="text-sm text-gray-500 dark:text-gray-400">
-                  {session?.user?.name}
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900 rounded-lg">
-              <div>
-                <div className="font-medium text-gray-900 dark:text-white">권한</div>
-                <div className="text-sm text-gray-500 dark:text-gray-400">
-                  {session?.user?.role === 'ADMIN' ? '관리자' : session?.user?.role === 'FAMILY' ? '패밀리' : '게스트'}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
-            <button
-              onClick={() => showError('비밀번호 변경 기능은 개발 중입니다')}
-              className="w-full px-4 py-2 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-900 dark:text-white rounded-lg font-medium transition-colors"
-            >
-              비밀번호 변경
-            </button>
-          </div>
+        <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+          <button
+            onClick={() => showError('비밀번호 변경 기능은 개발 중입니다')}
+            className="w-full px-3 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-900 dark:text-white rounded-md text-sm font-medium transition-colors"
+          >
+            비밀번호 변경
+          </button>
         </div>
       </div>
     </div>
