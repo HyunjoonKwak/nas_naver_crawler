@@ -12,10 +12,11 @@ import { showSuccess, showError } from "@/lib/toast";
 export default function WritePostPage() {
   const { data: session } = useSession();
   const router = useRouter();
+  const isAdmin = (session?.user as any)?.role === "ADMIN";
 
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
-  const [category, setCategory] = useState<"FREE" | "QNA">("FREE");
+  const [category, setCategory] = useState<"FREE" | "QNA" | "NOTICE">("FREE");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -111,6 +112,20 @@ export default function WritePostPage() {
                       Q&A
                     </span>
                   </label>
+                  {isAdmin && (
+                    <label className="flex items-center cursor-pointer">
+                      <input
+                        type="radio"
+                        value="NOTICE"
+                        checked={category === "NOTICE"}
+                        onChange={(e) => setCategory(e.target.value as any)}
+                        className="w-4 h-4 text-red-600 border-gray-300 focus:ring-red-500"
+                      />
+                      <span className="ml-2 text-sm text-red-600 dark:text-red-400 font-medium">
+                        📌 공지사항
+                      </span>
+                    </label>
+                  )}
                 </div>
 
                 {/* Title */}

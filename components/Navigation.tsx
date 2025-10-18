@@ -5,11 +5,9 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useSession, signOut } from 'next-auth/react';
 import { useCrawlEvents } from '@/hooks/useCrawlEvents';
-import { GlobalSearch } from '@/components/GlobalSearch';
 
 export const Navigation = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const pathname = usePathname();
   const { data: session, status } = useSession();
 
@@ -25,34 +23,17 @@ export const Navigation = () => {
     return `${minutes}분 ${secs}초`;
   };
 
-  // ESC 키로 모바일 메뉴 및 검색 닫기
+  // ESC 키로 모바일 메뉴 닫기
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        if (isSearchOpen) {
-          setIsSearchOpen(false);
-        } else if (isMobileMenuOpen) {
-          setIsMobileMenuOpen(false);
-        }
+      if (e.key === 'Escape' && isMobileMenuOpen) {
+        setIsMobileMenuOpen(false);
       }
     };
 
     document.addEventListener('keydown', handleEscape);
     return () => document.removeEventListener('keydown', handleEscape);
-  }, [isMobileMenuOpen, isSearchOpen]);
-
-  // Cmd/Ctrl+K로 검색 열기
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-        e.preventDefault();
-        setIsSearchOpen(true);
-      }
-    };
-
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [isMobileMenuOpen]);
 
   // 모바일 메뉴 열릴 때 body 스크롤 방지
   useEffect(() => {
@@ -79,15 +60,6 @@ export const Navigation = () => {
     { href: '/community', label: '커뮤니티', icon: '💬' },
     { href: '/system', label: '시스템', icon: '⚙️' },
   ];
-
-  // 현재 페이지에 해당하는 링크는 표시하지 않음
-  const filteredNavLinks = navLinks.filter(link => {
-    // 홈 페이지
-    if (link.href === '/' && pathname === '/') return false;
-    // 다른 페이지들
-    if (link.href !== '/' && pathname?.startsWith(link.href)) return false;
-    return true;
-  });
 
   const isActive = (href: string) => {
     if (href === '/') {
@@ -123,32 +95,16 @@ export const Navigation = () => {
             </div>
           </Link>
 
-          {/* Search Button */}
-          <div className="flex-1 max-w-md mx-4 hidden sm:block">
-            <button
-              onClick={() => setIsSearchOpen(true)}
-              className="w-full px-4 py-2 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center gap-3 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-              <span className="text-sm">검색...</span>
-              <kbd className="ml-auto hidden lg:inline-block px-2 py-1 text-xs font-semibold bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded">
-                ⌘K
-              </kbd>
-            </button>
-          </div>
-
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center gap-3">
-            {filteredNavLinks.map((link) => (
+          {/* Desktop Navigation - All Links Visible */}
+          <div className="hidden md:flex items-center gap-2 flex-1 justify-end">
+            {navLinks.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
-                className={`px-4 py-2 rounded-lg transition-colors font-semibold focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
+                className={`px-3 py-2 rounded-lg transition-colors text-sm font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
                   isActive(link.href)
                     ? 'bg-blue-600 text-white'
-                    : 'bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200'
+                    : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800'
                 }`}
                 aria-current={isActive(link.href) ? 'page' : undefined}
               >
@@ -156,34 +112,34 @@ export const Navigation = () => {
               </Link>
             ))}
 
-            {/* Auth Buttons */}
+            {/* Auth Section */}
             {status === 'loading' ? (
-              <div className="px-4 py-2">
+              <div className="px-3 py-2">
                 <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-gray-600"></div>
               </div>
             ) : session ? (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 ml-2 pl-2 border-l border-gray-300 dark:border-gray-600">
                 <span className="text-sm text-gray-700 dark:text-gray-300">
-                  👤 {session.user?.name}
+                  {session.user?.name}
                 </span>
                 <button
                   onClick={() => signOut({ callbackUrl: '/' })}
-                  className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                  className="px-3 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
                 >
                   로그아웃
                 </button>
               </div>
             ) : (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 ml-2 pl-2 border-l border-gray-300 dark:border-gray-600">
                 <Link
                   href="/"
-                  className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  className="px-3 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                 >
                   로그인
                 </Link>
                 <Link
                   href="/auth/signup"
-                  className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500"
+                  className="px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500"
                 >
                   회원가입
                 </Link>
@@ -192,16 +148,7 @@ export const Navigation = () => {
           </div>
 
           {/* Mobile Menu Button */}
-          <div className="flex md:hidden items-center gap-2">
-            <button
-              onClick={() => setIsSearchOpen(true)}
-              className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
-              aria-label="검색"
-            >
-              <svg className="w-6 h-6 text-gray-700 dark:text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-            </button>
+          <div className="flex md:hidden items-center">
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
               className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -257,7 +204,7 @@ export const Navigation = () => {
           <div className="max-w-7xl mx-auto px-4 py-3">
             {/* Mobile Menu Links */}
             <nav className="space-y-1 mb-3" aria-label="모바일 네비게이션">
-              {filteredNavLinks.map((link) => (
+              {navLinks.map((link) => (
                 <Link
                   key={link.href}
                   href={link.href}
@@ -347,24 +294,6 @@ export const Navigation = () => {
                 </span>
               )}
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* Global Search Modal */}
-      {isSearchOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-start justify-center pt-20 px-4 bg-black/50 backdrop-blur-sm"
-          onClick={() => setIsSearchOpen(false)}
-        >
-          <div
-            className="w-full max-w-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <GlobalSearch
-              onClose={() => setIsSearchOpen(false)}
-              autoFocus={true}
-            />
           </div>
         </div>
       )}

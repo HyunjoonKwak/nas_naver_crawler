@@ -9,6 +9,7 @@ import { ThemeToggle, Dialog } from "@/components/ui";
 import { GroupManagement } from "@/components/GroupManagement";
 import { ComplexSortFilter } from "@/components/ComplexSortFilter";
 import { ComplexGroupBadges } from "@/components/ComplexGroupBadges";
+import { GlobalSearch } from "@/components/GlobalSearch";
 import { showSuccess, showError, showLoading, dismissToast, showInfo } from "@/lib/toast";
 import { AuthGuard } from "@/components/AuthGuard";
 
@@ -99,6 +100,9 @@ export default function ComplexesPage() {
   const [crawlAllDialog, setCrawlAllDialog] = useState(false);
   const [stopTrackingDialog, setStopTrackingDialog] = useState(false);
 
+  // 검색 상태
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+
   // 시간을 MM:SS 형식으로 변환
   const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
@@ -123,6 +127,19 @@ export default function ComplexesPage() {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [crawlingAll, crawling, selectedGroupId, sortBy, sortOrder]);
+
+  // Cmd/Ctrl+K로 검색 열기
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setIsSearchOpen(true);
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   // Note: checkOngoingCrawl() function removed - no longer needed
 
@@ -667,6 +684,22 @@ export default function ComplexesPage() {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Search Bar */}
+        <div className="mb-6">
+          <button
+            onClick={() => setIsSearchOpen(true)}
+            className="w-full max-w-2xl px-4 py-3 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg flex items-center gap-3 text-gray-600 dark:text-gray-400 hover:border-blue-500 dark:hover:border-blue-500 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <span className="text-sm">단지명, 주소로 검색...</span>
+            <kbd className="ml-auto hidden sm:inline-block px-2 py-1 text-xs font-semibold bg-gray-100 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded">
+              ⌘K
+            </kbd>
+          </button>
+        </div>
+
         <div className="flex gap-6">
           {/* 그룹 사이드바 - 데스크탑: 항상 표시, 모바일: 토글 */}
           <div className={`
@@ -1543,6 +1576,24 @@ function SingleComplexCrawler({
 
       {/* Mobile Navigation */}
       <MobileNavigation />
+
+      {/* Global Search Modal */}
+      {isSearchOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-start justify-center pt-20 px-4 bg-black/50 backdrop-blur-sm"
+          onClick={() => setIsSearchOpen(false)}
+        >
+          <div
+            className="w-full max-w-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <GlobalSearch
+              onClose={() => setIsSearchOpen(false)}
+              autoFocus={true}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
