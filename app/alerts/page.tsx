@@ -26,16 +26,51 @@ interface Alert {
   updatedAt: string;
 }
 
+interface Complex {
+  complexNo: string;
+  complexName: string;
+}
+
 export default function AlertsPage() {
   const { data: session } = useSession();
   const [alerts, setAlerts] = useState<Alert[]>([]);
+  const [complexes, setComplexes] = useState<Complex[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [expandedAlert, setExpandedAlert] = useState<string | null>(null);
 
+  // 폼 상태
+  const [formData, setFormData] = useState({
+    name: '',
+    complexIds: [] as string[],
+    tradeTypes: [] as string[],
+    minPrice: '',
+    maxPrice: '',
+    minArea: '',
+    maxArea: '',
+    notifyBrowser: true,
+    notifyEmail: false,
+    notifyWebhook: false,
+    webhookUrl: '',
+  });
+
   useEffect(() => {
     fetchAlerts();
+    fetchComplexes();
   }, []);
+
+  const fetchComplexes = async () => {
+    try {
+      const response = await fetch('/api/complexes');
+      const data = await response.json();
+
+      if (response.ok && data.complexes) {
+        setComplexes(data.complexes);
+      }
+    } catch (error) {
+      console.error('Failed to fetch complexes:', error);
+    }
+  };
 
   const fetchAlerts = async () => {
     try {
@@ -53,6 +88,62 @@ export default function AlertsPage() {
       showError('알림 목록 조회 중 오류가 발생했습니다.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCreateAlert = async () => {
+    if (!formData.name.trim()) {
+      showError('알림 이름을 입력해주세요.');
+      return;
+    }
+
+    if (formData.complexIds.length === 0) {
+      showError('최소 1개 이상의 단지를 선택해주세요.');
+      return;
+    }
+
+    const loadingToast = showLoading('알림 생성 중...');
+
+    try {
+      const response = await fetch('/api/alerts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...formData,
+          minPrice: formData.minPrice ? parseInt(formData.minPrice) * 10000 : null,
+          maxPrice: formData.maxPrice ? parseInt(formData.maxPrice) * 10000 : null,
+          minArea: formData.minArea ? parseFloat(formData.minArea) : null,
+          maxArea: formData.maxArea ? parseFloat(formData.maxArea) : null,
+        }),
+      });
+
+      dismissToast(loadingToast);
+
+      if (response.ok) {
+        showSuccess('알림이 생성되었습니다.');
+        setShowCreateForm(false);
+        setFormData({
+          name: '',
+          complexIds: [],
+          tradeTypes: [],
+          minPrice: '',
+          maxPrice: '',
+          minArea: '',
+          maxArea: '',
+          notifyBrowser: true,
+          notifyEmail: false,
+          notifyWebhook: false,
+          webhookUrl: '',
+        });
+        fetchAlerts();
+      } else {
+        const data = await response.json();
+        showError(data.error || '알림 생성 실패');
+      }
+    } catch (error) {
+      dismissToast(loadingToast);
+      console.error('Failed to create alert:', error);
+      showError('알림 생성 중 오류가 발생했습니다.');
     }
   };
 
@@ -307,6 +398,223 @@ export default function AlertsPage() {
         </main>
 
         <MobileNavigation />
+
+        {/* 알림 생성 모달 */}
+        {showCreateForm && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-black/70 backdrop-blur-sm">
+            <div className="w-full max-w-2xl max-h-[90vh] overflow-auto bg-white dark:bg-gray-800 rounded-2xl shadow-2xl">
+              {/* 헤더 */}
+              <div className="sticky top-0 bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-4 flex items-center justify-between border-b border-blue-500">
+                <div>
+                  <h2 className="text-2xl font-bold text-white">새 알림 만들기</h2>
+                  <p className="text-sm text-blue-100 mt-1">
+                    매물 조건을 설정하고 실시간 알림을 받아보세요
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowCreateForm(false)}
+                  className="p-2 rounded-lg bg-white/20 hover:bg-white/30 text-white transition-colors"
+                >
+                  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* 폼 */}
+              <div className="p-6 space-y-6">
+                {/* 알림 이름 */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    알림 이름 <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    placeholder="예: 강남 3억 이하 매매"
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                {/* 단지 선택 */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    관심 단지 <span className="text-red-500">*</span>
+                  </label>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-60 overflow-y-auto border border-gray-200 dark:border-gray-600 rounded-lg p-3">
+                    {complexes.map((complex) => (
+                      <label
+                        key={complex.complexNo}
+                        className="flex items-center gap-2 p-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={formData.complexIds.includes(complex.complexNo)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setFormData({
+                                ...formData,
+                                complexIds: [...formData.complexIds, complex.complexNo],
+                              });
+                            } else {
+                              setFormData({
+                                ...formData,
+                                complexIds: formData.complexIds.filter((id) => id !== complex.complexNo),
+                              });
+                            }
+                          }}
+                          className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                        />
+                        <span className="text-sm text-gray-700 dark:text-gray-300">
+                          {complex.complexName}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    선택된 단지: {formData.complexIds.length}개
+                  </p>
+                </div>
+
+                {/* 거래 유형 */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    거래 유형 (미선택 시 전체)
+                  </label>
+                  <div className="flex gap-3">
+                    {['매매', '전세', '월세'].map((type) => (
+                      <label
+                        key={type}
+                        className="flex items-center gap-2 p-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={formData.tradeTypes.includes(type)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setFormData({
+                                ...formData,
+                                tradeTypes: [...formData.tradeTypes, type],
+                              });
+                            } else {
+                              setFormData({
+                                ...formData,
+                                tradeTypes: formData.tradeTypes.filter((t) => t !== type),
+                              });
+                            }
+                          }}
+                          className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                        />
+                        <span className="text-sm text-gray-700 dark:text-gray-300">{type}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 가격 범위 */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    가격 범위 (억원)
+                  </label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <input
+                      type="number"
+                      value={formData.minPrice}
+                      onChange={(e) => setFormData({ ...formData, minPrice: e.target.value })}
+                      placeholder="최소 (예: 3)"
+                      className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                    />
+                    <input
+                      type="number"
+                      value={formData.maxPrice}
+                      onChange={(e) => setFormData({ ...formData, maxPrice: e.target.value })}
+                      placeholder="최대 (예: 5)"
+                      className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+
+                {/* 면적 범위 */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    면적 범위 (㎡)
+                  </label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <input
+                      type="number"
+                      value={formData.minArea}
+                      onChange={(e) => setFormData({ ...formData, minArea: e.target.value })}
+                      placeholder="최소 (예: 60)"
+                      className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                    />
+                    <input
+                      type="number"
+                      value={formData.maxArea}
+                      onChange={(e) => setFormData({ ...formData, maxArea: e.target.value })}
+                      placeholder="최대 (예: 84)"
+                      className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+
+                {/* 알림 채널 */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    알림 채널
+                  </label>
+                  <div className="space-y-2">
+                    <label className="flex items-center gap-2 p-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={formData.notifyBrowser}
+                        onChange={(e) => setFormData({ ...formData, notifyBrowser: e.target.checked })}
+                        className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                      />
+                      <span className="text-sm text-gray-700 dark:text-gray-300">브라우저 알림</span>
+                    </label>
+                    <label className="flex items-center gap-2 p-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700 cursor-not-allowed opacity-50">
+                      <input
+                        type="checkbox"
+                        checked={formData.notifyEmail}
+                        onChange={(e) => setFormData({ ...formData, notifyEmail: e.target.checked })}
+                        disabled
+                        className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                      />
+                      <span className="text-sm text-gray-700 dark:text-gray-300">이메일 알림 (준비 중)</span>
+                    </label>
+                    <label className="flex items-center gap-2 p-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700 cursor-not-allowed opacity-50">
+                      <input
+                        type="checkbox"
+                        checked={formData.notifyWebhook}
+                        onChange={(e) => setFormData({ ...formData, notifyWebhook: e.target.checked })}
+                        disabled
+                        className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                      />
+                      <span className="text-sm text-gray-700 dark:text-gray-300">웹훅 알림 (준비 중)</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              {/* 푸터 */}
+              <div className="sticky bottom-0 bg-gray-50 dark:bg-gray-900 px-6 py-4 flex items-center justify-end gap-3 border-t border-gray-200 dark:border-gray-700">
+                <button
+                  onClick={() => setShowCreateForm(false)}
+                  className="px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 font-medium transition-colors"
+                >
+                  취소
+                </button>
+                <button
+                  onClick={handleCreateAlert}
+                  className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium transition-colors"
+                >
+                  알림 만들기
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </AuthGuard>
   );
