@@ -69,184 +69,163 @@ export default function LandingPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
       <div className="container mx-auto px-4 py-8">
-        <div className="max-w-6xl mx-auto space-y-16">
+        <div className="max-w-6xl mx-auto space-y-6">
 
           {/* Hero Section */}
           <div className="text-center">
             {/* Logo & Title */}
-            <div className="mb-8">
-              <div className="inline-block p-5 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-3xl shadow-2xl mb-5">
+            <div className="mb-5">
+              <div className="inline-block p-5 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-3xl shadow-2xl mb-3">
                 <svg className="w-16 h-16 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
                 </svg>
               </div>
-              <h1 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-4">
+              <h1 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-3">
                 부동산 인사이트
               </h1>
-              <p className="text-xl md:text-2xl text-gray-600 dark:text-gray-400 mb-3 font-medium">
+              <p className="text-xl md:text-2xl text-gray-600 dark:text-gray-400 mb-2 font-medium">
                 실시간으로 움직이는 스마트 부동산 분석 시스템
               </p>
-              <p className="text-base text-gray-500 dark:text-gray-400 max-w-2xl mx-auto leading-relaxed">
-                네이버 부동산의 매물 정보를 실시간으로 추적하고 분석하여<br/>
-                더 나은 투자 결정을 내리세요
+              <p className="text-base text-gray-500 dark:text-gray-400 max-w-3xl mx-auto">
+                네이버 부동산의 매물 정보를 실시간으로 추적하고 분석하여 더 나은 투자 결정을 내리세요
               </p>
             </div>
 
-            {/* Features - 6개 카드 */}
-            <div className="grid md:grid-cols-3 gap-4 max-w-4xl mx-auto">
+            {/* Features - 6개 카드 (가로 1줄) */}
+            <div className="grid grid-cols-2 md:grid-cols-6 gap-3 max-w-5xl mx-auto">
               {/* 자동 크롤링 */}
-              <div className="flex flex-col items-center text-center p-5 bg-white/60 dark:bg-gray-800/60 rounded-xl backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50 hover:shadow-lg transition-shadow">
-                <div className="w-14 h-14 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center mb-3">
-                  <svg className="w-7 h-7 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="flex flex-col items-center text-center p-3 bg-white/60 dark:bg-gray-800/60 rounded-lg backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50">
+                <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center mb-2">
+                  <svg className="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                   </svg>
                 </div>
-                <h3 className="font-semibold text-gray-900 dark:text-white mb-2 text-base">자동 크롤링</h3>
-                <p className="text-gray-600 dark:text-gray-400 text-sm leading-relaxed">
-                  관심 단지 매물 정보를 정기적으로 자동 수집하여 최신 데이터를 유지합니다
+                <h3 className="font-semibold text-gray-900 dark:text-white mb-1 text-sm">자동 크롤링</h3>
+                <p className="text-gray-600 dark:text-gray-400 text-xs">
+                  정기 자동 수집
                 </p>
               </div>
 
               {/* 실시간 분석 */}
-              <div className="flex flex-col items-center text-center p-5 bg-white/60 dark:bg-gray-800/60 rounded-xl backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50 hover:shadow-lg transition-shadow">
-                <div className="w-14 h-14 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center mb-3">
-                  <svg className="w-7 h-7 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="flex flex-col items-center text-center p-3 bg-white/60 dark:bg-gray-800/60 rounded-lg backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50">
+                <div className="w-10 h-10 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center mb-2">
+                  <svg className="w-5 h-5 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                   </svg>
                 </div>
-                <h3 className="font-semibold text-gray-900 dark:text-white mb-2 text-base">실시간 분석</h3>
-                <p className="text-gray-600 dark:text-gray-400 text-sm leading-relaxed">
-                  매매·전세·월세 매물의 통계와 트렌드를 실시간으로 분석합니다
+                <h3 className="font-semibold text-gray-900 dark:text-white mb-1 text-sm">실시간 분석</h3>
+                <p className="text-gray-600 dark:text-gray-400 text-xs">
+                  통계와 트렌드
                 </p>
               </div>
 
               {/* 스마트 알림 */}
-              <div className="flex flex-col items-center text-center p-5 bg-white/60 dark:bg-gray-800/60 rounded-xl backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50 hover:shadow-lg transition-shadow">
-                <div className="w-14 h-14 bg-purple-100 dark:bg-purple-900 rounded-lg flex items-center justify-center mb-3">
-                  <svg className="w-7 h-7 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="flex flex-col items-center text-center p-3 bg-white/60 dark:bg-gray-800/60 rounded-lg backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50">
+                <div className="w-10 h-10 bg-purple-100 dark:bg-purple-900 rounded-lg flex items-center justify-center mb-2">
+                  <svg className="w-5 h-5 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                   </svg>
                 </div>
-                <h3 className="font-semibold text-gray-900 dark:text-white mb-2 text-base">스마트 알림</h3>
-                <p className="text-gray-600 dark:text-gray-400 text-sm leading-relaxed">
-                  조건에 맞는 매물 등록 시 Discord로 즉시 알림을 받습니다
+                <h3 className="font-semibold text-gray-900 dark:text-white mb-1 text-sm">스마트 알림</h3>
+                <p className="text-gray-600 dark:text-gray-400 text-xs">
+                  Discord 알림
                 </p>
               </div>
 
               {/* 가격 추적 */}
-              <div className="flex flex-col items-center text-center p-5 bg-white/60 dark:bg-gray-800/60 rounded-xl backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50 hover:shadow-lg transition-shadow">
-                <div className="w-14 h-14 bg-amber-100 dark:bg-amber-900 rounded-lg flex items-center justify-center mb-3">
-                  <svg className="w-7 h-7 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="flex flex-col items-center text-center p-3 bg-white/60 dark:bg-gray-800/60 rounded-lg backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50">
+                <div className="w-10 h-10 bg-amber-100 dark:bg-amber-900 rounded-lg flex items-center justify-center mb-2">
+                  <svg className="w-5 h-5 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                 </div>
-                <h3 className="font-semibold text-gray-900 dark:text-white mb-2 text-base">가격 추적</h3>
-                <p className="text-gray-600 dark:text-gray-400 text-sm leading-relaxed">
-                  매물 가격 변동을 히스토리로 추적하여 시세 흐름을 파악합니다
+                <h3 className="font-semibold text-gray-900 dark:text-white mb-1 text-sm">가격 추적</h3>
+                <p className="text-gray-600 dark:text-gray-400 text-xs">
+                  가격 히스토리
                 </p>
               </div>
 
               {/* 커뮤니티 */}
-              <div className="flex flex-col items-center text-center p-5 bg-white/60 dark:bg-gray-800/60 rounded-xl backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50 hover:shadow-lg transition-shadow">
-                <div className="w-14 h-14 bg-rose-100 dark:bg-rose-900 rounded-lg flex items-center justify-center mb-3">
-                  <svg className="w-7 h-7 text-rose-600 dark:text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="flex flex-col items-center text-center p-3 bg-white/60 dark:bg-gray-800/60 rounded-lg backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50">
+                <div className="w-10 h-10 bg-rose-100 dark:bg-rose-900 rounded-lg flex items-center justify-center mb-2">
+                  <svg className="w-5 h-5 text-rose-600 dark:text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z" />
                   </svg>
                 </div>
-                <h3 className="font-semibold text-gray-900 dark:text-white mb-2 text-base">커뮤니티</h3>
-                <p className="text-gray-600 dark:text-gray-400 text-sm leading-relaxed">
-                  다른 사용자들과 부동산 정보를 공유하고 의견을 나눕니다
+                <h3 className="font-semibold text-gray-900 dark:text-white mb-1 text-sm">커뮤니티</h3>
+                <p className="text-gray-600 dark:text-gray-400 text-xs">
+                  정보 공유
                 </p>
               </div>
 
               {/* 스케줄 관리 */}
-              <div className="flex flex-col items-center text-center p-5 bg-white/60 dark:bg-gray-800/60 rounded-xl backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50 hover:shadow-lg transition-shadow">
-                <div className="w-14 h-14 bg-indigo-100 dark:bg-indigo-900 rounded-lg flex items-center justify-center mb-3">
-                  <svg className="w-7 h-7 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="flex flex-col items-center text-center p-3 bg-white/60 dark:bg-gray-800/60 rounded-lg backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50">
+                <div className="w-10 h-10 bg-indigo-100 dark:bg-indigo-900 rounded-lg flex items-center justify-center mb-2">
+                  <svg className="w-5 h-5 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                 </div>
-                <h3 className="font-semibold text-gray-900 dark:text-white mb-2 text-base">스케줄 관리</h3>
-                <p className="text-gray-600 dark:text-gray-400 text-sm leading-relaxed">
-                  원하는 시간에 자동으로 크롤링되도록 스케줄을 설정합니다
+                <h3 className="font-semibold text-gray-900 dark:text-white mb-1 text-sm">스케줄 관리</h3>
+                <p className="text-gray-600 dark:text-gray-400 text-xs">
+                  자동 예약
                 </p>
               </div>
             </div>
           </div>
 
-          {/* Community Section */}
-          <div className="bg-white/60 dark:bg-gray-800/60 rounded-2xl p-8 backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50 shadow-xl">
-            <div className="flex items-center gap-4 mb-6">
-              <div className="w-16 h-16 bg-gradient-to-br from-rose-500 to-pink-600 rounded-xl flex items-center justify-center shadow-lg">
-                <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          {/* Community Section - 축약 */}
+          <div className="bg-white/60 dark:bg-gray-800/60 rounded-xl p-5 backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-12 h-12 bg-gradient-to-br from-rose-500 to-pink-600 rounded-lg flex items-center justify-center">
+                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z" />
                 </svg>
               </div>
               <div>
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
-                  커뮤니티에서 함께하세요
+                <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+                  커뮤니티
                 </h2>
-                <p className="text-gray-600 dark:text-gray-400">
-                  전국의 부동산 투자자들과 정보를 공유하고 인사이트를 얻으세요
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  부동산 투자자들과 정보를 공유하세요
                 </p>
               </div>
             </div>
 
-            <div className="grid md:grid-cols-2 gap-4">
-              <div className="flex items-start gap-3 p-4 bg-white/50 dark:bg-gray-700/50 rounded-lg">
-                <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <svg className="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+              <div className="flex items-center gap-2 p-2 bg-white/50 dark:bg-gray-700/50 rounded-lg">
+                <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900 rounded flex items-center justify-center flex-shrink-0">
+                  <svg className="w-4 h-4 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
                   </svg>
                 </div>
-                <div>
-                  <h3 className="font-semibold text-gray-900 dark:text-white mb-1">실시간 토론</h3>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    관심 지역, 단지별로 실시간 시세와 투자 전략을 토론합니다
-                  </p>
-                </div>
+                <p className="font-medium text-gray-900 dark:text-white text-sm">실시간 토론</p>
               </div>
 
-              <div className="flex items-start gap-3 p-4 bg-white/50 dark:bg-gray-700/50 rounded-lg">
-                <div className="w-10 h-10 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <svg className="w-5 h-5 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="flex items-center gap-2 p-2 bg-white/50 dark:bg-gray-700/50 rounded-lg">
+                <div className="w-8 h-8 bg-green-100 dark:bg-green-900 rounded flex items-center justify-center flex-shrink-0">
+                  <svg className="w-4 h-4 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                 </div>
-                <div>
-                  <h3 className="font-semibold text-gray-900 dark:text-white mb-1">검증된 정보</h3>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    좋아요와 댓글로 검증된 양질의 정보를 쉽게 찾아보세요
-                  </p>
-                </div>
+                <p className="font-medium text-gray-900 dark:text-white text-sm">검증된 정보</p>
               </div>
 
-              <div className="flex items-start gap-3 p-4 bg-white/50 dark:bg-gray-700/50 rounded-lg">
-                <div className="w-10 h-10 bg-purple-100 dark:bg-purple-900 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <svg className="w-5 h-5 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="flex items-center gap-2 p-2 bg-white/50 dark:bg-gray-700/50 rounded-lg">
+                <div className="w-8 h-8 bg-purple-100 dark:bg-purple-900 rounded flex items-center justify-center flex-shrink-0">
+                  <svg className="w-4 h-4 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                   </svg>
                 </div>
-                <div>
-                  <h3 className="font-semibold text-gray-900 dark:text-white mb-1">투자 노하우</h3>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    실전 투자자들의 성공과 실패 사례를 통해 배웁니다
-                  </p>
-                </div>
+                <p className="font-medium text-gray-900 dark:text-white text-sm">투자 노하우</p>
               </div>
 
-              <div className="flex items-start gap-3 p-4 bg-white/50 dark:bg-gray-700/50 rounded-lg">
-                <div className="w-10 h-10 bg-amber-100 dark:bg-amber-900 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <svg className="w-5 h-5 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="flex items-center gap-2 p-2 bg-white/50 dark:bg-gray-700/50 rounded-lg">
+                <div className="w-8 h-8 bg-amber-100 dark:bg-amber-900 rounded flex items-center justify-center flex-shrink-0">
+                  <svg className="w-4 h-4 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                   </svg>
                 </div>
-                <div>
-                  <h3 className="font-semibold text-gray-900 dark:text-white mb-1">시세 분석</h3>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    지역별 가격 추이와 거래량 변화를 함께 분석합니다
-                  </p>
-                </div>
+                <p className="font-medium text-gray-900 dark:text-white text-sm">시세 분석</p>
               </div>
             </div>
           </div>
