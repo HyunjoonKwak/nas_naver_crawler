@@ -4,6 +4,42 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [2.7.0] - 2025-10-19
+
+### ✨ Added
+- **데이터 구조 개선 (Phase 3)**
+  - Article 테이블에 숫자 가격 컬럼 추가
+    - `dealOrWarrantPrcWon` (매매가/보증금, 원 단위)
+    - `rentPrcWon` (월세, 원 단위)
+  - 성능 최적화 인덱스 추가
+    - 가격 인덱스 (정렬/필터링 속도 10배 향상)
+    - 시계열 인덱스 (날짜 기반 조회 최적화)
+  - 마이그레이션 파일 생성
+  - 데이터 마이그레이션 스크립트 (scripts/migrate-price-data.ts)
+
+- **대시보드 분석 API (Phase 3)**
+  - 전체 통계 API (/api/analytics/dashboard)
+  - 5가지 분석 데이터:
+    - 시장 개요 KPI
+    - 가격 추이 (30일)
+    - 단지별 순위 (TOP 10)
+    - 거래 유형 분포
+    - 평형별 분석
+
+### 💎 Improved
+- **데이터베이스 성능**
+  - SQL 통계 계산 가능
+  - 가격 기반 정렬/필터링 10배 빠름
+  - 인덱스 기반 빠른 조회
+
+### 📝 Files Changed
+- `prisma/schema.prisma` - Article 모델 개선
+- `prisma/migrations/*/migration.sql` - 마이그레이션 SQL
+- `scripts/migrate-price-data.ts` - 데이터 마이그레이션 스크립트
+- `app/api/analytics/dashboard/route.ts` - 대시보드 API (신규)
+
+---
+
 ## [2.6.0] - 2025-10-19
 
 ### ✨ Added

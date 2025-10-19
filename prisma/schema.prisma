@@ -55,8 +55,12 @@ model Article {
   // 매물 기본 정보
   realEstateTypeName  String   // 매물 유형 (아파트, 오피스텔 등)
   tradeTypeName       String   // 거래 유형 (매매, 전세, 월세)
-  dealOrWarrantPrc    String   // 가격 (매매가 또는 보증금)
-  rentPrc             String?  // 월세
+  dealOrWarrantPrc    String   // 가격 (매매가 또는 보증금) - 문자열
+  rentPrc             String?  // 월세 - 문자열
+
+  // 숫자 가격 컬럼 (성능 최적화용)
+  dealOrWarrantPrcWon BigInt?  @map("deal_or_warrant_prc_won") // 매매가/보증금 (원 단위)
+  rentPrcWon          BigInt?  @map("rent_prc_won")             // 월세 (원 단위)
 
   // 면적 정보
   area1               Float    // 전용면적 (m²)
@@ -81,7 +85,10 @@ model Article {
   @@index([complexId])
   @@index([tradeTypeName])
   @@index([dealOrWarrantPrc])
+  @@index([dealOrWarrantPrcWon]) // 숫자 가격 인덱스 (빠른 정렬/필터링)
+  @@index([rentPrcWon])           // 월세 인덱스
   @@index([articleConfirmYmd])
+  @@index([createdAt])            // 시계열 조회 최적화
   @@map("articles")
 }
 

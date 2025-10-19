@@ -1,11 +1,29 @@
 # 📋 프로젝트 TODO 리스트
 
 > **마지막 업데이트**: 2025-10-19
-> **현재 버전**: v2.4.0 - Phase 2 진행 중 (Core Features)
+> **현재 버전**: v2.7.0 - Phase 3 진행 중 (Analytics & Optimization)
 
 ---
 
 ## 🎯 최근 완료 항목 (2025-10-19)
+
+### ✅ Phase 3 진행 중: Analytics & Optimization (4-8주) ⭐⭐⭐⭐⭐
+
+#### 8. 데이터 구조 개선 ✅ 완료 (2025-10-19)
+- ✅ Article 테이블에 숫자 가격 컬럼 추가 (dealOrWarrantPrcWon, rentPrcWon)
+- ✅ 가격 인덱스 추가 (빠른 정렬/필터링)
+- ✅ 시계열 인덱스 추가 (createdAt)
+- ✅ 마이그레이션 SQL 파일 생성
+- ✅ 데이터 마이그레이션 스크립트 작성 (scripts/migrate-price-data.ts)
+
+#### 9. 대시보드 분석 API ✅ 완료 (2025-10-19)
+- ✅ 전체 통계 API 구현 (/api/analytics/dashboard)
+- ✅ 5가지 분석 데이터 제공:
+  - 시장 개요 KPI (총 매물, 평균/최저/최고 가격)
+  - 가격 추이 (최근 30일 일별)
+  - 단지별 순위 (TOP 10)
+  - 거래 유형 분포
+  - 평형별 분석
 
 ### ✅ Phase 2 완료: Core Features (2-4주) ⭐⭐⭐⭐
 
