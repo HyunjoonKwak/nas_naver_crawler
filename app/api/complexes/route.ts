@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAuth, getComplexWhereCondition } from '@/lib/auth-utils';
+import { calculatePriceStats, calculateTradeTypeStats } from '@/lib/price-utils';
 
 export const dynamic = 'force-dynamic';
 
@@ -74,9 +75,12 @@ export async function GET(request: NextRequest) {
         },
         articles: {
           orderBy: { createdAt: 'desc' },
-          take: 1, // 가장 최근 매물 1개만 조회 (최근 수집일 계산용)
+          take: 100, // 최근 100개 매물 (가격 통계용)
           select: {
             createdAt: true,
+            dealOrWarrantPrc: true,
+            rentPrc: true,
+            tradeTypeName: true,
           },
         },
         favorites: {
@@ -113,35 +117,53 @@ export async function GET(request: NextRequest) {
     const total = await prisma.complex.count({ where });
 
     // 응답 포맷팅
-    const results = complexes.map((complex: any) => ({
-      id: complex.id,
-      complexNo: complex.complexNo,
-      complexName: complex.complexName,
-      totalHousehold: complex.totalHousehold,
-      totalDong: complex.totalDong,
-      location: {
-        latitude: complex.latitude,
-        longitude: complex.longitude,
-      },
-      address: complex.address,
-      roadAddress: complex.roadAddress,
-      jibunAddress: complex.jibunAddress,
-      beopjungdong: complex.beopjungdong,
-      haengjeongdong: complex.haengjeongdong,
-      articleCount: complex._count?.articles || 0,
-      // DB Favorite 테이블 사용 (사용자별 즐겨찾기)
-      isFavorite: complex.favorites.length > 0,
-      // 그룹 정보 추가
-      groups: complex.complexGroups?.map((cg: any) => ({
-        id: cg.group.id,
-        name: cg.group.name,
-        color: cg.group.color
-      })) || [],
-      createdAt: complex.createdAt.toISOString(),
-      updatedAt: complex.updatedAt.toISOString(),
-      // 최근 수집일 (가장 최근 매물의 생성일)
-      lastCrawledAt: complex.articles?.[0]?.createdAt?.toISOString() || null,
-    }));
+    const results = complexes.map((complex: any) => {
+      // 가격 통계 계산
+      const priceStats = calculatePriceStats(complex.articles || []);
+      const tradeTypeStats = calculateTradeTypeStats(complex.articles || []);
+
+      return {
+        id: complex.id,
+        complexNo: complex.complexNo,
+        complexName: complex.complexName,
+        totalHousehold: complex.totalHousehold,
+        totalDong: complex.totalDong,
+        location: {
+          latitude: complex.latitude,
+          longitude: complex.longitude,
+        },
+        address: complex.address,
+        roadAddress: complex.roadAddress,
+        jibunAddress: complex.jibunAddress,
+        beopjungdong: complex.beopjungdong,
+        haengjeongdong: complex.haengjeongdong,
+        articleCount: complex._count?.articles || 0,
+        // DB Favorite 테이블 사용 (사용자별 즐겨찾기)
+        isFavorite: complex.favorites.length > 0,
+        // 그룹 정보 추가
+        groups: complex.complexGroups?.map((cg: any) => ({
+          id: cg.group.id,
+          name: cg.group.name,
+          color: cg.group.color
+        })) || [],
+        // 가격 통계
+        priceStats: priceStats ? {
+          avgPrice: priceStats.avgPriceFormatted,
+          minPrice: priceStats.minPriceFormatted,
+          maxPrice: priceStats.maxPriceFormatted,
+        } : null,
+        // 거래 유형별 통계
+        tradeTypeStats: tradeTypeStats.map(stat => ({
+          type: stat.tradeTypeName,
+          count: stat.count,
+          avgPrice: stat.priceStats?.avgPriceFormatted || '-',
+        })),
+        createdAt: complex.createdAt.toISOString(),
+        updatedAt: complex.updatedAt.toISOString(),
+        // 최근 수집일 (가장 최근 매물의 생성일)
+        lastCrawledAt: complex.articles?.[0]?.createdAt?.toISOString() || null,
+      };
+    });
 
     return NextResponse.json({
       complexes: results,
