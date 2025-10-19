@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Toaster } from 'react-hot-toast';
 import { SessionProvider } from '@/components/SessionProvider';
+import { Providers } from './providers';
 import { validateEnv, logEnvInfo } from '@/lib/env';
 import "./globals.css";
 
@@ -41,7 +42,9 @@ export default function RootLayout({
     <html lang="ko" className="overflow-x-hidden">
       <body className="antialiased overflow-x-hidden max-w-full">
         <SessionProvider>
-          {children}
+          <Providers>
+            {children}
+          </Providers>
         </SessionProvider>
         <Toaster
           position="top-right"

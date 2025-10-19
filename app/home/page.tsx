@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useQuery } from "@tanstack/react-query";
 import { Navigation } from "@/components/Navigation";
 import { MobileNavigation } from "@/components/MobileNavigation";
 import { useCrawlEvents } from "@/hooks/useCrawlEvents";
@@ -37,26 +38,64 @@ interface FavoriteWithStats extends FavoriteComplex {
 export default function Home() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const [refresh, setRefresh] = useState(0);
-  const [favorites, setFavorites] = useState<FavoriteWithStats[]>([]);
   const [showAll, setShowAll] = useState(false); // 더보기 상태
-  const [stats, setStats] = useState({
-    totalFavorites: 0,
-    totalComplexes: 0, // 매물이 있는 단지 수
-    totalArticles: 0,
-    lastCrawlTime: null as string | null,
-    avgPrice: '-' as string,
-    priceRange: '-' as string,
-  });
-
-  // 미니 대시보드 데이터
-  const [dashboardData, setDashboardData] = useState({
-    hotComplexes: [] as Array<{complexNo: string, complexName: string, change24h: number}>,
-    valuableComplexes: [] as Array<{complexNo: string, complexName: string, pricePerPyeong: number}>,
-    activeAlertsCount: 0,
-  });
   const [currentTime, setCurrentTime] = useState<Date | null>(null);
   const [isMounted, setIsMounted] = useState(false);
+
+  // React Query: 크롤링 결과 조회
+  const { data: resultsData, refetch: refetchResults } = useQuery({
+    queryKey: ['results'],
+    queryFn: async () => {
+      console.log('[MAIN_PAGE] /api/results 호출');
+      const response = await fetch('/api/results');
+      const data = await response.json();
+      console.log('[MAIN_PAGE] 크롤링 결과 조회 완료:', {
+        resultsCount: data.results?.length || 0
+      });
+      return data;
+    },
+    enabled: status === 'authenticated',
+  });
+
+  // React Query: 관심 단지 조회
+  const { data: favoritesData, refetch: refetchFavorites } = useQuery({
+    queryKey: ['favorites'],
+    queryFn: async () => {
+      console.log('[MAIN_PAGE] /api/favorites 호출 (DB에서 읽기)');
+      const response = await fetch('/api/favorites');
+      const data = await response.json();
+      console.log('[MAIN_PAGE] 관심 단지 조회 완료:', {
+        favoritesCount: data.favorites?.length || 0,
+        favorites: data.favorites?.map((f: any) => ({
+          complexNo: f.complexNo,
+          complexName: f.complexName,
+          order: f.order
+        }))
+      });
+      return data;
+    },
+    enabled: status === 'authenticated',
+  });
+
+  // React Query: DB 통계 조회
+  const { data: dbStatsData } = useQuery({
+    queryKey: ['db-stats'],
+    queryFn: async () => {
+      const response = await fetch('/api/db-stats');
+      return response.json();
+    },
+    enabled: status === 'authenticated',
+  });
+
+  // React Query: 알림 조회
+  const { data: alertsData } = useQuery({
+    queryKey: ['alerts'],
+    queryFn: async () => {
+      const response = await fetch('/api/alerts');
+      return response.json();
+    },
+    enabled: status === 'authenticated',
+  });
 
   // 인증되지 않은 사용자는 랜딩 페이지로 리다이렉트
   useEffect(() => {
@@ -68,19 +107,17 @@ export default function Home() {
   // SSE 기반 실시간 크롤링 상태 모니터링
   const crawlingStatus = useCrawlEvents(() => {
     // 크롤링 완료 시 대시보드 데이터 자동 새로고침
-    fetchDashboardData();
+    refetchResults();
+    refetchFavorites();
   });
-
-  useEffect(() => {
-    fetchDashboardData();
-  }, [refresh]);
 
   // 페이지 포커스 시 데이터 새로고침 (다른 페이지에서 돌아올 때)
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
         console.log('[MAIN_PAGE] 페이지 포커스 감지 - 데이터 새로고침 시작');
-        fetchDashboardData();
+        refetchResults();
+        refetchFavorites();
       }
     };
 
@@ -88,7 +125,7 @@ export default function Home() {
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, []);
+  }, [refetchResults, refetchFavorites]);
 
   // 클라이언트에서만 시간 표시 (hydration 에러 방지)
   useEffect(() => {
@@ -102,121 +139,80 @@ export default function Home() {
     return () => clearInterval(interval);
   }, []);
 
+  // 데이터 가공 및 계산 (React Query 데이터 기반)
+  const results = resultsData?.results || [];
+  const favList = favoritesData?.favorites || [];
 
-  const fetchDashboardData = async () => {
-    console.log('[MAIN_PAGE] 대시보드 데이터 조회 시작');
-    try {
-      // 크롤링 결과 조회
-      console.log('[MAIN_PAGE] /api/results 호출');
-      const resultResponse = await fetch('/api/results');
-      const resultData = await resultResponse.json();
-      const results = resultData.results || [];
-      console.log('[MAIN_PAGE] 크롤링 결과 조회 완료:', {
-        resultsCount: results.length
-      });
+  // 통계 계산
+  const totalArticles = results.reduce((sum: number, result: any) => {
+    return sum + (result?.articles?.length || 0);
+  }, 0);
 
-      // 관심 단지 조회 (DB 기반)
-      console.log('[MAIN_PAGE] /api/favorites 호출 (DB에서 읽기)');
-      const favResponse = await fetch('/api/favorites');
-      const favData = await favResponse.json();
-      const favList = favData.favorites || [];
-      console.log('[MAIN_PAGE] 관심 단지 조회 완료:', {
-        favoritesCount: favList.length,
-        favorites: favList.map((f: any) => ({
-          complexNo: f.complexNo,
-          complexName: f.complexName,
-          order: f.order
-        }))
-      });
+  // 관심 단지별 상세 통계 계산
+  const favoritesWithStats = favList.map((fav: FavoriteComplex) => {
+    // 해당 단지의 최신 크롤링 데이터 찾기
+    const complexResult = results.find((result: any) => {
+      return result?.overview?.complexNo === fav.complexNo;
+    });
 
-      // DB 통계 조회 (최근 크롤링 시간 등)
-      const dbStatsResponse = await fetch('/api/db-stats');
-      const dbStatsData = await dbStatsResponse.json();
+    if (complexResult) {
+      const articles = complexResult?.articles || [];
 
-      // 통계 계산
-      const totalArticles = results.reduce((sum: number, result: any) => {
-        return sum + (result?.articles?.length || 0);
-      }, 0);
+      // 거래유형별 통계
+      const stats: ArticleStats = {
+        total: articles.length,
+        A1: articles.filter((a: any) => a.tradeTypeName === '매매').length,
+        B1: articles.filter((a: any) => a.tradeTypeName === '전세').length,
+        B2: articles.filter((a: any) => a.tradeTypeName === '월세').length,
+      };
 
-      // 관심 단지별 상세 통계 계산
-      const favoritesWithStats = favList.map((fav: FavoriteComplex) => {
-        // 해당 단지의 최신 크롤링 데이터 찾기
-        const complexResult = results.find((result: any) => {
-          return result?.overview?.complexNo === fav.complexNo;
-        });
-
-        if (complexResult) {
-          const articles = complexResult?.articles || [];
-
-          // 거래유형별 통계
-          const stats: ArticleStats = {
-            total: articles.length,
-            A1: articles.filter((a: any) => a.tradeTypeName === '매매').length,
-            B1: articles.filter((a: any) => a.tradeTypeName === '전세').length,
-            B2: articles.filter((a: any) => a.tradeTypeName === '월세').length,
-          };
-
-          return {
-            ...fav,
-            stats,
-            complexName: complexResult?.overview?.complexName || fav.complexName,
-          };
-        }
-
-        return fav;
-      });
-
-      setFavorites(favoritesWithStats); // 전체 저장
-
-      // 최근 크롤링 시간 가져오기 (DB의 최근 크롤링 히스토리에서)
-      let lastCrawlTime = null;
-      if (dbStatsData?.crawling?.recentCrawls?.length > 0) {
-        lastCrawlTime = dbStatsData.crawling.recentCrawls[0].createdAt;
-      }
-
-      setStats({
-        totalFavorites: favList.length,
-        totalComplexes: results.length, // 매물이 있는 단지 수
-        totalArticles,
-        lastCrawlTime,
-      });
-
-      // 미니 대시보드 데이터 계산
-      // 1. 24시간 Hot 단지 (articleChange24h 기준)
-      const hotComplexes = favList
-        .filter((f: any) => f.articleChange24h && f.articleChange24h > 0)
-        .sort((a: any, b: any) => (b.articleChange24h || 0) - (a.articleChange24h || 0))
-        .slice(0, 3)
-        .map((f: any) => ({
-          complexNo: f.complexNo,
-          complexName: f.complexName,
-          change24h: f.articleChange24h,
-        }));
-
-      // 2. 가성비 단지 계산은 복잡하므로 나중에 구현 (일단 빈 배열)
-      const valuableComplexes: Array<{complexNo: string, complexName: string, pricePerPyeong: number}> = [];
-
-      // 3. 활성 알림 수 조회
-      let activeAlertsCount = 0;
-      try {
-        const alertsResponse = await fetch('/api/alerts');
-        const alertsData = await alertsResponse.json();
-        if (alertsData.success && alertsData.alerts) {
-          activeAlertsCount = alertsData.alerts.filter((a: any) => a.isActive).length;
-        }
-      } catch (error) {
-        console.error('Failed to fetch alerts count:', error);
-      }
-
-      setDashboardData({
-        hotComplexes,
-        valuableComplexes,
-        activeAlertsCount,
-      });
-
-    } catch (error) {
-      console.error('Failed to fetch dashboard data:', error);
+      return {
+        ...fav,
+        stats,
+        complexName: complexResult?.overview?.complexName || fav.complexName,
+      };
     }
+
+    return fav;
+  });
+
+  // 최근 크롤링 시간 가져오기 (DB의 최근 크롤링 히스토리에서)
+  let lastCrawlTime = null;
+  if (dbStatsData?.crawling?.recentCrawls?.length > 0) {
+    lastCrawlTime = dbStatsData.crawling.recentCrawls[0].createdAt;
+  }
+
+  const stats = {
+    totalFavorites: favList.length,
+    totalComplexes: results.length, // 매물이 있는 단지 수
+    totalArticles,
+    lastCrawlTime,
+  };
+
+  // 미니 대시보드 데이터 계산
+  // 1. 24시간 Hot 단지 (articleChange24h 기준)
+  const hotComplexes = favList
+    .filter((f: any) => f.articleChange24h && f.articleChange24h > 0)
+    .sort((a: any, b: any) => (b.articleChange24h || 0) - (a.articleChange24h || 0))
+    .slice(0, 3)
+    .map((f: any) => ({
+      complexNo: f.complexNo,
+      complexName: f.complexName,
+      change24h: f.articleChange24h,
+    }));
+
+  // 2. 가성비 단지 계산은 복잡하므로 나중에 구현 (일단 빈 배열)
+  const valuableComplexes: Array<{complexNo: string, complexName: string, pricePerPyeong: number}> = [];
+
+  // 3. 활성 알림 수 조회
+  const activeAlertsCount = alertsData?.success && alertsData?.alerts
+    ? alertsData.alerts.filter((a: any) => a.isActive).length
+    : 0;
+
+  const dashboardData = {
+    hotComplexes,
+    valuableComplexes,
+    activeAlertsCount,
   };
 
   const formatDate = (dateString: string) => {
@@ -499,7 +495,7 @@ export default function Home() {
             </Link>
           </div>
           <div className="p-6">
-            {favorites.length === 0 ? (
+            {favoritesWithStats.length === 0 ? (
               <div className="text-center py-16">
                 <div className="text-7xl mb-4">📭</div>
                 <p className="text-xl font-semibold text-gray-500 dark:text-gray-400 mb-4">
@@ -515,7 +511,7 @@ export default function Home() {
             ) : (
               <>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {(showAll ? favorites : favorites.slice(0, 6)).map((fav) => (
+                  {(showAll ? favoritesWithStats : favoritesWithStats.slice(0, 6)).map((fav) => (
                   <Link
                     key={fav.complexNo}
                     href={`/complex/${fav.complexNo}`}
@@ -581,13 +577,13 @@ export default function Home() {
                 </div>
 
                 {/* 더보기 버튼 */}
-                {favorites.length > 6 && (
+                {favoritesWithStats.length > 6 && (
                   <div className="mt-6 text-center">
                     <button
                       onClick={() => setShowAll(!showAll)}
                       className="px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-lg font-semibold shadow-lg transition-all hover:shadow-xl"
                     >
-                      {showAll ? '접기 ▲' : `더보기 (${favorites.length - 6}개 더) ▼`}
+                      {showAll ? '접기 ▲' : `더보기 (${favoritesWithStats.length - 6}개 더) ▼`}
                     </button>
                   </div>
                 )}
