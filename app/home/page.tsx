@@ -48,6 +48,13 @@ export default function Home() {
     avgPrice: '-' as string,
     priceRange: '-' as string,
   });
+
+  // 미니 대시보드 데이터
+  const [dashboardData, setDashboardData] = useState({
+    hotComplexes: [] as Array<{complexNo: string, complexName: string, change24h: number}>,
+    valuableComplexes: [] as Array<{complexNo: string, complexName: string, pricePerPyeong: number}>,
+    activeAlertsCount: 0,
+  });
   const [currentTime, setCurrentTime] = useState<Date | null>(null);
   const [isMounted, setIsMounted] = useState(false);
 
@@ -173,6 +180,40 @@ export default function Home() {
         totalArticles,
         lastCrawlTime,
       });
+
+      // 미니 대시보드 데이터 계산
+      // 1. 24시간 Hot 단지 (articleChange24h 기준)
+      const hotComplexes = favList
+        .filter((f: any) => f.articleChange24h && f.articleChange24h > 0)
+        .sort((a: any, b: any) => (b.articleChange24h || 0) - (a.articleChange24h || 0))
+        .slice(0, 3)
+        .map((f: any) => ({
+          complexNo: f.complexNo,
+          complexName: f.complexName,
+          change24h: f.articleChange24h,
+        }));
+
+      // 2. 가성비 단지 계산은 복잡하므로 나중에 구현 (일단 빈 배열)
+      const valuableComplexes: Array<{complexNo: string, complexName: string, pricePerPyeong: number}> = [];
+
+      // 3. 활성 알림 수 조회
+      let activeAlertsCount = 0;
+      try {
+        const alertsResponse = await fetch('/api/alerts');
+        const alertsData = await alertsResponse.json();
+        if (alertsData.success && alertsData.alerts) {
+          activeAlertsCount = alertsData.alerts.filter((a: any) => a.isActive).length;
+        }
+      } catch (error) {
+        console.error('Failed to fetch alerts count:', error);
+      }
+
+      setDashboardData({
+        hotComplexes,
+        valuableComplexes,
+        activeAlertsCount,
+      });
+
     } catch (error) {
       console.error('Failed to fetch dashboard data:', error);
     }
@@ -318,12 +359,31 @@ export default function Home() {
                   <h4 className="font-bold text-gray-900 dark:text-white text-sm">24시간 Hot 단지</h4>
                 </div>
                 <div className="space-y-2">
-                  <div className="text-xs text-gray-600 dark:text-gray-400">
+                  <div className="text-xs text-gray-600 dark:text-gray-400 mb-2">
                     매물 변동이 가장 많은 단지
                   </div>
-                  <div className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-                    데이터 수집 중...
-                  </div>
+                  {dashboardData.hotComplexes.length > 0 ? (
+                    <div className="space-y-1">
+                      {dashboardData.hotComplexes.map((complex, idx) => (
+                        <Link
+                          key={complex.complexNo}
+                          href={`/complex/${complex.complexNo}`}
+                          className="flex items-center justify-between text-xs hover:bg-white/50 dark:hover:bg-black/20 rounded p-1 transition-colors"
+                        >
+                          <span className="font-medium text-gray-700 dark:text-gray-300 truncate">
+                            {idx + 1}. {complex.complexName}
+                          </span>
+                          <span className="text-red-600 dark:text-red-400 font-bold ml-2">
+                            +{complex.change24h}
+                          </span>
+                        </Link>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-xs text-gray-500 dark:text-gray-400">
+                      변동 없음
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -373,7 +433,7 @@ export default function Home() {
                     활성화된 알림 규칙
                   </div>
                   <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
-                    준비 중
+                    {dashboardData.activeAlertsCount}개
                   </div>
                 </div>
               </Link>
