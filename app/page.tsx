@@ -5,6 +5,15 @@ import { useSession, signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { showSuccess, showError, showLoading, dismissToast } from "@/lib/toast";
+import {
+  Home,
+  Zap,
+  BarChart3,
+  Bell,
+  DollarSign,
+  MessageSquare,
+  Clock
+} from "lucide-react";
 
 export default function LandingPage() {
   const { data: session, status } = useSession();
@@ -76,9 +85,7 @@ export default function LandingPage() {
             {/* Logo & Title */}
             <div className="mb-5">
               <div className="inline-block p-5 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-3xl shadow-2xl mb-3">
-                <svg className="w-16 h-16 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-                </svg>
+                <Home className="w-16 h-16 text-white" />
               </div>
               <h1 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-3">
                 부동산 인사이트
@@ -96,9 +103,7 @@ export default function LandingPage() {
               {/* 자동 크롤링 */}
               <div className="flex flex-col items-center text-center p-3 bg-white/60 dark:bg-gray-800/60 rounded-lg backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50">
                 <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center mb-2">
-                  <svg className="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                  </svg>
+                  <Zap className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                 </div>
                 <h3 className="font-semibold text-gray-900 dark:text-white mb-1 text-sm">자동 크롤링</h3>
                 <p className="text-gray-600 dark:text-gray-400 text-xs">
@@ -109,9 +114,7 @@ export default function LandingPage() {
               {/* 실시간 분석 */}
               <div className="flex flex-col items-center text-center p-3 bg-white/60 dark:bg-gray-800/60 rounded-lg backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50">
                 <div className="w-10 h-10 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center mb-2">
-                  <svg className="w-5 h-5 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                  </svg>
+                  <BarChart3 className="w-5 h-5 text-green-600 dark:text-green-400" />
                 </div>
                 <h3 className="font-semibold text-gray-900 dark:text-white mb-1 text-sm">실시간 분석</h3>
                 <p className="text-gray-600 dark:text-gray-400 text-xs">
@@ -122,9 +125,7 @@ export default function LandingPage() {
               {/* 스마트 알림 */}
               <div className="flex flex-col items-center text-center p-3 bg-white/60 dark:bg-gray-800/60 rounded-lg backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50">
                 <div className="w-10 h-10 bg-purple-100 dark:bg-purple-900 rounded-lg flex items-center justify-center mb-2">
-                  <svg className="w-5 h-5 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                  </svg>
+                  <Bell className="w-5 h-5 text-purple-600 dark:text-purple-400" />
                 </div>
                 <h3 className="font-semibold text-gray-900 dark:text-white mb-1 text-sm">스마트 알림</h3>
                 <p className="text-gray-600 dark:text-gray-400 text-xs">
@@ -135,9 +136,7 @@ export default function LandingPage() {
               {/* 가격 추적 */}
               <div className="flex flex-col items-center text-center p-3 bg-white/60 dark:bg-gray-800/60 rounded-lg backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50">
                 <div className="w-10 h-10 bg-amber-100 dark:bg-amber-900 rounded-lg flex items-center justify-center mb-2">
-                  <svg className="w-5 h-5 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
+                  <DollarSign className="w-5 h-5 text-amber-600 dark:text-amber-400" />
                 </div>
                 <h3 className="font-semibold text-gray-900 dark:text-white mb-1 text-sm">가격 추적</h3>
                 <p className="text-gray-600 dark:text-gray-400 text-xs">
@@ -148,9 +147,7 @@ export default function LandingPage() {
               {/* 커뮤니티 */}
               <div className="flex flex-col items-center text-center p-3 bg-white/60 dark:bg-gray-800/60 rounded-lg backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50">
                 <div className="w-10 h-10 bg-rose-100 dark:bg-rose-900 rounded-lg flex items-center justify-center mb-2">
-                  <svg className="w-5 h-5 text-rose-600 dark:text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z" />
-                  </svg>
+                  <MessageSquare className="w-5 h-5 text-rose-600 dark:text-rose-400" />
                 </div>
                 <h3 className="font-semibold text-gray-900 dark:text-white mb-1 text-sm">커뮤니티</h3>
                 <p className="text-gray-600 dark:text-gray-400 text-xs">
@@ -161,9 +158,7 @@ export default function LandingPage() {
               {/* 스케줄 관리 */}
               <div className="flex flex-col items-center text-center p-3 bg-white/60 dark:bg-gray-800/60 rounded-lg backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50">
                 <div className="w-10 h-10 bg-indigo-100 dark:bg-indigo-900 rounded-lg flex items-center justify-center mb-2">
-                  <svg className="w-5 h-5 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
+                  <Clock className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
                 </div>
                 <h3 className="font-semibold text-gray-900 dark:text-white mb-1 text-sm">스케줄 관리</h3>
                 <p className="text-gray-600 dark:text-gray-400 text-xs">

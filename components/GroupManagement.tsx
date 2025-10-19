@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Button, Modal, Badge } from '@/components/ui';
 import { showSuccess, showError, showLoading, dismissToast } from '@/lib/toast';
+import { Plus, Edit3, Trash2, List } from 'lucide-react';
 
 interface Group {
   id: string;
@@ -204,7 +205,8 @@ export function GroupManagement({ selectedGroupId, onGroupSelect, onGroupsChange
             setShowCreateModal(true);
           }}
         >
-          + 그룹
+          <Plus className="w-4 h-4 mr-1" />
+          그룹
         </Button>
       </div>
 
@@ -219,8 +221,9 @@ export function GroupManagement({ selectedGroupId, onGroupSelect, onGroupsChange
               : 'bg-gray-50 dark:bg-gray-800 border-2 border-transparent hover:border-gray-300 dark:hover:border-gray-600'
           }`}
         >
-          <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
-            📋 전체
+          <span className="flex items-center gap-2 text-sm font-medium text-gray-900 dark:text-gray-100">
+            <List className="w-4 h-4" />
+            <span>전체</span>
           </span>
           <Badge variant="secondary">
             {groups.reduce((sum, g) => sum + g.complexCount, 0)}
@@ -263,17 +266,17 @@ export function GroupManagement({ selectedGroupId, onGroupSelect, onGroupsChange
               <div className="flex items-center gap-1 ml-2">
                 <button
                   onClick={() => openEditModal(group)}
-                  className="p-0.5 text-xs text-gray-500 hover:text-blue-600 dark:hover:text-blue-400"
+                  className="p-1 text-gray-500 hover:text-blue-600 dark:hover:text-blue-400"
                   title="수정"
                 >
-                  ✏️
+                  <Edit3 className="w-3.5 h-3.5" />
                 </button>
                 <button
                   onClick={() => handleDeleteGroup(group.id, group.name)}
-                  className="p-0.5 text-xs text-gray-500 hover:text-red-600 dark:hover:text-red-400"
+                  className="p-1 text-gray-500 hover:text-red-600 dark:hover:text-red-400"
                   title="삭제"
                 >
-                  🗑️
+                  <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </div>
             </div>

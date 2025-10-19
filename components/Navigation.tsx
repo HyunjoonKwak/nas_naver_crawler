@@ -5,6 +5,21 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useSession, signOut } from 'next-auth/react';
 import { useCrawlEvents } from '@/hooks/useCrawlEvents';
+import {
+  Home,
+  Building2,
+  BarChart3,
+  MessageSquare,
+  Settings,
+  Bell,
+  Menu,
+  X,
+  LogOut,
+  LogIn,
+  UserPlus,
+  User,
+  Loader2
+} from 'lucide-react';
 
 export const Navigation = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -123,11 +138,11 @@ export const Navigation = () => {
   };
 
   const navLinks = [
-    { href: '/home', label: '홈', icon: '🏠' },
-    { href: '/complexes', label: '단지 목록', icon: '🏘️' },
-    { href: '/analytics', label: '데이터 분석', icon: '📊' },
-    { href: '/community', label: '커뮤니티', icon: '💬' },
-    { href: '/system', label: '시스템', icon: '⚙️' },
+    { href: '/home', label: '홈', icon: Home },
+    { href: '/complexes', label: '단지 목록', icon: Building2 },
+    { href: '/analytics', label: '데이터 분석', icon: BarChart3 },
+    { href: '/community', label: '커뮤니티', icon: MessageSquare },
+    { href: '/system', label: '시스템', icon: Settings },
   ];
 
   const isActive = (href: string) => {
@@ -151,8 +166,8 @@ export const Navigation = () => {
             className="flex items-center gap-3 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-lg"
             aria-label="부동산 인사이트 홈으로 이동"
           >
-            <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center text-white text-xl font-bold shadow-lg">
-              🏠
+            <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center text-white shadow-lg">
+              <Home className="w-6 h-6" />
             </div>
             <div className="hidden sm:block">
               <h1 className="text-xl font-bold text-gray-900 dark:text-white">
@@ -166,25 +181,29 @@ export const Navigation = () => {
 
           {/* Desktop Navigation - All Links Visible */}
           <div className="hidden md:flex items-center gap-2 flex-1 justify-end">
-            {navLinks.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className={`px-3 py-2 rounded-lg transition-colors text-sm font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
-                  isActive(link.href)
-                    ? 'bg-blue-600 text-white'
-                    : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800'
-                }`}
-                aria-current={isActive(link.href) ? 'page' : undefined}
-              >
-                {link.icon} {link.label}
-              </Link>
-            ))}
+            {navLinks.map((link) => {
+              const IconComponent = link.icon;
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors text-sm font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
+                    isActive(link.href)
+                      ? 'bg-blue-600 text-white'
+                      : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800'
+                  }`}
+                  aria-current={isActive(link.href) ? 'page' : undefined}
+                >
+                  <IconComponent className="w-4 h-4" />
+                  <span>{link.label}</span>
+                </Link>
+              );
+            })}
 
             {/* Auth Section */}
             {status === 'loading' ? (
               <div className="px-3 py-2">
-                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-gray-600"></div>
+                <Loader2 className="w-5 h-5 animate-spin text-gray-600" />
               </div>
             ) : session ? (
               <div className="flex items-center gap-2 ml-2 pl-2 border-l border-gray-300 dark:border-gray-600">
@@ -195,19 +214,7 @@ export const Navigation = () => {
                     className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 relative"
                     aria-label="알림"
                   >
-                    <svg
-                      className="w-5 h-5 text-gray-700 dark:text-gray-300"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
-                      />
-                    </svg>
+                    <Bell className="w-5 h-5 text-gray-700 dark:text-gray-300" />
                     {unreadCount > 0 && (
                       <span className="absolute top-0 right-0 inline-flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-red-600 rounded-full">
                         {unreadCount > 9 ? '9+' : unreadCount}
@@ -281,24 +288,27 @@ export const Navigation = () => {
                 </span>
                 <button
                   onClick={() => signOut({ callbackUrl: '/' })}
-                  className="px-3 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
                 >
-                  로그아웃
+                  <LogOut className="w-4 h-4" />
+                  <span>로그아웃</span>
                 </button>
               </div>
             ) : (
               <div className="flex items-center gap-2 ml-2 pl-2 border-l border-gray-300 dark:border-gray-600">
                 <Link
                   href="/"
-                  className="px-3 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                 >
-                  로그인
+                  <LogIn className="w-4 h-4" />
+                  <span>로그인</span>
                 </Link>
                 <Link
                   href="/auth/signup"
-                  className="px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500"
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500"
                 >
-                  회원가입
+                  <UserPlus className="w-4 h-4" />
+                  <span>회원가입</span>
                 </Link>
               </div>
             )}
@@ -313,28 +323,11 @@ export const Navigation = () => {
               aria-expanded={isMobileMenuOpen}
               aria-controls="mobile-menu"
             >
-              <svg
-                className="w-6 h-6 text-gray-700 dark:text-gray-200"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                {isMobileMenuOpen ? (
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                ) : (
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M4 6h16M4 12h16M4 18h16"
-                  />
-                )}
-              </svg>
+              {isMobileMenuOpen ? (
+                <X className="w-6 h-6 text-gray-700 dark:text-gray-200" />
+              ) : (
+                <Menu className="w-6 h-6 text-gray-700 dark:text-gray-200" />
+              )}
             </button>
           </div>
         </div>
@@ -361,33 +354,37 @@ export const Navigation = () => {
           <div className="max-w-7xl mx-auto px-4 py-3">
             {/* Mobile Menu Links */}
             <nav className="space-y-1 mb-3" aria-label="모바일 네비게이션">
-              {navLinks.map((link) => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                    isActive(link.href)
-                      ? 'bg-blue-600 text-white'
-                      : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800'
-                  }`}
-                  aria-current={isActive(link.href) ? 'page' : undefined}
-                >
-                  <span className="text-lg">{link.icon}</span>
-                  <span>{link.label}</span>
-                </Link>
-              ))}
+              {navLinks.map((link) => {
+                const IconComponent = link.icon;
+                return (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                      isActive(link.href)
+                        ? 'bg-blue-600 text-white'
+                        : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800'
+                    }`}
+                    aria-current={isActive(link.href) ? 'page' : undefined}
+                  >
+                    <IconComponent className="w-5 h-5" />
+                    <span>{link.label}</span>
+                  </Link>
+                );
+              })}
             </nav>
 
             {/* Mobile Auth Buttons */}
             <div className="pt-3 border-t border-gray-200 dark:border-gray-800 space-y-1">
               {status === 'loading' ? (
                 <div className="flex justify-center py-2">
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-gray-600"></div>
+                  <Loader2 className="w-5 h-5 animate-spin text-gray-600" />
                 </div>
               ) : session ? (
                 <>
-                  <div className="px-3 py-2 text-gray-700 dark:text-gray-300 text-sm">
-                    👤 {session.user?.name}
+                  <div className="flex items-center gap-2 px-3 py-2 text-gray-700 dark:text-gray-300 text-sm">
+                    <User className="w-4 h-4" />
+                    <span>{session.user?.name}</span>
                     {(session.user as any).role === 'ADMIN' && (
                       <span className="ml-2 px-2 py-0.5 text-xs bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400 rounded">
                         관리자
@@ -398,7 +395,7 @@ export const Navigation = () => {
                     onClick={() => signOut({ callbackUrl: '/' })}
                     className="w-full flex items-center gap-3 px-3 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white font-medium transition-colors text-sm"
                   >
-                    <span className="text-lg">🚪</span>
+                    <LogOut className="w-5 h-5" />
                     <span>로그아웃</span>
                   </button>
                 </>
@@ -408,14 +405,14 @@ export const Navigation = () => {
                     href="/"
                     className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium transition-colors text-sm"
                   >
-                    <span>🔐</span>
+                    <LogIn className="w-4 h-4" />
                     <span>로그인</span>
                   </Link>
                   <Link
                     href="/auth/signup"
                     className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-medium transition-colors text-sm"
                   >
-                    <span>📝</span>
+                    <UserPlus className="w-4 h-4" />
                     <span>회원가입</span>
                   </Link>
                 </div>

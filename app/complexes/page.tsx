@@ -12,6 +12,21 @@ import { ComplexGroupBadges } from "@/components/ComplexGroupBadges";
 import { GlobalSearch } from "@/components/GlobalSearch";
 import { showSuccess, showError, showLoading, dismissToast, showInfo } from "@/lib/toast";
 import { AuthGuard } from "@/components/AuthGuard";
+import {
+  Plus,
+  RefreshCw,
+  Loader2,
+  Search,
+  Folder,
+  LayoutGrid,
+  List,
+  Eye,
+  Trash2,
+  Star,
+  Rocket,
+  FileText,
+  Search as SearchIcon
+} from "lucide-react";
 
 interface ComplexGroup {
   id: string;
@@ -827,32 +842,44 @@ export default function ComplexesPage() {
               {/* 그룹 버튼 - 모바일에서만 표시 */}
               <button
                 onClick={() => setShowGroupSidebar(!showGroupSidebar)}
-                className="lg:hidden px-4 py-2 rounded-lg transition-colors font-medium bg-purple-600 hover:bg-purple-700 text-white"
+                className="lg:hidden flex items-center gap-2 px-4 py-2 rounded-lg transition-colors font-medium bg-purple-600 hover:bg-purple-700 text-white"
                 title="그룹 관리"
               >
-                📁 그룹
+                <Folder className="w-4 h-4" />
+                <span>그룹</span>
               </button>
               <button
                 onClick={() => setShowAddForm(!showAddForm)}
                 disabled={crawlingAll || !!crawling}
-                className={`px-4 py-2 rounded-lg transition-colors font-medium ${
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors font-medium ${
                   crawlingAll || crawling
                     ? 'bg-gray-300 dark:bg-gray-600 cursor-not-allowed'
                     : 'bg-blue-600 hover:bg-blue-700 text-white'
                 }`}
               >
-                ➕ 단지 추가
+                <Plus className="w-4 h-4" />
+                <span>단지 추가</span>
               </button>
               <button
                 onClick={handleCrawlAll}
                 disabled={crawlingAll || complexes.length === 0}
-                className={`px-4 py-2 rounded-lg transition-colors font-medium ${
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors font-medium ${
                   crawlingAll || complexes.length === 0
                     ? 'bg-gray-300 dark:bg-gray-600 cursor-not-allowed'
                     : 'bg-green-600 hover:bg-green-700 text-white'
                 }`}
               >
-                {crawlingAll ? '⏳ 크롤링 중...' : '🔄 전체 크롤링'}
+                {crawlingAll ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>크롤링 중...</span>
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="w-4 h-4" />
+                    <span>전체 크롤링</span>
+                  </>
+                )}
               </button>
               <button
                 onClick={() => {
@@ -867,7 +894,7 @@ export default function ComplexesPage() {
                 }`}
                 title="단지 정보 새로고침"
               >
-                🔃
+                <RefreshCw className="w-4 h-4" />
               </button>
             </div>
 
@@ -885,23 +912,25 @@ export default function ComplexesPage() {
               <div className="flex bg-gray-200 dark:bg-gray-700 rounded-lg p-1">
                 <button
                   onClick={() => setViewMode('card')}
-                  className={`px-3 py-1 rounded-lg transition-colors ${
+                  className={`flex items-center gap-2 px-3 py-1 rounded-lg transition-colors ${
                     viewMode === 'card'
                       ? 'bg-white dark:bg-gray-600 text-blue-600 dark:text-blue-400 shadow-sm'
                       : 'text-gray-600 dark:text-gray-400'
                   }`}
                 >
-                  🎴 카드
+                  <LayoutGrid className="w-4 h-4" />
+                  <span>카드</span>
                 </button>
                 <button
                   onClick={() => setViewMode('list')}
-                  className={`px-3 py-1 rounded-lg transition-colors ${
+                  className={`flex items-center gap-2 px-3 py-1 rounded-lg transition-colors ${
                     viewMode === 'list'
                       ? 'bg-white dark:bg-gray-600 text-blue-600 dark:text-blue-400 shadow-sm'
                       : 'text-gray-600 dark:text-gray-400'
                   }`}
                 >
-                  📋 리스트
+                  <List className="w-4 h-4" />
+                  <span>리스트</span>
                 </button>
               </div>
 
@@ -1102,13 +1131,14 @@ export default function ComplexesPage() {
                     </h3>
                     <button
                       onClick={() => handleToggleFavorite(complex.complexNo, complex.isFavorite)}
-                      className={`ml-2 px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
+                      className={`ml-2 flex items-center gap-1.5 px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
                         complex.isFavorite
                           ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400'
                           : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
                       }`}
                     >
-                      {complex.isFavorite ? '⭐ 관심단지' : '☆ 관심등록'}
+                      <Star className={`w-4 h-4 ${complex.isFavorite ? 'fill-current' : ''}`} />
+                      <span>{complex.isFavorite ? '관심단지' : '관심등록'}</span>
                     </button>
                   </div>
 
@@ -1188,9 +1218,10 @@ export default function ComplexesPage() {
                   <div className="flex gap-2 mt-4">
                     <Link
                       href={`/complex/${complex.complexNo}`}
-                      className="flex-1 px-4 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors text-sm font-semibold text-center"
+                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors text-sm font-semibold"
                     >
-                      상세보기
+                      <Eye className="w-4 h-4" />
+                      <span>상세보기</span>
                     </Link>
                     <button
                       onClick={() => handleCrawlComplex(complex.complexNo)}
@@ -1201,13 +1232,17 @@ export default function ComplexesPage() {
                           : 'bg-green-600 hover:bg-green-700 text-white'
                       }`}
                     >
-                      {crawling === complex.complexNo ? '⏳' : '🔄'}
+                      {crawling === complex.complexNo ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <RefreshCw className="w-4 h-4" />
+                      )}
                     </button>
                     <button
                       onClick={() => handleDeleteComplex(complex.complexNo, complex.complexName)}
                       className="px-4 py-2.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-sm font-semibold transition-colors"
                     >
-                      🗑️
+                      <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
                 </div>
@@ -1305,7 +1340,8 @@ export default function ComplexesPage() {
         <div className="mt-8 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
           <div className="bg-gradient-to-r from-slate-600 to-gray-600 px-6 py-4">
             <h3 className="text-xl font-bold text-white flex items-center gap-2">
-              🔍 일회성 매물 조회
+              <SearchIcon className="w-5 h-5" />
+              <span>일회성 매물 조회</span>
             </h3>
             <p className="text-slate-100 text-sm mt-1">
               관심 단지로 등록하지 않고 매물 정보만 확인합니다
@@ -1565,13 +1601,23 @@ function SingleComplexCrawler({
           <button
             onClick={handleCrawl}
             disabled={crawling || !complexNo.trim()}
-            className={`px-6 py-2 rounded-lg font-medium transition-colors ${
+            className={`flex items-center gap-2 px-6 py-2 rounded-lg font-medium transition-colors ${
               crawling || !complexNo.trim()
                 ? 'bg-gray-300 dark:bg-gray-600 cursor-not-allowed'
                 : 'bg-blue-600 hover:bg-blue-700 text-white'
             }`}
           >
-            {crawling ? '⏳ 크롤링 중...' : '🚀 크롤링'}
+            {crawling ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>크롤링 중...</span>
+              </>
+            ) : (
+              <>
+                <Rocket className="w-4 h-4" />
+                <span>크롤링</span>
+              </>
+            )}
           </button>
         </div>
         <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
