@@ -158,10 +158,8 @@ export default function CommunityPage() {
   return (
     <AuthGuard>
       <div className="min-h-screen bg-gray-50 dark:bg-black pb-20 md:pb-0">
-        {/* Desktop Navigation */}
-        <div className="hidden md:block">
-          <Navigation />
-        </div>
+        {/* Navigation */}
+        <Navigation />
 
         {/* Mobile Navigation */}
         <div className="md:hidden">
@@ -169,8 +167,7 @@ export default function CommunityPage() {
         </div>
 
         {/* Main Content */}
-        <main className="md:ml-64 p-4 md:p-8">
-          <div className="max-w-5xl mx-auto">
+        <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             {/* Header */}
             <div className="mb-6">
               <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-2">
@@ -433,7 +430,6 @@ export default function CommunityPage() {
               </nav>
             </div>
           )}
-          </div>
         </main>
       </div>
     </AuthGuard>

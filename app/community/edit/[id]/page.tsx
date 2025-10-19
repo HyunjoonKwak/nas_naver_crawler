@@ -100,17 +100,13 @@ export default function EditPostPage() {
     return (
       <AuthGuard>
         <div className="min-h-screen bg-gray-50 dark:bg-black pb-20 md:pb-0">
-          <div className="hidden md:block">
-            <Navigation />
-          </div>
+          <Navigation />
           <div className="md:hidden">
             <MobileNavigation />
           </div>
-          <main className="md:ml-64 p-4 md:p-8">
-            <div className="max-w-4xl mx-auto">
-              <div className="flex justify-center items-center py-20">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
-              </div>
+          <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div className="flex justify-center items-center py-20">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
             </div>
           </main>
         </div>
@@ -121,10 +117,8 @@ export default function EditPostPage() {
   return (
     <AuthGuard>
       <div className="min-h-screen bg-gray-50 dark:bg-black pb-20 md:pb-0">
-        {/* Desktop Navigation */}
-        <div className="hidden md:block">
-          <Navigation />
-        </div>
+        {/* Navigation */}
+        <Navigation />
 
         {/* Mobile Navigation */}
         <div className="md:hidden">
@@ -132,8 +126,7 @@ export default function EditPostPage() {
         </div>
 
         {/* Main Content */}
-        <main className="md:ml-64 p-4 md:p-8">
-          <div className="max-w-4xl mx-auto">
+        <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             {/* Back Button */}
             <Link
               href={`/community/${postId}`}
@@ -234,7 +227,6 @@ export default function EditPostPage() {
                 </div>
               </form>
             </div>
-          </div>
         </main>
       </div>
     </AuthGuard>
