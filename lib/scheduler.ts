@@ -201,8 +201,8 @@ async function executeCrawl(scheduleId: string) {
         }),
         signal: controller.signal,
         // @ts-ignore - undici specific options
-        headersTimeout: dynamicTimeout,
-        bodyTimeout: dynamicTimeout,
+        headersTimeout: dynamicTimeout + 120000, // +2분 버퍼 추가
+        bodyTimeout: dynamicTimeout + 120000,    // +2분 버퍼 추가
       });
 
       clearTimeout(timeoutId);
