@@ -72,6 +72,13 @@ export async function GET(request: NextRequest) {
             articles: true, // 매물 개수
           },
         },
+        articles: {
+          orderBy: { createdAt: 'desc' },
+          take: 1, // 가장 최근 매물 1개만 조회 (최근 수집일 계산용)
+          select: {
+            createdAt: true,
+          },
+        },
         favorites: {
           where: {
             userId: currentUser.id, // 본인의 즐겨찾기만 조회
@@ -132,6 +139,8 @@ export async function GET(request: NextRequest) {
       })) || [],
       createdAt: complex.createdAt.toISOString(),
       updatedAt: complex.updatedAt.toISOString(),
+      // 최근 수집일 (가장 최근 매물의 생성일)
+      lastCrawledAt: complex.articles?.[0]?.createdAt?.toISOString() || null,
     }));
 
     return NextResponse.json({

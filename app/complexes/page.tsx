@@ -1212,6 +1212,32 @@ export default function ComplexesPage() {
                         </span>
                       </div>
                     )}
+
+                    {/* 등록일 */}
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-600 dark:text-gray-400">등록일</span>
+                      <span className="text-gray-900 dark:text-white font-medium text-xs">
+                        {new Date(complex.createdAt).toLocaleDateString('ko-KR', {
+                          year: 'numeric',
+                          month: '2-digit',
+                          day: '2-digit',
+                        })}
+                      </span>
+                    </div>
+
+                    {/* 최근 수집일 */}
+                    {complex.lastCrawledAt && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-600 dark:text-gray-400">최근 수집</span>
+                        <span className="text-gray-900 dark:text-white font-medium text-xs">
+                          {new Date(complex.lastCrawledAt).toLocaleDateString('ko-KR', {
+                            year: 'numeric',
+                            month: '2-digit',
+                            day: '2-digit',
+                          })}
+                        </span>
+                      </div>
+                    )}
                   </div>
 
                   {/* 액션 버튼들 */}
@@ -1302,7 +1328,7 @@ export default function ComplexesPage() {
                       {favorite.complexNo}
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                      {formatDate(favorite.addedAt)}
+                      {formatDate(favorite.createdAt)}
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                       {formatDate(favorite.lastCrawledAt)}
