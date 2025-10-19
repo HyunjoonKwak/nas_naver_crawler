@@ -187,7 +187,8 @@ export function SchedulerSettings() {
     try {
       const payload = {
         name: formData.name,
-        complexNos: formData.complexNos,
+        complexNos: [],  // 빈 배열로 전달 (사용하지 않음)
+        useBookmarkedComplexes: true,  // 실시간 관심단지 사용
         cronExpr: cronExpr,
       };
 
@@ -603,13 +604,24 @@ export function SchedulerSettings() {
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    크롤링 단지 (관심단지 자동 사용)
+                    크롤링 단지 (실시간 관심단지 사용)
                   </label>
                   <span className="text-xs text-green-600 dark:text-green-400 font-semibold bg-green-50 dark:bg-green-900/20 px-2 py-1 rounded">
-                    ✓ 총 {complexes.length}개 단지
+                    ✓ 현재 {complexes.length}개 단지
                   </span>
                 </div>
-                <div className="bg-gray-50 dark:bg-gray-900/50 border border-gray-300 dark:border-gray-600 rounded-lg p-4">
+                <div className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border-2 border-green-200 dark:border-green-700 rounded-lg p-4">
+                  <div className="mb-3 flex items-start gap-2">
+                    <div className="text-xl">🔄</div>
+                    <div className="flex-1">
+                      <p className="text-xs font-semibold text-green-800 dark:text-green-300 mb-1">
+                        실시간 동기화 모드
+                      </p>
+                      <p className="text-xs text-green-700 dark:text-green-400">
+                        스케줄 실행 시점의 관심단지 목록을 자동으로 크롤링합니다. 관심단지 추가/삭제 시 자동 반영됩니다.
+                      </p>
+                    </div>
+                  </div>
                   {complexes.length > 0 ? (
                     <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto">
                       {complexes.map((complex) => (
