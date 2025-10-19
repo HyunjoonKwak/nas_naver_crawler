@@ -190,10 +190,10 @@ export function GroupManagement({ selectedGroupId, onGroupSelect, onGroupsChange
   };
 
   return (
-    <div className="space-y-4">
-      {/* 헤더 */}
+    <div className="space-y-3">
+      {/* 헤더 - 축소 */}
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+        <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">
           그룹 관리
         </h3>
         <Button
@@ -204,41 +204,41 @@ export function GroupManagement({ selectedGroupId, onGroupSelect, onGroupsChange
             setShowCreateModal(true);
           }}
         >
-          + 새 그룹
+          + 그룹
         </Button>
       </div>
 
-      {/* 그룹 목록 */}
-      <div className="space-y-2">
-        {/* 전체 보기 */}
+      {/* 그룹 목록 - 축소 */}
+      <div className="space-y-1.5">
+        {/* 전체 보기 - 축소 */}
         <button
           onClick={() => onGroupSelect(null)}
-          className={`w-full flex items-center justify-between px-4 py-3 rounded-lg transition-colors ${
+          className={`w-full flex items-center justify-between px-3 py-2 rounded-lg transition-colors ${
             selectedGroupId === null
               ? 'bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-500'
               : 'bg-gray-50 dark:bg-gray-800 border-2 border-transparent hover:border-gray-300 dark:hover:border-gray-600'
           }`}
         >
-          <span className="font-medium text-gray-900 dark:text-gray-100">
-            📋 전체 단지
+          <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+            📋 전체
           </span>
           <Badge variant="secondary">
             {groups.reduce((sum, g) => sum + g.complexCount, 0)}
           </Badge>
         </button>
 
-        {/* 그룹 목록 */}
+        {/* 그룹 목록 - 축소 */}
         {loading ? (
-          <div className="text-center py-8 text-gray-500">로딩 중...</div>
+          <div className="text-center py-4 text-sm text-gray-500">로딩 중...</div>
         ) : groups.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">
-            생성된 그룹이 없습니다.
+          <div className="text-center py-4 text-sm text-gray-500">
+            그룹 없음
           </div>
         ) : (
           groups.map((group) => (
             <div
               key={group.id}
-              className={`flex items-center justify-between px-4 py-3 rounded-lg transition-colors ${
+              className={`flex items-center justify-between px-3 py-2 rounded-lg transition-colors ${
                 selectedGroupId === group.id
                   ? 'bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-500'
                   : 'bg-gray-50 dark:bg-gray-800 border-2 border-transparent hover:border-gray-300 dark:hover:border-gray-600'
@@ -246,36 +246,31 @@ export function GroupManagement({ selectedGroupId, onGroupSelect, onGroupsChange
             >
               <button
                 onClick={() => onGroupSelect(group.id)}
-                className="flex-1 flex items-center gap-3 text-left"
+                className="flex-1 flex items-center gap-2 text-left min-w-0"
               >
                 <span
-                  className="w-4 h-4 rounded-full flex-shrink-0"
+                  className="w-3 h-3 rounded-full flex-shrink-0"
                   style={{ backgroundColor: group.color || '#3b82f6' }}
                 />
                 <div className="flex-1 min-w-0">
-                  <div className="font-medium text-gray-900 dark:text-gray-100">
+                  <div className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
                     {group.name}
                   </div>
-                  {group.description && (
-                    <div className="text-sm text-gray-500 truncate">
-                      {group.description}
-                    </div>
-                  )}
                 </div>
                 <Badge variant="secondary">{group.complexCount}</Badge>
               </button>
 
-              <div className="flex items-center gap-2 ml-2">
+              <div className="flex items-center gap-1 ml-2">
                 <button
                   onClick={() => openEditModal(group)}
-                  className="p-1 text-gray-500 hover:text-blue-600 dark:hover:text-blue-400"
+                  className="p-0.5 text-xs text-gray-500 hover:text-blue-600 dark:hover:text-blue-400"
                   title="수정"
                 >
                   ✏️
                 </button>
                 <button
                   onClick={() => handleDeleteGroup(group.id, group.name)}
-                  className="p-1 text-gray-500 hover:text-red-600 dark:hover:text-red-400"
+                  className="p-0.5 text-xs text-gray-500 hover:text-red-600 dark:hover:text-red-400"
                   title="삭제"
                 >
                   🗑️

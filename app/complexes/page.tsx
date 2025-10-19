@@ -684,26 +684,10 @@ export default function ComplexesPage() {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Search Bar */}
-        <div className="mb-6">
-          <button
-            onClick={() => setIsSearchOpen(true)}
-            className="w-full max-w-2xl px-4 py-3 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg flex items-center gap-3 text-gray-600 dark:text-gray-400 hover:border-blue-500 dark:hover:border-blue-500 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-            <span className="text-sm">단지명, 주소로 검색...</span>
-            <kbd className="ml-auto hidden sm:inline-block px-2 py-1 text-xs font-semibold bg-gray-100 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded">
-              ⌘K
-            </kbd>
-          </button>
-        </div>
-
         <div className="flex gap-6">
-          {/* 그룹 사이드바 - 데스크탑: 항상 표시, 모바일: 토글 */}
+          {/* 그룹 사이드바 - 축소 */}
           <div className={`
-            w-80 flex-shrink-0
+            w-64 flex-shrink-0
             lg:block
             ${showGroupSidebar ? 'block' : 'hidden'}
             ${showGroupSidebar ? 'fixed inset-0 z-50 lg:relative lg:inset-auto' : ''}
@@ -741,6 +725,22 @@ export default function ComplexesPage() {
 
           {/* 메인 컨텐츠 */}
           <div className="flex-1 min-w-0">
+        {/* Search Bar - 메인 컨텐츠 상단으로 이동 */}
+        <div className="mb-6">
+          <button
+            onClick={() => setIsSearchOpen(true)}
+            className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg flex items-center gap-3 text-gray-600 dark:text-gray-400 hover:border-blue-500 dark:hover:border-blue-500 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <span className="text-sm">단지명, 주소로 검색...</span>
+            <kbd className="ml-auto hidden sm:inline-block px-2 py-1 text-xs font-semibold bg-gray-100 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded">
+              ⌘K
+            </kbd>
+          </button>
+        </div>
+
         {/* Crawling Status Banner */}
         {(crawlingAll || crawling) && (
           <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-2 border-blue-400 dark:border-blue-600 rounded-lg p-4 mb-6 shadow-lg">
