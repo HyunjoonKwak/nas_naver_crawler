@@ -122,8 +122,8 @@ export default function SystemPage() {
         {activeSection === 'scheduler' && (
           <div className="space-y-6">
             <SectionHeader
-              title="스케줄러 및 알림 관리"
-              description="자동 크롤링 스케줄과 Discord 알림을 설정하세요"
+              title="스케줄러 관리"
+              description="자동 크롤링 스케줄을 설정하세요"
             />
             <SchedulerSettings />
           </div>
