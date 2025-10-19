@@ -1,72 +1,81 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAuth, getComplexWhereCondition } from '@/lib/auth-utils';
+import { getCached, cache, invalidateCache, cacheTTL } from '@/lib/cache';
 import fs from 'fs/promises';
 import path from 'path';
 
 export const dynamic = 'force-dynamic';
 
-// CSV 파일에서 단지 정보 읽기
+// CSV 파일에서 단지 정보 읽기 (캐싱 적용)
 async function readCSVComplexInfo(): Promise<Map<string, any>> {
-  const complexInfoMap = new Map();
+  // CSV는 변경 빈도가 낮으므로 긴 캐시 시간 사용 (5분)
+  return getCached(
+    'csv:complex-info',
+    cacheTTL.medium,
+    async () => {
+      const complexInfoMap = new Map();
 
-  try {
-    const baseDir = process.cwd();
-    const crawledDataDir = path.join(baseDir, 'crawled_data');
+      try {
+        const baseDir = process.cwd();
+        const crawledDataDir = path.join(baseDir, 'crawled_data');
 
-    const files = await fs.readdir(crawledDataDir);
-    const csvFiles = files
-      .filter(f => f.endsWith('.csv') && f.startsWith('complexes_'))
-      .sort()
-      .reverse(); // 최신 파일 우선
+        const files = await fs.readdir(crawledDataDir);
+        const csvFiles = files
+          .filter(f => f.endsWith('.csv') && f.startsWith('complexes_'))
+          .sort()
+          .reverse(); // 최신 파일 우선
 
-    if (csvFiles.length === 0) {
-      return complexInfoMap;
-    }
+        if (csvFiles.length === 0) {
+          return complexInfoMap;
+        }
 
-    // 최신 CSV 파일 읽기
-    const latestCsvPath = path.join(crawledDataDir, csvFiles[0]);
-    const csvContent = await fs.readFile(latestCsvPath, 'utf-8');
-    const lines = csvContent.split('\n').filter(line => line.trim());
+        // 최신 CSV 파일 읽기
+        const latestCsvPath = path.join(crawledDataDir, csvFiles[0]);
+        const csvContent = await fs.readFile(latestCsvPath, 'utf-8');
+        const lines = csvContent.split('\n').filter(line => line.trim());
 
-    if (lines.length < 2) {
-      return complexInfoMap;
-    }
+        if (lines.length < 2) {
+          return complexInfoMap;
+        }
 
-    const headers = lines[0].split(',').map(h => h.trim());
+        const headers = lines[0].split(',').map(h => h.trim());
 
-    for (let i = 1; i < lines.length; i++) {
-      const values = lines[i].split(',').map(v => v.trim());
-      const row: any = {};
+        for (let i = 1; i < lines.length; i++) {
+          const values = lines[i].split(',').map(v => v.trim());
+          const row: any = {};
 
-      headers.forEach((header, index) => {
-        row[header] = values[index] || '';
-      });
+          headers.forEach((header, index) => {
+            row[header] = values[index] || '';
+          });
 
-      const complexNo = row['단지번호'];
-      if (complexNo) {
-        complexInfoMap.set(complexNo, {
-          complexName: row['단지명'],
-          totalHouseHoldCount: parseInt(row['세대수']) || null,
-          totalDongCount: parseInt(row['동수']) || null,
-          minArea: parseFloat(row['최소면적']) || null,
-          maxArea: parseFloat(row['최대면적']) || null,
-          minPrice: parseInt(row['최소가격']) || null,
-          maxPrice: parseInt(row['최대가격']) || null,
-          useApproveYmd: row['사용승인일'] || null,
-          latitude: parseFloat(row['위도']) || null,
-          longitude: parseFloat(row['경도']) || null,
-          roadAddress: row['도로명주소'] || null,
-          jibunAddress: row['지번주소'] || null,
-          address: row['주소'] || null,
-        });
+          const complexNo = row['단지번호'];
+          if (complexNo) {
+            complexInfoMap.set(complexNo, {
+              complexName: row['단지명'],
+              totalHouseHoldCount: parseInt(row['세대수']) || null,
+              totalDongCount: parseInt(row['동수']) || null,
+              minArea: parseFloat(row['최소면적']) || null,
+              maxArea: parseFloat(row['최대면적']) || null,
+              minPrice: parseInt(row['최소가격']) || null,
+              maxPrice: parseInt(row['최대가격']) || null,
+              useApproveYmd: row['사용승인일'] || null,
+              latitude: parseFloat(row['위도']) || null,
+              longitude: parseFloat(row['경도']) || null,
+              roadAddress: row['도로명주소'] || null,
+              jibunAddress: row['지번주소'] || null,
+              address: row['주소'] || null,
+            });
+          }
+        }
+      } catch (error) {
+        console.log('CSV 읽기 실패 (무시):', error);
       }
-    }
-  } catch (error) {
-    console.log('CSV 읽기 실패 (무시):', error);
-  }
 
-  return complexInfoMap;
+      console.log(`[Cache] CSV loaded: ${complexInfoMap.size} complexes`);
+      return complexInfoMap;
+    }
+  );
 }
 
 export async function GET(request: NextRequest) {

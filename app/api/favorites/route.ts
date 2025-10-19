@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAuth } from '@/lib/auth-utils';
+import { getCached, invalidateCache, cacheTTL } from '@/lib/cache';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,57 +11,67 @@ export async function GET(request: NextRequest) {
     const currentUser = await requireAuth();
     console.log('[API_FAVORITES] GET 요청 시작 - User:', currentUser.id);
 
-    // DB에서 본인 즐겨찾기만 조회 (완전 독립 정책)
-    const favorites = await prisma.favorite.findMany({
-      where: {
-        userId: currentUser.id // 본인 것만
-      },
-      include: {
-        complex: {
+    // 사용자별 캐시 키
+    const cacheKey = `favorites:${currentUser.id}`;
+
+    // 캐시 적용 (30초)
+    const formattedFavorites = await getCached(
+      cacheKey,
+      cacheTTL.short,
+      async () => {
+        // DB에서 본인 즐겨찾기만 조회 (완전 독립 정책)
+        const favorites = await prisma.favorite.findMany({
+          where: {
+            userId: currentUser.id // 본인 것만
+          },
           include: {
-            articles: {
-              select: {
-                id: true,
-                tradeTypeName: true,
+            complex: {
+              include: {
+                articles: {
+                  select: {
+                    id: true,
+                    tradeTypeName: true,
+                  }
+                }
               }
             }
+          },
+          orderBy: {
+            createdAt: 'asc' // 추가된 순서대로
           }
-        }
-      },
-      orderBy: {
-        createdAt: 'asc' // 추가된 순서대로
+        });
+
+        // 응답 형태로 변환
+        return favorites.map((fav, index) => {
+          const complex = fav.complex;
+          const articles = complex.articles || [];
+
+          // 거래 유형별 매물 수 계산
+          const tradeTypeCount = articles.reduce((acc, article) => {
+            const type = article.tradeTypeName || '기타';
+            acc[type] = (acc[type] || 0) + 1;
+            return acc;
+          }, {} as Record<string, number>);
+
+          return {
+            complexNo: complex.complexNo,
+            complexName: complex.complexName,
+            addedAt: fav.createdAt.toISOString(),
+            lastCrawledAt: complex.updatedAt.toISOString(),
+            articleCount: articles.length,
+            totalHouseHoldCount: complex.totalHousehold,
+            totalDongCount: complex.totalDong,
+            order: index, // 순서
+            stats: {
+              total: articles.length,
+              A1: tradeTypeCount['매매'] || 0,
+              B1: tradeTypeCount['전세'] || 0,
+              B2: tradeTypeCount['월세'] || 0,
+            }
+          };
+        });
       }
-    });
-
-    // 응답 형태로 변환
-    const formattedFavorites = favorites.map((fav, index) => {
-      const complex = fav.complex;
-      const articles = complex.articles || [];
-
-      // 거래 유형별 매물 수 계산
-      const tradeTypeCount = articles.reduce((acc, article) => {
-        const type = article.tradeTypeName || '기타';
-        acc[type] = (acc[type] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>);
-
-      return {
-        complexNo: complex.complexNo,
-        complexName: complex.complexName,
-        addedAt: fav.createdAt.toISOString(),
-        lastCrawledAt: complex.updatedAt.toISOString(),
-        articleCount: articles.length,
-        totalHouseHoldCount: complex.totalHousehold,
-        totalDongCount: complex.totalDong,
-        order: index, // 순서
-        stats: {
-          total: articles.length,
-          A1: tradeTypeCount['매매'] || 0,
-          B1: tradeTypeCount['전세'] || 0,
-          B2: tradeTypeCount['월세'] || 0,
-        }
-      };
-    });
+    );
 
     return NextResponse.json({
       favorites: formattedFavorites,
@@ -134,6 +145,9 @@ export async function POST(request: NextRequest) {
       }
     });
 
+    // 캐시 무효화
+    invalidateCache(`favorites:${currentUser.id}`);
+
     return NextResponse.json({
       success: true,
       message: '선호 단지가 추가되었습니다.',
@@ -193,6 +207,9 @@ export async function DELETE(request: NextRequest) {
         { status: 404 }
       );
     }
+
+    // 캐시 무효화
+    invalidateCache(`favorites:${currentUser.id}`);
 
     return NextResponse.json({
       success: true,

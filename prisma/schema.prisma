@@ -89,6 +89,9 @@ model Article {
   @@index([rentPrcWon])           // 월세 인덱스
   @@index([articleConfirmYmd])
   @@index([createdAt])            // 시계열 조회 최적화
+  @@index([complexId, createdAt]) // 복합 인덱스: 단지별 최신 매물 조회 최적화
+  @@index([complexId, tradeTypeName]) // 복합 인덱스: 단지별 거래유형 필터링 최적화
+  @@index([tradeTypeName, dealOrWarrantPrcWon]) // 복합 인덱스: 거래유형별 가격 정렬 최적화
   @@map("articles")
 }
 
@@ -131,6 +134,7 @@ model Favorite {
 
   @@unique([complexId, userId])
   @@index([userId])
+  @@index([complexId]) // 복합 인덱스: 단지별 즐겨찾기 조회 최적화
   @@map("favorites")
 }
 
