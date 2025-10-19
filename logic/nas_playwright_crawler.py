@@ -589,10 +589,12 @@ class NASNaverRealEstateCrawler:
                 # 5. 매물 목록 컨테이너 찾기 (재시도 로직 포함)
                 print("매물 목록 컨테이너 찾는 중...")
                 list_container = None
+                # 더 구체적인 셀렉터부터 시도 (일반적인 것은 나중에)
                 container_selectors = [
-                    '[class*="list"]',
-                    '[class*="article"]',
-                    '[class*="item"]',
+                    '.item_list--article',  # 가장 구체적
+                    '[class*="article"]',   # 매물 관련
+                    '.item_list',           # 일반 리스트
+                    '[class*="list"]',      # 가장 일반적 (마지막)
                 ]
 
                 # 최대 3회 재시도
@@ -647,6 +649,17 @@ class NASNaverRealEstateCrawler:
                 await asyncio.sleep(3)
                 initial_count = len(all_articles)
                 print(f"초기 매물 수: {initial_count}개")
+
+                # 초기 매물이 0개인 경우 추가 대기 (API 응답 대기)
+                if initial_count == 0:
+                    print("⚠️ 초기 매물이 0개입니다. API 응답 대기 중... (5초)")
+                    await asyncio.sleep(5)
+                    initial_count = len(all_articles)
+                    print(f"재확인 매물 수: {initial_count}개")
+
+                    if initial_count == 0:
+                        print("❌ 여전히 매물이 없습니다. 이 단지는 매물이 없거나 페이지 로딩에 실패했습니다.")
+                        return None
                 
                 # 5. 점진적 스크롤로 데이터 수집 (crawler_service.py 방식)
                 print("추가 매물 수집 시작 (점진적 스크롤)...")
