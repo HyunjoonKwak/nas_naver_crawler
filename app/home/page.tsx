@@ -45,6 +45,8 @@ export default function Home() {
     totalComplexes: 0, // 매물이 있는 단지 수
     totalArticles: 0,
     lastCrawlTime: null as string | null,
+    avgPrice: '-' as string,
+    priceRange: '-' as string,
   });
   const [currentTime, setCurrentTime] = useState<Date | null>(null);
   const [isMounted, setIsMounted] = useState(false);

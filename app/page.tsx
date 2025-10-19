@@ -23,6 +23,11 @@ export default function LandingPage() {
     password: "",
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [stats, setStats] = useState({
+    totalArticles: 0,
+    totalComplexes: 0,
+    avgUpdateTime: "5분",
+  });
 
   // 이미 로그인한 사용자는 홈으로 리다이렉트
   useEffect(() => {
@@ -30,6 +35,26 @@ export default function LandingPage() {
       router.push("/home");
     }
   }, [status, router]);
+
+  // 실시간 통계 조회
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const response = await fetch('/api/db-stats');
+        const data = await response.json();
+
+        setStats({
+          totalArticles: data.articles?.total || 0,
+          totalComplexes: data.complexes?.total || 0,
+          avgUpdateTime: "5분", // 기본값
+        });
+      } catch (error) {
+        console.error('Failed to fetch stats:', error);
+      }
+    };
+
+    fetchStats();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -98,71 +123,60 @@ export default function LandingPage() {
               </p>
             </div>
 
-            {/* Features - 6개 카드 (가로 1줄) */}
-            <div className="grid grid-cols-2 md:grid-cols-6 gap-3 max-w-5xl mx-auto">
-              {/* 자동 크롤링 */}
-              <div className="flex flex-col items-center text-center p-3 bg-white/60 dark:bg-gray-800/60 rounded-lg backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50">
-                <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center mb-2">
-                  <Zap className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+            {/* 실시간 통계 */}
+            <div className="grid grid-cols-3 gap-4 max-w-2xl mx-auto mb-8">
+              <div className="text-center p-4 bg-white/80 dark:bg-gray-800/80 rounded-xl backdrop-blur-sm shadow-lg border border-gray-200/50 dark:border-gray-700/50">
+                <div className="text-3xl font-bold text-blue-600 dark:text-blue-400">
+                  {stats.totalArticles.toLocaleString()}
                 </div>
-                <h3 className="font-semibold text-gray-900 dark:text-white mb-1 text-sm">자동 크롤링</h3>
-                <p className="text-gray-600 dark:text-gray-400 text-xs">
-                  정기 자동 수집
+                <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">등록 매물</div>
+              </div>
+              <div className="text-center p-4 bg-white/80 dark:bg-gray-800/80 rounded-xl backdrop-blur-sm shadow-lg border border-gray-200/50 dark:border-gray-700/50">
+                <div className="text-3xl font-bold text-green-600 dark:text-green-400">
+                  {stats.totalComplexes.toLocaleString()}
+                </div>
+                <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">관리 단지</div>
+              </div>
+              <div className="text-center p-4 bg-white/80 dark:bg-gray-800/80 rounded-xl backdrop-blur-sm shadow-lg border border-gray-200/50 dark:border-gray-700/50">
+                <div className="text-3xl font-bold text-purple-600 dark:text-purple-400">
+                  {stats.avgUpdateTime}
+                </div>
+                <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">평균 업데이트</div>
+              </div>
+            </div>
+
+            {/* Features - 3개 핵심 기능 */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
+              {/* 자동 크롤링 */}
+              <div className="flex flex-col items-center text-center p-6 bg-white/80 dark:bg-gray-800/80 rounded-2xl backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50 shadow-xl hover:shadow-2xl transition-shadow">
+                <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center mb-4">
+                  <Zap className="w-8 h-8 text-white" />
+                </div>
+                <h3 className="font-bold text-gray-900 dark:text-white mb-2 text-lg">자동 크롤링</h3>
+                <p className="text-gray-600 dark:text-gray-400 text-sm leading-relaxed">
+                  정기적으로 자동 수집하여<br />최신 매물 정보를 제공합니다
                 </p>
               </div>
 
               {/* 실시간 분석 */}
-              <div className="flex flex-col items-center text-center p-3 bg-white/60 dark:bg-gray-800/60 rounded-lg backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50">
-                <div className="w-10 h-10 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center mb-2">
-                  <BarChart3 className="w-5 h-5 text-green-600 dark:text-green-400" />
+              <div className="flex flex-col items-center text-center p-6 bg-white/80 dark:bg-gray-800/80 rounded-2xl backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50 shadow-xl hover:shadow-2xl transition-shadow">
+                <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-green-600 rounded-2xl flex items-center justify-center mb-4">
+                  <BarChart3 className="w-8 h-8 text-white" />
                 </div>
-                <h3 className="font-semibold text-gray-900 dark:text-white mb-1 text-sm">실시간 분석</h3>
-                <p className="text-gray-600 dark:text-gray-400 text-xs">
-                  통계와 트렌드
-                </p>
-              </div>
-
-              {/* 스마트 알림 */}
-              <div className="flex flex-col items-center text-center p-3 bg-white/60 dark:bg-gray-800/60 rounded-lg backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50">
-                <div className="w-10 h-10 bg-purple-100 dark:bg-purple-900 rounded-lg flex items-center justify-center mb-2">
-                  <Bell className="w-5 h-5 text-purple-600 dark:text-purple-400" />
-                </div>
-                <h3 className="font-semibold text-gray-900 dark:text-white mb-1 text-sm">스마트 알림</h3>
-                <p className="text-gray-600 dark:text-gray-400 text-xs">
-                  Discord 알림
+                <h3 className="font-bold text-gray-900 dark:text-white mb-2 text-lg">실시간 분석</h3>
+                <p className="text-gray-600 dark:text-gray-400 text-sm leading-relaxed">
+                  가격 통계와 트렌드를<br />실시간으로 분석합니다
                 </p>
               </div>
 
               {/* 가격 추적 */}
-              <div className="flex flex-col items-center text-center p-3 bg-white/60 dark:bg-gray-800/60 rounded-lg backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50">
-                <div className="w-10 h-10 bg-amber-100 dark:bg-amber-900 rounded-lg flex items-center justify-center mb-2">
-                  <DollarSign className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+              <div className="flex flex-col items-center text-center p-6 bg-white/80 dark:bg-gray-800/80 rounded-2xl backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50 shadow-xl hover:shadow-2xl transition-shadow">
+                <div className="w-16 h-16 bg-gradient-to-br from-amber-500 to-amber-600 rounded-2xl flex items-center justify-center mb-4">
+                  <DollarSign className="w-8 h-8 text-white" />
                 </div>
-                <h3 className="font-semibold text-gray-900 dark:text-white mb-1 text-sm">가격 추적</h3>
-                <p className="text-gray-600 dark:text-gray-400 text-xs">
-                  가격 히스토리
-                </p>
-              </div>
-
-              {/* 커뮤니티 */}
-              <div className="flex flex-col items-center text-center p-3 bg-white/60 dark:bg-gray-800/60 rounded-lg backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50">
-                <div className="w-10 h-10 bg-rose-100 dark:bg-rose-900 rounded-lg flex items-center justify-center mb-2">
-                  <MessageSquare className="w-5 h-5 text-rose-600 dark:text-rose-400" />
-                </div>
-                <h3 className="font-semibold text-gray-900 dark:text-white mb-1 text-sm">커뮤니티</h3>
-                <p className="text-gray-600 dark:text-gray-400 text-xs">
-                  정보 공유
-                </p>
-              </div>
-
-              {/* 스케줄 관리 */}
-              <div className="flex flex-col items-center text-center p-3 bg-white/60 dark:bg-gray-800/60 rounded-lg backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50">
-                <div className="w-10 h-10 bg-indigo-100 dark:bg-indigo-900 rounded-lg flex items-center justify-center mb-2">
-                  <Clock className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-                </div>
-                <h3 className="font-semibold text-gray-900 dark:text-white mb-1 text-sm">스케줄 관리</h3>
-                <p className="text-gray-600 dark:text-gray-400 text-xs">
-                  자동 예약
+                <h3 className="font-bold text-gray-900 dark:text-white mb-2 text-lg">가격 추적</h3>
+                <p className="text-gray-600 dark:text-gray-400 text-sm leading-relaxed">
+                  매물 가격의 변동 히스토리를<br />추적하고 비교합니다
                 </p>
               </div>
             </div>
@@ -296,17 +310,20 @@ export default function LandingPage() {
                 </Link>
               </div>
 
-              {/* 회원가입 링크 */}
-              <div className="mt-3 text-center">
-                <p className="text-xs text-gray-600 dark:text-gray-400">
-                  계정이 없으신가요?{" "}
-                  <Link
-                    href="/auth/signup"
-                    className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-semibold"
-                  >
-                    회원가입
-                  </Link>
+              {/* 회원가입 CTA - 강화 */}
+              <div className="mt-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg border-2 border-blue-200 dark:border-blue-700">
+                <p className="text-sm font-semibold text-gray-900 dark:text-white mb-2">
+                  아직 회원이 아니신가요?
                 </p>
+                <p className="text-xs text-gray-600 dark:text-gray-400 mb-3">
+                  지금 가입하고 무료로 시작하세요
+                </p>
+                <Link
+                  href="/auth/signup"
+                  className="block w-full text-center px-4 py-2.5 bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 border-2 border-blue-600 dark:border-blue-400 rounded-lg font-bold text-sm hover:bg-blue-50 dark:hover:bg-gray-700 transition-all shadow-sm"
+                >
+                  무료로 시작하기 →
+                </Link>
               </div>
             </div>
           </div>
