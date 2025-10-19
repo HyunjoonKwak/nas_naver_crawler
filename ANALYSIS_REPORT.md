@@ -147,187 +147,100 @@
 
 ## 🏘️ 3. 단지 목록 페이지 (/complexes) 분석
 
-### 현재 상태
+### ✅ 완료됨 (v2.2.0 - 2025-10-19)
+
+**Phase 1: 가격 정보 강화** - 모든 개선 사항 적용 완료!
+
+#### 구현된 기능:
+1. ✅ **가격 통계 유틸리티** (`lib/price-utils.ts`)
+   - 문자열 가격 파싱 (예: "3억 5,000" → 350000000원)
+   - 가격 포맷팅 (원 → 억/만원 형식)
+   - 매물 가격 통계 계산 (평균/최저/최고)
+   - 거래 유형별 통계 계산
+
+2. ✅ **API 개선** (`/api/complexes`)
+   - 최근 100개 매물 조회
+   - `priceStats` 응답 추가 (평균가, 최저가, 최고가)
+   - `tradeTypeStats` 응답 추가 (거래 유형별 통계)
+
+3. ✅ **카드 뷰 강화**
+   - 가격 정보 섹션 추가 (평균/최저/최고)
+   - 거래 유형별 통계 섹션 (매매/전세/월세별 개수 및 평균가)
+
+4. ✅ **리스트 뷰 재구성**
+   - "평균 가격" 컬럼 추가
+   - 가격 범위 표시 (최저~최고)
+   - 컬럼 순서 재배치 (가격 정보 우선)
+
+5. ✅ **전체 통계 대시보드**
+   - 5개 KPI 카드 (총 단지 수, 총 매물 수, 평균/최저/최고 가격)
+   - 그라데이션 디자인으로 시각적 구분
+
+#### 달성된 효과:
+- ✅ 단지별 가격 정보를 한눈에 파악 가능
+- ✅ 거래 유형별 시장 동향 확인
+- ✅ 전체 단지 가격 분포 파악
+- ✅ 정보 밀도 대폭 향상
+
+---
+
+### 현재 상태 (v2.2.0)
 - **목적**: 전체 단지 관리 및 크롤링 제어
-- **코드 라인**: 1,671줄 (가장 복잡)
+- **코드 라인**: ~1,700줄
 - **주요 기능**:
   - 그룹 관리 사이드바
   - 카드/리스트 뷰 전환
   - 단지 검색/정렬
   - 개별/전체 크롤링
   - 실시간 진행 상황 표시
+  - **🆕 가격 통계 및 대시보드**
 
 ### ✅ 강점
 1. **다양한 뷰**: 카드/리스트 선택 가능
 2. **그룹화**: 사이드바로 단지 분류 관리
 3. **풍부한 액션**: 크롤링, 상세보기, 삭제, 관심등록
 4. **실시간 피드백**: 크롤링 진행률, 매물 수 실시간 업데이트
+5. **🆕 가격 정보**: 평균/최저/최고가, 거래 유형별 통계
+6. **🆕 전체 통계**: 5개 KPI 대시보드
 
-### ⚠️ 문제점
-1. **정보 과부하**:
-   - 카드 뷰: 너무 많은 정보 (주소, 세대수, 동수, 등록일, 최근수집일 등)
-   - 리스트 뷰: 컬럼 수 과다
-2. **핵심 지표 부족**:
-   - ❌ 평균 가격
-   - ❌ 최저/최고가
-   - ❌ 평형대별 분포
-   - ❌ 매물 증감률
-3. **비교 불가**: 여러 단지를 동시에 비교할 수 없음
-4. **필터 미흡**: 가격대별, 평형별 필터 없음
+### ⚠️ 남은 개선 사항
+1. ~~**핵심 지표 부족**~~ ✅ 완료
+   - ✅ 평균 가격
+   - ✅ 최저/최고가
+   - ❌ 평형대별 분포 (향후 개선)
+   - ❌ 매물 증감률 (24h 변동) (향후 개선)
+2. **비교 불가**: 여러 단지를 동시에 비교할 수 없음 → Phase 2
+3. **필터 미흡**: 가격대별, 평형별 필터 없음 → Phase 2
 
-### 💡 개선 방안
+### 💡 다음 개선 방안 (Phase 2)
 
-#### A. 즉시 적용 가능 (난이도: 낮음)
+#### A. 24시간 매물 변동 추이 추가
+- **목표**: 매물 증감률 표시 (+N개, -N개)
+- **구현**:
+  - 24시간 전 매물 수 스냅샷 저장
+  - 현재 매물 수와 비교하여 증감률 계산
+  - 카드/리스트 뷰에 변동 정보 표시
 
-**1. 카드 뷰에 핵심 지표 추가**
-```typescript
-// 기존 정보 간소화 + 가격 정보 추가
-<div className="space-y-2.5 text-sm mb-4">
-  {/* 매물 수 - 기존 유지 */}
-  <div className="flex items-center justify-between">
-    <span className="text-gray-600 dark:text-gray-400">등록 매물</span>
-    <span className="text-gray-900 dark:text-white font-medium">
-      {complex.articleCount}개
-    </span>
-  </div>
+#### B. 가격대별/평형별 필터링
+- **목표**: 고급 필터 기능 제공
+- **구현**:
+  - 가격대 필터 (3억 이하, 3~5억, 5~10억, 10억 이상)
+  - 평형대 필터 (소형, 중형, 대형, 특대형)
+  - 복합 필터 (AND/OR 조건)
 
-  {/* 🆕 평균 매매가 추가 */}
-  <div className="flex items-center justify-between">
-    <span className="text-gray-600 dark:text-gray-400">평균 매매가</span>
-    <span className="text-blue-600 dark:text-blue-400 font-bold">
-      3.8억
-    </span>
-  </div>
+#### C. 단지 비교 기능 (Phase 2 핵심)
+- **목표**: 여러 단지를 동시 비교
+- **구현**:
+  - 체크박스로 2-5개 단지 선택
+  - 비교 모달에서 가격/매물수/거래유형 등 병렬 비교
+  - 테이블 형식으로 한눈에 비교 가능
 
-  {/* 🆕 가격 범위 추가 */}
-  <div className="flex items-center justify-between">
-    <span className="text-gray-600 dark:text-gray-400">가격 범위</span>
-    <span className="text-gray-900 dark:text-white font-medium text-xs">
-      2.5억 ~ 5.2억
-    </span>
-  </div>
-
-  {/* 🆕 최근 변동 추가 */}
-  <div className="flex items-center justify-between">
-    <span className="text-gray-600 dark:text-gray-400">최근 변동</span>
-    <span className="text-green-600 dark:text-green-400 font-medium flex items-center gap-1">
-      <ArrowUp className="w-3 h-3" />
-      +5개 (24h)
-    </span>
-  </div>
-
-  {/* 주소는 제거하거나 축약 - 단지명만으로도 충분 */}
-  {/* 세대수, 동수는 상세보기에서만 표시 */}
-</div>
-```
-
-**2. 리스트 뷰 컬럼 재구성**
-```typescript
-// 현재: 순서 | 단지명 | 단지번호 | 등록일 | 마지막수집 | 매물수 | 작업
-// 개선: 단지명 | 매물수 | 평균가 | 최저가 | 최고가 | 24h변동 | 작업
-
-<thead>
-  <tr>
-    <th>단지명</th>
-    <th>매물 수</th>
-    <th>평균 매매가</th>
-    <th>최저가</th>
-    <th>최고가</th>
-    <th>24h 변동</th>
-    <th>작업</th>
-  </tr>
-</thead>
-```
-
-**3. 상단에 전체 통계 대시보드 추가**
-```typescript
-<div className="grid grid-cols-5 gap-4 mb-6">
-  <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border">
-    <div className="text-sm text-gray-500">전체 단지</div>
-    <div className="text-2xl font-bold">{complexes.length}</div>
-  </div>
-  <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border">
-    <div className="text-sm text-gray-500">총 매물</div>
-    <div className="text-2xl font-bold">
-      {complexes.reduce((sum, c) => sum + c.articleCount, 0)}
-    </div>
-  </div>
-  <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border">
-    <div className="text-sm text-gray-500">평균 가격</div>
-    <div className="text-2xl font-bold text-blue-600">4.2억</div>
-  </div>
-  <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border">
-    <div className="text-sm text-gray-500">가격 범위</div>
-    <div className="text-lg font-bold">2억 ~ 15억</div>
-  </div>
-  <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border">
-    <div className="text-sm text-gray-500">최근 업데이트</div>
-    <div className="text-lg font-bold">5분 전</div>
-  </div>
-</div>
-```
-
-#### B. 중기 개선 (난이도: 중간)
-
-**4. 고급 필터 추가**
-```typescript
-<div className="flex gap-3 mb-4">
-  {/* 가격대 필터 */}
-  <select className="...">
-    <option value="">전체 가격</option>
-    <option value="0-3">3억 이하</option>
-    <option value="3-5">3~5억</option>
-    <option value="5-10">5~10억</option>
-    <option value="10+">10억 이상</option>
-  </select>
-
-  {/* 평형대 필터 */}
-  <select className="...">
-    <option value="">전체 평형</option>
-    <option value="0-20">소형 (20평 이하)</option>
-    <option value="20-30">중형 (20~30평)</option>
-    <option value="30-40">대형 (30~40평)</option>
-    <option value="40+">특대형 (40평 이상)</option>
-  </select>
-
-  {/* 매물 수 필터 */}
-  <select className="...">
-    <option value="">전체</option>
-    <option value="0">매물 없음</option>
-    <option value="1-10">1~10개</option>
-    <option value="10-50">10~50개</option>
-    <option value="50+">50개 이상</option>
-  </select>
-</div>
-```
-
-**5. 단지 비교 기능**
-```typescript
-// 각 카드에 체크박스 추가
-<input
-  type="checkbox"
-  checked={selectedComplexes.includes(complex.complexNo)}
-  onChange={() => toggleSelect(complex.complexNo)}
-/>
-
-// 하단에 비교 버튼
-{selectedComplexes.length >= 2 && (
-  <div className="fixed bottom-6 right-6 z-50">
-    <button className="bg-blue-600 text-white px-6 py-3 rounded-full shadow-lg">
-      {selectedComplexes.length}개 단지 비교하기
-    </button>
-  </div>
-)}
-```
-
-#### C. 장기 개선 (난이도: 높음)
-
-**6. 데이터 시각화**
+#### D. 데이터 시각화 (Phase 3)
 - 가격 분포 히스토그램
 - 지도 위에 단지 위치 마커 (평균가 색상 구분)
 - 시계열 가격 추이 차트
 
-**7. AI 추천**
+#### E. AI 추천 (Phase 3)
 - "이 가격대에서 인기 있는 단지"
 - "최근 급등한 단지"
 - "관심 단지와 유사한 단지"
