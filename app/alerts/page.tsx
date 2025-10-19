@@ -103,6 +103,20 @@ export default function AlertsPage() {
       return;
     }
 
+    if (formData.notifyWebhook && !formData.webhookUrl.trim()) {
+      showError('웹훅 URL을 입력해주세요.');
+      return;
+    }
+
+    if (formData.notifyWebhook && formData.webhookUrl.trim()) {
+      try {
+        new URL(formData.webhookUrl);
+      } catch {
+        showError('올바른 URL 형식을 입력해주세요. (예: https://hooks.slack.com/...)');
+        return;
+      }
+    }
+
     const loadingToast = showLoading('알림 생성 중...');
 
     try {
@@ -285,7 +299,7 @@ export default function AlertsPage() {
                   <li>• <strong>새 매물 알림</strong>: 관심 단지에 새 매물이 올라오면 즉시 알림</li>
                   <li>• <strong>브라우저 알림</strong>: 웹사이트 방문 시 실시간 알림 (권한 필요)</li>
                   <li>• <strong>이메일 알림</strong>: 등록한 이메일로 알림 발송 (준비 중)</li>
-                  <li>• <strong>웹훅 알림</strong>: Slack, Discord 등 외부 서비스 연동 (준비 중)</li>
+                  <li>• <strong>웹훅 알림</strong>: Slack, Discord 등 외부 서비스로 실시간 알림 전송</li>
                 </ul>
               </div>
             </div>
@@ -698,18 +712,37 @@ export default function AlertsPage() {
                       />
                       <span className="text-sm text-gray-700 dark:text-gray-300">이메일 알림 (준비 중)</span>
                     </label>
-                    <label className="flex items-center gap-2 p-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700 cursor-not-allowed opacity-50">
+                    <label className="flex items-center gap-2 p-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer">
                       <input
                         type="checkbox"
                         checked={formData.notifyWebhook}
                         onChange={(e) => setFormData({ ...formData, notifyWebhook: e.target.checked })}
-                        disabled
                         className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
                       />
-                      <span className="text-sm text-gray-700 dark:text-gray-300">웹훅 알림 (준비 중)</span>
+                      <span className="text-sm text-gray-700 dark:text-gray-300">웹훅 알림 (Slack, Discord 등)</span>
                     </label>
                   </div>
                 </div>
+
+                {/* 웹훅 URL (웹훅 알림 활성화 시) */}
+                {formData.notifyWebhook && (
+                  <div className="border-l-4 border-blue-500 bg-blue-50 dark:bg-blue-900/20 p-4 rounded">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      웹훅 URL <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="url"
+                      value={formData.webhookUrl}
+                      onChange={(e) => setFormData({ ...formData, webhookUrl: e.target.value })}
+                      placeholder="https://hooks.slack.com/services/... 또는 https://discord.com/api/webhooks/..."
+                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                    />
+                    <p className="text-xs text-gray-600 dark:text-gray-400 mt-2">
+                      💡 <strong>Slack:</strong> Workspace Settings → Incoming Webhooks에서 생성<br />
+                      💡 <strong>Discord:</strong> 채널 설정 → 연동 → 웹후크에서 생성
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* 푸터 */}
