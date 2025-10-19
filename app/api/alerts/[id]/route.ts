@@ -153,7 +153,7 @@ export async function PUT(
 }
 
 /**
- * PATCH /api/alerts/[id] - 알림 활성화/비활성화 토글
+ * PATCH /api/alerts/[id] - 알림 부분 수정 (isActive 토글 또는 complexIds 업데이트)
  */
 export async function PATCH(
   request: NextRequest,
@@ -164,13 +164,34 @@ export async function PATCH(
     const currentUser = await requireAuth();
 
     const body = await request.json();
-    const { isActive } = body;
+    const { isActive, complexIds } = body;
 
-    if (typeof isActive !== 'boolean') {
+    // 업데이트할 데이터 구성
+    const updateData: any = {};
+
+    if (typeof isActive === 'boolean') {
+      updateData.isActive = isActive;
+    }
+
+    if (Array.isArray(complexIds)) {
+      if (complexIds.length === 0) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'At least one complex is required',
+          },
+          { status: 400 }
+        );
+      }
+      updateData.complexIds = complexIds;
+    }
+
+    // 업데이트할 필드가 없으면 에러
+    if (Object.keys(updateData).length === 0) {
       return NextResponse.json(
         {
           success: false,
-          error: 'isActive field is required and must be boolean',
+          error: 'No valid fields to update',
         },
         { status: 400 }
       );
@@ -181,7 +202,7 @@ export async function PATCH(
         id: params.id,
         userId: currentUser.id,
       },
-      data: { isActive },
+      data: updateData,
     });
 
     return NextResponse.json({
@@ -189,11 +210,11 @@ export async function PATCH(
       alert,
     });
   } catch (error: any) {
-    console.error('Failed to toggle alert:', error);
+    console.error('Failed to update alert:', error);
     return NextResponse.json(
       {
         success: false,
-        error: error.message || 'Failed to toggle alert',
+        error: error.message || 'Failed to update alert',
       },
       { status: 500 }
     );

@@ -12,6 +12,7 @@ interface Alert {
   id: string;
   name: string;
   complexIds: string[];
+  complexes?: Complex[]; // API에서 반환하는 실제 단지 정보
   tradeTypes: string[];
   minPrice?: number;
   maxPrice?: number;
@@ -199,6 +200,50 @@ export default function AlertsPage() {
     }
   };
 
+  // 알림에서 유효하지 않은 단지 제거
+  const removeInvalidComplexes = async (alertId: string, invalidComplexIds: string[]) => {
+    const alert = alerts.find(a => a.id === alertId);
+    if (!alert) return;
+
+    const validComplexIds = alert.complexIds.filter(id => !invalidComplexIds.includes(id));
+
+    if (validComplexIds.length === 0) {
+      showError('최소 1개 이상의 단지가 필요합니다. 알림을 삭제하시겠습니까?');
+      return;
+    }
+
+    const loadingToast = showLoading('유효하지 않은 단지 제거 중...');
+
+    try {
+      const response = await fetch(`/api/alerts/${alertId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ complexIds: validComplexIds }),
+      });
+
+      dismissToast(loadingToast);
+
+      if (response.ok) {
+        showSuccess('유효하지 않은 단지가 제거되었습니다.');
+        fetchAlerts();
+      } else {
+        const data = await response.json();
+        showError(data.error || '단지 제거 실패');
+      }
+    } catch (error) {
+      dismissToast(loadingToast);
+      console.error('Failed to remove invalid complexes:', error);
+      showError('단지 제거 중 오류가 발생했습니다.');
+    }
+  };
+
+  // 유효하지 않은 단지 ID 찾기
+  const getInvalidComplexIds = (alert: Alert): string[] => {
+    if (!alert.complexes) return [];
+    const validComplexNos = alert.complexes.map(c => c.complexNo);
+    return alert.complexIds.filter(id => !validComplexNos.includes(id));
+  };
+
   return (
     <AuthGuard>
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pb-20 md:pb-0">
@@ -295,8 +340,20 @@ export default function AlertsPage() {
                         </div>
                         <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-400">
                           <span>단지 {alert.complexIds.length}개</span>
+                          {(() => {
+                            const invalidCount = getInvalidComplexIds(alert).length;
+                            if (invalidCount > 0) {
+                              return (
+                                <>
+                                  <span className="text-red-600 dark:text-red-400 font-semibold">
+                                    (유효하지 않음: {invalidCount}개)
+                                  </span>
+                                </>
+                              );
+                            }
+                          })()}
                           <span>•</span>
-                          <span>거래 유형: {alert.tradeTypes.join(', ')}</span>
+                          <span>거래 유형: {alert.tradeTypes.length > 0 ? alert.tradeTypes.join(', ') : '전체'}</span>
                           {alert.minPrice && alert.maxPrice && (
                             <>
                               <span>•</span>
@@ -341,51 +398,109 @@ export default function AlertsPage() {
                   {/* 알림 상세 정보 (확장 시) */}
                   {expandedAlert === alert.id && (
                     <div className="border-t border-gray-200 dark:border-gray-700 p-6 bg-gray-50 dark:bg-gray-900/50">
-                      <div className="grid grid-cols-2 gap-6">
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        {/* 단지 목록 */}
                         <div>
                           <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
-                            알림 채널
+                            설정된 단지 ({alert.complexIds.length}개)
                           </h4>
-                          <div className="space-y-2">
-                            <div className="flex items-center gap-2">
-                              <div
-                                className={`w-2 h-2 rounded-full ${
-                                  alert.notifyBrowser ? 'bg-green-500' : 'bg-gray-300'
-                                }`}
-                              ></div>
-                              <span className="text-sm text-gray-600 dark:text-gray-400">
-                                브라우저 알림
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <div
-                                className={`w-2 h-2 rounded-full ${
-                                  alert.notifyEmail ? 'bg-green-500' : 'bg-gray-300'
-                                }`}
-                              ></div>
-                              <span className="text-sm text-gray-600 dark:text-gray-400">
-                                이메일 알림
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <div
-                                className={`w-2 h-2 rounded-full ${
-                                  alert.notifyWebhook ? 'bg-green-500' : 'bg-gray-300'
-                                }`}
-                              ></div>
-                              <span className="text-sm text-gray-600 dark:text-gray-400">
-                                웹훅 알림
-                              </span>
+                          <div className="space-y-2 max-h-48 overflow-y-auto">
+                            {alert.complexIds.map((complexId) => {
+                              const complex = alert.complexes?.find(c => c.complexNo === complexId);
+                              const isInvalid = !complex;
+                              return (
+                                <div
+                                  key={complexId}
+                                  className={`flex items-center justify-between p-2 rounded text-sm ${
+                                    isInvalid
+                                      ? 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800'
+                                      : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700'
+                                  }`}
+                                >
+                                  <div className="flex-1">
+                                    {isInvalid ? (
+                                      <>
+                                        <span className="text-red-600 dark:text-red-400 font-medium">
+                                          ⚠️ 단지를 찾을 수 없음
+                                        </span>
+                                        <span className="text-xs text-red-500 dark:text-red-400 ml-2">
+                                          ({complexId})
+                                        </span>
+                                      </>
+                                    ) : (
+                                      <span className="text-gray-700 dark:text-gray-300">
+                                        {complex.complexName}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                          {(() => {
+                            const invalidIds = getInvalidComplexIds(alert);
+                            if (invalidIds.length > 0) {
+                              return (
+                                <button
+                                  onClick={() => removeInvalidComplexes(alert.id, invalidIds)}
+                                  className="mt-3 w-full px-3 py-2 bg-red-100 hover:bg-red-200 dark:bg-red-900/30 dark:hover:bg-red-900/50 text-red-700 dark:text-red-400 rounded-lg text-sm font-medium transition-colors"
+                                >
+                                  유효하지 않은 단지 제거 ({invalidIds.length}개)
+                                </button>
+                              );
+                            }
+                          })()}
+                        </div>
+
+                        <div className="space-y-6">
+                          {/* 알림 채널 */}
+                          <div>
+                            <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+                              알림 채널
+                            </h4>
+                            <div className="space-y-2">
+                              <div className="flex items-center gap-2">
+                                <div
+                                  className={`w-2 h-2 rounded-full ${
+                                    alert.notifyBrowser ? 'bg-green-500' : 'bg-gray-300'
+                                  }`}
+                                ></div>
+                                <span className="text-sm text-gray-600 dark:text-gray-400">
+                                  브라우저 알림
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <div
+                                  className={`w-2 h-2 rounded-full ${
+                                    alert.notifyEmail ? 'bg-green-500' : 'bg-gray-300'
+                                  }`}
+                                ></div>
+                                <span className="text-sm text-gray-600 dark:text-gray-400">
+                                  이메일 알림
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <div
+                                  className={`w-2 h-2 rounded-full ${
+                                    alert.notifyWebhook ? 'bg-green-500' : 'bg-gray-300'
+                                  }`}
+                                ></div>
+                                <span className="text-sm text-gray-600 dark:text-gray-400">
+                                  웹훅 알림
+                                </span>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                        <div>
-                          <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
-                            생성 정보
-                          </h4>
-                          <div className="space-y-1 text-sm text-gray-600 dark:text-gray-400">
-                            <div>생성일: {new Date(alert.createdAt).toLocaleDateString('ko-KR')}</div>
-                            <div>수정일: {new Date(alert.updatedAt).toLocaleDateString('ko-KR')}</div>
+
+                          {/* 생성 정보 */}
+                          <div>
+                            <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+                              생성 정보
+                            </h4>
+                            <div className="space-y-1 text-sm text-gray-600 dark:text-gray-400">
+                              <div>생성일: {new Date(alert.createdAt).toLocaleDateString('ko-KR')}</div>
+                              <div>수정일: {new Date(alert.updatedAt).toLocaleDateString('ko-KR')}</div>
+                            </div>
                           </div>
                         </div>
                       </div>
