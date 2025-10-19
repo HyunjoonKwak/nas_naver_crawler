@@ -137,11 +137,106 @@ export default function ComplexesPage() {
   // 검색 상태
   const [isSearchOpen, setIsSearchOpen] = useState(false);
 
+  // 고급 필터 상태
+  const [filters, setFilters] = useState({
+    priceRange: 'all', // all, 0-3, 3-5, 5-10, 10+
+    articleCount: 'all', // all, 0, 1-10, 10-50, 50+
+  });
+
+  // 단지 비교 상태
+  const [compareMode, setCompareMode] = useState(false);
+  const [selectedForCompare, setSelectedForCompare] = useState<string[]>([]);
+  const [showCompareModal, setShowCompareModal] = useState(false);
+
+  // 필터링된 단지 목록
+  const filteredComplexes = complexes.filter(complex => {
+    // 가격대 필터
+    if (filters.priceRange !== 'all' && complex.priceStats) {
+      const avgPriceStr = complex.priceStats.avgPrice;
+      let avgPriceWon = 0;
+
+      const eokMatch = avgPriceStr.match(/(\d+)억/);
+      if (eokMatch) {
+        avgPriceWon += parseInt(eokMatch[1]) * 100000000;
+      }
+
+      const manMatch = avgPriceStr.match(/억([\d,]+)/);
+      if (manMatch) {
+        avgPriceWon += parseInt(manMatch[1].replace(/,/g, '')) * 10000;
+      } else if (!eokMatch) {
+        const onlyNumber = avgPriceStr.match(/^([\d,]+)$/);
+        if (onlyNumber) {
+          avgPriceWon = parseInt(onlyNumber[1].replace(/,/g, '')) * 10000;
+        }
+      }
+
+      const avgPriceEok = avgPriceWon / 100000000;
+
+      switch (filters.priceRange) {
+        case '0-3':
+          if (avgPriceEok >= 3) return false;
+          break;
+        case '3-5':
+          if (avgPriceEok < 3 || avgPriceEok >= 5) return false;
+          break;
+        case '5-10':
+          if (avgPriceEok < 5 || avgPriceEok >= 10) return false;
+          break;
+        case '10+':
+          if (avgPriceEok < 10) return false;
+          break;
+      }
+    }
+
+    // 매물 수 필터
+    if (filters.articleCount !== 'all') {
+      const count = complex.articleCount;
+      switch (filters.articleCount) {
+        case '0':
+          if (count > 0) return false;
+          break;
+        case '1-10':
+          if (count < 1 || count > 10) return false;
+          break;
+        case '10-50':
+          if (count < 10 || count > 50) return false;
+          break;
+        case '50+':
+          if (count < 50) return false;
+          break;
+      }
+    }
+
+    return true;
+  });
+
   // 시간을 MM:SS 형식으로 변환
   const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  // 비교 모드 핸들러
+  const toggleCompareMode = () => {
+    setCompareMode(!compareMode);
+    if (compareMode) {
+      setSelectedForCompare([]);
+    }
+  };
+
+  const toggleCompareSelection = (complexNo: string) => {
+    if (selectedForCompare.includes(complexNo)) {
+      setSelectedForCompare(selectedForCompare.filter(no => no !== complexNo));
+    } else if (selectedForCompare.length < 5) {
+      setSelectedForCompare([...selectedForCompare, complexNo]);
+    }
+  };
+
+  const startComparison = () => {
+    if (selectedForCompare.length >= 2 && selectedForCompare.length <= 5) {
+      setShowCompareModal(true);
+    }
   };
 
   useEffect(() => {
@@ -983,9 +1078,49 @@ export default function ComplexesPage() {
               >
                 <RefreshCw className="w-4 h-4" />
               </button>
+              <button
+                onClick={toggleCompareMode}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors font-medium ${
+                  compareMode
+                    ? 'bg-purple-600 hover:bg-purple-700 text-white'
+                    : 'bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200'
+                }`}
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                </svg>
+                <span>{compareMode ? '비교 취소' : '단지 비교'}</span>
+              </button>
             </div>
 
             <div className="flex items-center gap-4 flex-wrap">
+              {/* 고급 필터 */}
+              <div className="flex items-center gap-2">
+                <select
+                  value={filters.priceRange}
+                  onChange={(e) => setFilters({ ...filters, priceRange: e.target.value })}
+                  className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="all">전체 가격</option>
+                  <option value="0-3">3억 이하</option>
+                  <option value="3-5">3억 ~ 5억</option>
+                  <option value="5-10">5억 ~ 10억</option>
+                  <option value="10+">10억 이상</option>
+                </select>
+
+                <select
+                  value={filters.articleCount}
+                  onChange={(e) => setFilters({ ...filters, articleCount: e.target.value })}
+                  className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="all">전체 매물</option>
+                  <option value="0">매물 없음</option>
+                  <option value="1-10">1 ~ 10개</option>
+                  <option value="10-50">10 ~ 50개</option>
+                  <option value="50+">50개 이상</option>
+                </select>
+              </div>
+
               {/* 정렬 필터 */}
               <ComplexSortFilter
                 sortBy={sortBy}
@@ -1022,10 +1157,55 @@ export default function ComplexesPage() {
               </div>
 
               <div className="text-sm text-gray-600 dark:text-gray-400">
-                등록된 단지: <span className="font-bold text-blue-600 dark:text-blue-400">{complexes.length}개</span>
+                {filters.priceRange === 'all' && filters.articleCount === 'all' ? (
+                  <>등록된 단지: <span className="font-bold text-blue-600 dark:text-blue-400">{complexes.length}개</span></>
+                ) : (
+                  <>
+                    필터 결과: <span className="font-bold text-blue-600 dark:text-blue-400">{filteredComplexes.length}개</span>
+                    <span className="text-gray-400 dark:text-gray-500"> / {complexes.length}개</span>
+                  </>
+                )}
               </div>
             </div>
           </div>
+
+          {/* 비교 모드 안내 배너 */}
+          {compareMode && (
+            <div className="bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 border-2 border-purple-400 dark:border-purple-600 rounded-lg p-4 mb-4">
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <h3 className="text-lg font-bold text-purple-900 dark:text-purple-200 mb-1">
+                    📊 단지 비교 모드
+                  </h3>
+                  <p className="text-sm text-purple-800 dark:text-purple-300">
+                    비교할 단지를 선택하세요 (2개 ~ 5개)
+                  </p>
+                  <p className="text-xs text-purple-600 dark:text-purple-400 mt-1">
+                    선택됨: {selectedForCompare.length}개
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={startComparison}
+                    disabled={selectedForCompare.length < 2}
+                    className={`px-6 py-2 rounded-lg font-medium transition-colors ${
+                      selectedForCompare.length >= 2
+                        ? 'bg-purple-600 hover:bg-purple-700 text-white'
+                        : 'bg-gray-300 dark:bg-gray-600 text-gray-500 cursor-not-allowed'
+                    }`}
+                  >
+                    비교하기
+                  </button>
+                  <button
+                    onClick={toggleCompareMode}
+                    className="px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 transition-colors"
+                  >
+                    취소
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* 전체 통계 대시보드 */}
           {globalStats && (
@@ -1261,15 +1441,57 @@ export default function ComplexesPage() {
               "단지 추가" 버튼을 클릭하여 단지를 등록하세요
             </p>
           </div>
+        ) : filteredComplexes.length === 0 ? (
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-12 text-center">
+            <div className="text-6xl mb-4">🔍</div>
+            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+              필터 조건에 맞는 단지가 없습니다
+            </h3>
+            <p className="text-gray-500 dark:text-gray-400 mb-4">
+              다른 필터 조건을 선택해보세요
+            </p>
+            <button
+              onClick={() => setFilters({ priceRange: 'all', articleCount: 'all' })}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+            >
+              필터 초기화
+            </button>
+          </div>
         ) : viewMode === 'card' ? (
           // 카드 뷰
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {complexes.map((complex, index) => (
+            {filteredComplexes.map((complex, index) => (
               <div
                 key={complex.complexNo}
-                className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-all"
+                className={`bg-white dark:bg-gray-800 rounded-xl shadow-sm border transition-all ${
+                  compareMode && selectedForCompare.includes(complex.complexNo)
+                    ? 'border-purple-500 dark:border-purple-400 ring-2 ring-purple-500 dark:ring-purple-400'
+                    : 'border-gray-200 dark:border-gray-700 hover:shadow-lg'
+                }`}
               >
                 <div className="px-6 py-6">
+                  {/* 비교 모드 체크박스 */}
+                  {compareMode && (
+                    <div className="mb-4 flex items-center justify-between bg-purple-50 dark:bg-purple-900/20 p-3 rounded-lg">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={selectedForCompare.includes(complex.complexNo)}
+                          onChange={() => toggleCompareSelection(complex.complexNo)}
+                          disabled={!selectedForCompare.includes(complex.complexNo) && selectedForCompare.length >= 5}
+                          className="w-5 h-5 text-purple-600 rounded focus:ring-purple-500"
+                        />
+                        <span className="text-sm font-medium text-purple-900 dark:text-purple-200">
+                          비교 선택
+                        </span>
+                      </label>
+                      {!selectedForCompare.includes(complex.complexNo) && selectedForCompare.length >= 5 && (
+                        <span className="text-xs text-purple-600 dark:text-purple-400">
+                          최대 5개
+                        </span>
+                      )}
+                    </div>
+                  )}
                   {/* 단지명과 관심단지 버튼 */}
                   <div className="flex items-start justify-between mb-3">
                     <h3 className="text-xl font-bold text-gray-900 dark:text-white flex-1">
@@ -1507,7 +1729,7 @@ export default function ComplexesPage() {
                 </tr>
               </thead>
               <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                {complexes.map((favorite, index) => (
+                {filteredComplexes.map((favorite, index) => (
                   <tr
                     key={favorite.complexNo}
                     draggable
@@ -1686,6 +1908,231 @@ export default function ComplexesPage() {
               onClose={() => setIsSearchOpen(false)}
               autoFocus={true}
             />
+          </div>
+        </div>
+      )}
+
+      {/* 단지 비교 모달 */}
+      {showCompareModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-black/70 backdrop-blur-sm"
+          onClick={() => setShowCompareModal(false)}
+        >
+          <div
+            className="w-full max-w-7xl max-h-[90vh] overflow-auto bg-white dark:bg-gray-800 rounded-2xl shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* 헤더 */}
+            <div className="sticky top-0 bg-gradient-to-r from-purple-600 to-indigo-600 px-6 py-4 flex items-center justify-between border-b border-purple-500">
+              <div>
+                <h2 className="text-2xl font-bold text-white">📊 단지 비교</h2>
+                <p className="text-sm text-purple-100 mt-1">
+                  {selectedForCompare.length}개 단지 비교 결과
+                </p>
+              </div>
+              <button
+                onClick={() => setShowCompareModal(false)}
+                className="p-2 rounded-lg bg-white/20 hover:bg-white/30 text-white transition-colors"
+              >
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* 비교 테이블 */}
+            <div className="p-6">
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr className="bg-gray-100 dark:bg-gray-900">
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300 border-b-2 border-gray-300 dark:border-gray-600 sticky left-0 bg-gray-100 dark:bg-gray-900">
+                        항목
+                      </th>
+                      {selectedForCompare.map(complexNo => {
+                        const complex = complexes.find(c => c.complexNo === complexNo);
+                        return (
+                          <th key={complexNo} className="px-4 py-3 text-center text-sm font-semibold text-gray-700 dark:text-gray-300 border-b-2 border-gray-300 dark:border-gray-600 min-w-[200px]">
+                            {complex?.complexName || complexNo}
+                          </th>
+                        );
+                      })}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {/* 단지번호 */}
+                    <tr className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                      <td className="px-4 py-3 text-sm font-medium text-gray-700 dark:text-gray-300 sticky left-0 bg-white dark:bg-gray-800">
+                        단지번호
+                      </td>
+                      {selectedForCompare.map(complexNo => (
+                        <td key={complexNo} className="px-4 py-3 text-center text-sm text-gray-600 dark:text-gray-400">
+                          {complexNo}
+                        </td>
+                      ))}
+                    </tr>
+
+                    {/* 평균 가격 */}
+                    <tr className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                      <td className="px-4 py-3 text-sm font-medium text-gray-700 dark:text-gray-300 sticky left-0 bg-white dark:bg-gray-800">
+                        평균 가격
+                      </td>
+                      {selectedForCompare.map(complexNo => {
+                        const complex = complexes.find(c => c.complexNo === complexNo);
+                        return (
+                          <td key={complexNo} className="px-4 py-3 text-center text-sm font-bold text-blue-600 dark:text-blue-400">
+                            {complex?.priceStats?.avgPrice || '-'}
+                          </td>
+                        );
+                      })}
+                    </tr>
+
+                    {/* 가격 범위 */}
+                    <tr className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                      <td className="px-4 py-3 text-sm font-medium text-gray-700 dark:text-gray-300 sticky left-0 bg-white dark:bg-gray-800">
+                        가격 범위
+                      </td>
+                      {selectedForCompare.map(complexNo => {
+                        const complex = complexes.find(c => c.complexNo === complexNo);
+                        return (
+                          <td key={complexNo} className="px-4 py-3 text-center text-sm text-gray-600 dark:text-gray-400">
+                            {complex?.priceStats ? (
+                              <div className="space-y-1">
+                                <div className="text-xs text-gray-500 dark:text-gray-500">
+                                  최저: {complex.priceStats.minPrice}
+                                </div>
+                                <div className="text-xs text-gray-500 dark:text-gray-500">
+                                  최고: {complex.priceStats.maxPrice}
+                                </div>
+                              </div>
+                            ) : '-'}
+                          </td>
+                        );
+                      })}
+                    </tr>
+
+                    {/* 매물 수 */}
+                    <tr className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                      <td className="px-4 py-3 text-sm font-medium text-gray-700 dark:text-gray-300 sticky left-0 bg-white dark:bg-gray-800">
+                        등록 매물 수
+                      </td>
+                      {selectedForCompare.map(complexNo => {
+                        const complex = complexes.find(c => c.complexNo === complexNo);
+                        return (
+                          <td key={complexNo} className="px-4 py-3 text-center">
+                            <span className="inline-block px-3 py-1 text-sm font-semibold rounded bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                              {complex?.articleCount || 0}개
+                            </span>
+                          </td>
+                        );
+                      })}
+                    </tr>
+
+                    {/* 세대수 */}
+                    <tr className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                      <td className="px-4 py-3 text-sm font-medium text-gray-700 dark:text-gray-300 sticky left-0 bg-white dark:bg-gray-800">
+                        총 세대수
+                      </td>
+                      {selectedForCompare.map(complexNo => {
+                        const complex = complexes.find(c => c.complexNo === complexNo);
+                        return (
+                          <td key={complexNo} className="px-4 py-3 text-center text-sm text-gray-600 dark:text-gray-400">
+                            {complex?.totalHousehold ? `${complex.totalHousehold.toLocaleString()}세대` : '-'}
+                          </td>
+                        );
+                      })}
+                    </tr>
+
+                    {/* 동수 */}
+                    <tr className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                      <td className="px-4 py-3 text-sm font-medium text-gray-700 dark:text-gray-300 sticky left-0 bg-white dark:bg-gray-800">
+                        총 동수
+                      </td>
+                      {selectedForCompare.map(complexNo => {
+                        const complex = complexes.find(c => c.complexNo === complexNo);
+                        return (
+                          <td key={complexNo} className="px-4 py-3 text-center text-sm text-gray-600 dark:text-gray-400">
+                            {complex?.totalDong ? `${complex.totalDong}개동` : '-'}
+                          </td>
+                        );
+                      })}
+                    </tr>
+
+                    {/* 주소 */}
+                    <tr className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                      <td className="px-4 py-3 text-sm font-medium text-gray-700 dark:text-gray-300 sticky left-0 bg-white dark:bg-gray-800">
+                        주소
+                      </td>
+                      {selectedForCompare.map(complexNo => {
+                        const complex = complexes.find(c => c.complexNo === complexNo);
+                        return (
+                          <td key={complexNo} className="px-4 py-3 text-center text-xs text-gray-600 dark:text-gray-400">
+                            {complex?.roadAddress || complex?.address || '-'}
+                          </td>
+                        );
+                      })}
+                    </tr>
+
+                    {/* 최근 수집일 */}
+                    <tr className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                      <td className="px-4 py-3 text-sm font-medium text-gray-700 dark:text-gray-300 sticky left-0 bg-white dark:bg-gray-800">
+                        최근 수집일
+                      </td>
+                      {selectedForCompare.map(complexNo => {
+                        const complex = complexes.find(c => c.complexNo === complexNo);
+                        return (
+                          <td key={complexNo} className="px-4 py-3 text-center text-xs text-gray-600 dark:text-gray-400">
+                            {complex?.lastCrawledAt ? new Date(complex.lastCrawledAt).toLocaleDateString('ko-KR') : '-'}
+                          </td>
+                        );
+                      })}
+                    </tr>
+
+                    {/* 거래 유형별 통계 */}
+                    <tr className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                      <td className="px-4 py-3 text-sm font-medium text-gray-700 dark:text-gray-300 sticky left-0 bg-white dark:bg-gray-800">
+                        거래 유형별
+                      </td>
+                      {selectedForCompare.map(complexNo => {
+                        const complex = complexes.find(c => c.complexNo === complexNo);
+                        return (
+                          <td key={complexNo} className="px-4 py-3 text-center">
+                            {complex?.tradeTypeStats && complex.tradeTypeStats.length > 0 ? (
+                              <div className="space-y-1 text-xs">
+                                {complex.tradeTypeStats.map(stat => (
+                                  <div key={stat.type} className="flex justify-between items-center">
+                                    <span className="text-gray-600 dark:text-gray-400">{stat.type} ({stat.count})</span>
+                                    <span className="font-medium text-gray-800 dark:text-gray-200">{stat.avgPrice}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <span className="text-gray-400">-</span>
+                            )}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              {/* 액션 버튼 */}
+              <div className="mt-6 flex items-center justify-end gap-3">
+                {selectedForCompare.map(complexNo => {
+                  const complex = complexes.find(c => c.complexNo === complexNo);
+                  return (
+                    <Link
+                      key={complexNo}
+                      href={`/complex/${complexNo}`}
+                      className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium transition-colors"
+                    >
+                      {complex?.complexName || complexNo} 상세보기
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
           </div>
         </div>
       )}
