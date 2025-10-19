@@ -438,8 +438,10 @@ export default function PostDetailPage() {
             <MobileNavigation />
           </div>
           <main className="md:ml-64 p-4 md:p-8">
-            <div className="flex justify-center items-center py-20">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+            <div className="max-w-4xl mx-auto">
+              <div className="flex justify-center items-center py-20">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+              </div>
             </div>
           </main>
         </div>

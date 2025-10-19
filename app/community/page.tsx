@@ -170,15 +170,16 @@ export default function CommunityPage() {
 
         {/* Main Content */}
         <main className="md:ml-64 p-4 md:p-8">
-          {/* Header */}
-          <div className="mb-6">
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-2">
-              커뮤니티
-            </h1>
-            <p className="text-gray-600 dark:text-gray-400">
-              부동산 정보를 공유하고 질문하세요
-            </p>
-          </div>
+          <div className="max-w-5xl mx-auto">
+            {/* Header */}
+            <div className="mb-6">
+              <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-2">
+                커뮤니티
+              </h1>
+              <p className="text-gray-600 dark:text-gray-400">
+                부동산 정보를 공유하고 질문하세요
+              </p>
+            </div>
 
           {/* Tabs */}
           <div className="mb-6 border-b border-gray-200 dark:border-gray-800">
@@ -432,6 +433,7 @@ export default function CommunityPage() {
               </nav>
             </div>
           )}
+          </div>
         </main>
       </div>
     </AuthGuard>
