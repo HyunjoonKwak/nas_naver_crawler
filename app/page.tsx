@@ -133,15 +133,15 @@ export default function LandingPage() {
           </div>
 
           {/* Login Form */}
-          <div className="w-full max-w-md mx-auto">
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 p-6">
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-5 text-center">
+          <div className="w-full max-w-sm mx-auto">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-5">
+              <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4 text-center">
                 로그인
               </h2>
 
-              <form onSubmit={handleSubmit} className="space-y-4">
+              <form onSubmit={handleSubmit} className="space-y-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
                     이메일
                   </label>
                   <input
@@ -150,13 +150,13 @@ export default function LandingPage() {
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     placeholder="example@email.com"
                     disabled={isLoading}
-                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder:text-gray-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder:text-gray-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
                     비밀번호
                   </label>
                   <input
@@ -165,7 +165,7 @@ export default function LandingPage() {
                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                     placeholder="••••••••"
                     disabled={isLoading}
-                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder:text-gray-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder:text-gray-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     required
                   />
                 </div>
@@ -173,7 +173,7 @@ export default function LandingPage() {
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold py-3 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg"
+                  className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-sm font-semibold py-2.5 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg"
                 >
                   {isLoading ? (
                     <>
@@ -187,7 +187,7 @@ export default function LandingPage() {
               </form>
 
               {/* 아이디/비밀번호 찾기 */}
-              <div className="mt-4 flex justify-center gap-3 text-sm">
+              <div className="mt-3 flex justify-center gap-2 text-xs">
                 <Link
                   href="/auth/find-email"
                   className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200"
@@ -204,8 +204,8 @@ export default function LandingPage() {
               </div>
 
               {/* 회원가입 링크 */}
-              <div className="mt-5 text-center">
-                <p className="text-sm text-gray-600 dark:text-gray-400">
+              <div className="mt-3 text-center">
+                <p className="text-xs text-gray-600 dark:text-gray-400">
                   계정이 없으신가요?{" "}
                   <Link
                     href="/auth/signup"
