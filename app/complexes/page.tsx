@@ -68,6 +68,7 @@ interface ComplexItem {
   updatedAt: string;
   addedAt?: string;
   lastCrawledAt?: string;
+  articleChange24h?: number;
 }
 
 interface ComplexInfo {
@@ -1466,6 +1467,8 @@ export default function ComplexesPage() {
                 className={`bg-white dark:bg-gray-800 rounded-xl shadow-sm border transition-all ${
                   compareMode && selectedForCompare.includes(complex.complexNo)
                     ? 'border-purple-500 dark:border-purple-400 ring-2 ring-purple-500 dark:ring-purple-400'
+                    : complex.articleChange24h && complex.articleChange24h > 0
+                    ? 'border-green-300 dark:border-green-700 hover:shadow-lg hover:border-green-400 dark:hover:border-green-600'
                     : 'border-gray-200 dark:border-gray-700 hover:shadow-lg'
                 }`}
               >
@@ -1494,9 +1497,19 @@ export default function ComplexesPage() {
                   )}
                   {/* 단지명과 관심단지 버튼 */}
                   <div className="flex items-start justify-between mb-3">
-                    <h3 className="text-xl font-bold text-gray-900 dark:text-white flex-1">
-                      {complex.complexName || `단지 ${complex.complexNo}`}
-                    </h3>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+                          {complex.complexName || `단지 ${complex.complexNo}`}
+                        </h3>
+                        {/* 24시간 매물 변동 배지 */}
+                        {complex.articleChange24h !== undefined && complex.articleChange24h > 0 && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
+                            +{complex.articleChange24h}
+                          </span>
+                        )}
+                      </div>
+                    </div>
                     <button
                       onClick={() => handleToggleFavorite(complex.complexNo, complex.isFavorite)}
                       className={`ml-2 flex items-center gap-1.5 px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
@@ -1766,9 +1779,16 @@ export default function ComplexesPage() {
                       )}
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap">
-                      <span className="px-2 py-1 text-xs font-semibold rounded bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-                        {favorite.articleCount !== undefined ? `${favorite.articleCount}개` : '-'}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="px-2 py-1 text-xs font-semibold rounded bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                          {favorite.articleCount !== undefined ? `${favorite.articleCount}개` : '-'}
+                        </span>
+                        {favorite.articleChange24h !== undefined && favorite.articleChange24h > 0 && (
+                          <span className="px-2 py-0.5 text-xs font-bold rounded-full bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
+                            +{favorite.articleChange24h}
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                       {formatDate(favorite.createdAt)}

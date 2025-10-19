@@ -4,6 +4,27 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [2.5.0] - 2025-10-19
+
+### ✨ Added
+- **24시간 매물 변동 추이 (Phase 2 완료)**
+  - API에 24시간 매물 변동 계산 로직 추가
+  - 카드 뷰에 변동 배지 표시 (+N개, green badge)
+  - 리스트 뷰에 변동 배지 표시
+  - 변동 있는 단지 시각적 하이라이트 (green border)
+
+### 💎 Improved
+- **실시간 시장 동향 파악**
+  - 24시간 내 신규 매물 추가 단지 즉시 확인
+  - 활발한 거래가 일어나는 단지 우선 파악
+  - 투자 기회 신속 포착
+
+### 📝 Files Changed
+- `app/api/complexes/route.ts` - 24시간 변동 계산 (125-130, 173)
+- `app/complexes/page.tsx` - 변동 배지 및 하이라이트 (71, 1470-1472, 1504-1508, 1786-1790)
+
+---
+
 ## [2.4.0] - 2025-10-19
 
 ### ✨ Added

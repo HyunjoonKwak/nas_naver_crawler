@@ -122,6 +122,13 @@ export async function GET(request: NextRequest) {
       const priceStats = calculatePriceStats(complex.articles || []);
       const tradeTypeStats = calculateTradeTypeStats(complex.articles || []);
 
+      // 24시간 매물 변동 계산
+      const now = new Date();
+      const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+      const articlesIn24Hours = complex.articles?.filter((article: any) =>
+        new Date(article.createdAt) >= twentyFourHoursAgo
+      ).length || 0;
+
       return {
         id: complex.id,
         complexNo: complex.complexNo,
@@ -162,6 +169,8 @@ export async function GET(request: NextRequest) {
         updatedAt: complex.updatedAt.toISOString(),
         // 최근 수집일 (가장 최근 매물의 생성일)
         lastCrawledAt: complex.articles?.[0]?.createdAt?.toISOString() || null,
+        // 24시간 매물 변동
+        articleChange24h: articlesIn24Hours,
       };
     });
 
