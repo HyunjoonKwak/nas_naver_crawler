@@ -40,6 +40,7 @@ export default function AnalyticsPage() {
     const urlComplexNos = searchParams.get('complexNos');
     const urlTradeTypes = searchParams.get('tradeTypes');
     const urlDateRange = searchParams.get('dateRange');
+    const autoRun = searchParams.get('autoRun');
 
     if (urlMode) setMode(urlMode as "single" | "compare");
     if (urlComplexNos) {
@@ -52,7 +53,15 @@ export default function AnalyticsPage() {
     }
     if (urlTradeTypes) setTradeTypes(urlTradeTypes.split(','));
     if (urlDateRange) setDateRange(urlDateRange);
-  }, [searchParams]);
+
+    // autoRun=true이면 자동으로 분석 실행
+    if (autoRun === 'true' && urlComplexNos && complexes.length > 0) {
+      console.log('[ANALYTICS] Auto-running analysis for:', urlComplexNos);
+      setTimeout(() => {
+        fetchAnalytics();
+      }, 100); // 짧은 딜레이로 상태 업데이트 대기
+    }
+  }, [searchParams, complexes]);
 
   // 상태가 변경되면 URL 업데이트
   useEffect(() => {

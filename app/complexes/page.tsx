@@ -1071,14 +1071,15 @@ export default function ComplexesPage() {
                   fetchComplexes();
                 }}
                 disabled={!!(crawlingAll || crawling)}
-                className={`px-4 py-2 rounded-lg transition-colors font-medium ${
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors font-medium ${
                   crawlingAll || crawling
-                    ? 'bg-gray-300 dark:bg-gray-600 cursor-not-allowed'
+                    ? 'bg-gray-300 dark:bg-gray-600 cursor-not-allowed text-gray-500'
                     : 'bg-blue-600 hover:bg-blue-700 text-white'
                 }`}
-                title="단지 정보 새로고침"
+                title="DB 데이터 새로고침 (크롤링 없음)"
               >
                 <RefreshCw className="w-4 h-4" />
+                <span>새로고침</span>
               </button>
               <button
                 onClick={toggleCompareMode}
@@ -1687,7 +1688,7 @@ export default function ComplexesPage() {
                         <span>상세보기</span>
                       </Link>
                       <Link
-                        href={`/analytics?mode=single&complexNos=${complex.complexNo}`}
+                        href={`/analytics?mode=single&complexNos=${complex.complexNo}&autoRun=true`}
                         className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-purple-600 hover:bg-purple-700 text-white transition-colors text-sm font-semibold"
                       >
                         <BarChart3 className="w-4 h-4" />
@@ -1835,7 +1836,7 @@ export default function ComplexesPage() {
                           </Link>
                         )}
                         <Link
-                          href={`/analytics?mode=single&complexNos=${favorite.complexNo}`}
+                          href={`/analytics?mode=single&complexNos=${favorite.complexNo}&autoRun=true`}
                           className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-purple-600 hover:bg-purple-700 text-white transition-colors font-medium"
                         >
                           <BarChart3 className="w-3.5 h-3.5" />

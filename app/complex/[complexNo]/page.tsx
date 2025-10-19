@@ -439,7 +439,7 @@ export default function ComplexDetailPage() {
                   📊 실거래가 수집
                 </button>
                 <Link
-                  href={`/analytics?mode=single&complexNos=${complexNo}`}
+                  href={`/analytics?mode=single&complexNos=${complexNo}&autoRun=true`}
                   className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-semibold text-sm"
                 >
                   📈 데이터 분석
