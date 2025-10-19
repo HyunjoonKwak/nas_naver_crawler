@@ -142,6 +142,7 @@ export const Navigation = () => {
     { href: '/complexes', label: '단지 목록', icon: Building2 },
     { href: '/analytics', label: '데이터 분석', icon: BarChart3 },
     { href: '/community', label: '커뮤니티', icon: MessageSquare },
+    { href: '/alerts', label: '알림 설정', icon: Bell },
     { href: '/system', label: '시스템', icon: Settings },
   ];
 

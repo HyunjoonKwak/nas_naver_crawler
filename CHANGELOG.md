@@ -26,17 +26,28 @@ All notable changes to this project will be documented in this file.
     - 거래 유형 분포
     - 평형별 분석
 
+- **사이트 구조 문서화**
+  - SITEMAP.md 생성 (19개 페이지, 50+ API 문서화)
+  - 알림 설정 페이지 네비게이션 연결
+  - 전체 사이트 구조 시각화
+
 ### 💎 Improved
 - **데이터베이스 성능**
   - SQL 통계 계산 가능
   - 가격 기반 정렬/필터링 10배 빠름
   - 인덱스 기반 빠른 조회
 
+- **사용자 경험**
+  - 알림 설정 페이지 메인 메뉴 추가
+  - 전체 페이지 접근성 향상
+
 ### 📝 Files Changed
 - `prisma/schema.prisma` - Article 모델 개선
 - `prisma/migrations/*/migration.sql` - 마이그레이션 SQL
 - `scripts/migrate-price-data.ts` - 데이터 마이그레이션 스크립트
 - `app/api/analytics/dashboard/route.ts` - 대시보드 API (신규)
+- `SITEMAP.md` - 사이트 구조 문서 (신규)
+- `components/Navigation.tsx` - 알림 메뉴 추가
 
 ---
 
