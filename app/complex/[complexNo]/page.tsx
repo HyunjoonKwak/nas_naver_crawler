@@ -3,12 +3,18 @@
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useParams, useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { Navigation } from "@/components/Navigation";
-import RealPriceAnalysis from "@/components/RealPriceAnalysis";
 import { Dialog } from "@/components/ui";
 import { showSuccess, showError, showLoading, dismissToast } from "@/lib/toast";
 import { AuthGuard } from "@/components/AuthGuard";
+
+// 무거운 차트 컴포넌트를 동적 로딩 (코드 스플리팅)
+const RealPriceAnalysis = dynamic(() => import("@/components/RealPriceAnalysis"), {
+  loading: () => <div className="flex items-center justify-center py-20"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div></div>,
+  ssr: false,
+});
 
 interface ComplexData {
   overview: any;
@@ -40,6 +46,10 @@ export default function ComplexDetailPage() {
   // 정렬 상태
   const [sortField, setSortField] = useState<string>('');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+
+  // 페이지네이션 상태
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 20; // 페이지당 매물 수
 
   // Dialog 상태
   const [deleteDialog, setDeleteDialog] = useState(false);
@@ -288,6 +298,17 @@ export default function ComplexDetailPage() {
     if (sortField !== field) return '⇅';
     return sortDirection === 'asc' ? '↑' : '↓';
   };
+
+  // 페이지네이션
+  const totalPages = Math.ceil(sortedArticles.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedArticles = sortedArticles.slice(startIndex, endIndex);
+
+  // 필터 변경 시 페이지 초기화
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filterTradeType, filterArea, filterDong, sortField, sortDirection]);
 
   // 고유 면적 리스트
   const uniqueAreas = Array.from(new Set(
@@ -705,7 +726,7 @@ export default function ComplexDetailPage() {
                           </tr>
                         </thead>
                         <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                          {sortedArticles.map((article: any, index: number) => (
+                          {paginatedArticles.map((article: any, index: number) => (
                             <tr key={index} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
                               <td className="px-3 py-2 whitespace-nowrap">
                                 <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
@@ -769,9 +790,54 @@ export default function ComplexDetailPage() {
                         </tbody>
                       </table>
                     </div>
-                    <div className="px-6 py-3 bg-gray-50 dark:bg-gray-900 text-sm text-gray-500 dark:text-gray-400 text-center">
-                      전체 {articles.length}개 중 {sortedArticles.length}개 표시
-                    </div>
+
+                    {/* 페이지네이션 */}
+                    {totalPages > 1 && (
+                      <div className="px-6 py-4 bg-gray-50 dark:bg-gray-900 flex items-center justify-between border-t border-gray-200 dark:border-gray-700">
+                        <div className="text-sm text-gray-500 dark:text-gray-400">
+                          전체 {sortedArticles.length}개 중 {startIndex + 1}-{Math.min(endIndex, sortedArticles.length)}번째 표시
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => setCurrentPage(1)}
+                            disabled={currentPage === 1}
+                            className="px-3 py-1 text-sm rounded border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            처음
+                          </button>
+                          <button
+                            onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                            disabled={currentPage === 1}
+                            className="px-3 py-1 text-sm rounded border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            이전
+                          </button>
+                          <span className="px-4 py-1 text-sm font-medium text-gray-700 dark:text-gray-300">
+                            {currentPage} / {totalPages}
+                          </span>
+                          <button
+                            onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                            disabled={currentPage === totalPages}
+                            className="px-3 py-1 text-sm rounded border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            다음
+                          </button>
+                          <button
+                            onClick={() => setCurrentPage(totalPages)}
+                            disabled={currentPage === totalPages}
+                            className="px-3 py-1 text-sm rounded border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            마지막
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {totalPages <= 1 && (
+                      <div className="px-6 py-3 bg-gray-50 dark:bg-gray-900 text-sm text-gray-500 dark:text-gray-400 text-center">
+                        전체 {articles.length}개 중 {sortedArticles.length}개 표시
+                      </div>
+                    )}
                   </div>
                 </div>
               )}

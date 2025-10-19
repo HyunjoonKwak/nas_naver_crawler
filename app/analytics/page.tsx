@@ -3,15 +3,25 @@
 import { useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { Navigation } from "@/components/Navigation";
 import { MobileNavigation } from "@/components/MobileNavigation";
 import { ThemeToggle } from "@/components/ui";
 import { showSuccess, showError, showLoading, dismissToast } from "@/lib/toast";
 import { useCrawlEvents } from "@/hooks/useCrawlEvents";
-import { SingleAnalysis } from "./SingleAnalysis";
-import { CompareAnalysis } from "./CompareAnalysis";
 import { AuthGuard } from "@/components/AuthGuard";
+
+// 무거운 차트 컴포넌트를 동적 로딩 (코드 스플리팅)
+const SingleAnalysis = dynamic(() => import("./SingleAnalysis").then(mod => ({ default: mod.SingleAnalysis })), {
+  loading: () => <div className="flex items-center justify-center py-20"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div></div>,
+  ssr: false,
+});
+
+const CompareAnalysis = dynamic(() => import("./CompareAnalysis").then(mod => ({ default: mod.CompareAnalysis })), {
+  loading: () => <div className="flex items-center justify-center py-20"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div></div>,
+  ssr: false,
+});
 
 interface Complex {
   complexNo: string;

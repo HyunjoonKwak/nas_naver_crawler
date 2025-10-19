@@ -8,12 +8,6 @@ import { useQuery } from "@tanstack/react-query";
 import { Navigation } from "@/components/Navigation";
 import { MobileNavigation } from "@/components/MobileNavigation";
 import { useCrawlEvents } from "@/hooks/useCrawlEvents";
-import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
-import { arrayMove, SortableContext, sortableKeyboardCoordinates, rectSortingStrategy } from '@dnd-kit/sortable';
-import { useSortable } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
-import { showSuccess, showError } from "@/lib/toast";
-import { SortableFavoriteCard } from "@/components/SortableFavoriteCard";
 import { AuthGuard } from "@/components/AuthGuard";
 
 interface FavoriteComplex {

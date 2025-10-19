@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, useEffect, ReactNode, CSSProperties } from 'react';
+import { useThrottleCallback } from '@/hooks/useThrottle';
 
 interface VirtualListProps<T> {
   items: T[];
@@ -32,9 +33,10 @@ export function VirtualList<T>({
   const visibleItems = items.slice(startIndex, endIndex + 1);
   const offsetY = startIndex * itemHeight;
 
-  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+  // 스크롤 이벤트 쓰로틀링 (16ms ≈ 60fps)
+  const handleScroll = useThrottleCallback((e: React.UIEvent<HTMLDivElement>) => {
     setScrollTop(e.currentTarget.scrollTop);
-  };
+  }, 16);
 
   return (
     <div
@@ -108,9 +110,10 @@ export function VirtualGrid<T>({
     }
   }
 
-  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+  // 스크롤 이벤트 쓰로틀링 (16ms ≈ 60fps)
+  const handleScroll = useThrottleCallback((e: React.UIEvent<HTMLDivElement>) => {
     setScrollTop(e.currentTarget.scrollTop);
-  };
+  }, 16);
 
   return (
     <div
