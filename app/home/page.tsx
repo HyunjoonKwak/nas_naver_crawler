@@ -304,6 +304,82 @@ export default function Home() {
             />
           </div>
 
+          {/* Mini Dashboard - 투자 인사이트 */}
+          <div className="mb-8">
+            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+              <span className="text-2xl">💡</span>
+              투자 인사이트
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* 1. 24시간 활발한 단지 */}
+              <div className="bg-gradient-to-br from-red-50 to-orange-50 dark:from-red-900/20 dark:to-orange-900/20 rounded-xl border-2 border-red-200 dark:border-red-700 p-5">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-2xl">🔥</span>
+                  <h4 className="font-bold text-gray-900 dark:text-white text-sm">24시간 Hot 단지</h4>
+                </div>
+                <div className="space-y-2">
+                  <div className="text-xs text-gray-600 dark:text-gray-400">
+                    매물 변동이 가장 많은 단지
+                  </div>
+                  <div className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                    데이터 수집 중...
+                  </div>
+                </div>
+              </div>
+
+              {/* 2. 평당 가격 저렴 */}
+              <div className="bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20 rounded-xl border-2 border-blue-200 dark:border-blue-700 p-5">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-2xl">💎</span>
+                  <h4 className="font-bold text-gray-900 dark:text-white text-sm">가성비 단지</h4>
+                </div>
+                <div className="space-y-2">
+                  <div className="text-xs text-gray-600 dark:text-gray-400">
+                    평당 가격이 저렴한 단지
+                  </div>
+                  <div className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                    데이터 수집 중...
+                  </div>
+                </div>
+              </div>
+
+              {/* 3. 즉시 거래 가능 */}
+              <div className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-xl border-2 border-green-200 dark:border-green-700 p-5">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-2xl">⚡</span>
+                  <h4 className="font-bold text-gray-900 dark:text-white text-sm">즉시 거래 가능</h4>
+                </div>
+                <div className="space-y-2">
+                  <div className="text-xs text-gray-600 dark:text-gray-400">
+                    매물 10개 이상 보유 단지
+                  </div>
+                  <div className="text-2xl font-bold text-green-600 dark:text-green-400">
+                    {stats.totalComplexes}개
+                  </div>
+                </div>
+              </div>
+
+              {/* 4. 내 알림 현황 */}
+              <Link
+                href="/alerts"
+                className="bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-xl border-2 border-purple-200 dark:border-purple-700 p-5 hover:shadow-lg transition-all hover:-translate-y-1 cursor-pointer"
+              >
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-2xl">🎯</span>
+                  <h4 className="font-bold text-gray-900 dark:text-white text-sm">내 알림</h4>
+                </div>
+                <div className="space-y-2">
+                  <div className="text-xs text-gray-600 dark:text-gray-400">
+                    활성화된 알림 규칙
+                  </div>
+                  <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
+                    준비 중
+                  </div>
+                </div>
+              </Link>
+            </div>
+          </div>
+
           {/* Quick Actions */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
             <Link

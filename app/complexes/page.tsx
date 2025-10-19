@@ -89,13 +89,6 @@ export default function ComplexesPage() {
   const { data: session, status } = useSession();
   const [complexes, setComplexes] = useState<ComplexItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [globalStats, setGlobalStats] = useState<{
-    totalComplexes: number;
-    totalArticles: number;
-    avgPrice: string;
-    minPrice: string;
-    maxPrice: string;
-  } | null>(null);
   const [crawling, setCrawling] = useState<string | null>(null);
   const [crawlingAll, setCrawlingAll] = useState(false);
   const [crawlProgress, setCrawlProgress] = useState<{
@@ -342,74 +335,6 @@ export default function ComplexesPage() {
       });
 
       setComplexes(data.complexes || []);
-
-      // 전체 통계 계산
-      const complexesList = data.complexes || [];
-      const totalArticles = complexesList.reduce((sum: number, c: ComplexItem) => sum + c.articleCount, 0);
-
-      // 모든 단지의 가격 정보 수집
-      const allPrices: number[] = [];
-      complexesList.forEach((c: ComplexItem) => {
-        if (c.priceStats) {
-          // avgPrice 파싱 (예: "3억 5,000" → 350000000)
-          const avgPriceStr = c.priceStats.avgPrice;
-          let avgPriceWon = 0;
-
-          const eokMatch = avgPriceStr.match(/(\d+)억/);
-          if (eokMatch) {
-            avgPriceWon += parseInt(eokMatch[1]) * 100000000;
-          }
-
-          const manMatch = avgPriceStr.match(/억([\d,]+)/);
-          if (manMatch) {
-            avgPriceWon += parseInt(manMatch[1].replace(/,/g, '')) * 10000;
-          } else if (!eokMatch) {
-            const onlyNumber = avgPriceStr.match(/^([\d,]+)$/);
-            if (onlyNumber) {
-              avgPriceWon = parseInt(onlyNumber[1].replace(/,/g, '')) * 10000;
-            }
-          }
-
-          if (avgPriceWon > 0) {
-            allPrices.push(avgPriceWon);
-          }
-        }
-      });
-
-      if (allPrices.length > 0) {
-        const avgPriceWon = Math.floor(allPrices.reduce((sum, p) => sum + p, 0) / allPrices.length);
-        const minPriceWon = Math.min(...allPrices);
-        const maxPriceWon = Math.max(...allPrices);
-
-        // 원 → 억/만원 형식 변환
-        const formatPrice = (won: number) => {
-          const eok = Math.floor(won / 100000000);
-          const man = Math.floor((won % 100000000) / 10000);
-          if (eok > 0 && man > 0) {
-            return `${eok}억 ${man.toLocaleString()}`;
-          } else if (eok > 0) {
-            return `${eok}억`;
-          } else {
-            return man.toLocaleString();
-          }
-        };
-
-        setGlobalStats({
-          totalComplexes: complexesList.length,
-          totalArticles,
-          avgPrice: formatPrice(avgPriceWon),
-          minPrice: formatPrice(minPriceWon),
-          maxPrice: formatPrice(maxPriceWon),
-        });
-      } else {
-        setGlobalStats({
-          totalComplexes: complexesList.length,
-          totalArticles,
-          avgPrice: '-',
-          minPrice: '-',
-          maxPrice: '-',
-        });
-      }
     } catch (error) {
       console.error('[CLIENT_FETCH] 단지목록 조회 실패:', error);
       setComplexes([]); // 에러 시 빈 배열로 설정
@@ -1210,64 +1135,6 @@ export default function ComplexesPage() {
             </div>
           )}
 
-          {/* 전체 통계 대시보드 */}
-          {globalStats && (
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
-              {/* 총 단지 수 */}
-              <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg p-5 text-white">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-sm font-semibold opacity-90">총 단지 수</h3>
-                  <LayoutGrid className="w-5 h-5 opacity-80" />
-                </div>
-                <p className="text-3xl font-bold">{globalStats.totalComplexes}</p>
-                <p className="text-xs opacity-80 mt-1">등록된 단지</p>
-              </div>
-
-              {/* 총 매물 수 */}
-              <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl shadow-lg p-5 text-white">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-sm font-semibold opacity-90">총 매물 수</h3>
-                  <FileText className="w-5 h-5 opacity-80" />
-                </div>
-                <p className="text-3xl font-bold">{globalStats.totalArticles.toLocaleString()}</p>
-                <p className="text-xs opacity-80 mt-1">수집된 매물</p>
-              </div>
-
-              {/* 평균 가격 */}
-              <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl shadow-lg p-5 text-white">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-sm font-semibold opacity-90">평균 가격</h3>
-                  <Rocket className="w-5 h-5 opacity-80" />
-                </div>
-                <p className="text-2xl font-bold">{globalStats.avgPrice}</p>
-                <p className="text-xs opacity-80 mt-1">전체 단지 평균</p>
-              </div>
-
-              {/* 최저 가격 */}
-              <div className="bg-gradient-to-br from-cyan-500 to-cyan-600 rounded-xl shadow-lg p-5 text-white">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-sm font-semibold opacity-90">최저 가격</h3>
-                  <svg className="w-5 h-5 opacity-80" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                  </svg>
-                </div>
-                <p className="text-2xl font-bold">{globalStats.minPrice}</p>
-                <p className="text-xs opacity-80 mt-1">가장 저렴한 매물</p>
-              </div>
-
-              {/* 최고 가격 */}
-              <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl shadow-lg p-5 text-white">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-sm font-semibold opacity-90">최고 가격</h3>
-                  <svg className="w-5 h-5 opacity-80" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />
-                  </svg>
-                </div>
-                <p className="text-2xl font-bold">{globalStats.maxPrice}</p>
-                <p className="text-xs opacity-80 mt-1">가장 비싼 매물</p>
-              </div>
-            </div>
-          )}
 
           {/* Add Form */}
           {showAddForm && (
