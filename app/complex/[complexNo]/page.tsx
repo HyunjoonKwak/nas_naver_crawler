@@ -54,6 +54,11 @@ export default function ComplexDetailPage() {
   // Dialog 상태
   const [deleteDialog, setDeleteDialog] = useState(false);
 
+  // 필터 변경 시 페이지 초기화 (Hooks는 항상 같은 순서로 호출되어야 함)
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filterTradeType, filterArea, filterDong, sortField, sortDirection]);
+
   useEffect(() => {
     fetchComplexData();
   }, [complexNo]);
@@ -304,11 +309,6 @@ export default function ComplexDetailPage() {
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
   const paginatedArticles = sortedArticles.slice(startIndex, endIndex);
-
-  // 필터 변경 시 페이지 초기화
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [filterTradeType, filterArea, filterDong, sortField, sortDirection]);
 
   // 고유 면적 리스트
   const uniqueAreas = Array.from(new Set(
