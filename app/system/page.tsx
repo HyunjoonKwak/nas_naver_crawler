@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
+import { useSearchParams } from "next/navigation";
 import { Navigation } from "@/components/Navigation";
 import { MobileNavigation } from "@/components/MobileNavigation";
 import { SystemSettings } from "@/components/SystemSettings";
@@ -29,10 +30,19 @@ interface StatusData {
 export default function SystemPage() {
   const { data: session } = useSession();
   const isAdmin = session?.user?.role === 'ADMIN';
+  const searchParams = useSearchParams();
 
   const [status, setStatus] = useState<StatusData | null>(null);
   const [activeSection, setActiveSection] = useState<'database' | 'info' | 'users' | 'scheduler' | 'settings'>('database');
   const [refresh, setRefresh] = useState(0);
+
+  // URL 파라미터로 탭 설정
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (tab && ['database', 'info', 'users', 'scheduler', 'settings'].includes(tab)) {
+      setActiveSection(tab as 'database' | 'info' | 'users' | 'scheduler' | 'settings');
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     fetchStatus();

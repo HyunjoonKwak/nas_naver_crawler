@@ -441,7 +441,7 @@ export default function Home() {
           </div>
 
           {/* Quick Actions */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
             <Link
               href="/complexes"
               className="flex items-center gap-4 p-5 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-all hover:-translate-y-1"
@@ -468,8 +468,18 @@ export default function Home() {
             >
               <div className="text-4xl">🔔</div>
               <div className="flex-1">
-                <h4 className="font-bold text-gray-900 dark:text-white mb-1">알림 설정</h4>
-                <p className="text-sm text-gray-500 dark:text-gray-400">매물 변동 실시간 알림</p>
+                <h4 className="font-bold text-gray-900 dark:text-white mb-1">알림 관리</h4>
+                <p className="text-sm text-gray-500 dark:text-gray-400">알림 규칙 생성 및 편집</p>
+              </div>
+            </Link>
+            <Link
+              href="/system?tab=scheduler"
+              className="flex items-center gap-4 p-5 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-all hover:-translate-y-1"
+            >
+              <div className="text-4xl">⏰</div>
+              <div className="flex-1">
+                <h4 className="font-bold text-gray-900 dark:text-white mb-1">스케줄러</h4>
+                <p className="text-sm text-gray-500 dark:text-gray-400">자동 크롤링 스케줄 설정</p>
               </div>
             </Link>
           </div>
