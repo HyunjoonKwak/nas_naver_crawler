@@ -303,6 +303,40 @@ export default function Home() {
               isTime
             />
           </div>
+
+          {/* Quick Actions */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+            <Link
+              href="/complexes"
+              className="flex items-center gap-4 p-5 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-all hover:-translate-y-1"
+            >
+              <div className="text-4xl">🏢</div>
+              <div className="flex-1">
+                <h4 className="font-bold text-gray-900 dark:text-white mb-1">단지 관리</h4>
+                <p className="text-sm text-gray-500 dark:text-gray-400">관심 단지 추가 및 관리</p>
+              </div>
+            </Link>
+            <Link
+              href="/analytics"
+              className="flex items-center gap-4 p-5 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-all hover:-translate-y-1"
+            >
+              <div className="text-4xl">📊</div>
+              <div className="flex-1">
+                <h4 className="font-bold text-gray-900 dark:text-white mb-1">데이터 분석</h4>
+                <p className="text-sm text-gray-500 dark:text-gray-400">단지별 상세 통계 분석</p>
+              </div>
+            </Link>
+            <Link
+              href="/alerts"
+              className="flex items-center gap-4 p-5 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-all hover:-translate-y-1"
+            >
+              <div className="text-4xl">🔔</div>
+              <div className="flex-1">
+                <h4 className="font-bold text-gray-900 dark:text-white mb-1">알림 설정</h4>
+                <p className="text-sm text-gray-500 dark:text-gray-400">매물 변동 실시간 알림</p>
+              </div>
+            </Link>
+          </div>
         </div>
 
         {/* Favorite Complexes with Detailed Stats */}

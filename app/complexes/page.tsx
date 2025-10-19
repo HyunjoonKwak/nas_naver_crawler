@@ -25,7 +25,8 @@ import {
   Star,
   Rocket,
   FileText,
-  Search as SearchIcon
+  Search as SearchIcon,
+  BarChart3
 } from "lucide-react";
 
 interface ComplexGroup {
@@ -1675,35 +1676,54 @@ export default function ComplexesPage() {
                   </div>
 
                   {/* 액션 버튼들 */}
-                  <div className="flex gap-2 mt-4">
-                    <Link
-                      href={`/complex/${complex.complexNo}`}
-                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors text-sm font-semibold"
-                    >
-                      <Eye className="w-4 h-4" />
-                      <span>상세보기</span>
-                    </Link>
-                    <button
-                      onClick={() => handleCrawlComplex(complex.complexNo)}
-                      disabled={crawling === complex.complexNo || crawlingAll}
-                      className={`px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors ${
-                        crawling === complex.complexNo || crawlingAll
-                          ? 'bg-gray-300 dark:bg-gray-600 text-gray-500 cursor-not-allowed'
-                          : 'bg-green-600 hover:bg-green-700 text-white'
-                      }`}
-                    >
-                      {crawling === complex.complexNo ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <RefreshCw className="w-4 h-4" />
-                      )}
-                    </button>
-                    <button
-                      onClick={() => handleDeleteComplex(complex.complexNo, complex.complexName)}
-                      className="px-4 py-2.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-sm font-semibold transition-colors"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                  <div className="flex flex-col gap-2 mt-4">
+                    {/* 첫 번째 줄: 상세보기 + 상세 분석 */}
+                    <div className="flex gap-2">
+                      <Link
+                        href={`/complex/${complex.complexNo}`}
+                        className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors text-sm font-semibold"
+                      >
+                        <Eye className="w-4 h-4" />
+                        <span>상세보기</span>
+                      </Link>
+                      <Link
+                        href={`/analytics?mode=single&complexNos=${complex.complexNo}`}
+                        className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-purple-600 hover:bg-purple-700 text-white transition-colors text-sm font-semibold"
+                      >
+                        <BarChart3 className="w-4 h-4" />
+                        <span>상세 분석</span>
+                      </Link>
+                    </div>
+                    {/* 두 번째 줄: 크롤링 + 삭제 */}
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleCrawlComplex(complex.complexNo)}
+                        disabled={crawling === complex.complexNo || crawlingAll}
+                        className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors ${
+                          crawling === complex.complexNo || crawlingAll
+                            ? 'bg-gray-300 dark:bg-gray-600 text-gray-500 cursor-not-allowed'
+                            : 'bg-green-600 hover:bg-green-700 text-white'
+                        }`}
+                      >
+                        {crawling === complex.complexNo ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            <span>크롤링 중...</span>
+                          </>
+                        ) : (
+                          <>
+                            <RefreshCw className="w-4 h-4" />
+                            <span>크롤링</span>
+                          </>
+                        )}
+                      </button>
+                      <button
+                        onClick={() => handleDeleteComplex(complex.complexNo, complex.complexName)}
+                        className="px-4 py-2.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-sm font-semibold transition-colors"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1797,21 +1817,31 @@ export default function ComplexesPage() {
                       {formatDate(favorite.lastCrawledAt)}
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap text-sm">
-                      {crawlingAll || crawling ? (
-                        <button
-                          disabled
-                          className="px-3 py-1 rounded-lg bg-gray-300 dark:bg-gray-600 text-gray-500 cursor-not-allowed font-medium"
-                        >
-                          📋 상세보기
-                        </button>
-                      ) : (
+                      <div className="flex items-center gap-2">
+                        {crawlingAll || crawling ? (
+                          <button
+                            disabled
+                            className="px-3 py-1 rounded-lg bg-gray-300 dark:bg-gray-600 text-gray-500 cursor-not-allowed font-medium"
+                          >
+                            📋 상세보기
+                          </button>
+                        ) : (
+                          <Link
+                            href={`/complex/${favorite.complexNo}`}
+                            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors font-medium"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                            <span>상세</span>
+                          </Link>
+                        )}
                         <Link
-                          href={`/complex/${favorite.complexNo}`}
-                          className="inline-block px-3 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors font-medium"
+                          href={`/analytics?mode=single&complexNos=${favorite.complexNo}`}
+                          className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-purple-600 hover:bg-purple-700 text-white transition-colors font-medium"
                         >
-                          📋 상세보기
+                          <BarChart3 className="w-3.5 h-3.5" />
+                          <span>분석</span>
                         </Link>
-                      )}
+                      </div>
                     </td>
                   </tr>
                 ))}
