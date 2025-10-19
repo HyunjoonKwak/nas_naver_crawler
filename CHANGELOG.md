@@ -4,6 +4,24 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [2.9.0] - 2025-10-19
+
+### ✨ Added
+- **단지 상세 페이지 개선**
+  - "데이터 분석" 버튼 추가
+    - 클릭 시 데이터 분석 페이지로 직접 이동
+    - 실거래가 탭과 데이터 분석 페이지 역할 명확히 분리
+
+### 💎 Improved
+- **페이지 간 네비게이션 완성**
+  - 모든 주요 페이지에서 데이터 분석 접근 가능
+  - 일관된 사용자 플로우 구축
+
+### 📝 Files Changed
+- `app/complex/[complexNo]/page.tsx` - 데이터 분석 버튼 추가
+
+---
+
 ## [2.8.0] - 2025-10-19
 
 ### ✨ Added
