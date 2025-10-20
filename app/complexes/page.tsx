@@ -1470,7 +1470,7 @@ export default function ComplexesPage() {
                       <button
                         onClick={() => handleCrawlComplex(complex.complexNo)}
                         disabled={crawling === complex.complexNo || crawlingAll}
-                        className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg border-2 text-sm font-medium transition-colors ${
+                        className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border-2 text-xs font-medium transition-colors whitespace-nowrap ${
                           crawling === complex.complexNo || crawlingAll
                             ? 'border-gray-300 dark:border-gray-600 text-gray-400 dark:text-gray-500 cursor-not-allowed'
                             : 'border-green-300 dark:border-green-700 text-green-700 dark:text-green-300 hover:bg-green-50 dark:hover:bg-green-900/20'
@@ -1478,12 +1478,12 @@ export default function ComplexesPage() {
                       >
                         {crawling === complex.complexNo ? (
                           <>
-                            <Loader2 className="w-4 h-4 animate-spin" />
+                            <Loader2 className="w-3.5 h-3.5 animate-spin flex-shrink-0" />
                             <span>크롤링 중...</span>
                           </>
                         ) : (
                           <>
-                            <RefreshCw className="w-4 h-4" />
+                            <RefreshCw className="w-3.5 h-3.5 flex-shrink-0" />
                             <span>크롤링</span>
                           </>
                         )}
