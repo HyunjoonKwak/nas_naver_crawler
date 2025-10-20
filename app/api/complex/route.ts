@@ -125,6 +125,7 @@ export async function GET(request: NextRequest) {
       }, {} as Record<string, number>);
 
       return {
+        id: complex.id, // 그룹 관리에 필요
         complexNo: complex.complexNo,
         complexName: complex.complexName,
         isFavorite, // 관심단지 여부
