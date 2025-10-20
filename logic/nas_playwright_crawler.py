@@ -381,7 +381,7 @@ class NASNaverRealEstateCrawler:
         return None
 
     async def crawl_complex_overview(self, complex_no: str) -> Optional[Dict]:
-        """단지 개요 정보 크롤링"""
+        """단지 개요 정보 크롤링 (page.reload() 제거, goto() 사용)"""
         try:
             print(f"단지 개요 정보 크롤링 시작: {complex_no}")
 
@@ -392,6 +392,7 @@ class NASNaverRealEstateCrawler:
                 nonlocal overview_data
                 if f'/api/complexes/overview/{complex_no}' in response.url:
                     try:
+                        # 즉시 body 읽기 (리소스 정리 전에)
                         data = await response.json()
                         overview_data = data
                         print(f"단지 개요 API 응답 캐치됨: {data.get('complexName', 'Unknown')}")
@@ -401,31 +402,38 @@ class NASNaverRealEstateCrawler:
             # 응답 핸들러 등록
             self.page.on('response', handle_response)
 
-            # 네이버 부동산 단지 페이지 접속 (timeout 증가)
+            # 네이버 부동산 단지 페이지 접속
             url = f"https://new.land.naver.com/complexes/{complex_no}"
             await self.page.goto(url, wait_until='domcontentloaded', timeout=self.timeout)
 
             # API 응답 대기
             await asyncio.sleep(3)
 
-            # 응답이 없으면 페이지 새로고침
+            # 응답이 없으면 reload 대신 goto 재시도
             if not overview_data:
-                print("Overview 데이터 없음, 페이지 새로고침...")
-                await self.page.reload(wait_until='domcontentloaded', timeout=self.timeout)
-                await asyncio.sleep(2)
+                print("Overview 데이터 없음, 페이지 재접속 (goto)...")
+                # reload() 대신 goto() 사용 (CDP 리소스 정리 문제 회피)
+                await self.page.goto(url, wait_until='domcontentloaded', timeout=self.timeout)
+                await asyncio.sleep(3)
 
             # 응답 핸들러 제거
             try:
                 self.page.remove_listener('response', handle_response)
-            except Exception:
-                pass
+            except Exception as e:
+                print(f"[WARNING] 핸들러 제거 실패: 'response' - {e}")
 
             if overview_data:
                 print(f"✅ Overview 수집 성공: {overview_data.get('complexName', 'Unknown')}")
+                # 필수 정보 추출
+                result = {
+                    'complexName': overview_data.get('complexName', ''),
+                    'totalHousehold': overview_data.get('totalHouseHoldCount'),
+                    'totalDong': overview_data.get('totalDongCount'),
+                }
+                return result
             else:
                 print(f"⚠️ Overview 수집 실패")
-
-            return overview_data
+                return None
 
         except Exception as e:
             print(f"단지 개요 크롤링 실패: {e}")
