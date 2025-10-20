@@ -158,3 +158,93 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+
+// DELETE: 단지 완전 삭제 (Complex 테이블에서 삭제, Cascade로 연관 데이터 모두 삭제)
+export async function DELETE(request: NextRequest) {
+  try {
+    const currentUser = await requireAuth();
+    const { searchParams } = new URL(request.url);
+    const complexNo = searchParams.get('complexNo');
+
+    if (!complexNo) {
+      return NextResponse.json(
+        { error: '단지번호가 필요합니다.' },
+        { status: 400 }
+      );
+    }
+
+    // 단지 찾기
+    const complex = await prisma.complex.findUnique({
+      where: { complexNo },
+      include: {
+        _count: {
+          select: {
+            articles: true,
+            favorites: true,
+            complexGroups: true
+          }
+        }
+      }
+    });
+
+    if (!complex) {
+      return NextResponse.json(
+        { error: '해당 단지를 찾을 수 없습니다.' },
+        { status: 404 }
+      );
+    }
+
+    // 권한 확인: 본인이 생성한 단지만 삭제 가능
+    if (complex.userId !== currentUser.id) {
+      return NextResponse.json(
+        { error: '본인이 생성한 단지만 삭제할 수 있습니다.' },
+        { status: 403 }
+      );
+    }
+
+    console.log('[API_COMPLEX] 단지 삭제 시작:', {
+      complexNo,
+      complexName: complex.complexName,
+      userId: currentUser.id,
+      연관데이터: {
+        매물: complex._count.articles,
+        관심단지: complex._count.favorites,
+        그룹연결: complex._count.complexGroups
+      }
+    });
+
+    // Complex 삭제 (Cascade로 연관 데이터 모두 삭제)
+    // - articles (매물)
+    // - favorites (관심단지)
+    // - complexGroups (그룹 연결)
+    await prisma.complex.delete({
+      where: { id: complex.id }
+    });
+
+    console.log('[API_COMPLEX] 단지 삭제 완료:', {
+      complexNo,
+      complexName: complex.complexName
+    });
+
+    // 캐시 무효화
+    invalidateCache(`complexes:${currentUser.id}`);
+    invalidateCache(`favorites:${currentUser.id}`);
+
+    return NextResponse.json({
+      success: true,
+      message: '단지가 완전히 삭제되었습니다.',
+      complexNo,
+      deletedData: {
+        articles: complex._count.articles,
+        favorites: complex._count.favorites,
+        complexGroups: complex._count.complexGroups
+      }
+    });
+  } catch (error: any) {
+    console.error('[API_COMPLEX] DELETE error:', error);
+    return NextResponse.json(
+      { error: '단지 삭제 중 오류가 발생했습니다.', details: error.message },
+      { status: 500 }
+    );
+  }
+}

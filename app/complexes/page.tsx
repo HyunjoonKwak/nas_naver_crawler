@@ -511,15 +511,16 @@ export default function ComplexesPage() {
 
     const loadingToast = showLoading('단지 삭제 중...');
     try {
-      const response = await fetch(`/api/favorites?complexNo=${deleteComplexDialog.complexNo}`, {
+      const response = await fetch(`/api/complex?complexNo=${deleteComplexDialog.complexNo}`, {
         method: 'DELETE'
       });
 
       dismissToast(loadingToast);
 
       if (response.ok) {
+        const data = await response.json();
         await fetchComplexes();
-        showSuccess('단지가 삭제되었습니다.');
+        showSuccess(`단지가 완전히 삭제되었습니다. (매물 ${data.deletedData?.articles || 0}개 포함)`);
       } else {
         const data = await response.json();
         showError(data.error || '단지 삭제 실패');
@@ -1684,8 +1685,8 @@ export default function ComplexesPage() {
         isOpen={deleteComplexDialog.isOpen}
         onClose={() => setDeleteComplexDialog({ isOpen: false, complexNo: null, complexName: null })}
         onConfirm={confirmDeleteComplex}
-        title="단지 삭제"
-        description={`${deleteComplexDialog.complexName}을(를) 완전히 삭제하시겠습니까?\n\n(DB와 모든 매물 데이터가 삭제됩니다)`}
+        title="⚠️ 단지 완전 삭제"
+        description={`${deleteComplexDialog.complexName}을(를) 완전히 삭제하시겠습니까?\n\n이 작업은 되돌릴 수 없으며, 다음 데이터가 모두 삭제됩니다:\n• 단지 정보\n• 모든 매물 데이터\n• 관심단지 연결\n• 그룹 연결\n\n※ 본인이 생성한 단지만 삭제할 수 있습니다.`}
         confirmText="삭제"
         cancelText="취소"
         variant="danger"
