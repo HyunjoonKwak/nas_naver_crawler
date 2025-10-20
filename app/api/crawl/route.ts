@@ -239,19 +239,26 @@ async function saveCrawlResultsToDB(crawlId: string, complexNos: string[], userI
         continue;
       }
 
+      // 위치 정보가 overview에 없으면 첫 번째 매물에서 가져오기
+      const firstArticle = articleList[0];
+      const latitude = overview.location?.latitude || overview.latitude ||
+                      (firstArticle?.latitude ? parseFloat(firstArticle.latitude) : null);
+      const longitude = overview.location?.longitude || overview.longitude ||
+                       (firstArticle?.longitude ? parseFloat(firstArticle.longitude) : null);
+
       // 단지 정보 준비
       complexesToUpsert.push({
         complexNo: complexNo,
         complexName: overview.complexName || `단지 ${complexNo}`,
         totalHousehold: overview.totalHouseHoldCount || overview.totalHousehold,
         totalDong: overview.totalDongCount || overview.totalDong,
-        latitude: overview.location?.latitude || overview.latitude,
-        longitude: overview.location?.longitude || overview.longitude,
-        address: overview.address,
-        roadAddress: overview.roadAddress,
-        jibunAddress: overview.jibunAddress,
-        beopjungdong: overview.beopjungdong,
-        haengjeongdong: overview.haengjeongdong,
+        latitude: latitude,
+        longitude: longitude,
+        address: overview.address || null,
+        roadAddress: overview.roadAddress || null,
+        jibunAddress: overview.jibunAddress || null,
+        beopjungdong: overview.beopjungdong || null,
+        haengjeongdong: overview.haengjeongdong || null,
         pyeongs: overview.pyeongs || [],
         userId: userId, // 크롤링 실행한 사용자 ID
       });
