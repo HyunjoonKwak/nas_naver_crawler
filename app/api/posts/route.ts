@@ -105,7 +105,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error: any) {
-    logger.error('Failed to fetch posts', error, { category, search, sortBy });
+    logger.error('Failed to fetch posts', error);
     return NextResponse.json(
       {
         success: false,
