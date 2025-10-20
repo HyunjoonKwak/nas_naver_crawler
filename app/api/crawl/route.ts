@@ -152,6 +152,13 @@ async function executeCrawlInBackground(
       logger.error('Failed to send alerts', error);
     });
 
+    // 스케줄 크롤링 완료 알림 (스케줄에서 실행된 경우에만)
+    if (scheduleId) {
+      await sendScheduleCrawlCompleteNotification(scheduleId, dbResult, duration).catch((error) => {
+        logger.error('Failed to send schedule completion notification', error);
+      });
+    }
+
   } catch (error: any) {
     logger.error('Background crawl error', { crawlId, error: error.message });
 
@@ -849,6 +856,92 @@ export async function POST(request: NextRequest) {
       },
       { status: 500 }
     );
+  }
+}
+
+// 스케줄 크롤링 완료 알림 전송
+async function sendScheduleCrawlCompleteNotification(
+  scheduleId: string,
+  dbResult: { totalComplexes: number; totalArticles: number; errors: string[] },
+  duration: number
+) {
+  try {
+    // 스케줄 정보 조회
+    const schedule = await prisma.schedule.findUnique({
+      where: { id: scheduleId },
+      include: {
+        user: true,
+      },
+    });
+
+    if (!schedule) {
+      logger.warn('Schedule not found for notification', { scheduleId });
+      return;
+    }
+
+    // 사용자의 알림 설정 확인 (활성화된 알림이 있고 webhookUrl이 있는 경우)
+    const userAlerts = await prisma.alert.findMany({
+      where: {
+        userId: schedule.userId,
+        isActive: true,
+        webhookUrl: { not: null },
+      },
+      take: 1, // 하나만 있으면 됨 (webhookUrl 가져오기 위해)
+    });
+
+    if (userAlerts.length === 0) {
+      logger.info('No active alerts with webhook URL for schedule notification', { scheduleId });
+      return;
+    }
+
+    const webhookUrl = userAlerts[0].webhookUrl!;
+
+    // Discord 임베드 생성
+    const embed = {
+      title: '⏰ 스케줄 크롤링 완료',
+      description: `**${schedule.name}** 스케줄이 완료되었습니다.`,
+      color: dbResult.errors.length > 0 ? 0xfbbf24 : 0x10b981, // 에러 있으면 노란색, 없으면 초록색
+      fields: [
+        {
+          name: '📊 크롤링 결과',
+          value: `• 단지 수: ${dbResult.totalComplexes}개\n• 매물 수: ${dbResult.totalArticles}개\n• 소요 시간: ${Math.floor(duration / 1000)}초`,
+          inline: false,
+        },
+      ],
+      timestamp: new Date().toISOString(),
+      footer: {
+        text: `Schedule ID: ${scheduleId.substring(0, 8)}`,
+      },
+    };
+
+    // 에러가 있으면 추가
+    if (dbResult.errors.length > 0) {
+      embed.fields.push({
+        name: '⚠️ 일부 오류 발생',
+        value: dbResult.errors.slice(0, 3).join('\n') + (dbResult.errors.length > 3 ? `\n... 외 ${dbResult.errors.length - 3}개` : ''),
+        inline: false,
+      });
+    }
+
+    // Discord 웹훅 전송
+    const response = await fetch(webhookUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        embeds: [embed],
+      }),
+    });
+
+    if (!response.ok) {
+      logger.error('Failed to send schedule completion notification to Discord', {
+        status: response.status,
+        statusText: response.statusText,
+      });
+    } else {
+      logger.info('Schedule completion notification sent successfully', { scheduleId });
+    }
+  } catch (error) {
+    logger.error('Error sending schedule completion notification', error);
   }
 }
 
