@@ -29,8 +29,8 @@ export const Navigation = () => {
   const pathname = usePathname();
   const { data: session, status } = useSession();
 
-  // SSE 기반 실시간 크롤링 상태 모니터링
-  const crawlingStatus = useCrawlEvents();
+  // SSE 기반 실시간 크롤링 상태 모니터링 (토스트 알림 활성화)
+  const crawlingStatus = useCrawlEvents(undefined, true);
 
   const formatElapsedTime = (seconds: number): string => {
     const minutes = Math.floor(seconds / 60);

@@ -289,7 +289,7 @@ export function SchedulerSettings() {
       dismissToast(loadingToast);
 
       if (response.ok) {
-        showSuccess("스케줄이 실행되었습니다! 잠시 후 결과를 확인하세요.");
+        // SSE 이벤트에서 토스트를 표시하므로 여기서는 표시하지 않음
         await fetchData();
       } else {
         showError("스케줄 실행에 실패했습니다.");

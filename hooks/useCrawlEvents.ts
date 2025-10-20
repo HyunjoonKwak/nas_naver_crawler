@@ -45,7 +45,7 @@ interface CrawlStatus {
   scheduleName?: string;
 }
 
-export function useCrawlEvents(onCrawlComplete?: () => void) {
+export function useCrawlEvents(onCrawlComplete?: () => void, showToast: boolean = false) {
   const [crawlStatus, setCrawlStatus] = useState<CrawlStatus>({
     isActive: false,
     crawlId: null,
@@ -58,6 +58,7 @@ export function useCrawlEvents(onCrawlComplete?: () => void) {
   const lastCrawlIdRef = useRef<string | null>(null);
   const onCrawlCompleteRef = useRef(onCrawlComplete);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const showToastRef = useRef(showToast);
 
   // onCrawlComplete를 최신 상태로 유지
   useEffect(() => {
@@ -107,9 +108,11 @@ export function useCrawlEvents(onCrawlComplete?: () => void) {
               totalComplexes: data.data?.totalComplexes,
             });
 
-            // 새로운 크롤링이면 토스트 알림
+            // 새로운 크롤링이면 토스트 알림 (showToast가 true일 때만)
             if (lastCrawlIdRef.current !== data.crawlId) {
-              showInfo(`🚀 크롤링이 시작되었습니다 (${data.data?.totalComplexes}개 단지)`);
+              if (showToastRef.current) {
+                showInfo(`🚀 크롤링이 시작되었습니다 (${data.data?.totalComplexes}개 단지)`);
+              }
               lastCrawlIdRef.current = data.crawlId;
             }
           }
@@ -144,7 +147,9 @@ export function useCrawlEvents(onCrawlComplete?: () => void) {
               elapsedSeconds: 0,
             });
 
-            showSuccess(`✅ 크롤링이 완료되었습니다 (${data.data?.articlesCount || 0}개 매물)`);
+            if (showToastRef.current) {
+              showSuccess(`✅ 크롤링이 완료되었습니다 (${data.data?.articlesCount || 0}개 매물)`);
+            }
 
             // 완료 콜백 실행
             if (onCrawlCompleteRef.current) {
@@ -172,7 +177,9 @@ export function useCrawlEvents(onCrawlComplete?: () => void) {
               elapsedSeconds: 0,
             });
 
-            showError(`❌ 크롤링이 실패했습니다: ${data.data?.errorMessage || '알 수 없는 오류'}`);
+            if (showToastRef.current) {
+              showError(`❌ 크롤링이 실패했습니다: ${data.data?.errorMessage || '알 수 없는 오류'}`);
+            }
             lastCrawlIdRef.current = null;
           }
           break;
@@ -190,9 +197,11 @@ export function useCrawlEvents(onCrawlComplete?: () => void) {
               scheduleName: data.data.scheduleName,
             });
 
-            showInfo(
-              `📅 스케줄 "${data.data.scheduleName}" 실행 시작 (${data.data.totalComplexes}개 단지)`
-            );
+            if (showToastRef.current) {
+              showInfo(
+                `📅 스케줄 "${data.data.scheduleName}" 실행 시작 (${data.data.totalComplexes}개 단지)`
+              );
+            }
             lastCrawlIdRef.current = data.data.scheduleId;
           }
           break;
@@ -215,9 +224,11 @@ export function useCrawlEvents(onCrawlComplete?: () => void) {
             });
 
             const durationSec = Math.floor((data.data.duration || 0) / 1000);
-            showSuccess(
-              `✅ 스케줄 "${data.data.scheduleName}" 완료 (${data.data.articlesCount || 0}개 매물, ${durationSec}초)`
-            );
+            if (showToastRef.current) {
+              showSuccess(
+                `✅ 스케줄 "${data.data.scheduleName}" 완료 (${data.data.articlesCount || 0}개 매물, ${durationSec}초)`
+              );
+            }
 
             // 완료 콜백 실행 (스케줄 페이지 갱신용)
             if (onCrawlCompleteRef.current) {
@@ -245,9 +256,11 @@ export function useCrawlEvents(onCrawlComplete?: () => void) {
               elapsedSeconds: 0,
             });
 
-            showError(
-              `❌ 스케줄 "${data.data.scheduleName}" 실패: ${data.data?.errorMessage || '알 수 없는 오류'}`
-            );
+            if (showToastRef.current) {
+              showError(
+                `❌ 스케줄 "${data.data.scheduleName}" 실패: ${data.data?.errorMessage || '알 수 없는 오류'}`
+              );
+            }
             lastCrawlIdRef.current = null;
           }
           break;
