@@ -14,9 +14,21 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
-    const success = await runScheduleNow(params.id);
+    const result = await runScheduleNow(params.id);
 
-    if (!success) {
+    // 중복 실행 방지 (이미 실행 중)
+    if (result === 'already_running') {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Schedule is already running',
+          code: 'ALREADY_RUNNING',
+        },
+        { status: 409 } // Conflict
+      );
+    }
+
+    if (!result) {
       return NextResponse.json(
         {
           success: false,

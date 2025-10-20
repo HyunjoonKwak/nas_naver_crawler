@@ -125,6 +125,24 @@ async function executeCrawl(scheduleId: string) {
     return;
   }
 
+  // 🔒 중복 실행 방지: 이미 실행 중인 크롤링이 있는지 확인
+  const runningCrawl = await prisma.crawlHistory.findFirst({
+    where: {
+      scheduleId: scheduleId,
+      status: { in: ['pending', 'running'] },
+    },
+    orderBy: { startedAt: 'desc' },
+  });
+
+  if (runningCrawl) {
+    console.warn(`⚠️  Schedule "${schedule.name}" is already running!`);
+    console.warn(`   Crawl ID: ${runningCrawl.id}`);
+    console.warn(`   Started at: ${runningCrawl.startedAt}`);
+    console.warn(`   Status: ${runningCrawl.status}`);
+    console.warn(`   Skipping duplicate execution.`);
+    return;
+  }
+
   const scheduleName = schedule.name;
   let complexNos: string[] = [];
 
@@ -559,8 +577,9 @@ export async function loadAllSchedules() {
 
 /**
  * 특정 스케줄 즉시 실행
+ * @returns true: 성공, false: 실패, 'already_running': 이미 실행 중
  */
-export async function runScheduleNow(scheduleId: string): Promise<boolean> {
+export async function runScheduleNow(scheduleId: string): Promise<boolean | 'already_running'> {
   try {
     const schedule = await prisma.schedule.findUnique({
       where: { id: scheduleId },
@@ -569,6 +588,22 @@ export async function runScheduleNow(scheduleId: string): Promise<boolean> {
     if (!schedule) {
       console.error(`Schedule not found: ${scheduleId}`);
       return false;
+    }
+
+    // 🔒 중복 실행 방지: 이미 실행 중인지 확인
+    const runningCrawl = await prisma.crawlHistory.findFirst({
+      where: {
+        scheduleId: scheduleId,
+        status: { in: ['pending', 'running'] },
+      },
+      orderBy: { startedAt: 'desc' },
+    });
+
+    if (runningCrawl) {
+      console.warn(`⚠️  Schedule "${schedule.name}" is already running (checked in runScheduleNow)`);
+      console.warn(`   Crawl ID: ${runningCrawl.id}`);
+      console.warn(`   Returning 'already_running' to caller`);
+      return 'already_running';
     }
 
     console.log(`▶️ Running schedule immediately: ${schedule.name}`);
