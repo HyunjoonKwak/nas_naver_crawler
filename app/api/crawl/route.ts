@@ -130,9 +130,7 @@ async function executeCrawlInBackground(
       await prisma.schedule.update({
         where: { id: scheduleId },
         data: {
-          lastRunAt: new Date(),
-          lastSuccessAt: status === 'success' ? new Date() : undefined,
-          lastArticleCount: dbResult.totalArticles,
+          lastRun: new Date(),
         },
       }).catch((error) => {
         logger.error('Failed to update schedule info', { scheduleId, error: error.message });
@@ -172,13 +170,12 @@ async function executeCrawlInBackground(
       logger.error('Failed to update error history', historyError);
     });
 
-    // 스케줄 정보 업데이트 (실패 시에도 lastRunAt 업데이트)
+    // 스케줄 정보 업데이트 (실패 시에도 lastRun 업데이트)
     if (scheduleId) {
       await prisma.schedule.update({
         where: { id: scheduleId },
         data: {
-          lastRunAt: new Date(),
-          lastArticleCount: 0,
+          lastRun: new Date(),
         },
       }).catch((error) => {
         logger.error('Failed to update schedule info on error', { scheduleId, error: error.message });
