@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react";
 import { useParams, useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import Link from "next/link";
+import Image from "next/image";
 import { Navigation } from "@/components/Navigation";
 import { Dialog } from "@/components/ui";
 import { showSuccess, showError, showLoading, dismissToast } from "@/lib/toast";
@@ -472,9 +473,10 @@ export default function ComplexDetailPage() {
                   href={`https://new.land.naver.com/complexes/${complexNo}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors font-semibold text-sm"
+                  className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors font-semibold text-sm"
                 >
-                  🔗 네이버부동산
+                  <Image src="/naver-logo.svg" alt="Naver" width={18} height={18} className="flex-shrink-0" />
+                  <span>네이버부동산</span>
                 </a>
                 <button
                   onClick={handleDelete}

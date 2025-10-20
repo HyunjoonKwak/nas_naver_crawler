@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
+import Image from "next/image";
 import { Navigation } from "@/components/Navigation";
 import { MobileNavigation } from "@/components/MobileNavigation";
 import { ThemeToggle, Dialog } from "@/components/ui";
@@ -969,6 +970,16 @@ export default function ComplexesPage() {
                 <Plus className="w-4 h-4" />
                 <span>단지 추가</span>
               </button>
+              <a
+                href="https://new.land.naver.com/interests"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 px-4 py-2 rounded-lg transition-colors font-medium bg-emerald-600 hover:bg-emerald-700 text-white"
+                title="네이버 관심단지 페이지로 이동"
+              >
+                <Image src="/naver-logo.svg" alt="Naver" width={20} height={20} className="flex-shrink-0" />
+                <span>네이버 관심단지</span>
+              </a>
               <button
                 onClick={handleCrawlAll}
                 disabled={crawlingAll || complexes.length === 0}
@@ -1562,8 +1573,18 @@ export default function ComplexesPage() {
                         <span>상세 분석</span>
                       </Link>
                     </div>
-                    {/* 두 번째 줄: 크롤링 + 삭제 */}
+                    {/* 두 번째 줄: 네이버부동산 + 크롤링 + 삭제 */}
                     <div className="flex gap-2">
+                      <a
+                        href={`https://new.land.naver.com/complexes/${complex.complexNo}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center justify-center gap-1 px-3 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition-colors text-sm font-semibold"
+                        title="네이버부동산에서 보기"
+                      >
+                        <Image src="/naver-logo.svg" alt="Naver" width={18} height={18} className="flex-shrink-0" />
+                        <span>네이버</span>
+                      </a>
                       <button
                         onClick={() => handleCrawlComplex(complex.complexNo)}
                         disabled={crawling === complex.complexNo || crawlingAll}
