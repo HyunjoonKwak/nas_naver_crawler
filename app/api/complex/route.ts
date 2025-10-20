@@ -128,6 +128,8 @@ export async function GET(request: NextRequest) {
         complexNo: complex.complexNo,
         complexName: complex.complexName,
         isFavorite, // 관심단지 여부
+        createdAt: complex.createdAt?.toISOString(),
+        updatedAt: complex.updatedAt.toISOString(),
         lastCrawledAt: complex.updatedAt.toISOString(),
         articleCount: articles.length,
         totalHouseHoldCount: complex.totalHousehold,
