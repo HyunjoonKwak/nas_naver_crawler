@@ -950,18 +950,6 @@ export default function ComplexesPage() {
                 <Folder className="w-4 h-4" />
                 <span>그룹</span>
               </button>
-              <button
-                onClick={() => setShowAddForm(!showAddForm)}
-                disabled={crawlingAll || !!crawling}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors font-medium ${
-                  crawlingAll || crawling
-                    ? 'bg-gray-300 dark:bg-gray-600 cursor-not-allowed'
-                    : 'bg-blue-600 hover:bg-blue-700 text-white'
-                }`}
-              >
-                <Plus className="w-4 h-4" />
-                <span>단지 추가</span>
-              </button>
               <a
                 href="https://new.land.naver.com/interests"
                 target="_blank"
@@ -1281,24 +1269,28 @@ export default function ComplexesPage() {
                       )}
                     </div>
                   )}
-                  {/* 단지명과 관심단지 버튼 */}
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <h3 className="text-xl font-bold text-gray-900 dark:text-white">
-                          {complex.complexName || `단지 ${complex.complexNo}`}
-                        </h3>
-                        {/* 24시간 매물 변동 배지 */}
-                        {complex.articleChange24h !== undefined && complex.articleChange24h > 0 && (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
-                            +{complex.articleChange24h}
-                          </span>
-                        )}
-                      </div>
+                  {/* 단지명 - 1열 배치 */}
+                  <div className="flex items-center gap-2 mb-3">
+                    <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+                      {complex.complexName || `단지 ${complex.complexNo}`}
+                    </h3>
+                    {/* 24시간 매물 변동 배지 */}
+                    {complex.articleChange24h !== undefined && complex.articleChange24h > 0 && (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
+                        +{complex.articleChange24h}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* 단지번호와 관심등록 버튼 - 같은 줄 */}
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+                      <span>📍</span>
+                      <span>단지번호 {complex.complexNo}</span>
                     </div>
                     <button
                       onClick={() => handleToggleFavorite(complex.complexNo, complex.isFavorite)}
-                      className={`ml-2 flex items-center gap-1.5 px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
+                      className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
                         complex.isFavorite
                           ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400'
                           : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
@@ -1307,12 +1299,6 @@ export default function ComplexesPage() {
                       <Star className={`w-4 h-4 ${complex.isFavorite ? 'fill-current' : ''}`} />
                       <span>{complex.isFavorite ? '관심단지' : '관심등록'}</span>
                     </button>
-                  </div>
-
-                  {/* 단지번호 */}
-                  <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mb-2">
-                    <span>📍</span>
-                    <span>단지번호 {complex.complexNo}</span>
                   </div>
 
                   {/* 그룹 배지 */}
@@ -1384,11 +1370,13 @@ export default function ComplexesPage() {
                     <div className="flex items-center justify-between">
                       <span className="text-gray-600 dark:text-gray-400">등록일</span>
                       <span className="text-gray-900 dark:text-white font-medium text-xs">
-                        {new Date(complex.createdAt).toLocaleDateString('ko-KR', {
-                          year: 'numeric',
-                          month: '2-digit',
-                          day: '2-digit',
-                        })}
+                        {complex.createdAt && !isNaN(new Date(complex.createdAt).getTime())
+                          ? new Date(complex.createdAt).toLocaleDateString('ko-KR', {
+                              year: 'numeric',
+                              month: '2-digit',
+                              day: '2-digit',
+                            })
+                          : '-'}
                       </span>
                     </div>
 
@@ -1397,11 +1385,13 @@ export default function ComplexesPage() {
                       <div className="flex items-center justify-between">
                         <span className="text-gray-600 dark:text-gray-400">최근 수집</span>
                         <span className="text-gray-900 dark:text-white font-medium text-xs">
-                          {new Date(complex.lastCrawledAt).toLocaleDateString('ko-KR', {
-                            year: 'numeric',
-                            month: '2-digit',
-                            day: '2-digit',
-                          })}
+                          {!isNaN(new Date(complex.lastCrawledAt).getTime())
+                            ? new Date(complex.lastCrawledAt).toLocaleDateString('ko-KR', {
+                                year: 'numeric',
+                                month: '2-digit',
+                                day: '2-digit',
+                              })
+                            : '-'}
                         </span>
                       </div>
                     )}
@@ -1511,17 +1501,6 @@ export default function ComplexesPage() {
                             <span>크롤링</span>
                           </>
                         )}
-                      </button>
-                      <button
-                        onClick={() => handleToggleFavorite(complex.complexNo, complex.isFavorite)}
-                        className={`px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors ${
-                          complex.isFavorite
-                            ? 'bg-yellow-600 hover:bg-yellow-700 text-white'
-                            : 'bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200'
-                        }`}
-                        title={complex.isFavorite ? '관심 단지 해제' : '관심 단지 추가'}
-                      >
-                        <Star className={`w-4 h-4 ${complex.isFavorite ? 'fill-current' : ''}`} />
                       </button>
                       <button
                         onClick={() => handleDeleteComplex(complex.complexNo, complex.complexName)}
