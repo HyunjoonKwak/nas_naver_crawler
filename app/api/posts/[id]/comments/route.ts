@@ -82,13 +82,12 @@ export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  let currentUser: Awaited<ReturnType<typeof requireAuth>> | undefined;
   try {
     // Rate Limiting: 분당 10회
     const rateLimitResponse = rateLimit(request, rateLimitPresets.comment);
     if (rateLimitResponse) return rateLimitResponse;
 
-    currentUser = await requireAuth();
+    const currentUser = await requireAuth();
     const { id: postId } = params;
 
     // Zod 스키마 검증
@@ -176,7 +175,6 @@ export async function POST(
   } catch (error: any) {
     logger.error('Failed to create comment', error, {
       postId: params.id,
-      userId: currentUser?.id
     });
     return NextResponse.json(
       {
