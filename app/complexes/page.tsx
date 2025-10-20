@@ -1442,26 +1442,26 @@ export default function ComplexesPage() {
                     <div className="flex gap-2">
                       <Link
                         href={`/complex/${complex.complexNo}`}
-                        className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors text-sm font-semibold"
+                        className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg border-2 border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors text-sm font-medium"
                       >
                         <Eye className="w-4 h-4" />
                         <span>상세보기</span>
                       </Link>
                       <Link
                         href={`/analytics?mode=single&complexNos=${complex.complexNo}&autoRun=true`}
-                        className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-purple-600 hover:bg-purple-700 text-white transition-colors text-sm font-semibold"
+                        className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg border-2 border-purple-300 dark:border-purple-700 text-purple-700 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors text-sm font-medium"
                       >
                         <BarChart3 className="w-4 h-4" />
                         <span>상세 분석</span>
                       </Link>
                     </div>
-                    {/* 두 번째 줄: 네이버부동산 + 크롤링 + 관심단지 + 삭제 */}
+                    {/* 두 번째 줄: 네이버부동산 + 크롤링 + 삭제 */}
                     <div className="flex gap-2">
                       <a
                         href={`https://new.land.naver.com/complexes/${complex.complexNo}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center justify-center gap-1 px-3 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition-colors text-sm font-semibold"
+                        className="flex items-center justify-center gap-1 px-3 py-2 rounded-lg border-2 border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors text-sm font-medium"
                         title="네이버부동산에서 보기"
                       >
                         <Image src="/naver-logo.svg" alt="Naver" width={18} height={18} className="flex-shrink-0" />
@@ -1470,10 +1470,10 @@ export default function ComplexesPage() {
                       <button
                         onClick={() => handleCrawlComplex(complex.complexNo)}
                         disabled={crawling === complex.complexNo || crawlingAll}
-                        className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors ${
+                        className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg border-2 text-sm font-medium transition-colors ${
                           crawling === complex.complexNo || crawlingAll
-                            ? 'bg-gray-300 dark:bg-gray-600 text-gray-500 cursor-not-allowed'
-                            : 'bg-green-600 hover:bg-green-700 text-white'
+                            ? 'border-gray-300 dark:border-gray-600 text-gray-400 dark:text-gray-500 cursor-not-allowed'
+                            : 'border-green-300 dark:border-green-700 text-green-700 dark:text-green-300 hover:bg-green-50 dark:hover:bg-green-900/20'
                         }`}
                       >
                         {crawling === complex.complexNo ? (
@@ -1490,7 +1490,8 @@ export default function ComplexesPage() {
                       </button>
                       <button
                         onClick={() => handleDeleteComplex(complex.complexNo, complex.complexName)}
-                        className="px-4 py-2.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-sm font-semibold transition-colors"
+                        className="px-4 py-2 rounded-lg border-2 border-red-300 dark:border-red-700 text-red-700 dark:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 text-sm font-medium transition-colors"
+                        title="단지 삭제"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
