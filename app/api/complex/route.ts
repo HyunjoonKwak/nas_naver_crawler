@@ -89,6 +89,22 @@ export async function GET(request: NextRequest) {
           where: {
             userId: currentUser.id
           }
+        },
+        complexGroups: {
+          where: {
+            group: {
+              userId: currentUser.id
+            }
+          },
+          include: {
+            group: {
+              select: {
+                id: true,
+                name: true,
+                color: true
+              }
+            }
+          }
         }
       },
       orderBy: {
@@ -116,6 +132,11 @@ export async function GET(request: NextRequest) {
         articleCount: articles.length,
         totalHouseHoldCount: complex.totalHousehold,
         totalDongCount: complex.totalDong,
+        groups: complex.complexGroups?.map((cg: any) => ({
+          id: cg.group.id,
+          name: cg.group.name,
+          color: cg.group.color
+        })) || [],
         stats: {
           total: articles.length,
           A1: tradeTypeCount['매매'] || 0,
