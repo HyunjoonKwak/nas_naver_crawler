@@ -230,14 +230,23 @@ async function saveCrawlResultsToDB(crawlId: string, complexNos: string[], userI
       const overview = data.overview;
       const articleList = data.articles.articleList || [];
 
+      // complexNo가 없으면 crawling_info에서 가져오기
+      const complexNo = overview.complexNo || data.crawling_info?.complex_no;
+
+      if (!complexNo) {
+        console.log(`⚠️  Skipping item ${i}: complexNo not found in overview or crawling_info`);
+        errors.push(`Complex ${i}: Missing complexNo`);
+        continue;
+      }
+
       // 단지 정보 준비
       complexesToUpsert.push({
-        complexNo: overview.complexNo,
-        complexName: overview.complexName,
-        totalHousehold: overview.totalHousehold,
-        totalDong: overview.totalDong,
-        latitude: overview.location?.latitude,
-        longitude: overview.location?.longitude,
+        complexNo: complexNo,
+        complexName: overview.complexName || `단지 ${complexNo}`,
+        totalHousehold: overview.totalHouseHoldCount || overview.totalHousehold,
+        totalDong: overview.totalDongCount || overview.totalDong,
+        latitude: overview.location?.latitude || overview.latitude,
+        longitude: overview.location?.longitude || overview.longitude,
         address: overview.address,
         roadAddress: overview.roadAddress,
         jibunAddress: overview.jibunAddress,
@@ -282,10 +291,15 @@ async function saveCrawlResultsToDB(crawlId: string, complexNos: string[], userI
 
       const overview = data.overview;
       const articleList = data.articles.articleList || [];
-      const complexId = complexNoToIdMap.get(overview.complexNo);
+
+      // complexNo 가져오기 (동일한 fallback 로직)
+      const complexNo = overview.complexNo || data.crawling_info?.complex_no;
+      if (!complexNo) continue;
+
+      const complexId = complexNoToIdMap.get(complexNo);
 
       if (!complexId) {
-        logger.error(`Complex ID not found for ${overview.complexNo}`);
+        logger.error(`Complex ID not found for ${complexNo}`);
         continue;
       }
 
