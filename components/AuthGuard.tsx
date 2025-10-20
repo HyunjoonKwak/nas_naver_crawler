@@ -7,9 +7,10 @@ import { LoadingSpinner } from './ui/LoadingSpinner';
 
 interface AuthGuardProps {
   children: React.ReactNode;
+  requireAdmin?: boolean;
 }
 
-export function AuthGuard({ children }: AuthGuardProps) {
+export function AuthGuard({ children, requireAdmin = false }: AuthGuardProps) {
   const { data: session, status } = useSession();
   const router = useRouter();
 
@@ -21,8 +22,15 @@ export function AuthGuard({ children }: AuthGuardProps) {
       console.log('🔒 AuthGuard: No session, redirecting to /');
       // 인증되지 않은 경우 랜딩페이지로 리다이렉트
       router.replace('/');
+      return;
     }
-  }, [status, session, router]);
+
+    // 관리자 권한 체크
+    if (requireAdmin && session?.user?.role !== 'ADMIN') {
+      console.log('🔒 AuthGuard: Admin required, redirecting to /dashboard');
+      router.replace('/dashboard');
+    }
+  }, [status, session, router, requireAdmin]);
 
   // 로딩 중이거나 세션이 없으면 로딩 표시
   if (status === 'loading') {
@@ -36,6 +44,12 @@ export function AuthGuard({ children }: AuthGuardProps) {
   // 세션이 없으면 아무것도 렌더링하지 않음 (리다이렉트 중)
   if (!session) {
     console.log('🔒 AuthGuard: Blocking render, no session');
+    return null;
+  }
+
+  // 관리자 권한이 필요한데 관리자가 아니면 렌더링하지 않음
+  if (requireAdmin && session.user?.role !== 'ADMIN') {
+    console.log('🔒 AuthGuard: Blocking render, not admin');
     return null;
   }
 
