@@ -237,7 +237,7 @@ export function GroupManagement({ selectedGroupId, onGroupSelect, onGroupsChange
         href="https://new.land.naver.com/interests"
         target="_blank"
         rel="noopener noreferrer"
-        className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg transition-colors font-semibold bg-emerald-600 hover:bg-emerald-700 text-white shadow-md"
+        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg transition-colors font-semibold bg-emerald-600 hover:bg-emerald-700 text-white shadow-md"
         title="네이버 관심단지 페이지로 이동"
       >
         <Image src="/naver-logo.svg" alt="Naver" width={20} height={20} className="flex-shrink-0" />
@@ -249,7 +249,7 @@ export function GroupManagement({ selectedGroupId, onGroupSelect, onGroupsChange
         <button
           onClick={onCompareToggle}
           disabled={!complexCount || complexCount === 0}
-          className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg transition-colors font-semibold shadow-md ${
+          className={`w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg transition-colors font-semibold shadow-md ${
             compareMode
               ? 'bg-purple-600 hover:bg-purple-700 text-white'
               : complexCount === 0
@@ -257,7 +257,7 @@ export function GroupManagement({ selectedGroupId, onGroupSelect, onGroupsChange
               : 'bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200'
           }`}
         >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
           </svg>
           <span>{compareMode ? '비교 취소' : '단지 비교'}</span>
