@@ -391,13 +391,21 @@ class NASNaverRealEstateCrawler:
             async def handle_response(response):
                 nonlocal overview_data
                 if f'/api/complexes/overview/{complex_no}' in response.url:
-                    try:
-                        # 즉시 body 읽기 (리소스 정리 전에)
-                        data = await response.json()
-                        overview_data = data
-                        print(f"단지 개요 API 응답 캐치됨: {data.get('complexName', 'Unknown')}")
-                    except Exception as e:
-                        print(f"API 응답 파싱 실패: {e}")
+                    # Protocol Error 재시도 로직
+                    max_retries = 3
+                    for attempt in range(max_retries):
+                        try:
+                            # 즉시 body 읽기 (리소스 정리 전에)
+                            data = await response.json()
+                            overview_data = data
+                            print(f"단지 개요 API 응답 캐치됨: {data.get('complexName', 'Unknown')}")
+                            break  # 성공하면 루프 종료
+                        except Exception as e:
+                            if attempt < max_retries - 1:
+                                print(f"API 응답 파싱 실패 (재시도 {attempt + 1}/{max_retries}): {e}")
+                                await asyncio.sleep(0.5)  # 0.5초 대기 후 재시도
+                            else:
+                                print(f"API 응답 파싱 최종 실패: {e}")
 
             # 응답 핸들러 등록
             self.page.on('response', handle_response)
@@ -466,25 +474,33 @@ class NASNaverRealEstateCrawler:
                     if len(all_articles) == 0:  # 첫 API 호출만 전체 URL 로그
                         print(f"[API] URL: {response.url[:120]}...")
 
-                    try:
-                        data = await response.json()
-                        article_list = data.get('articleList', [])
-                        total_count = data.get('totalCount', 0)
+                    # Protocol Error 재시도 로직
+                    max_retries = 3
+                    for attempt in range(max_retries):
+                        try:
+                            data = await response.json()
+                            article_list = data.get('articleList', [])
+                            total_count = data.get('totalCount', 0)
 
-                        # 중복 제거하며 추가
-                        new_count = 0
-                        for article in article_list:
-                            article_id = article.get('articleNo') or article.get('id')
-                            if article_id and article_id not in collected_article_ids:
-                                collected_article_ids.add(article_id)
-                                all_articles.append(article)
-                                new_count += 1
+                            # 중복 제거하며 추가
+                            new_count = 0
+                            for article in article_list:
+                                article_id = article.get('articleNo') or article.get('id')
+                                if article_id and article_id not in collected_article_ids:
+                                    collected_article_ids.add(article_id)
+                                    all_articles.append(article)
+                                    new_count += 1
 
-                        if new_count > 0:
-                            total_info = f", 전체: {total_count}건" if total_count > 0 else ""
-                            print(f"  → {new_count}개 새 매물 추가 (총 {len(all_articles)}개{total_info})")
-                    except Exception as e:
-                        print(f"매물 API 응답 파싱 실패: {e}")
+                            if new_count > 0:
+                                total_info = f", 전체: {total_count}건" if total_count > 0 else ""
+                                print(f"  → {new_count}개 새 매물 추가 (총 {len(all_articles)}개{total_info})")
+                            break  # 성공하면 루프 종료
+                        except Exception as e:
+                            if attempt < max_retries - 1:
+                                print(f"매물 API 응답 파싱 실패 (재시도 {attempt + 1}/{max_retries}): {e}")
+                                await asyncio.sleep(0.5)  # 0.5초 대기 후 재시도
+                            else:
+                                print(f"매물 API 응답 파싱 최종 실패: {e}")
             
             # 응답 핸들러 등록
             self.page.on('response', handle_articles_response)

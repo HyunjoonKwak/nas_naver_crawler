@@ -30,9 +30,19 @@ export async function GET(request: NextRequest) {
       where.isRead = false;
     }
 
+    // 필요한 필드만 select하여 성능 개선
     const [notifications, total, unreadCount] = await Promise.all([
       prisma.notification.findMany({
         where,
+        select: {
+          id: true,
+          title: true,
+          message: true,
+          type: true,
+          isRead: true,
+          createdAt: true,
+          // userId는 제외 (where 조건으로 이미 필터링됨)
+        },
         orderBy: {
           createdAt: 'desc',
         },
@@ -61,6 +71,17 @@ export async function GET(request: NextRequest) {
     });
   } catch (error: any) {
     console.error('Failed to fetch notifications:', error);
+
+    // 데이터베이스 연결 오류인 경우 재연결 시도
+    if (error.code === 'P1001' || error.message?.includes("Can't reach database")) {
+      try {
+        await prisma.$connect();
+        console.log('Database reconnected successfully');
+      } catch (reconnectError) {
+        console.error('Failed to reconnect to database:', reconnectError);
+      }
+    }
+
     return NextResponse.json(
       {
         success: false,

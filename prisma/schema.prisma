@@ -533,6 +533,7 @@ model Notification {
   userId    String
   user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   type      NotificationType
+  title     String           @default("")
   message   String
   postId    String?
   commentId String?
@@ -542,6 +543,8 @@ model Notification {
   @@index([userId])
   @@index([isRead])
   @@index([createdAt])
+  // 복합 인덱스 추가 - 가장 자주 사용되는 쿼리 패턴에 최적화
+  @@index([userId, isRead, createdAt(sort: Desc)])
   @@map("notifications")
 }
 
