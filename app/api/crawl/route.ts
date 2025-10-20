@@ -308,10 +308,13 @@ async function saveCrawlResultsToDB(crawlId: string, complexNos: string[], userI
     });
 
     for (const complexData of complexesToUpsert) {
+      // update 시에는 userId 제외 (기존 사용자 유지)
+      const { userId, ...updateData } = complexData;
+
       const complex = await prisma.complex.upsert({
         where: { complexNo: complexData.complexNo },
-        update: complexData,
-        create: complexData,
+        update: updateData, // userId 제외한 나머지만 업데이트
+        create: complexData, // 신규 생성 시에는 userId 포함
       });
       complexNoToIdMap.set(complexData.complexNo, complex.id);
       totalComplexes++;

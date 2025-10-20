@@ -1370,13 +1370,17 @@ export default function ComplexesPage() {
                     <div className="flex items-center justify-between">
                       <span className="text-gray-600 dark:text-gray-400">등록일</span>
                       <span className="text-gray-900 dark:text-white font-medium text-xs">
-                        {complex.createdAt && !isNaN(new Date(complex.createdAt).getTime())
-                          ? new Date(complex.createdAt).toLocaleDateString('ko-KR', {
+                        {(() => {
+                          const dateStr = complex.createdAt || complex.updatedAt;
+                          if (dateStr && !isNaN(new Date(dateStr).getTime())) {
+                            return new Date(dateStr).toLocaleDateString('ko-KR', {
                               year: 'numeric',
                               month: '2-digit',
                               day: '2-digit',
-                            })
-                          : '-'}
+                            });
+                          }
+                          return '-';
+                        })()}
                       </span>
                     </div>
 
