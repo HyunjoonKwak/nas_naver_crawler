@@ -1302,26 +1302,14 @@ export default function ComplexesPage() {
                   </div>
 
                   {/* 그룹 배지 */}
-                  {complex.groups && complex.groups.length > 0 && (
-                    <div className="mb-3">
-                      <ComplexGroupBadges
-                        complexId={complex.id}
-                        complexName={complex.complexName}
-                        groups={complex.groups}
-                        onGroupsChange={fetchComplexes}
-                      />
-                    </div>
-                  )}
-                  {complex.groups && complex.groups.length === 0 && (
-                    <div className="mb-3">
-                      <ComplexGroupBadges
-                        complexId={complex.id}
-                        complexName={complex.complexName}
-                        groups={[]}
-                        onGroupsChange={fetchComplexes}
-                      />
-                    </div>
-                  )}
+                  <div className="mb-3">
+                    <ComplexGroupBadges
+                      complexId={complex.id}
+                      complexName={complex.complexName}
+                      groups={complex.groups || []}
+                      onGroupsChange={fetchComplexes}
+                    />
+                  </div>
 
                   {/* 구분선 */}
                   <div className="border-t border-gray-200 dark:border-gray-700 my-4"></div>
