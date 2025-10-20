@@ -36,8 +36,11 @@ async function executeCrawlInBackground(
   complexNos: string,
   baseDir: string,
   dynamicTimeout: number,
-  userId: string
+  userId: string,
+  scheduleId?: string | null
 ) {
+  const startTime = Date.now();
+
   try {
     // Python 크롤러 실행
     await new Promise<void>((resolve, reject) => {
@@ -105,7 +108,7 @@ async function executeCrawlInBackground(
     logger.info('Saving results to database');
     const dbResult = await saveCrawlResultsToDB(crawlId, complexNosArray, userId);
 
-    const duration = Date.now() - Date.now();  // TODO: 정확한 시작 시간 추적 필요
+    const duration = Date.now() - startTime;
     const status = dbResult.errors.length > 0 ? 'partial' : 'success';
 
     // 최종 히스토리 업데이트
@@ -121,6 +124,20 @@ async function executeCrawlInBackground(
         currentStep: 'Completed',
       },
     });
+
+    // 스케줄 정보 업데이트
+    if (scheduleId) {
+      await prisma.schedule.update({
+        where: { id: scheduleId },
+        data: {
+          lastRunAt: new Date(),
+          lastSuccessAt: status === 'success' ? new Date() : undefined,
+          lastArticleCount: dbResult.totalArticles,
+        },
+      }).catch((error) => {
+        logger.error('Failed to update schedule info', { scheduleId, error: error.message });
+      });
+    }
 
     // 크롤링 완료 알림
     eventBroadcaster.notifyCrawlComplete(crawlId, dbResult.totalArticles);
@@ -140,11 +157,13 @@ async function executeCrawlInBackground(
   } catch (error: any) {
     logger.error('Background crawl error', { crawlId, error: error.message });
 
+    const duration = Date.now() - startTime;
+
     // 에러 히스토리 업데이트
     await prisma.crawlHistory.update({
       where: { id: crawlId },
       data: {
-        duration: 0,
+        duration: Math.floor(duration / 1000),
         status: 'failed',
         errorMessage: error.message,
         currentStep: 'Failed',
@@ -152,6 +171,19 @@ async function executeCrawlInBackground(
     }).catch((historyError) => {
       logger.error('Failed to update error history', historyError);
     });
+
+    // 스케줄 정보 업데이트 (실패 시에도 lastRunAt 업데이트)
+    if (scheduleId) {
+      await prisma.schedule.update({
+        where: { id: scheduleId },
+        data: {
+          lastRunAt: new Date(),
+          lastArticleCount: 0,
+        },
+      }).catch((error) => {
+        logger.error('Failed to update schedule info on error', { scheduleId, error: error.message });
+      });
+    }
 
     // 크롤링 실패 알림
     eventBroadcaster.notifyCrawlFailed(crawlId, error.message);
@@ -657,7 +689,7 @@ export async function POST(request: NextRequest) {
       console.log(`📤 Returning crawlId immediately for schedule execution: ${crawlId}`);
 
       // 백그라운드에서 크롤링 실행 (await 없이)
-      executeCrawlInBackground(crawlId, complexNosArray, complexNos, baseDir, dynamicTimeout, currentUser.id)
+      executeCrawlInBackground(crawlId, complexNosArray, complexNos, baseDir, dynamicTimeout, currentUser.id, scheduleId)
         .catch((error) => {
           logger.error('Background crawl failed', { crawlId, error: error.message });
         });
