@@ -82,7 +82,7 @@ export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  let currentUser;
+  let currentUser: Awaited<ReturnType<typeof requireAuth>> | undefined;
   try {
     // Rate Limiting: 분당 10회
     const rateLimitResponse = rateLimit(request, rateLimitPresets.comment);
