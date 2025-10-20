@@ -19,6 +19,9 @@ interface CrawlHistoryItem {
   createdAt: string;
   updatedAt: string;
   currentStep: string | null;
+  initiator: string;
+  scheduleId: string | null;
+  scheduleName: string | null;
 }
 
 export default function CrawlerHistory({ refresh }: CrawlerHistoryProps) {
@@ -78,6 +81,45 @@ export default function CrawlerHistory({ refresh }: CrawlerHistoryProps) {
     };
 
     const config = statusConfig[status] || statusConfig.pending;
+    return (
+      <span className={`px-3 py-1 text-xs font-semibold rounded-full ${config.color} inline-flex items-center gap-1`}>
+        <span>{config.icon}</span>
+        <span>{config.label}</span>
+      </span>
+    );
+  };
+
+  const getInitiatorBadge = (initiator: string, scheduleId: string | null, scheduleName: string | null) => {
+    const initiatorConfig: Record<string, { label: string; color: string; icon: string }> = {
+      manual: { label: '수동', color: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400', icon: '👤' },
+      schedule: { label: '스케줄', color: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-400', icon: '⏰' },
+      'complex-detail': { label: '단지 상세', color: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-400', icon: '🔄' },
+      api: { label: 'API', color: 'bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-400', icon: '🔌' },
+    };
+
+    const config = initiatorConfig[initiator] || initiatorConfig.manual;
+
+    // 스케줄 크롤링인 경우 스케줄 이름 표시
+    if (initiator === 'schedule' && scheduleName) {
+      return (
+        <div className="flex flex-col gap-1">
+          <span className={`px-3 py-1 text-xs font-semibold rounded-full ${config.color} inline-flex items-center gap-1 w-fit`}>
+            <span>{config.icon}</span>
+            <span>{config.label}</span>
+          </span>
+          {scheduleId && (
+            <a
+              href={`/system/schedules?id=${scheduleId}`}
+              className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+              title={`스케줄로 이동: ${scheduleName}`}
+            >
+              {scheduleName}
+            </a>
+          )}
+        </div>
+      );
+    }
+
     return (
       <span className={`px-3 py-1 text-xs font-semibold rounded-full ${config.color} inline-flex items-center gap-1`}>
         <span>{config.icon}</span>
@@ -218,6 +260,9 @@ export default function CrawlerHistory({ refresh }: CrawlerHistoryProps) {
                   상태
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  시작 주체
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   시작 시간
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
@@ -254,6 +299,9 @@ export default function CrawlerHistory({ refresh }: CrawlerHistoryProps) {
                   >
                     <td className="px-4 py-3 whitespace-nowrap">
                       {getStatusBadge(item.status)}
+                    </td>
+                    <td className="px-4 py-3">
+                      {getInitiatorBadge(item.initiator, item.scheduleId, item.scheduleName)}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
                       <div className="text-sm text-gray-900 dark:text-gray-300">
@@ -325,7 +373,7 @@ export default function CrawlerHistory({ refresh }: CrawlerHistoryProps) {
                   {/* 확장된 행 - 파일 내용 표시 */}
                   {expandedRows.has(item.id) && (
                     <tr key={`${item.id}-expanded`} className="bg-gray-50 dark:bg-gray-900">
-                      <td colSpan={8} className="px-4 py-4">
+                      <td colSpan={9} className="px-4 py-4">
                         {loadingFiles.has(item.id) ? (
                           <div className="flex items-center justify-center py-8">
                             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
