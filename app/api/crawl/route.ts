@@ -29,6 +29,137 @@ export const dynamic = 'force-dynamic';
 // Global crawl state for progress tracking
 let currentCrawlId: string | null = null;
 
+// 백그라운드에서 크롤링 실행하는 함수 (스케줄 실행용)
+async function executeCrawlInBackground(
+  crawlId: string,
+  complexNosArray: string[],
+  complexNos: string,
+  baseDir: string,
+  dynamicTimeout: number,
+  userId: string
+) {
+  try {
+    // Python 크롤러 실행
+    await new Promise<void>((resolve, reject) => {
+      const pythonProcess = spawn('python3', [
+        '-u',  // unbuffered output
+        `${baseDir}/logic/nas_playwright_crawler.py`,
+        complexNos,
+        crawlId
+      ], {
+        cwd: baseDir,
+        env: process.env,
+      });
+
+      let hasOutput = false;
+
+      // stdout 실시간 출력
+      pythonProcess.stdout.on('data', (data) => {
+        const output = data.toString();
+        if (!hasOutput) {
+          console.log('=== Python Crawler Output ===');
+          hasOutput = true;
+        }
+        process.stdout.write(output);
+      });
+
+      // stderr 실시간 출력
+      pythonProcess.stderr.on('data', (data) => {
+        process.stderr.write(data.toString());
+      });
+
+      // 프로세스 종료 처리
+      pythonProcess.on('close', (code) => {
+        if (code === 0) {
+          resolve();
+        } else {
+          reject(new Error(`Python crawler exited with code ${code}`));
+        }
+      });
+
+      // 프로세스 에러 처리
+      pythonProcess.on('error', (error) => {
+        reject(error);
+      });
+
+      // 타임아웃 설정
+      const timeoutId = setTimeout(() => {
+        pythonProcess.kill('SIGTERM');
+        reject(new Error('Crawler timeout'));
+      }, dynamicTimeout);
+
+      // 프로세스 종료 시 타임아웃 클리어
+      pythonProcess.on('close', () => {
+        clearTimeout(timeoutId);
+      });
+    });
+
+    await prisma.crawlHistory.update({
+      where: { id: crawlId },
+      data: {
+        currentStep: 'Crawling completed',
+      },
+    });
+
+    // 크롤링 결과를 DB에 저장
+    logger.info('Saving results to database');
+    const dbResult = await saveCrawlResultsToDB(crawlId, complexNosArray, userId);
+
+    const duration = Date.now() - Date.now();  // TODO: 정확한 시작 시간 추적 필요
+    const status = dbResult.errors.length > 0 ? 'partial' : 'success';
+
+    // 최종 히스토리 업데이트
+    await prisma.crawlHistory.update({
+      where: { id: crawlId },
+      data: {
+        successCount: dbResult.totalComplexes,
+        errorCount: complexNosArray.length - dbResult.totalComplexes,
+        totalArticles: dbResult.totalArticles,
+        duration: Math.floor(duration / 1000),
+        status,
+        errorMessage: dbResult.errors.length > 0 ? dbResult.errors.join(', ') : null,
+        currentStep: 'Completed',
+      },
+    });
+
+    // 크롤링 완료 알림
+    eventBroadcaster.notifyCrawlComplete(crawlId, dbResult.totalArticles);
+
+    logger.info('Background crawl completed', {
+      crawlId,
+      complexes: dbResult.totalComplexes,
+      articles: dbResult.totalArticles,
+      status
+    });
+
+    // 알림 발송
+    await sendAlertsForChanges(complexNosArray).catch((error) => {
+      logger.error('Failed to send alerts', error);
+    });
+
+  } catch (error: any) {
+    logger.error('Background crawl error', { crawlId, error: error.message });
+
+    // 에러 히스토리 업데이트
+    await prisma.crawlHistory.update({
+      where: { id: crawlId },
+      data: {
+        duration: 0,
+        status: 'failed',
+        errorMessage: error.message,
+        currentStep: 'Failed',
+      },
+    }).catch((historyError) => {
+      logger.error('Failed to update error history', historyError);
+    });
+
+    // 크롤링 실패 알림
+    eventBroadcaster.notifyCrawlFailed(crawlId, error.message);
+  } finally {
+    currentCrawlId = null;
+  }
+}
+
 // 크롤링 결과를 DB에 저장하는 함수 (Batch Insert 방식)
 async function saveCrawlResultsToDB(crawlId: string, complexNos: string[], userId: string) {
   const baseDir = process.env.NODE_ENV === 'production' ? '/app' : process.cwd();
@@ -499,6 +630,24 @@ export async function POST(request: NextRequest) {
         currentStep: `Crawling ${complexNosArray.length} complexes`,
       },
     });
+
+    // 스케줄 실행인 경우: crawlId만 반환하고 백그라운드에서 크롤링 실행
+    if (initiator === 'schedule') {
+      console.log(`📤 Returning crawlId immediately for schedule execution: ${crawlId}`);
+
+      // 백그라운드에서 크롤링 실행 (await 없이)
+      executeCrawlInBackground(crawlId, complexNosArray, complexNos, baseDir, dynamicTimeout, currentUser.id)
+        .catch((error) => {
+          logger.error('Background crawl failed', { crawlId, error: error.message });
+        });
+
+      // 즉시 crawlId 반환
+      return NextResponse.json({
+        success: true,
+        crawlId,
+        message: 'Crawl started in background',
+      });
+    }
 
     // Python 크롤러를 spawn으로 실행 (실시간 로그 출력)
     await new Promise<void>((resolve, reject) => {
