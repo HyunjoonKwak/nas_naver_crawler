@@ -104,7 +104,7 @@ model CrawlHistory {
   errorCount        Int      // 실패한 단지 수
   totalArticles     Int      // 수집한 총 매물 수
   duration          Int      // 소요 시간 (ms)
-  status            String   // crawling, saving, success, partial, failed
+  status            String   // crawling, saving, success, partial, failed, pending, running
   errorMessage      String?  // 에러 메시지
   userId            String   // 실행한 사용자 ID
   user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -119,12 +119,16 @@ model CrawlHistory {
   processedArticles Int      @default(0) @map("processed_articles") // 처리된 매물 수
   processedComplexes Int     @default(0) @map("processed_complexes") // 처리된 단지 수
 
+  startedAt         DateTime @default(now()) @map("started_at") // 크롤링 시작 시간
   createdAt         DateTime @default(now()) @map("created_at")
   updatedAt         DateTime @updatedAt @map("updated_at")
 
   @@index([createdAt])
   @@index([status])
   @@index([userId])
+  @@index([scheduleId]) // 스케줄별 크롤링 조회용
+  @@index([scheduleId, status]) // 중복 실행 방지 쿼리 최적화
+  @@index([startedAt]) // 시작 시간 기준 정렬
   @@map("crawl_history")
 }
 
