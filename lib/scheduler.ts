@@ -235,8 +235,14 @@ async function executeCrawl(scheduleId: string) {
       if (response.ok && data.crawlId) {
         crawlId = data.crawlId;
         console.log(`📝 Crawl started with ID: ${crawlId}`);
+        console.log(`✅ Scheduled crawl started successfully (running in background)`);
+        console.log(`   Crawl will complete asynchronously`);
+        console.log(`   Check CrawlHistory for completion status`);
+
+        // 백그라운드 실행이므로 즉시 성공 반환 (폴링하지 않음)
+        return;
       } else if (response.ok) {
-        // 동기 응답인 경우
+        // 동기 응답인 경우 (수동 실행)
         const duration = Date.now() - startTime;
         const articlesCount = data.data?.articles || 0;
         console.log(`✅ Scheduled crawl completed: ${scheduleId}`);
@@ -272,22 +278,6 @@ async function executeCrawl(scheduleId: string) {
       }
 
       throw fetchError;
-    }
-
-    // crawlId가 있으면 폴링으로 완료 대기
-    if (crawlId) {
-      const result = await pollCrawlStatus(crawlId, dynamicTimeout);
-      const duration = Date.now() - startTime;
-
-      if (result.success) {
-        console.log(`✅ Scheduled crawl completed: ${scheduleId}`);
-        console.log(`   Duration: ${Math.floor(duration / 1000)}s`);
-        console.log(`   Articles: ${result.articlesCount}`);
-
-        await updateScheduleSuccess(scheduleId, scheduleName, duration, result.articlesCount);
-      } else {
-        throw new Error(result.error || 'Crawl failed');
-      }
     }
   } catch (error: any) {
     const duration = Date.now() - startTime;
