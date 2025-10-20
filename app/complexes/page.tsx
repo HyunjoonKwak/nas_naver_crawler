@@ -961,7 +961,7 @@ export default function ComplexesPage() {
               {/* 그룹 버튼 - 모바일에서만 표시 */}
               <button
                 onClick={() => setShowGroupSidebar(!showGroupSidebar)}
-                className="lg:hidden flex items-center gap-2 px-4 py-2 rounded-lg transition-colors font-medium bg-purple-600 hover:bg-purple-700 text-white"
+                className="lg:hidden flex items-center gap-2 px-4 py-2.5 rounded-lg transition-colors font-semibold shadow-md bg-purple-600 hover:bg-purple-700 text-white"
                 title="그룹 관리"
               >
                 <Folder className="w-4 h-4" />
