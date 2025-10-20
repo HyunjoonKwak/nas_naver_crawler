@@ -116,7 +116,7 @@ export function MobileNavigation() {
     },
     {
       href: "/complexes",
-      label: "단지",
+      label: "매물",
       icon: BuildingIcon,
       iconActive: BuildingIconSolid,
     },

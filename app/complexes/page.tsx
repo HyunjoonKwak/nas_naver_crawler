@@ -92,6 +92,7 @@ export default function ComplexesPage() {
   const [loading, setLoading] = useState(true);
   const [crawling, setCrawling] = useState<string | null>(null);
   const [crawlingAll, setCrawlingAll] = useState(false);
+  const [groupRefreshTrigger, setGroupRefreshTrigger] = useState(0); // 그룹 목록 새로고침 트리거
   const [crawlProgress, setCrawlProgress] = useState<{
     crawlId: string | null;
     status: string;
@@ -318,7 +319,7 @@ export default function ComplexesPage() {
       params.append('sortBy', sortBy);
       params.append('sortOrder', sortOrder);
 
-      const response = await fetch(`/api/complexes?${params.toString()}`);
+      const response = await fetch(`/api/complex?${params.toString()}`);
       const data = await response.json();
 
       const favorites = (data.complexes || []).filter((c: any) => c.isFavorite);
@@ -336,6 +337,8 @@ export default function ComplexesPage() {
       });
 
       setComplexes(data.complexes || []);
+      // 그룹 목록도 새로고침 (그룹 카운트 업데이트를 위해)
+      setGroupRefreshTrigger(prev => prev + 1);
     } catch (error) {
       console.error('[CLIENT_FETCH] 단지목록 조회 실패:', error);
       setComplexes([]); // 에러 시 빈 배열로 설정
@@ -363,7 +366,8 @@ export default function ComplexesPage() {
     return null;
   };
 
-  const handleFetchComplexInfo = async () => {
+  // 단지 조회 및 추가 (통합: 조회 성공 시 바로 추가 + 크롤링)
+  const handleFetchAndAddComplex = async () => {
     if (!newComplexNo.trim()) {
       showError('네이버 단지 URL 또는 단지번호를 입력해주세요.');
       return;
@@ -377,41 +381,26 @@ export default function ComplexesPage() {
     }
 
     setFetchingInfo(true);
-    setComplexInfo(null);
 
     const loadingToast = showLoading('단지 정보 조회 중...');
     try {
-      const response = await fetch(`/api/complex-info?complexNo=${complexNo}`);
-      const data = await response.json();
+      // 1. 단지 정보 조회
+      const infoResponse = await fetch(`/api/complex-info?complexNo=${complexNo}`);
+      const infoData = await infoResponse.json();
 
-      dismissToast(loadingToast);
-
-      if (response.ok && data.success) {
-        setComplexInfo(data.complex);
-        showSuccess('단지 정보를 불러왔습니다.');
-      } else {
-        showError(data.error || '단지 정보를 가져올 수 없습니다.');
+      if (!infoResponse.ok || !infoData.success) {
+        dismissToast(loadingToast);
+        showError(infoData.error || '단지 정보를 가져올 수 없습니다.');
+        setFetchingInfo(false);
+        return;
       }
-    } catch (error) {
+
+      const complexInfo = infoData.complex;
       dismissToast(loadingToast);
-      console.error('Failed to fetch complex info:', error);
-      showError('단지 정보 조회 중 오류가 발생했습니다.');
-    } finally {
-      setFetchingInfo(false);
-    }
-  };
 
-  // 단지 추가 (정보 확인 후 자동으로 매물 수집)
-  const handleAddFavorite = async () => {
-    if (!complexInfo) {
-      showError('먼저 단지 정보를 조회해주세요.');
-      return;
-    }
-
-    const loadingToast = showLoading('단지 추가 중...');
-    try {
-      // 1. DB에 추가
-      const response = await fetch('/api/favorites', {
+      // 2. DB에 추가 (Complex 테이블에만, Favorite에는 추가하지 않음)
+      const addToast = showLoading('단지 추가 중...');
+      const addResponse = await fetch('/api/complex', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -420,58 +409,59 @@ export default function ComplexesPage() {
         })
       });
 
-      const data = await response.json();
+      const addData = await addResponse.json();
 
-      if (response.ok) {
-        const addedComplexNo = complexInfo.complexNo;
-        const addedComplexName = complexInfo.complexName;
+      if (!addResponse.ok) {
+        dismissToast(addToast);
+        showError(addData.error || '단지 추가 실패');
+        setFetchingInfo(false);
+        return;
+      }
 
-        dismissToast(loadingToast);
-        showSuccess(`${addedComplexName}이(가) 추가되었습니다!`);
+      dismissToast(addToast);
+      showSuccess(`${complexInfo.complexName}이(가) 추가되었습니다!`);
 
-        await fetchComplexes();
-        setNewComplexNo("");
-        setComplexInfo(null);
-        setShowAddForm(false);
+      await fetchComplexes();
+      setNewComplexNo("");
+      setComplexInfo(null);
+      setShowAddForm(false);
 
-        // 2. 자동으로 크롤링 시작
-        const crawlToast = showLoading(`${addedComplexName} 매물 수집 중...`);
+      // 3. 자동으로 크롤링 시작
+      const crawlToast = showLoading(`${complexInfo.complexName} 매물 수집 중...`);
 
-        setCrawling(addedComplexNo);
-        try {
-          const crawlResponse = await fetch('/api/crawl', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ complexNumbers: addedComplexNo })
-          });
+      setCrawling(complexInfo.complexNo);
+      try {
+        const crawlResponse = await fetch('/api/crawl', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ complexNumbers: complexInfo.complexNo })
+        });
 
-          const crawlData = await crawlResponse.json();
+        const crawlData = await crawlResponse.json();
 
-          if (crawlResponse.ok && crawlData.crawlId) {
-            // 크롤링 진행 상황 폴링
-            await pollCrawlStatus(crawlData.crawlId);
-            await fetchComplexes();
-            dismissToast(crawlToast);
-            showSuccess(`${addedComplexName} 크롤링 완료!`);
-          } else {
-            dismissToast(crawlToast);
-            showError('크롤링 실패. 나중에 수동으로 크롤링해주세요.');
-          }
-        } catch (error) {
+        if (crawlResponse.ok && crawlData.crawlId) {
+          // 크롤링 진행 상황 폴링
+          await pollCrawlStatus(crawlData.crawlId);
+          await fetchComplexes();
           dismissToast(crawlToast);
-          console.error('Auto-crawl failed:', error);
+          showSuccess(`${complexInfo.complexName} 크롤링 완료!`);
+        } else {
+          dismissToast(crawlToast);
           showError('크롤링 실패. 나중에 수동으로 크롤링해주세요.');
-        } finally {
-          setCrawling(null);
         }
-      } else {
-        dismissToast(loadingToast);
-        showError(data.error || '단지 추가 실패');
+      } catch (error) {
+        dismissToast(crawlToast);
+        console.error('Auto-crawl failed:', error);
+        showError('크롤링 실패. 나중에 수동으로 크롤링해주세요.');
+      } finally {
+        setCrawling(null);
       }
     } catch (error) {
       dismissToast(loadingToast);
-      console.error('Failed to add favorite:', error);
+      console.error('Failed to fetch and add complex:', error);
       showError('단지 추가 중 오류가 발생했습니다.');
+    } finally {
+      setFetchingInfo(false);
     }
   };
 
@@ -844,6 +834,8 @@ export default function ComplexesPage() {
                 selectedGroupId={selectedGroupId}
                 onGroupSelect={setSelectedGroupId}
                 onGroupsChange={fetchComplexes}
+                onAddComplexClick={() => setShowAddForm(true)}
+                refreshTrigger={groupRefreshTrigger}
               />
             </div>
           </div>
@@ -1165,12 +1157,12 @@ export default function ComplexesPage() {
                       </div>
                       <button
                         onClick={async () => {
-                          // 단지 정보 직접 설정 (API 조회 생략)
-                          setComplexInfo({
-                            complexNo: recentOneTimeCrawl.complexNo,
-                            complexName: recentOneTimeCrawl.complexName,
-                          });
+                          // 단지번호 설정하고 바로 조회 및 추가
                           setNewComplexNo(recentOneTimeCrawl.complexNo);
+                          // 약간의 딜레이 후 실행 (state 업데이트 대기)
+                          setTimeout(() => {
+                            handleFetchAndAddComplex();
+                          }, 100);
                         }}
                         className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors font-medium text-sm whitespace-nowrap"
                       >
@@ -1188,21 +1180,19 @@ export default function ComplexesPage() {
                     onChange={(e) => setNewComplexNo(e.target.value)}
                     placeholder="네이버 단지 URL 또는 단지번호 입력 (예: https://new.land.naver.com/complexes/22065)"
                     className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                    onKeyPress={(e) => e.key === 'Enter' && !complexInfo && handleFetchComplexInfo()}
+                    onKeyPress={(e) => e.key === 'Enter' && handleFetchAndAddComplex()}
                   />
-                  {!complexInfo && (
-                    <button
-                      onClick={handleFetchComplexInfo}
-                      disabled={fetchingInfo}
-                      className={`px-6 py-2 rounded-lg transition-colors font-medium ${
-                        fetchingInfo
-                          ? 'bg-gray-300 dark:bg-gray-600 cursor-not-allowed'
-                          : 'bg-blue-600 hover:bg-blue-700 text-white'
-                      }`}
-                    >
-                      {fetchingInfo ? '⏳ 조회중...' : '🔍 조회'}
-                    </button>
-                  )}
+                  <button
+                    onClick={handleFetchAndAddComplex}
+                    disabled={fetchingInfo || crawling}
+                    className={`px-6 py-2 rounded-lg transition-colors font-medium ${
+                      fetchingInfo || crawling
+                        ? 'bg-gray-300 dark:bg-gray-600 cursor-not-allowed'
+                        : 'bg-gradient-to-r from-blue-600 to-green-600 hover:from-blue-700 hover:to-green-700 text-white'
+                    }`}
+                  >
+                    {fetchingInfo || crawling ? '⏳ 처리중...' : '✅ 조회 및 추가'}
+                  </button>
                   <button
                     onClick={() => {
                       setShowAddForm(false);
@@ -1215,93 +1205,9 @@ export default function ComplexesPage() {
                 </button>
               </div>
 
-              {/* 단지 정보 미리보기 */}
-              {complexInfo && (
-                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-2 border-blue-400 dark:border-blue-600 rounded-lg p-4">
-                  <h4 className="text-lg font-bold text-blue-900 dark:text-blue-200 mb-3">
-                    📋 단지 정보
-                  </h4>
-                  <div className="space-y-3">
-                    {/* 단지명 - 큰 글씨로 강조 */}
-                    <div className="pb-3 border-b border-blue-200 dark:border-blue-800">
-                      <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">단지명</div>
-                      <div className="text-lg font-bold text-gray-900 dark:text-white">
-                        {complexInfo.complexName}
-                      </div>
-                    </div>
-
-                    {/* 주요 정보 그리드 */}
-                    <div className="grid grid-cols-2 gap-3 text-sm">
-                      <div>
-                        <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">총 세대수</div>
-                        <div className="font-semibold text-gray-900 dark:text-white">
-                          {complexInfo.totalHousehold ? `${complexInfo.totalHousehold.toLocaleString()}세대` : '-'}
-                        </div>
-                      </div>
-                      <div>
-                        <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">총 동수</div>
-                        <div className="font-semibold text-gray-900 dark:text-white">
-                          {complexInfo.totalDong ? `${complexInfo.totalDong}동` : '-'}
-                        </div>
-                      </div>
-                      {complexInfo.areaRange && (
-                        <div>
-                          <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">면적</div>
-                          <div className="font-semibold text-gray-900 dark:text-white">
-                            {complexInfo.areaRange}
-                          </div>
-                        </div>
-                      )}
-                      {complexInfo.priceRange && (
-                        <div>
-                          <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">매매가</div>
-                          <div className="font-semibold text-blue-600 dark:text-blue-400">
-                            {complexInfo.priceRange}
-                          </div>
-                        </div>
-                      )}
-                      {complexInfo.articleCount !== undefined && (
-                        <div>
-                          <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">매물 수</div>
-                          <div className="font-semibold text-green-600 dark:text-green-400">
-                            {complexInfo.articleCount}개
-                          </div>
-                        </div>
-                      )}
-                      {complexInfo.lastCrawledAt && (
-                        <div>
-                          <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">마지막 수집</div>
-                          <div className="font-semibold text-gray-900 dark:text-white text-xs">
-                            {new Date(complexInfo.lastCrawledAt).toLocaleDateString('ko-KR')}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* 주소 */}
-                    {complexInfo.address && (
-                      <div className="pt-3 border-t border-blue-200 dark:border-blue-800">
-                        <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">주소</div>
-                        <div className="text-sm text-gray-900 dark:text-white">
-                          {complexInfo.address}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="mt-4">
-                    <button
-                      onClick={() => handleAddFavorite()}
-                      className="w-full px-6 py-3 bg-gradient-to-r from-blue-600 to-green-600 hover:from-blue-700 hover:to-green-700 text-white rounded-lg transition-colors font-bold shadow-lg"
-                    >
-                      ✅ 관심 단지 추가 및 매물 수집
-                    </button>
-                    <p className="mt-2 text-xs text-center text-gray-500 dark:text-gray-400">
-                      단지 추가 후 자동으로 매물 정보를 수집합니다
-                    </p>
-                  </div>
-                </div>
-              )}
+              <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                단지 조회 후 자동으로 추가되며 매물 정보를 수집합니다. 관심 단지는 카드에서 별도로 추가하세요.
+              </p>
               </div>
             </div>
           )}
@@ -1573,7 +1479,7 @@ export default function ComplexesPage() {
                         <span>상세 분석</span>
                       </Link>
                     </div>
-                    {/* 두 번째 줄: 네이버부동산 + 크롤링 + 삭제 */}
+                    {/* 두 번째 줄: 네이버부동산 + 크롤링 + 관심단지 + 삭제 */}
                     <div className="flex gap-2">
                       <a
                         href={`https://new.land.naver.com/complexes/${complex.complexNo}`}
@@ -1605,6 +1511,17 @@ export default function ComplexesPage() {
                             <span>크롤링</span>
                           </>
                         )}
+                      </button>
+                      <button
+                        onClick={() => handleToggleFavorite(complex.complexNo, complex.isFavorite)}
+                        className={`px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors ${
+                          complex.isFavorite
+                            ? 'bg-yellow-600 hover:bg-yellow-700 text-white'
+                            : 'bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200'
+                        }`}
+                        title={complex.isFavorite ? '관심 단지 해제' : '관심 단지 추가'}
+                      >
+                        <Star className={`w-4 h-4 ${complex.isFavorite ? 'fill-current' : ''}`} />
                       </button>
                       <button
                         onClick={() => handleDeleteComplex(complex.complexNo, complex.complexName)}

@@ -18,9 +18,11 @@ interface GroupManagementProps {
   selectedGroupId: string | null;
   onGroupSelect: (groupId: string | null) => void;
   onGroupsChange: () => void;
+  onAddComplexClick?: () => void; // 단지 추가 버튼 클릭 핸들러
+  refreshTrigger?: number; // 외부에서 강제로 새로고침을 트리거하기 위한 카운터
 }
 
-export function GroupManagement({ selectedGroupId, onGroupSelect, onGroupsChange }: GroupManagementProps) {
+export function GroupManagement({ selectedGroupId, onGroupSelect, onGroupsChange, onAddComplexClick, refreshTrigger }: GroupManagementProps) {
   const [groups, setGroups] = useState<Group[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -54,6 +56,13 @@ export function GroupManagement({ selectedGroupId, onGroupSelect, onGroupsChange
   useEffect(() => {
     fetchGroups();
   }, []);
+
+  // refreshTrigger가 변경될 때마다 그룹 목록 새로고침
+  useEffect(() => {
+    if (refreshTrigger !== undefined) {
+      fetchGroups();
+    }
+  }, [refreshTrigger]);
 
   const fetchGroups = async () => {
     setLoading(true);
@@ -191,7 +200,38 @@ export function GroupManagement({ selectedGroupId, onGroupSelect, onGroupsChange
   };
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
+      {/* 단지 추가 섹션 - 강조 */}
+      {onAddComplexClick && (
+        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-2 border-blue-400 dark:border-blue-600 rounded-lg p-4">
+          <div className="flex items-start gap-3">
+            <div className="flex-shrink-0 w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
+              <Plus className="w-5 h-5 text-white" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="text-sm font-bold text-blue-900 dark:text-blue-200 mb-1">
+                단지 추가하기
+              </h3>
+              <p className="text-xs text-blue-800 dark:text-blue-300 mb-3">
+                단지를 추가하고 매물을 수집하세요
+              </p>
+              <button
+                onClick={onAddComplexClick}
+                className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-semibold text-sm shadow-md"
+              >
+                <Plus className="w-4 h-4 inline-block mr-1" />
+                단지 추가
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 구분선 */}
+      {onAddComplexClick && (
+        <div className="border-t border-gray-200 dark:border-gray-700"></div>
+      )}
+
       {/* 헤더 - 축소 */}
       <div className="flex items-center justify-between">
         <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">

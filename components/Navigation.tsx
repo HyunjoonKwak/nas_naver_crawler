@@ -139,7 +139,7 @@ export const Navigation = () => {
 
   const navLinks = [
     { href: '/home', label: '홈', icon: Home },
-    { href: '/complexes', label: '단지 목록', icon: Building2 },
+    { href: '/complexes', label: '매물 관리', icon: Building2 },
     { href: '/analytics', label: '데이터 분석', icon: BarChart3 },
     { href: '/community', label: '커뮤니티', icon: MessageSquare },
     { href: '/alerts', label: '알림 설정', icon: Bell },
