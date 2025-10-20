@@ -116,7 +116,10 @@ export default function ComplexDetailPage() {
       const response = await fetch('/api/crawl', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ complexNumbers: complexNo })
+        body: JSON.stringify({
+          complexNumbers: complexNo,
+          initiator: 'complex-detail',
+        })
       });
 
       clearInterval(progressInterval);

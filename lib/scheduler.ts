@@ -198,6 +198,9 @@ async function executeCrawl(scheduleId: string) {
         body: JSON.stringify({
           complexNumbers: complexNos,
           userId: schedule.userId, // 스케줄 소유자의 userId 전달
+          initiator: 'schedule',
+          scheduleId: schedule.id,
+          scheduleName: schedule.name,
         }),
         signal: controller.signal,
         // @ts-ignore - undici specific options

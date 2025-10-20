@@ -109,6 +109,11 @@ model CrawlHistory {
   userId            String   // 실행한 사용자 ID
   user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  // 크롤링 시작 주체 추적
+  initiator         String   @default("manual") // manual, schedule, api, complex-detail
+  scheduleId        String?  // 스케줄 크롤링인 경우 스케줄 ID
+  scheduleName      String?  // 스케줄 크롤링인 경우 스케줄 이름
+
   // Progress tracking fields
   currentStep       String?  @map("current_step") // current operation step
   processedArticles Int      @default(0) @map("processed_articles") // 처리된 매물 수

@@ -410,7 +410,13 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { complexNumbers, userId: requestUserId } = body;
+    const {
+      complexNumbers,
+      userId: requestUserId,
+      initiator = 'manual',  // manual, schedule, api, complex-detail
+      scheduleId,
+      scheduleName,
+    } = body;
 
     // 사용자 인증 확인 (내부 호출이 아닌 경우)
     let currentUser;
@@ -457,6 +463,9 @@ export async function POST(request: NextRequest) {
         errorCount: 0,
         totalArticles: 0,
         duration: 0,
+        initiator,
+        scheduleId,
+        scheduleName,
         status: 'crawling',
         currentStep: 'Starting crawler',
         processedArticles: 0,
