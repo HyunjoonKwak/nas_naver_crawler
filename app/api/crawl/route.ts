@@ -125,7 +125,7 @@ async function executeCrawlInBackground(
       },
     });
 
-    // 스케줄 정보 업데이트
+    // 스케줄 정보 업데이트 및 로그 저장
     if (scheduleId) {
       await prisma.schedule.update({
         where: { id: scheduleId },
@@ -134,6 +134,19 @@ async function executeCrawlInBackground(
         },
       }).catch((error) => {
         logger.error('Failed to update schedule info', { scheduleId, error: error.message });
+      });
+
+      // 스케줄 실행 로그 저장
+      await prisma.scheduleLog.create({
+        data: {
+          scheduleId,
+          status: status === 'success' ? 'success' : 'failed',
+          duration: Math.floor(duration / 1000), // 초 단위
+          articlesCount: dbResult.totalArticles,
+          errorMessage: dbResult.errors.length > 0 ? dbResult.errors.slice(0, 3).join(', ') : null,
+        },
+      }).catch((error) => {
+        logger.error('Failed to save schedule log', { scheduleId, error: error.message });
       });
     }
 
@@ -177,7 +190,7 @@ async function executeCrawlInBackground(
       logger.error('Failed to update error history', historyError);
     });
 
-    // 스케줄 정보 업데이트 (실패 시에도 lastRun 업데이트)
+    // 스케줄 정보 업데이트 및 실패 로그 저장
     if (scheduleId) {
       await prisma.schedule.update({
         where: { id: scheduleId },
@@ -186,6 +199,19 @@ async function executeCrawlInBackground(
         },
       }).catch((error) => {
         logger.error('Failed to update schedule info on error', { scheduleId, error: error.message });
+      });
+
+      // 스케줄 실패 로그 저장
+      await prisma.scheduleLog.create({
+        data: {
+          scheduleId,
+          status: 'failed',
+          duration: Math.floor(duration / 1000), // 초 단위
+          articlesCount: 0,
+          errorMessage: error.message,
+        },
+      }).catch((logError) => {
+        logger.error('Failed to save schedule error log', { scheduleId, error: logError.message });
       });
     }
 

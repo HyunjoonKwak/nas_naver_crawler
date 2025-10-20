@@ -69,6 +69,7 @@ export async function GET(request: NextRequest) {
           ...schedule,
           complexes,
           cronDescription,
+          // lastRun은 이미 schedule 객체에 포함되어 있음
         };
       })
     );
