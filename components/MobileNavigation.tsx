@@ -121,10 +121,10 @@ export function MobileNavigation() {
       iconActive: BuildingIconSolid,
     },
     {
-      href: "/analytics",
-      label: "분석",
-      icon: ChartIcon,
-      iconActive: ChartIconSolid,
+      href: "/scheduler",
+      label: "스케줄러",
+      icon: ClockIcon,
+      iconActive: ClockIconSolid,
     },
     {
       href: "/community",

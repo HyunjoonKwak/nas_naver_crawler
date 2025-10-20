@@ -6,7 +6,6 @@ import { useSearchParams } from "next/navigation";
 import { Navigation } from "@/components/Navigation";
 import { MobileNavigation } from "@/components/MobileNavigation";
 import { SystemSettings } from "@/components/SystemSettings";
-import { SchedulerSettings } from "@/components/SchedulerSettings";
 import { AuthGuard } from "@/components/AuthGuard";
 import { DatabaseSection } from "@/components/system/DatabaseSection";
 import { UsefulLinksSection } from "@/components/system/UsefulLinksSection";
@@ -33,14 +32,14 @@ export default function SystemPage() {
   const searchParams = useSearchParams();
 
   const [status, setStatus] = useState<StatusData | null>(null);
-  const [activeSection, setActiveSection] = useState<'database' | 'info' | 'users' | 'scheduler' | 'settings'>('database');
+  const [activeSection, setActiveSection] = useState<'database' | 'info' | 'users' | 'settings'>('database');
   const [refresh, setRefresh] = useState(0);
 
   // URL 파라미터로 탭 설정
   useEffect(() => {
     const tab = searchParams.get('tab');
-    if (tab && ['database', 'info', 'users', 'scheduler', 'settings'].includes(tab)) {
-      setActiveSection(tab as 'database' | 'info' | 'users' | 'scheduler' | 'settings');
+    if (tab && ['database', 'info', 'users', 'settings'].includes(tab)) {
+      setActiveSection(tab as 'database' | 'info' | 'users' | 'settings');
     }
   }, [searchParams]);
 
@@ -75,7 +74,6 @@ export default function SystemPage() {
     { id: 'database' as const, icon: '🗄️', label: 'DB 현황' },
     { id: 'info' as const, icon: '📌', label: '유용한 정보' },
     ...(isAdmin ? [{ id: 'users' as const, icon: '👥', label: '사용자 관리' }] : []),
-    { id: 'scheduler' as const, icon: '⏰', label: '스케줄러' },
     { id: 'settings' as const, icon: '⚙️', label: '설정' },
   ];
 
@@ -127,17 +125,6 @@ export default function SystemPage() {
 
         {/* Users Section - User Management */}
         {activeSection === 'users' && <UserManagementSection />}
-
-        {/* Scheduler Section */}
-        {activeSection === 'scheduler' && (
-          <div className="space-y-6">
-            <SectionHeader
-              title="스케줄러 관리"
-              description="자동 크롤링 스케줄을 설정하세요"
-            />
-            <SchedulerSettings />
-          </div>
-        )}
 
         {/* Settings Section */}
         {activeSection === 'settings' && (

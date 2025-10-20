@@ -18,7 +18,8 @@ import {
   LogIn,
   UserPlus,
   User,
-  Loader2
+  Loader2,
+  Clock
 } from 'lucide-react';
 
 export const Navigation = () => {
@@ -143,6 +144,7 @@ export const Navigation = () => {
     { href: '/analytics', label: '데이터 분석', icon: BarChart3 },
     { href: '/community', label: '커뮤니티', icon: MessageSquare },
     { href: '/alerts', label: '알림 설정', icon: Bell },
+    { href: '/scheduler', label: '스케줄러', icon: Clock },
     { href: '/system', label: '시스템', icon: Settings },
   ];
 
