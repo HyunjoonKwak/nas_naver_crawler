@@ -24,9 +24,10 @@ interface GroupManagementProps {
   compareMode?: boolean; // 비교 모드 상태
   onCompareToggle?: () => void; // 비교 모드 토글 핸들러
   complexCount?: number; // 전체 단지 개수
+  totalComplexCount?: number; // 실제 전체 단지 개수 (중복 제거)
 }
 
-export function GroupManagement({ selectedGroupId, onGroupSelect, onGroupsChange, onAddComplexClick, refreshTrigger, compareMode, onCompareToggle, complexCount }: GroupManagementProps) {
+export function GroupManagement({ selectedGroupId, onGroupSelect, onGroupsChange, onAddComplexClick, refreshTrigger, compareMode, onCompareToggle, complexCount, totalComplexCount }: GroupManagementProps) {
   const [groups, setGroups] = useState<Group[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -300,7 +301,7 @@ export function GroupManagement({ selectedGroupId, onGroupSelect, onGroupsChange
             <span>전체</span>
           </span>
           <Badge variant="secondary">
-            {groups.reduce((sum, g) => sum + g.complexCount, 0)}
+            {totalComplexCount !== undefined ? totalComplexCount : 0}
           </Badge>
         </button>
 

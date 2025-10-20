@@ -89,6 +89,7 @@ interface ComplexInfo {
 export default function ComplexesPage() {
   const { data: session, status } = useSession();
   const [complexes, setComplexes] = useState<ComplexItem[]>([]);
+  const [totalComplexCount, setTotalComplexCount] = useState<number>(0); // 전체 단지 개수 (필터 무관)
   const [loading, setLoading] = useState(true);
   const [crawling, setCrawling] = useState<string | null>(null);
   const [crawlingAll, setCrawlingAll] = useState(false);
@@ -321,6 +322,17 @@ export default function ComplexesPage() {
 
       const response = await fetch(`/api/complex?${params.toString()}`);
       const data = await response.json();
+
+      // 전체 단지 개수 가져오기 (필터 없이)
+      if (!selectedGroupId) {
+        // 필터 없을 때는 현재 결과가 전체
+        setTotalComplexCount(data.complexes?.length || 0);
+      } else {
+        // 필터 있을 때는 별도로 전체 조회
+        const totalResponse = await fetch('/api/complex');
+        const totalData = await totalResponse.json();
+        setTotalComplexCount(totalData.complexes?.length || 0);
+      }
 
       const favorites = (data.complexes || []).filter((c: any) => c.isFavorite);
       console.log('[CLIENT_FETCH] 단지목록 조회 완료:', {
@@ -840,6 +852,7 @@ export default function ComplexesPage() {
                 compareMode={compareMode}
                 onCompareToggle={toggleCompareMode}
                 complexCount={complexes.length}
+                totalComplexCount={totalComplexCount}
               />
             </div>
           </div>

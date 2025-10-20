@@ -73,11 +73,25 @@ export async function POST(request: NextRequest) {
 export async function GET(request: NextRequest) {
   try {
     const currentUser = await requireAuth();
+    const { searchParams } = new URL(request.url);
+    const groupId = searchParams.get('groupId');
+
+    // 그룹 필터링을 위한 where 조건
+    const whereCondition: any = {
+      userId: currentUser.id
+    };
+
+    // 그룹 필터링이 있는 경우
+    if (groupId) {
+      whereCondition.complexGroups = {
+        some: {
+          groupId: groupId
+        }
+      };
+    }
 
     const complexes = await prisma.complex.findMany({
-      where: {
-        userId: currentUser.id
-      },
+      where: whereCondition,
       include: {
         articles: {
           select: {
