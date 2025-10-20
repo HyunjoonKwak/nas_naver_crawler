@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { Button, Modal, Badge } from '@/components/ui';
 import { showSuccess, showError, showLoading, dismissToast } from '@/lib/toast';
 import { Plus, Edit3, Trash2, List } from 'lucide-react';
@@ -20,9 +21,12 @@ interface GroupManagementProps {
   onGroupsChange: () => void;
   onAddComplexClick?: () => void; // 단지 추가 버튼 클릭 핸들러
   refreshTrigger?: number; // 외부에서 강제로 새로고침을 트리거하기 위한 카운터
+  compareMode?: boolean; // 비교 모드 상태
+  onCompareToggle?: () => void; // 비교 모드 토글 핸들러
+  complexCount?: number; // 전체 단지 개수
 }
 
-export function GroupManagement({ selectedGroupId, onGroupSelect, onGroupsChange, onAddComplexClick, refreshTrigger }: GroupManagementProps) {
+export function GroupManagement({ selectedGroupId, onGroupSelect, onGroupsChange, onAddComplexClick, refreshTrigger, compareMode, onCompareToggle, complexCount }: GroupManagementProps) {
   const [groups, setGroups] = useState<Group[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -227,10 +231,40 @@ export function GroupManagement({ selectedGroupId, onGroupSelect, onGroupsChange
         </div>
       )}
 
-      {/* 구분선 */}
-      {onAddComplexClick && (
-        <div className="border-t border-gray-200 dark:border-gray-700"></div>
+      {/* 네이버 관심단지 버튼 */}
+      <a
+        href="https://new.land.naver.com/interests"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg transition-colors font-semibold bg-emerald-600 hover:bg-emerald-700 text-white shadow-md"
+        title="네이버 관심단지 페이지로 이동"
+      >
+        <Image src="/naver-logo.svg" alt="Naver" width={20} height={20} className="flex-shrink-0" />
+        <span>네이버 관심단지</span>
+      </a>
+
+      {/* 단지 비교 버튼 */}
+      {onCompareToggle && (
+        <button
+          onClick={onCompareToggle}
+          disabled={!complexCount || complexCount === 0}
+          className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg transition-colors font-semibold shadow-md ${
+            compareMode
+              ? 'bg-purple-600 hover:bg-purple-700 text-white'
+              : complexCount === 0
+              ? 'bg-gray-300 dark:bg-gray-600 text-gray-500 cursor-not-allowed'
+              : 'bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200'
+          }`}
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+          </svg>
+          <span>{compareMode ? '비교 취소' : '단지 비교'}</span>
+        </button>
       )}
+
+      {/* 구분선 */}
+      <div className="border-t border-gray-200 dark:border-gray-700"></div>
 
       {/* 헤더 - 축소 */}
       <div className="flex items-center justify-between">

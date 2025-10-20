@@ -837,6 +837,9 @@ export default function ComplexesPage() {
                 onGroupsChange={fetchComplexes}
                 onAddComplexClick={() => setShowAddForm(true)}
                 refreshTrigger={groupRefreshTrigger}
+                compareMode={compareMode}
+                onCompareToggle={toggleCompareMode}
+                complexCount={complexes.length}
               />
             </div>
           </div>
@@ -951,16 +954,6 @@ export default function ComplexesPage() {
                 <Folder className="w-4 h-4" />
                 <span>그룹</span>
               </button>
-              <a
-                href="https://new.land.naver.com/interests"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-2 px-4 py-2 rounded-lg transition-colors font-medium bg-emerald-600 hover:bg-emerald-700 text-white"
-                title="네이버 관심단지 페이지로 이동"
-              >
-                <Image src="/naver-logo.svg" alt="Naver" width={20} height={20} className="flex-shrink-0" />
-                <span>네이버 관심단지</span>
-              </a>
               <button
                 onClick={handleCrawlAll}
                 disabled={crawlingAll || complexes.length === 0}
@@ -997,19 +990,6 @@ export default function ComplexesPage() {
               >
                 <RefreshCw className="w-4 h-4" />
                 <span>새로고침</span>
-              </button>
-              <button
-                onClick={toggleCompareMode}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors font-medium ${
-                  compareMode
-                    ? 'bg-purple-600 hover:bg-purple-700 text-white'
-                    : 'bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200'
-                }`}
-              >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                </svg>
-                <span>{compareMode ? '비교 취소' : '단지 비교'}</span>
               </button>
             </div>
 
