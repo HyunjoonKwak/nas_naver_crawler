@@ -82,12 +82,13 @@ export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  let currentUser;
   try {
     // Rate Limiting: 분당 10회
     const rateLimitResponse = rateLimit(request, rateLimitPresets.comment);
     if (rateLimitResponse) return rateLimitResponse;
 
-    const currentUser = await requireAuth();
+    currentUser = await requireAuth();
     const { id: postId } = params;
 
     // Zod 스키마 검증
