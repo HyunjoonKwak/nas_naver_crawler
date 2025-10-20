@@ -957,7 +957,7 @@ export default function ComplexesPage() {
               <button
                 onClick={handleCrawlAll}
                 disabled={crawlingAll || complexes.length === 0}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors font-medium ${
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-colors font-semibold shadow-md ${
                   crawlingAll || complexes.length === 0
                     ? 'bg-gray-300 dark:bg-gray-600 cursor-not-allowed'
                     : 'bg-green-600 hover:bg-green-700 text-white'
@@ -981,7 +981,7 @@ export default function ComplexesPage() {
                   fetchComplexes();
                 }}
                 disabled={!!(crawlingAll || crawling)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors font-medium ${
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-colors font-semibold shadow-md ${
                   crawlingAll || crawling
                     ? 'bg-gray-300 dark:bg-gray-600 cursor-not-allowed text-gray-500'
                     : 'bg-blue-600 hover:bg-blue-700 text-white'
