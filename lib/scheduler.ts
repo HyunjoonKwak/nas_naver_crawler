@@ -202,7 +202,12 @@ async function executeCrawl(scheduleId: string) {
     // 크롤링 API 호출 (동적 타임아웃)
     const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), dynamicTimeout);
+
+    // AbortController로 타임아웃 설정 (undici 옵션이 작동하지 않으므로)
+    const timeoutId = setTimeout(() => {
+      console.log(`⏱️  Fetch timeout after ${dynamicTimeout}ms, aborting...`);
+      controller.abort();
+    }, dynamicTimeout);
 
     let crawlId: string | null = null;
 
@@ -221,9 +226,6 @@ async function executeCrawl(scheduleId: string) {
           scheduleName: schedule.name,
         }),
         signal: controller.signal,
-        // @ts-ignore - undici specific options
-        headersTimeout: dynamicTimeout + 120000, // +2분 버퍼 추가
-        bodyTimeout: dynamicTimeout + 120000,    // +2분 버퍼 추가
       });
 
       clearTimeout(timeoutId);
