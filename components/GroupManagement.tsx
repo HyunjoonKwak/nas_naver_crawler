@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { Button, Modal, Badge } from '@/components/ui';
 import { showSuccess, showError, showLoading, dismissToast } from '@/lib/toast';
-import { Plus, Edit3, Trash2, List } from 'lucide-react';
+import { Plus, Edit3, Trash2, List, RefreshCw, Loader2 } from 'lucide-react';
 
 interface Group {
   id: string;
@@ -25,9 +25,13 @@ interface GroupManagementProps {
   onCompareToggle?: () => void; // 비교 모드 토글 핸들러
   complexCount?: number; // 전체 단지 개수
   totalComplexCount?: number; // 실제 전체 단지 개수 (중복 제거)
+  onCrawlAll?: () => void; // 전체 크롤링 핸들러
+  onRefresh?: () => void; // 새로고침 핸들러
+  crawlingAll?: boolean; // 전체 크롤링 중 여부
+  crawling?: string | null; // 개별 크롤링 중인 단지 번호
 }
 
-export function GroupManagement({ selectedGroupId, onGroupSelect, onGroupsChange, onAddComplexClick, refreshTrigger, compareMode, onCompareToggle, complexCount, totalComplexCount }: GroupManagementProps) {
+export function GroupManagement({ selectedGroupId, onGroupSelect, onGroupsChange, onAddComplexClick, refreshTrigger, compareMode, onCompareToggle, complexCount, totalComplexCount, onCrawlAll, onRefresh, crawlingAll, crawling }: GroupManagementProps) {
   const [groups, setGroups] = useState<Group[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -261,6 +265,48 @@ export function GroupManagement({ selectedGroupId, onGroupSelect, onGroupsChange
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
           </svg>
           <span>{compareMode ? '비교 취소' : '단지 비교'}</span>
+        </button>
+      )}
+
+      {/* 전체 크롤링 버튼 */}
+      {onCrawlAll && (
+        <button
+          onClick={onCrawlAll}
+          disabled={crawlingAll || !complexCount || complexCount === 0}
+          className={`w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg transition-colors font-semibold shadow-md ${
+            crawlingAll || complexCount === 0
+              ? 'bg-gray-300 dark:bg-gray-600 text-gray-500 cursor-not-allowed'
+              : 'bg-green-600 hover:bg-green-700 text-white'
+          }`}
+        >
+          {crawlingAll ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin flex-shrink-0" />
+              <span>크롤링 중...</span>
+            </>
+          ) : (
+            <>
+              <RefreshCw className="w-4 h-4 flex-shrink-0" />
+              <span>전체 크롤링</span>
+            </>
+          )}
+        </button>
+      )}
+
+      {/* 새로고침 버튼 */}
+      {onRefresh && (
+        <button
+          onClick={onRefresh}
+          disabled={!!(crawlingAll || crawling)}
+          className={`w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg transition-colors font-semibold shadow-md ${
+            crawlingAll || crawling
+              ? 'bg-gray-300 dark:bg-gray-600 text-gray-500 cursor-not-allowed'
+              : 'bg-blue-600 hover:bg-blue-700 text-white'
+          }`}
+          title="DB 데이터 새로고침 (크롤링 없음)"
+        >
+          <RefreshCw className="w-4 h-4 flex-shrink-0" />
+          <span>새로고침</span>
         </button>
       )}
 

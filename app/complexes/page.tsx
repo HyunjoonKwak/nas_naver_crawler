@@ -853,6 +853,13 @@ export default function ComplexesPage() {
                 onCompareToggle={toggleCompareMode}
                 complexCount={complexes.length}
                 totalComplexCount={totalComplexCount}
+                onCrawlAll={handleCrawlAll}
+                onRefresh={() => {
+                  console.log('[Complexes] Manual refresh triggered');
+                  fetchComplexes();
+                }}
+                crawlingAll={crawlingAll}
+                crawling={crawling}
               />
             </div>
           </div>
@@ -966,43 +973,6 @@ export default function ComplexesPage() {
               >
                 <Folder className="w-4 h-4" />
                 <span>그룹</span>
-              </button>
-              <button
-                onClick={handleCrawlAll}
-                disabled={crawlingAll || complexes.length === 0}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-colors font-semibold shadow-md ${
-                  crawlingAll || complexes.length === 0
-                    ? 'bg-gray-300 dark:bg-gray-600 cursor-not-allowed'
-                    : 'bg-green-600 hover:bg-green-700 text-white'
-                }`}
-              >
-                {crawlingAll ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>크롤링 중...</span>
-                  </>
-                ) : (
-                  <>
-                    <RefreshCw className="w-4 h-4" />
-                    <span>전체 크롤링</span>
-                  </>
-                )}
-              </button>
-              <button
-                onClick={() => {
-                  console.log('[Complexes] Manual refresh triggered');
-                  fetchComplexes();
-                }}
-                disabled={!!(crawlingAll || crawling)}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-colors font-semibold shadow-md ${
-                  crawlingAll || crawling
-                    ? 'bg-gray-300 dark:bg-gray-600 cursor-not-allowed text-gray-500'
-                    : 'bg-blue-600 hover:bg-blue-700 text-white'
-                }`}
-                title="DB 데이터 새로고침 (크롤링 없음)"
-              >
-                <RefreshCw className="w-4 h-4" />
-                <span>새로고침</span>
               </button>
             </div>
 
