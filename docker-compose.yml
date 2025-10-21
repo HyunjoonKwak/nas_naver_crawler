@@ -31,8 +31,7 @@ services:
   web:
     build:
       context: .
-      dockerfile: Dockerfile.dev  # ⚠️ 개발 모드 유지 (별도 지시 전까지 변경 금지)
-                                   # 정책: /docs/DEVELOPMENT_POLICY.md 참고
+      dockerfile: Dockerfile  # Production mode
     container_name: naver-crawler-web
     restart: unless-stopped
 
@@ -43,33 +42,13 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
       - DATABASE_URL=postgresql://crawler_user:crawler_pass_2025@db:5432/naver_crawler
-      - NODE_ENV=development
+      - NODE_ENV=production
 
-    # 볼륨 마운트 (Hot Reload를 위한 소스 코드 마운트)
+    # 볼륨 마운트 (프로덕션 모드 - 데이터만 마운트)
     volumes:
       # === 데이터 저장 (NAS) ===
       - ./crawled_data:/app/crawled_data
       - ./logs:/app/logs
-
-      # === 소스 코드 (NAS - Hot Reload용) ===
-      - ./app:/app/app
-      - ./components:/app/components
-      - ./lib:/app/lib
-      - ./logic:/app/logic
-      - ./hooks:/app/hooks
-      - ./prisma:/app/prisma
-      - ./public:/app/public
-      - ./scripts:/app/scripts
-      - ./instrumentation.ts:/app/instrumentation.ts
-      - ./next.config.js:/app/next.config.js
-      - ./tsconfig.json:/app/tsconfig.json
-      - ./tailwind.config.js:/app/tailwind.config.js
-      - ./postcss.config.js:/app/postcss.config.js
-
-      # === 캐시/빌드 결과 (컨테이너 내부 - 성능 최적화) ===
-      - node_modules:/app/node_modules
-      - nextjs_cache:/app/.next
-      - prisma_cache:/app/node_modules/.prisma
 
     # 포트 설정 (웹 인터페이스)
     ports:
@@ -102,8 +81,3 @@ networks:
 
 volumes:
   postgres_data:
-  crawled_data:
-  logs:
-  node_modules:      # 성능 최적화: 컨테이너 내부 저장
-  nextjs_cache:      # 성능 최적화: 빌드 캐시
-  prisma_cache:      # 성능 최적화: Prisma Client 캐시
