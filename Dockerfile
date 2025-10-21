@@ -26,8 +26,9 @@ COPY instrumentation.ts next.config.js tsconfig.json tailwind.config.js postcss.
 # Prisma Client 생성
 RUN npx prisma generate
 
-# Build-time environment variables (dummy values for build)
-ENV DATABASE_URL="postgresql://user:pass@localhost:5432/db?schema=public" \
+# Build-time environment variables (skip validation during build)
+ENV SKIP_ENV_VALIDATION="true" \
+    DATABASE_URL="postgresql://user:pass@localhost:5432/db?schema=public" \
     NEXTAUTH_SECRET="build-time-secret-min-32-chars-long-placeholder" \
     NEXTAUTH_URL="http://localhost:3000"
 

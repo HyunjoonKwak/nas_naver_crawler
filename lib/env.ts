@@ -27,6 +27,12 @@ const weakSecretPatterns = [
  * 앱 시작 시 한 번만 호출
  */
 export function validateEnv() {
+  // Skip validation during build time
+  if (process.env.SKIP_ENV_VALIDATION === 'true') {
+    console.log('⏭️  Skipping environment validation (build time)');
+    return;
+  }
+
   const missing = requiredEnvVars.filter(key => !process.env[key]);
 
   if (missing.length > 0) {
