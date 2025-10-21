@@ -1136,7 +1136,7 @@ export default function ComplexesPage() {
                   />
                   <button
                     onClick={handleFetchAndAddComplex}
-                    disabled={fetchingInfo || crawling}
+                    disabled={fetchingInfo || !!crawling}
                     className={`px-6 py-2 rounded-lg transition-colors font-medium ${
                       fetchingInfo || crawling
                         ? 'bg-gray-300 dark:bg-gray-600 cursor-not-allowed'
@@ -2076,12 +2076,12 @@ function SingleComplexCrawler({
             onChange={(e) => setComplexNo(e.target.value)}
             placeholder="22065 또는 https://new.land.naver.com/complexes/22065"
             className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-            disabled={crawling}
+            disabled={!!crawling}
             onKeyPress={(e) => e.key === 'Enter' && !crawling && handleCrawl()}
           />
           <button
             onClick={handleCrawl}
-            disabled={crawling || !complexNo.trim()}
+            disabled={!!crawling || !complexNo.trim()}
             className={`flex items-center gap-2 px-6 py-2 rounded-lg font-medium transition-colors ${
               crawling || !complexNo.trim()
                 ? 'bg-gray-300 dark:bg-gray-600 cursor-not-allowed'
