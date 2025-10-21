@@ -18,6 +18,9 @@ COPY instrumentation.ts next.config.js tsconfig.json tailwind.config.js postcss.
 # Prisma Client 생성
 RUN npx prisma generate
 
+# Build-time environment variable (dummy value for build)
+ENV DATABASE_URL="postgresql://user:pass@localhost:5432/db?schema=public"
+
 RUN npm run build
 
 # Python + Next.js 런타임
