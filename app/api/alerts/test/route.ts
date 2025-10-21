@@ -5,14 +5,14 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import {
-
-export const dynamic = 'force-dynamic';
   sendDiscordNotification,
   createNewArticleEmbed,
   createDeletedArticleEmbed,
   createPriceChangedEmbed,
   createCrawlSummaryEmbed,
 } from '@/lib/discord';
+
+export const dynamic = 'force-dynamic';
 
 /**
  * POST /api/alerts/test - Discord 웹훅 테스트

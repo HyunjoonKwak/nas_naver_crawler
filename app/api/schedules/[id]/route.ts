@@ -8,13 +8,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from "@/lib/prisma";
 import {
-
-export const dynamic = 'force-dynamic';
   registerSchedule,
   unregisterSchedule,
   validateCronExpression,
   getNextRunTime,
 } from '@/lib/scheduler';
+
+export const dynamic = 'force-dynamic';
 
 
 /**
