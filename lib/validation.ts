@@ -35,7 +35,7 @@ export async function validateRequest<T extends z.ZodTypeAny>(
     const parsed = schema.safeParse(body);
 
     if (!parsed.success) {
-      const firstError = parsed.error.errors[0];
+      const firstError = parsed.error.issues[0];
       const errorMessage = `${firstError.path.join('.')}: ${firstError.message}`;
 
       logger.warn('Request validation failed', {
@@ -51,7 +51,7 @@ export async function validateRequest<T extends z.ZodTypeAny>(
           {
             success: false,
             error: errorMessage,
-            details: parsed.error.errors.map(err => ({
+            details: parsed.error.issues.map(err => ({
               field: err.path.join('.'),
               message: err.message,
             })),
@@ -103,7 +103,7 @@ export function validateQuery<T extends z.ZodTypeAny>(
     const parsed = schema.safeParse(params);
 
     if (!parsed.success) {
-      const firstError = parsed.error.errors[0];
+      const firstError = parsed.error.issues[0];
       const errorMessage = `${firstError.path.join('.')}: ${firstError.message}`;
 
       logger.warn('Query validation failed', {
@@ -118,7 +118,7 @@ export function validateQuery<T extends z.ZodTypeAny>(
           {
             success: false,
             error: errorMessage,
-            details: parsed.error.errors.map(err => ({
+            details: parsed.error.issues.map(err => ({
               field: err.path.join('.'),
               message: err.message,
             })),
