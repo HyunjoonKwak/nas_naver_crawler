@@ -2,11 +2,22 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from './auth';
 import { prisma } from './prisma';
 
+// Extended Session type helper
+type ExtendedSession = {
+  user: {
+    id: string;
+    email: string;
+    name: string;
+    role: 'ADMIN' | 'FAMILY' | 'GUEST';
+    image?: string | null;
+  };
+};
+
 /**
  * 현재 로그인한 사용자 정보를 가져옵니다.
  */
 export async function getCurrentUser() {
-  const session = await getServerSession(authOptions);
+  const session = await getServerSession(authOptions) as ExtendedSession | null;
   if (!session?.user?.id) {
     return null;
   }
