@@ -29,9 +29,24 @@ log_blue() {
 
 # 현재 모드 확인
 get_current_mode() {
-    DOCKERFILE=$(grep "dockerfile:" docker-compose.yml | awk '{print $2}' | head -1)
-    if [[ "$DOCKERFILE" == "Dockerfile.dev" ]]; then
-        echo "dev"
+    # 실행 중인 컨테이너 확인
+    if docker ps -a --format '{{.Image}}' | grep -q "nas_naver_crawler_web"; then
+        # 컨테이너의 NODE_ENV 확인
+        NODE_ENV=$(docker inspect naver-crawler-web 2>/dev/null | grep -o '"NODE_ENV=[^"]*"' | cut -d'=' -f2 | tr -d '"' || echo "")
+        if [[ "$NODE_ENV" == "development" ]]; then
+            echo "dev"
+            return
+        fi
+    fi
+
+    # docker-compose.yml 파일 확인 (기본값은 production)
+    if [[ -f "docker-compose.yml" ]]; then
+        DOCKERFILE=$(grep "dockerfile:" docker-compose.yml | awk '{print $2}' | head -1)
+        if [[ "$DOCKERFILE" == "Dockerfile.dev" ]]; then
+            echo "dev"
+        else
+            echo "prod"
+        fi
     else
         echo "prod"
     fi
@@ -93,28 +108,28 @@ echo ""
 
 # 1. 서버 중지
 log_blue "1️⃣  서버 중지 중..."
-docker-compose down
 
-if [ $? -ne 0 ]; then
-    log_error "서버 중지 실패!"
-    exit 1
-fi
+# 현재 실행 중인 모든 compose 파일의 컨테이너 중지
+docker-compose -f docker-compose.yml down 2>/dev/null || true
+docker-compose -f docker-compose.dev.yml down 2>/dev/null || true
+
+log_info "✅ 서버 중지 완료"
 
 echo ""
 
-# 2. docker-compose.yml 수정
-log_blue "2️⃣  docker-compose.yml 수정 중..."
+# 2. docker-compose 파일 전환
+log_blue "2️⃣  docker-compose 파일 전환 중..."
 
-# Dockerfile 변경
-sed -i.bak "s|dockerfile:.*|dockerfile: $NEW_DOCKERFILE  # Mode: $NEW_MODE|" docker-compose.yml
+if [[ "$NEW_MODE" == "prod" ]]; then
+    # 프로덕션 모드: docker-compose.yml 사용 (기본값)
+    export COMPOSE_FILE="docker-compose.yml"
+    log_info "✅ 프로덕션 설정 파일 사용: docker-compose.yml"
+else
+    # 개발 모드: docker-compose.dev.yml 사용
+    export COMPOSE_FILE="docker-compose.dev.yml"
+    log_info "✅ 개발 설정 파일 사용: docker-compose.dev.yml"
+fi
 
-# NODE_ENV 변경
-sed -i.bak "s|NODE_ENV=.*|NODE_ENV=$NEW_NODE_ENV|" docker-compose.yml
-
-# 백업 파일 삭제
-rm -f docker-compose.yml.bak
-
-log_info "✅ docker-compose.yml 업데이트 완료"
 echo ""
 
 # 3. 프로덕션 모드인 경우 빌드 필요 알림
@@ -133,7 +148,7 @@ if [[ "$NEW_MODE" == "prod" ]]; then
         log_blue "3️⃣  프로덕션 이미지 빌드 중... (15-30분 소요)"
         echo ""
 
-        docker-compose build --no-cache web
+        docker-compose -f $COMPOSE_FILE build --no-cache web
 
         if [ $? -eq 0 ]; then
             log_info "✅ 빌드 완료!"
@@ -144,28 +159,18 @@ if [[ "$NEW_MODE" == "prod" ]]; then
 
             if [[ "$start_confirm" =~ ^[Yy]$ ]]; then
                 log_blue "4️⃣  서버 시작 중..."
-                docker-compose up -d
+                docker-compose -f $COMPOSE_FILE up -d
 
                 if [ $? -eq 0 ]; then
                     log_info "✅ 서버 시작 완료!"
                     echo ""
-                    log_cyan "🌐 웹 UI: http://localhost:3000"
+                    echo -e "${CYAN}🌐 웹 UI: http://localhost:3000${NC}"
                 else
                     log_error "❌ 서버 시작 실패!"
                 fi
             fi
         else
             log_error "❌ 빌드 실패!"
-            echo ""
-            log_warn "개발 모드로 되돌리시겠습니까?"
-            read -p "(y/N): " revert_confirm
-
-            if [[ "$revert_confirm" =~ ^[Yy]$ ]]; then
-                sed -i.bak "s|dockerfile:.*|dockerfile: Dockerfile.dev  # Mode: dev|" docker-compose.yml
-                sed -i.bak "s|NODE_ENV=.*|NODE_ENV=development|" docker-compose.yml
-                rm -f docker-compose.yml.bak
-                log_info "개발 모드로 되돌렸습니다."
-            fi
             exit 1
         fi
     else
@@ -174,13 +179,13 @@ if [[ "$NEW_MODE" == "prod" ]]; then
 else
     # 개발 모드로 전환 시 바로 시작 가능
     log_blue "3️⃣  서버 시작 중..."
-    docker-compose up -d
+    docker-compose -f $COMPOSE_FILE up -d
 
     if [ $? -eq 0 ]; then
         log_info "✅ 서버 시작 완료!"
         echo ""
-        log_cyan "🌐 웹 UI: http://localhost:3000"
-        log_blue "💡 Hot Reload: 코드 수정 시 자동 반영 (3-5초)"
+        echo -e "${CYAN}🌐 웹 UI: http://localhost:3000${NC}"
+        echo -e "${BLUE}💡 Hot Reload: 코드 수정 시 자동 반영 (3-5초)${NC}"
     else
         log_error "❌ 서버 시작 실패!"
         exit 1

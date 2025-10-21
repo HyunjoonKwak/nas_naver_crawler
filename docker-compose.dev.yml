@@ -2,7 +2,7 @@ services:
   # PostgreSQL 데이터베이스
   db:
     image: postgres:16-alpine
-    container_name: naver-crawler-db-dev
+    container_name: naver-crawler-db
     restart: unless-stopped
 
     environment:
@@ -12,7 +12,7 @@ services:
       - POSTGRES_INITDB_ARGS=--encoding=UTF-8
 
     volumes:
-      - postgres_data_dev:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
 
     ports:
       - "5434:5432"
@@ -27,71 +27,74 @@ services:
       retries: 5
       start_period: 10s
 
-  # 개발 모드: 빌드 없이 소스 마운트
+  # Next.js 웹 애플리케이션 (개발 모드)
   web:
-    image: node:20-slim
-    container_name: naver-crawler-web-dev
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: naver-crawler-web
     restart: unless-stopped
-    working_dir: /app
 
-    # 환경변수 파일 사용
     env_file:
       - config.env
 
     environment:
-      - NODE_ENV=development
       - PYTHONUNBUFFERED=1
       - DATABASE_URL=postgresql://crawler_user:crawler_pass_2025@db:5432/naver_crawler
+      - NODE_ENV=development
 
-    # 소스 코드 마운트 (실시간 반영)
+    # 볼륨 마운트 (개발 모드 - Hot Reload)
     volumes:
+      # === 데이터 저장 (NAS) ===
+      - ./crawled_data:/app/crawled_data
+      - ./logs:/app/logs
+
+      # === 소스 코드 (NAS - Hot Reload용) ===
       - ./app:/app/app
       - ./components:/app/components
       - ./lib:/app/lib
+      - ./logic:/app/logic
+      - ./hooks:/app/hooks
       - ./prisma:/app/prisma
       - ./public:/app/public
-      - ./logic:/app/logic
-      - ./crawled_data:/app/crawled_data
-      - ./logs:/app/logs
-      - ./package.json:/app/package.json
+      - ./scripts:/app/scripts
+      - ./instrumentation.ts:/app/instrumentation.ts
       - ./next.config.js:/app/next.config.js
+      - ./tsconfig.json:/app/tsconfig.json
       - ./tailwind.config.js:/app/tailwind.config.js
       - ./postcss.config.js:/app/postcss.config.js
-      - ./tsconfig.json:/app/tsconfig.json
 
-    # 포트 설정
+      # === 캐시/빌드 결과 (컨테이너 내부 - 성능 최적화) ===
+      - node_modules:/app/node_modules
+      - nextjs_cache:/app/.next
+      - prisma_cache:/app/node_modules/.prisma
+
     ports:
       - "3000:3000"
 
-    # 네트워크 설정
     networks:
       - crawler-network
 
-    # DB가 준비될 때까지 대기
     depends_on:
       db:
         condition: service_healthy
 
-    # 리소스 제한 (NAS 호환)
     mem_limit: 2g
     memswap_limit: 2g
 
-    # 개발 서버 실행
-    command: >
-      sh -c "
-      apt-get update && apt-get install -y python3 python3-pip curl libpq-dev &&
-      pip3 install --break-system-packages playwright pandas python-dotenv aiohttp loguru psycopg2-binary &&
-      playwright install chromium &&
-      playwright install-deps chromium &&
-      npm install &&
-      npx prisma generate &&
-      npx prisma db push &&
-      npm run dev
-      "
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
 networks:
   crawler-network:
     driver: bridge
 
 volumes:
-  postgres_data_dev:
+  postgres_data:
+  node_modules:
+  nextjs_cache:
+  prisma_cache:
