@@ -1162,8 +1162,8 @@ export default function ComplexesPage() {
             </button>
           </div>
         ) : viewMode === 'card' ? (
-          // 카드 뷰
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          // 카드 뷰 (반응형: 모바일 1열, 태블릿 2열, 데스크탑 3열, 대형 4열, 초대형 5열)
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
             {filteredComplexes.map((complex, index) => (
               <div
                 key={complex.complexNo}
