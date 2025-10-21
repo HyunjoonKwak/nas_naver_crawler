@@ -11,6 +11,17 @@ import { DatabaseSection } from "@/components/system/DatabaseSection";
 import { UsefulLinksSection } from "@/components/system/UsefulLinksSection";
 import { UserManagementSection } from "@/components/system/UserManagementSection";
 
+// Extended Session type helper
+type ExtendedSession = {
+  user: {
+    id: string;
+    email: string;
+    name: string;
+    role: 'ADMIN' | 'FAMILY' | 'GUEST';
+    image?: string | null;
+  };
+};
+
 interface StatusData {
   crawler: {
     scriptExists: boolean;
@@ -28,7 +39,8 @@ interface StatusData {
 
 export default function SystemPage() {
   const { data: session } = useSession();
-  const isAdmin = session?.user?.role === 'ADMIN';
+  const extendedSession = session as ExtendedSession | null;
+  const isAdmin = extendedSession?.user?.role === 'ADMIN';
   const searchParams = useSearchParams();
 
   const [status, setStatus] = useState<StatusData | null>(null);

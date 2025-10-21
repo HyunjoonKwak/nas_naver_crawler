@@ -6,8 +6,20 @@ import { showSuccess, showError } from "@/lib/toast";
 
 type Theme = 'light' | 'dark' | 'system';
 
+// Extended Session type helper
+type ExtendedSession = {
+  user: {
+    id: string;
+    email: string;
+    name: string;
+    role: 'ADMIN' | 'FAMILY' | 'GUEST';
+    image?: string | null;
+  };
+};
+
 export function SystemSettings() {
   const { data: session } = useSession();
+  const extendedSession = session as ExtendedSession | null;
   const [theme, setTheme] = useState<Theme>('system');
   const [mounted, setMounted] = useState(false);
 
@@ -152,18 +164,18 @@ export function SystemSettings() {
         <div className="space-y-3">
           <div className="flex justify-between text-sm">
             <span className="text-gray-500 dark:text-gray-400">이메일</span>
-            <span className="text-gray-900 dark:text-white font-medium">{session?.user?.email}</span>
+            <span className="text-gray-900 dark:text-white font-medium">{extendedSession?.user?.email}</span>
           </div>
 
           <div className="flex justify-between text-sm">
             <span className="text-gray-500 dark:text-gray-400">이름</span>
-            <span className="text-gray-900 dark:text-white font-medium">{session?.user?.name}</span>
+            <span className="text-gray-900 dark:text-white font-medium">{extendedSession?.user?.name}</span>
           </div>
 
           <div className="flex justify-between text-sm">
             <span className="text-gray-500 dark:text-gray-400">권한</span>
             <span className="text-gray-900 dark:text-white font-medium">
-              {session?.user?.role === 'ADMIN' ? '관리자' : session?.user?.role === 'FAMILY' ? '패밀리' : '게스트'}
+              {extendedSession?.user?.role === 'ADMIN' ? '관리자' : extendedSession?.user?.role === 'FAMILY' ? '패밀리' : '게스트'}
             </span>
           </div>
         </div>

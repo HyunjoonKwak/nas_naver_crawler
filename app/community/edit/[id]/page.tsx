@@ -9,8 +9,20 @@ import { MobileNavigation } from "@/components/MobileNavigation";
 import { AuthGuard } from "@/components/AuthGuard";
 import { showSuccess, showError } from "@/lib/toast";
 
+// Extended Session type helper
+type ExtendedSession = {
+  user: {
+    id: string;
+    email: string;
+    name: string;
+    role: 'ADMIN' | 'FAMILY' | 'GUEST';
+    image?: string | null;
+  };
+};
+
 export default function EditPostPage() {
   const { data: session } = useSession();
+  const extendedSession = session as ExtendedSession | null;
   const router = useRouter();
   const params = useParams();
   const postId = params.id as string;
@@ -38,8 +50,8 @@ export default function EditPostPage() {
 
         // 권한 확인
         if (
-          post.author.id !== session?.user?.id &&
-          session?.user?.role !== "ADMIN"
+          post.author.id !== extendedSession?.user?.id &&
+          extendedSession?.user?.role !== "ADMIN"
         ) {
           showError("게시글을 수정할 권한이 없습니다");
           router.push(`/community/${postId}`);

@@ -9,6 +9,17 @@ import { MobileNavigation } from "@/components/MobileNavigation";
 import { AuthGuard } from "@/components/AuthGuard";
 import { showSuccess, showError } from "@/lib/toast";
 
+// Extended Session type helper
+type ExtendedSession = {
+  user: {
+    id: string;
+    email: string;
+    name: string;
+    role: 'ADMIN' | 'FAMILY' | 'GUEST';
+    image?: string | null;
+  };
+};
+
 interface Post {
   id: string;
   title: string;
@@ -449,8 +460,9 @@ export default function PostDetailPage() {
     return null;
   }
 
-  const isAuthor = session?.user?.id === post.author.id;
-  const isAdmin = session?.user?.role === "ADMIN";
+  const extendedSession = session as ExtendedSession | null;
+  const isAuthor = extendedSession?.user?.id === post.author.id;
+  const isAdmin = extendedSession?.user?.role === "ADMIN";
   const canEdit = isAuthor || isAdmin;
   const canAccept = post.category === "QNA" && isAuthor && !post.isResolved;
 
