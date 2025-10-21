@@ -8,6 +8,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAuth } from '@/lib/auth-utils';
 
+export const dynamic = 'force-dynamic';
+
 /**
  * PATCH /api/comments/[id] - 댓글 수정
  */

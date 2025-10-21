@@ -7,6 +7,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAuth } from '@/lib/auth-utils';
 
+export const dynamic = 'force-dynamic';
+
 /**
  * POST /api/comments/[id]/accept - 댓글 채택
  */

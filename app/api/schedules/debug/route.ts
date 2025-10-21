@@ -8,6 +8,8 @@ import { prisma } from "@/lib/prisma";
 import { getActiveSchedules } from '@/lib/scheduler';
 import { createLogger } from '@/lib/logger';
 
+export const dynamic = 'force-dynamic';
+
 const logger = createLogger('SCHEDULER_DEBUG');
 
 

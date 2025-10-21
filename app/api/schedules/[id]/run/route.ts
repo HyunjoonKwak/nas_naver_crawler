@@ -6,6 +6,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { runScheduleNow } from '@/lib/scheduler';
 
+export const dynamic = 'force-dynamic';
+
 /**
  * POST /api/schedules/[id]/run - 스케줄 즉시 실행
  */

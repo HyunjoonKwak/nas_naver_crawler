@@ -8,6 +8,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAuth } from '@/lib/auth-utils';
 
+export const dynamic = 'force-dynamic';
+
 /**
  * GET /api/admin/reports - 신고 목록 조회 (관리자 전용)
  */

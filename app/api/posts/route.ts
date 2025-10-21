@@ -12,6 +12,8 @@ import { rateLimit, rateLimitPresets } from '@/lib/rate-limit';
 import { validateRequest } from '@/lib/validation';
 import { createPostSchema } from '@/lib/schemas';
 
+export const dynamic = 'force-dynamic';
+
 const logger = createLogger('POSTS');
 
 /**

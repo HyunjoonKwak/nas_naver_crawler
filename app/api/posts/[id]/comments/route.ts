@@ -12,6 +12,8 @@ import { createLogger } from '@/lib/logger';
 import { validateRequest } from '@/lib/validation';
 import { createCommentSchema } from '@/lib/schemas';
 
+export const dynamic = 'force-dynamic';
+
 const logger = createLogger('COMMENTS');
 
 /**

@@ -6,6 +6,8 @@ import { createLogger } from '@/lib/logger';
 import fs from 'fs/promises';
 import path from 'path';
 
+export const dynamic = 'force-dynamic';
+
 const logger = createLogger('DB-RESET');
 
 /**

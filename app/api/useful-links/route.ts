@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAuth } from '@/lib/auth-utils';
 
+export const dynamic = 'force-dynamic';
+
 // GET: 모든 유용한 링크 조회
 export async function GET() {
   try {

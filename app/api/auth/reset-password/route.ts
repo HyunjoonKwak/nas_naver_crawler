@@ -4,6 +4,8 @@ import { rateLimit, rateLimitPresets } from "@/lib/rate-limit";
 import { createLogger } from "@/lib/logger";
 import bcrypt from "bcryptjs";
 
+export const dynamic = 'force-dynamic';
+
 const logger = createLogger('AUTH-RESET-PASSWORD');
 
 export async function POST(request: NextRequest) {

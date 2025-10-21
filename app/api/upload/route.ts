@@ -9,6 +9,8 @@ import { join } from 'path';
 import { existsSync } from 'fs';
 import { requireAuth } from '@/lib/auth-utils';
 
+export const dynamic = 'force-dynamic';
+
 const UPLOAD_DIR = join(process.cwd(), 'public', 'uploads', 'posts');
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];

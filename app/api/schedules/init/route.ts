@@ -6,6 +6,8 @@
 import { NextResponse } from 'next/server';
 import { loadAllSchedules } from '@/lib/scheduler';
 
+export const dynamic = 'force-dynamic';
+
 /**
  * GET /api/schedules/init - 스케줄 초기화
  */

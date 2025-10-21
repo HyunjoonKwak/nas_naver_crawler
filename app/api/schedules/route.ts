@@ -15,6 +15,8 @@ import {
 } from '@/lib/scheduler';
 import cronstrue from 'cronstrue/i18n';
 
+export const dynamic = 'force-dynamic';
+
 /**
  * GET /api/schedules - 스케줄 목록 조회
  */

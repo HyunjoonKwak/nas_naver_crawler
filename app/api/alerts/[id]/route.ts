@@ -9,6 +9,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from '@/lib/auth-utils';
 
+export const dynamic = 'force-dynamic';
+
 
 /**
  * GET /api/alerts/[id] - 알림 상세 조회

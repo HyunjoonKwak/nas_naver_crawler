@@ -6,6 +6,8 @@ import { validateRequest } from '@/lib/validation';
 import { registerSchema } from '@/lib/schemas';
 import bcrypt from 'bcryptjs';
 
+export const dynamic = 'force-dynamic';
+
 const logger = createLogger('AUTH-REGISTER');
 
 export async function POST(request: NextRequest) {
