@@ -261,12 +261,12 @@ export default function Home() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Hero Section with Quick Stats */}
         <div className="mb-8">
-          <div className="text-center mb-8">
-            <h2 className="text-4xl font-bold text-gray-900 dark:text-white mb-3">
+          <div className="mb-8">
+            <h2 className="text-4xl font-bold text-gray-900 dark:text-white mb-3 text-center">
               부동산 데이터를 쉽고 빠르게
             </h2>
-            <p className="text-lg text-gray-600 dark:text-gray-400">
-              원하는 단지의 매물 정보를 실시간으로 수집하고 분석하세요
+            <p className="text-lg text-gray-600 dark:text-gray-400 text-right">
+              2025.specialrisk
             </p>
           </div>
 
