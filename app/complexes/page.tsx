@@ -284,9 +284,10 @@ export default function ComplexesPage() {
         setElapsedSeconds(prev => prev + 1);
       }, 1000);
     } else {
-      // 크롤링 종료 시 타이머 리셋
+      // 크롤링 종료 시 타이머 및 진행 상태 리셋
       setCrawlStartTime(null);
       setElapsedSeconds(0);
+      setCrawlProgress(null);
     }
 
     return () => {

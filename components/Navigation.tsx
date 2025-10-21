@@ -267,12 +267,9 @@ export const Navigation = () => {
               <Home className="w-6 h-6" />
             </div>
             <div className="hidden sm:block">
-              <h1 className="text-xl font-bold text-gray-900 dark:text-white">
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
                 부동산 인사이트
               </h1>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                스마트한 부동산 정보수집 관리시스템
-              </p>
             </div>
           </Link>
 
