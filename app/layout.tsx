@@ -42,7 +42,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ko" className="dark overflow-x-hidden">
+    <html lang="ko" className="overflow-x-hidden">
       <body className="antialiased overflow-x-hidden max-w-full">
         <SessionProvider>
           <Providers>
