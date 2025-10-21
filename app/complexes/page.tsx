@@ -775,8 +775,8 @@ export default function ComplexesPage() {
         {/* Header */}
         <Navigation />
 
-      {/* Main Content - 화면 크기에 따라 최대 너비 확장 */}
-      <main className="mx-auto px-4 sm:px-6 lg:px-8 py-8 max-w-7xl lg:max-w-screen-xl xl:max-w-screen-2xl">
+      {/* Main Content - 카드 최소 너비 유지하면서 최대 5열까지만 */}
+      <main className="mx-auto px-4 sm:px-6 lg:px-8 py-8" style={{ maxWidth: 'calc(380px * 5 + 24px * 4 + 64px)' }}>
         <div className="flex gap-6">
           {/* 그룹 사이드바 - 축소 */}
           <div className={`
@@ -1162,8 +1162,8 @@ export default function ComplexesPage() {
             </button>
           </div>
         ) : viewMode === 'card' ? (
-          // 카드 뷰 (반응형: 모바일 1열, 태블릿 2열, 데스크탑 3열, 대형 4열, 초대형 5열)
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
+          // 카드 뷰 (카드 최소 너비 380px 유지, 화면 크기에 따라 자동 배치)
+          <div className="grid gap-6" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))' }}>
             {filteredComplexes.map((complex, index) => (
               <div
                 key={complex.complexNo}
