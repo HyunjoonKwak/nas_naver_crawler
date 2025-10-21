@@ -243,7 +243,7 @@ export const UsefulLinksSection = () => {
                   value={linkForm.title}
                   onChange={(e) => setLinkForm({ ...linkForm, title: e.target.value })}
                   placeholder="예: 카카오 지도 API"
-                  className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-emerald-500 dark:bg-gray-700 dark:text-white"
+                  className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-emerald-500 dark:bg-gray-700 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500"
                 />
               </div>
 
@@ -256,7 +256,7 @@ export const UsefulLinksSection = () => {
                   value={linkForm.url}
                   onChange={(e) => setLinkForm({ ...linkForm, url: e.target.value })}
                   placeholder="https://example.com"
-                  className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-emerald-500 dark:bg-gray-700 dark:text-white"
+                  className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-emerald-500 dark:bg-gray-700 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500"
                 />
               </div>
 
@@ -269,7 +269,7 @@ export const UsefulLinksSection = () => {
                   onChange={(e) => setLinkForm({ ...linkForm, description: e.target.value })}
                   placeholder="간단한 설명을 입력하세요"
                   rows={3}
-                  className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-emerald-500 dark:bg-gray-700 dark:text-white"
+                  className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-emerald-500 dark:bg-gray-700 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500"
                 />
               </div>
 
@@ -281,7 +281,7 @@ export const UsefulLinksSection = () => {
                   <select
                     value={linkForm.category}
                     onChange={(e) => setLinkForm({ ...linkForm, category: e.target.value })}
-                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-emerald-500 dark:bg-gray-700 dark:text-white"
+                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-emerald-500 dark:bg-gray-700 text-gray-900 dark:text-white"
                   >
                     <option value="geocoding">지오코딩</option>
                     <option value="transaction">실거래가</option>
@@ -325,7 +325,7 @@ export const UsefulLinksSection = () => {
                       value={linkForm.icon}
                       onChange={(e) => setLinkForm({ ...linkForm, icon: e.target.value })}
                       placeholder="또는 직접 입력"
-                      className="flex-1 px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-emerald-500 dark:bg-gray-700 dark:text-white"
+                      className="flex-1 px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-emerald-500 dark:bg-gray-700 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500"
                     />
                     <span className="text-xl">{linkForm.icon}</span>
                   </div>
