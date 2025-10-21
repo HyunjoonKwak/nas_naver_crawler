@@ -22,14 +22,16 @@ export const prisma =
     errorFormat: 'minimal',
   })
 
-// 연결 에러 핸들링
-prisma.$connect().catch((error) => {
-  console.error('Failed to connect to database:', error);
-  // 재연결 시도
-  setTimeout(() => {
-    prisma.$connect().catch(console.error);
-  }, 5000);
-});
+// 연결 에러 핸들링 (빌드 시에는 건너뛰기)
+if (process.env.SKIP_ENV_VALIDATION !== 'true') {
+  prisma.$connect().catch((error) => {
+    console.error('Failed to connect to database:', error);
+    // 재연결 시도
+    setTimeout(() => {
+      prisma.$connect().catch(console.error);
+    }, 5000);
+  });
+}
 
 // Graceful shutdown
 if (typeof window === 'undefined') {
