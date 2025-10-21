@@ -1,5 +1,8 @@
 "use client";
 
+// Force dynamic rendering (disable static prerendering)
+export const dynamic = 'force-dynamic';
+
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
