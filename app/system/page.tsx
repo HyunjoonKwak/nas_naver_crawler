@@ -5,7 +5,6 @@ import { useSession } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
 import { Navigation } from "@/components/Navigation";
 import { MobileNavigation } from "@/components/MobileNavigation";
-import { SystemSettings } from "@/components/SystemSettings";
 import { AuthGuard } from "@/components/AuthGuard";
 import { DatabaseSection } from "@/components/system/DatabaseSection";
 import { UsefulLinksSection } from "@/components/system/UsefulLinksSection";
@@ -44,14 +43,14 @@ export default function SystemPage() {
   const searchParams = useSearchParams();
 
   const [status, setStatus] = useState<StatusData | null>(null);
-  const [activeSection, setActiveSection] = useState<'database' | 'info' | 'users' | 'settings'>('database');
+  const [activeSection, setActiveSection] = useState<'database' | 'info' | 'users'>('database');
   const [refresh, setRefresh] = useState(0);
 
   // URL 파라미터로 탭 설정
   useEffect(() => {
     const tab = searchParams.get('tab');
-    if (tab && ['database', 'info', 'users', 'settings'].includes(tab)) {
-      setActiveSection(tab as 'database' | 'info' | 'users' | 'settings');
+    if (tab && ['database', 'info', 'users'].includes(tab)) {
+      setActiveSection(tab as 'database' | 'info' | 'users');
     }
   }, [searchParams]);
 
@@ -86,7 +85,6 @@ export default function SystemPage() {
     { id: 'database' as const, icon: '🗄️', label: 'DB 현황' },
     { id: 'info' as const, icon: '📌', label: '유용한 정보' },
     ...(isAdmin ? [{ id: 'users' as const, icon: '👥', label: '사용자 관리' }] : []),
-    { id: 'settings' as const, icon: '⚙️', label: '설정' },
   ];
 
   const SectionHeader = ({ title, description }: { title: string; description: string }) => (
@@ -137,17 +135,6 @@ export default function SystemPage() {
 
         {/* Users Section - User Management */}
         {activeSection === 'users' && <UserManagementSection />}
-
-        {/* Settings Section */}
-        {activeSection === 'settings' && (
-          <div className="space-y-6">
-            <SectionHeader
-              title="시스템 설정"
-              description="테마, 알림, 언어 및 개인정보 설정을 관리하세요"
-            />
-            <SystemSettings />
-          </div>
-        )}
       </main>
 
       {/* Mobile Navigation */}

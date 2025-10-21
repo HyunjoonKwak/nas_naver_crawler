@@ -25,10 +25,11 @@ import {
 export const Navigation = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [notifications, setNotifications] = useState<any[]>([]);
   const pathname = usePathname();
-  const { data: session, status } = useSession();
+  const { data: session, status} = useSession();
 
   // SSE 기반 실시간 크롤링 상태 모니터링 (토스트 알림 활성화)
   const crawlingStatus = useCrawlEvents(undefined, true);
@@ -42,12 +43,13 @@ export const Navigation = () => {
     return `${minutes}분 ${secs}초`;
   };
 
-  // ESC 키로 메뉴/알림 닫기
+  // ESC 키로 메뉴/알림/프로필 모달 닫기
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         if (isMobileMenuOpen) setIsMobileMenuOpen(false);
         if (isNotificationOpen) setIsNotificationOpen(false);
+        if (isProfileModalOpen) setIsProfileModalOpen(false);
       }
     };
 
@@ -286,9 +288,13 @@ export const Navigation = () => {
                   )}
                 </div>
 
-                <span className="text-sm text-gray-700 dark:text-gray-300">
-                  {session.user?.name}
-                </span>
+                <button
+                  onClick={() => setIsProfileModalOpen(true)}
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-sm text-gray-700 dark:text-gray-300 font-medium transition-colors"
+                >
+                  <User className="w-4 h-4" />
+                  <span>{session.user?.name}</span>
+                </button>
                 <button
                   onClick={() => signOut({ callbackUrl: '/' })}
                   className="flex items-center gap-2 px-3 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
@@ -450,6 +456,69 @@ export const Navigation = () => {
                   • {crawlingStatus.totalComplexes}개 단지
                 </span>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 사용자 프로필 모달 */}
+      {isProfileModalOpen && session && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+                  계정 정보
+                </h3>
+                <button
+                  onClick={() => setIsProfileModalOpen(false)}
+                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                {/* 사용자 정보 */}
+                <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
+                  <div className="flex items-center gap-4 mb-4">
+                    <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-2xl font-bold">
+                      {session.user?.name?.charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                      <div className="text-lg font-semibold text-gray-900 dark:text-white">
+                        {session.user?.name}
+                      </div>
+                      <div className="text-sm text-gray-500 dark:text-gray-400">
+                        {session.user?.email}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 역할 */}
+                  <div className="flex items-center gap-2 pt-3 border-t border-gray-200 dark:border-gray-600">
+                    <span className="text-sm text-gray-600 dark:text-gray-400">역할:</span>
+                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                      (session.user as any).role === 'ADMIN'
+                        ? 'bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400'
+                        : (session.user as any).role === 'FAMILY'
+                        ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
+                        : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
+                    }`}>
+                      {(session.user as any).role === 'ADMIN' ? '관리자' :
+                       (session.user as any).role === 'FAMILY' ? '가족' : '게스트'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* 닫기 버튼 */}
+                <button
+                  onClick={() => setIsProfileModalOpen(false)}
+                  className="w-full px-4 py-3 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-900 dark:text-white rounded-lg font-medium transition-colors"
+                >
+                  닫기
+                </button>
+              </div>
             </div>
           </div>
         </div>
