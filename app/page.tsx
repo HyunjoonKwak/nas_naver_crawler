@@ -9,10 +9,7 @@ import {
   Home,
   Zap,
   BarChart3,
-  Bell,
   DollarSign,
-  MessageSquare,
-  Clock
 } from "lucide-react";
 
 export default function LandingPage() {
@@ -23,11 +20,6 @@ export default function LandingPage() {
     password: "",
   });
   const [isLoading, setIsLoading] = useState(false);
-  const [stats, setStats] = useState({
-    totalArticles: 0,
-    totalComplexes: 0,
-    avgUpdateTime: "5분",
-  });
 
   // 이미 로그인한 사용자는 홈으로 리다이렉트
   useEffect(() => {
@@ -35,26 +27,6 @@ export default function LandingPage() {
       router.push("/home");
     }
   }, [status, router]);
-
-  // 실시간 통계 조회
-  useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const response = await fetch('/api/db-stats');
-        const data = await response.json();
-
-        setStats({
-          totalArticles: data.articles?.total || 0,
-          totalComplexes: data.complexes?.total || 0,
-          avgUpdateTime: "5분", // 기본값
-        });
-      } catch (error) {
-        console.error('Failed to fetch stats:', error);
-      }
-    };
-
-    fetchStats();
-  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -121,28 +93,6 @@ export default function LandingPage() {
               <p className="text-base text-gray-500 dark:text-gray-400 max-w-3xl mx-auto">
                 네이버 부동산의 매물 정보를 실시간으로 추적하고 분석하여 더 나은 투자 결정을 내리세요
               </p>
-            </div>
-
-            {/* 실시간 통계 */}
-            <div className="grid grid-cols-3 gap-4 max-w-2xl mx-auto mb-8">
-              <div className="text-center p-4 bg-white/80 dark:bg-gray-800/80 rounded-xl backdrop-blur-sm shadow-lg border border-gray-200/50 dark:border-gray-700/50">
-                <div className="text-3xl font-bold text-blue-600 dark:text-blue-400">
-                  {stats.totalArticles.toLocaleString()}
-                </div>
-                <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">등록 매물</div>
-              </div>
-              <div className="text-center p-4 bg-white/80 dark:bg-gray-800/80 rounded-xl backdrop-blur-sm shadow-lg border border-gray-200/50 dark:border-gray-700/50">
-                <div className="text-3xl font-bold text-green-600 dark:text-green-400">
-                  {stats.totalComplexes.toLocaleString()}
-                </div>
-                <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">관리 단지</div>
-              </div>
-              <div className="text-center p-4 bg-white/80 dark:bg-gray-800/80 rounded-xl backdrop-blur-sm shadow-lg border border-gray-200/50 dark:border-gray-700/50">
-                <div className="text-3xl font-bold text-purple-600 dark:text-purple-400">
-                  {stats.avgUpdateTime}
-                </div>
-                <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">평균 업데이트</div>
-              </div>
             </div>
 
             {/* Features - 3개 핵심 기능 */}
