@@ -262,12 +262,9 @@ export default function Home() {
         {/* Hero Section with Quick Stats */}
         <div className="mb-8">
           <div className="mb-8">
-            <h2 className="text-4xl font-bold text-gray-900 dark:text-white mb-3 text-center">
+            <h2 className="text-5xl font-bold text-gray-900 dark:text-white text-center">
               부동산 데이터를 쉽고 빠르게
             </h2>
-            <p className="text-lg text-gray-600 dark:text-gray-400 text-right">
-              2025.specialrisk
-            </p>
           </div>
 
           {/* 크롤링 상태 배너 */}
