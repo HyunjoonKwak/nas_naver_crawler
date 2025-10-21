@@ -354,7 +354,7 @@ export default function Home() {
                   </div>
                   {dashboardData.hotComplexes.length > 0 ? (
                     <div className="space-y-1">
-                      {dashboardData.hotComplexes.map((complex, idx) => (
+                      {dashboardData.hotComplexes.map((complex: any, idx: number) => (
                         <Link
                           key={complex.complexNo}
                           href={`/complex/${complex.complexNo}`}
@@ -505,7 +505,7 @@ export default function Home() {
             ) : (
               <>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {(showAll ? favoritesWithStats : favoritesWithStats.slice(0, 6)).map((fav) => (
+                  {(showAll ? favoritesWithStats : favoritesWithStats.slice(0, 6)).map((fav: FavoriteWithStats) => (
                   <Link
                     key={fav.complexNo}
                     href={`/complex/${fav.complexNo}`}
