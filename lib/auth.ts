@@ -67,8 +67,9 @@ export const authOptions: NextAuthOptions = {
     },
     async session({ session, token }) {
       if (session.user) {
-        session.user.id = token.id as string;
-        session.user.role = token.role as 'ADMIN' | 'FAMILY' | 'GUEST';
+        // Type assertion for extended session user
+        (session.user as any).id = token.id as string;
+        (session.user as any).role = token.role as 'ADMIN' | 'FAMILY' | 'GUEST';
       }
       return session;
     },
