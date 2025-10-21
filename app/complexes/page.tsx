@@ -775,8 +775,8 @@ export default function ComplexesPage() {
         {/* Header */}
         <Navigation />
 
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      {/* Main Content - 화면 크기에 따라 최대 너비 확장 */}
+      <main className="mx-auto px-4 sm:px-6 lg:px-8 py-8 max-w-7xl lg:max-w-screen-xl xl:max-w-screen-2xl">
         <div className="flex gap-6">
           {/* 그룹 사이드바 - 축소 */}
           <div className={`
