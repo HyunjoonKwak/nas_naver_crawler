@@ -394,86 +394,51 @@ export default function ComplexesPage() {
 
     setFetchingInfo(true);
 
-    const loadingToast = showLoading('단지 정보 조회 중...');
+    // 바로 크롤링 시작 (단지 정보 + 매물을 한 번에 수집)
+    const crawlToast = showLoading(`단지 ${complexNo} 정보 수집 및 크롤링 중...`);
+    setCrawling(complexNo);
+
     try {
-      // 1. 단지 정보 조회
-      const infoResponse = await fetch(`/api/complex-info?complexNo=${complexNo}`);
-      const infoData = await infoResponse.json();
-
-      if (!infoResponse.ok || !infoData.success) {
-        dismissToast(loadingToast);
-        showError(infoData.error || '단지 정보를 가져올 수 없습니다.');
-        setFetchingInfo(false);
-        return;
-      }
-
-      const complexInfo = infoData.complex;
-      dismissToast(loadingToast);
-
-      // 2. DB에 추가 (Complex 테이블에만, Favorite에는 추가하지 않음)
-      const addToast = showLoading('단지 추가 중...');
-      const addResponse = await fetch('/api/complex', {
+      // 1. 크롤링 API 호출 (스케줄 크롤링과 동일한 방식)
+      const crawlResponse = await fetch('/api/crawl', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          complexNo: complexInfo.complexNo,
-          complexName: complexInfo.complexName
+          complexNumbers: complexNo,
+          initiator: 'manual' // 수동 크롤링
         })
       });
 
-      const addData = await addResponse.json();
+      const crawlData = await crawlResponse.json();
 
-      if (!addResponse.ok) {
-        dismissToast(addToast);
-        showError(addData.error || '단지 추가 실패');
+      if (!crawlResponse.ok || !crawlData.crawlId) {
+        dismissToast(crawlToast);
+        showError(crawlData.error || '크롤링 시작 실패');
         setFetchingInfo(false);
+        setCrawling(null);
         return;
       }
 
-      dismissToast(addToast);
-      showSuccess(`${complexInfo.complexName}이(가) 추가되었습니다!`);
+      // 2. 크롤링 진행 상황 폴링
+      await pollCrawlStatus(crawlData.crawlId);
 
+      // 3. 크롤링 완료 후 단지 목록 새로고침
       await fetchComplexes();
+
+      dismissToast(crawlToast);
+      showSuccess(`단지 ${complexNo} 추가 및 크롤링 완료!`);
+
       setNewComplexNo("");
       setComplexInfo(null);
       setShowAddForm(false);
 
-      // 3. 자동으로 크롤링 시작
-      const crawlToast = showLoading(`${complexInfo.complexName} 매물 수집 중...`);
-
-      setCrawling(complexInfo.complexNo);
-      try {
-        const crawlResponse = await fetch('/api/crawl', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ complexNumbers: complexInfo.complexNo })
-        });
-
-        const crawlData = await crawlResponse.json();
-
-        if (crawlResponse.ok && crawlData.crawlId) {
-          // 크롤링 진행 상황 폴링
-          await pollCrawlStatus(crawlData.crawlId);
-          await fetchComplexes();
-          dismissToast(crawlToast);
-          showSuccess(`${complexInfo.complexName} 크롤링 완료!`);
-        } else {
-          dismissToast(crawlToast);
-          showError('크롤링 실패. 나중에 수동으로 크롤링해주세요.');
-        }
-      } catch (error) {
-        dismissToast(crawlToast);
-        console.error('Auto-crawl failed:', error);
-        showError('크롤링 실패. 나중에 수동으로 크롤링해주세요.');
-      } finally {
-        setCrawling(null);
-      }
     } catch (error) {
-      dismissToast(loadingToast);
-      console.error('Failed to fetch and add complex:', error);
-      showError('단지 추가 중 오류가 발생했습니다.');
+      dismissToast(crawlToast);
+      console.error('Failed to crawl complex:', error);
+      showError('크롤링 중 오류가 발생했습니다.');
     } finally {
       setFetchingInfo(false);
+      setCrawling(null);
     }
   };
 
