@@ -45,17 +45,42 @@ export async function GET(request: NextRequest) {
     // 각 스케줄의 단지 정보 조회
     const schedulesWithComplexInfo = await Promise.all(
       schedules.map(async (schedule) => {
-        const complexes = await prisma.complex.findMany({
-          where: {
-            complexNo: {
-              in: schedule.complexNos,
+        let complexes: { complexNo: string; complexName: string }[] = [];
+
+        if (schedule.useBookmarkedComplexes) {
+          // 관심단지 모드: 사용자의 Favorite에서 조회
+          const favorites = await prisma.favorite.findMany({
+            where: {
+              userId: currentUser.id,
             },
-          },
-          select: {
-            complexNo: true,
-            complexName: true,
-          },
-        });
+            include: {
+              complex: {
+                select: {
+                  complexNo: true,
+                  complexName: true,
+                },
+              },
+            },
+          });
+
+          complexes = favorites.map(f => ({
+            complexNo: f.complex.complexNo,
+            complexName: f.complex.complexName,
+          }));
+        } else {
+          // 고정 단지 모드: complexNos에서 조회
+          complexes = await prisma.complex.findMany({
+            where: {
+              complexNo: {
+                in: schedule.complexNos,
+              },
+            },
+            select: {
+              complexNo: true,
+              complexName: true,
+            },
+          });
+        }
 
         // Cron 표현식을 한글로 변환
         let cronDescription = schedule.cronExpr;

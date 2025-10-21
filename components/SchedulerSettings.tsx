@@ -394,39 +394,25 @@ export function SchedulerSettings() {
                   {/* 단지 목록 */}
                   <div className="mb-4">
                     <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                      🏘️ 크롤링 단지 ({schedule.complexNos.length}개)
+                      🏘️ 크롤링 단지 ({schedule.complexes.length}개)
                     </h4>
                     <div className="flex flex-wrap gap-2">
-                      {schedule.complexNos.map((complexNo) => {
-                        const complex = schedule.complexes.find(c => c.complexNo === complexNo);
-                        const isInvalid = !complex;
-                        return (
+                      {schedule.complexes.length > 0 ? (
+                        schedule.complexes.map((complex) => (
                           <span
-                            key={complexNo}
-                            className={`px-3 py-1 rounded-full text-xs font-medium ${
-                              isInvalid
-                                ? 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 line-through'
-                                : 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400'
-                            }`}
-                            title={isInvalid ? `단지를 찾을 수 없음 (${complexNo})` : complex.complexName}
+                            key={complex.complexNo}
+                            className="px-3 py-1 rounded-full text-xs font-medium bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400"
+                            title={complex.complexName}
                           >
-                            {isInvalid ? `⚠️ ${complexNo}` : complex.complexName}
+                            {complex.complexName}
                           </span>
-                        );
-                      })}
+                        ))
+                      ) : (
+                        <span className="px-3 py-1 rounded-full text-xs font-medium bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-400">
+                          ⚠️ 관심단지 없음
+                        </span>
+                      )}
                     </div>
-                    {(() => {
-                      const invalidCount = schedule.complexNos.filter(
-                        no => !schedule.complexes.find(c => c.complexNo === no)
-                      ).length;
-                      if (invalidCount > 0) {
-                        return (
-                          <p className="mt-2 text-xs text-red-600 dark:text-red-400 font-semibold">
-                            ⚠️ {invalidCount}개의 단지를 찾을 수 없습니다. 스케줄을 수정하여 최신 관심단지 목록을 적용해주세요.
-                          </p>
-                        );
-                      }
-                    })()}
                   </div>
 
                   {/* 실행 정보 */}
