@@ -3,6 +3,14 @@ FROM node:20-slim AS frontend-builder
 
 WORKDIR /app
 
+# Install OpenSSL for Prisma
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    openssl \
+    libssl-dev \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
 # Next.js 앱 빌드
 COPY package.json package-lock.json* ./
 RUN npm ci
@@ -18,8 +26,10 @@ COPY instrumentation.ts next.config.js tsconfig.json tailwind.config.js postcss.
 # Prisma Client 생성
 RUN npx prisma generate
 
-# Build-time environment variable (dummy value for build)
-ENV DATABASE_URL="postgresql://user:pass@localhost:5432/db?schema=public"
+# Build-time environment variables (dummy values for build)
+ENV DATABASE_URL="postgresql://user:pass@localhost:5432/db?schema=public" \
+    NEXTAUTH_SECRET="build-time-secret-min-32-chars-long-placeholder" \
+    NEXTAUTH_URL="http://localhost:3000"
 
 RUN npm run build
 
@@ -41,6 +51,7 @@ RUN apt-get update && \
     curl \
     openssl \
     libssl3 \
+    libssl-dev \
     libpq-dev \
     fonts-liberation \
     fonts-dejavu-core \
