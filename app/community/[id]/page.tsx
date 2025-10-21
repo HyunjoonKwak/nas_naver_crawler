@@ -553,7 +553,7 @@ export default function PostDetailPage() {
                   </div>
                   {canEdit && (
                     <div className="flex gap-2">
-                      {(session?.user as any)?.role === 'ADMIN' && (
+                      {extendedSession?.user?.role === 'ADMIN' && (
                         <button
                           onClick={handleTogglePin}
                           className="text-sm text-blue-600 dark:text-blue-400 hover:underline font-medium"
@@ -654,7 +654,7 @@ export default function PostDetailPage() {
                   </div>
 
                   {/* Report Button - Only if not own post */}
-                  {session?.user?.id !== post.author.id && (
+                  {extendedSession?.user?.id !== post.author.id && (
                     <button
                       onClick={() => setIsReportModalOpen(true)}
                       className="inline-flex items-center gap-2 px-4 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
@@ -733,7 +733,7 @@ export default function PostDetailPage() {
                             채택
                           </button>
                         )}
-                        {(session?.user?.id === comment.author.id || isAdmin) ? (
+                        {(extendedSession?.user?.id === comment.author.id || isAdmin) ? (
                           <>
                             <button
                               onClick={() => {

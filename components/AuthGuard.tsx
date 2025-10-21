@@ -5,6 +5,17 @@ import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { LoadingSpinner } from './ui/LoadingSpinner';
 
+// Extended Session type helper
+type ExtendedSession = {
+  user: {
+    id: string;
+    email: string;
+    name: string;
+    role: 'ADMIN' | 'FAMILY' | 'GUEST';
+    image?: string | null;
+  };
+};
+
 interface AuthGuardProps {
   children: React.ReactNode;
   requireAdmin?: boolean;
@@ -12,6 +23,7 @@ interface AuthGuardProps {
 
 export function AuthGuard({ children, requireAdmin = false }: AuthGuardProps) {
   const { data: session, status } = useSession();
+  const extendedSession = session as ExtendedSession | null;
   const router = useRouter();
 
   useEffect(() => {
@@ -26,11 +38,11 @@ export function AuthGuard({ children, requireAdmin = false }: AuthGuardProps) {
     }
 
     // 관리자 권한 체크
-    if (requireAdmin && session?.user?.role !== 'ADMIN') {
+    if (requireAdmin && extendedSession?.user?.role !== 'ADMIN') {
       console.log('🔒 AuthGuard: Admin required, redirecting to /dashboard');
       router.replace('/dashboard');
     }
-  }, [status, session, router, requireAdmin]);
+  }, [status, session, router, requireAdmin, extendedSession]);
 
   // 로딩 중이거나 세션이 없으면 로딩 표시
   if (status === 'loading') {
@@ -48,7 +60,7 @@ export function AuthGuard({ children, requireAdmin = false }: AuthGuardProps) {
   }
 
   // 관리자 권한이 필요한데 관리자가 아니면 렌더링하지 않음
-  if (requireAdmin && session.user?.role !== 'ADMIN') {
+  if (requireAdmin && extendedSession?.user?.role !== 'ADMIN') {
     console.log('🔒 AuthGuard: Blocking render, not admin');
     return null;
   }
