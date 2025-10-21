@@ -23,8 +23,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
             refetchOnReconnect: true, // 재연결 시 리프레시
             retry: 1, // 실패 시 1회 재시도
 
-            // 기본 에러 처리
-            useErrorBoundary: false,
+            // 기본 에러 처리 (v5에서 useErrorBoundary는 throwOnError로 변경)
+            throwOnError: false,
           },
           mutations: {
             // 변경 작업 정책
