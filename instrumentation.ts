@@ -4,6 +4,12 @@
  */
 
 export async function register() {
+  // 빌드 시에는 실행하지 않음 (DB 연결 불가)
+  if (process.env.NEXT_PHASE === 'phase-production-build') {
+    console.log('⏭️  Skipping scheduler initialization (build time)');
+    return;
+  }
+
   // 서버 환경에서만 실행
   if (process.env.NEXT_RUNTIME === 'nodejs') {
     const { loadAllSchedules } = await import('@/lib/scheduler');

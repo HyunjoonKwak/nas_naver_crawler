@@ -5,6 +5,9 @@ import { Providers } from './providers';
 import { validateEnv, logEnvInfo } from '@/lib/env';
 import "./globals.css";
 
+// 모든 페이지를 동적 렌더링으로 설정 (빌드 시 DB 접근 방지)
+export const dynamic = 'force-dynamic';
+
 // 환경 변수 검증 (서버 사이드)
 if (typeof window === 'undefined') {
   validateEnv();
