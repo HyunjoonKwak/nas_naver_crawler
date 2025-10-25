@@ -22,10 +22,13 @@ const envSchema = z.object({
   
   // Node Environment
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
-  
+
   // Naver Maps API (optional)
   NAVER_MAPS_CLIENT_ID: z.string().optional(),
   NAVER_MAPS_CLIENT_SECRET: z.string().optional(),
+
+  // Public Data Portal API (optional)
+  PUBLIC_DATA_SERVICE_KEY: z.string().optional(),
 });
 
 // 환경 변수 파싱 및 검증

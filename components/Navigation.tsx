@@ -20,7 +20,8 @@ import {
   User,
   Loader2,
   Clock,
-  Key
+  Key,
+  TrendingUp
 } from 'lucide-react';
 
 type Theme = 'light' | 'dark' | 'system';
@@ -235,6 +236,7 @@ export const Navigation = () => {
   const navLinks = [
     { href: '/home', label: '홈', icon: Home },
     { href: '/complexes', label: '매물 관리', icon: Building2 },
+    { href: '/real-price', label: '실거래가', icon: TrendingUp },
     { href: '/analytics', label: '데이터 분석', icon: BarChart3 },
     { href: '/community', label: '커뮤니티', icon: MessageSquare },
     { href: '/alerts', label: '알림 설정', icon: Bell },
