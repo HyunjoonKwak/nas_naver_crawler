@@ -17,7 +17,7 @@ export async function GET() {
     try {
       await requireAuth();
       isAuthenticated = true;
-    } catch (error) {
+    } catch (error: any) {
       // 인증 실패 시 기본 정보만 제공
       isAuthenticated = false;
     }
@@ -96,7 +96,7 @@ export async function GET() {
           processedArticles: ongoingCrawl.processedArticles,
         };
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to fetch current crawl:', error);
     }
 

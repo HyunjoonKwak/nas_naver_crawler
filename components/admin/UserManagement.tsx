@@ -32,7 +32,7 @@ export function UserManagement() {
         const data = await response.json();
         setUsers(data.users || []);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to fetch users:', error);
     } finally {
       setLoading(false);
@@ -52,7 +52,7 @@ export function UserManagement() {
         setIsModalOpen(false);
         setEditingUser(null);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to update user role:', error);
     }
   };
@@ -70,7 +70,7 @@ export function UserManagement() {
       if (response.ok) {
         await fetchUsers();
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to delete user:', error);
     }
   };

@@ -38,7 +38,7 @@ export function PriceChart({
         const result = await response.json();
         setData(result.data || []);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to fetch price data:', error);
     } finally {
       setLoading(false);

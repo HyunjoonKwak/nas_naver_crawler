@@ -38,11 +38,11 @@ class SSEClient {
           this.listeners.forEach((callback) => {
             try {
               callback(data);
-            } catch (error) {
+            } catch (error: any) {
               console.error('[SSE Client] Listener callback error:', error);
             }
           });
-        } catch (error) {
+        } catch (error: any) {
           console.error('[SSE Client] Failed to parse event:', error);
         }
       };
@@ -67,7 +67,7 @@ class SSEClient {
           console.log(`[SSE Client] Connection error (state: ${this.eventSource?.readyState}), waiting for auto-reconnect...`);
         }
       };
-    } catch (error) {
+    } catch (error: any) {
       console.error('[SSE Client] Failed to create EventSource:', error);
       this.isConnecting = false;
     }

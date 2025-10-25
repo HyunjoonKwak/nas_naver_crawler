@@ -90,7 +90,7 @@ export default function AdminReportsPage() {
       } else {
         showError(data.error || "신고 목록을 불러오는데 실패했습니다");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to fetch reports:", error);
       showError("신고 목록을 불러오는데 실패했습니다");
     } finally {
@@ -120,7 +120,7 @@ export default function AdminReportsPage() {
       } else {
         showError("상태 업데이트에 실패했습니다");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to update status:", error);
       showError("상태 업데이트에 실패했습니다");
     }

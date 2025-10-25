@@ -61,7 +61,7 @@ async function main() {
           });
 
           updatedCount++;
-        } catch (error) {
+        } catch (error: any) {
           console.error(`❌ Error updating article ${article.id}:`, error);
           errorCount++;
         }
@@ -80,7 +80,7 @@ async function main() {
     console.log(`   - Successfully updated: ${updatedCount.toLocaleString()}`);
     console.log(`   - Errors: ${errorCount.toLocaleString()}`);
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('\n❌ Migration failed:', error);
     throw error;
   } finally {

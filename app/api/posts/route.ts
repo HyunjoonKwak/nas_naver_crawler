@@ -195,7 +195,8 @@ export async function POST(request: NextRequest) {
       post,
     });
   } catch (error: any) {
-    logger.error('Failed to create post', error, {
+    logger.error('Failed to create post', {
+      error,
       userId: (error as any).userId
     });
     return NextResponse.json(

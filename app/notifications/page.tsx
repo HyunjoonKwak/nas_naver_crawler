@@ -68,7 +68,7 @@ export default function NotificationsPage() {
       } else {
         showError(data.error || "알림을 불러오는데 실패했습니다");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to fetch notifications:", error);
       showError("알림을 불러오는데 실패했습니다");
     } finally {
@@ -87,7 +87,7 @@ export default function NotificationsPage() {
       if (response.ok) {
         fetchNotifications();
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to mark as read:", error);
     }
   };
@@ -104,7 +104,7 @@ export default function NotificationsPage() {
         showSuccess("모든 알림을 읽음 처리했습니다");
         fetchNotifications();
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to mark all as read:", error);
       showError("알림 처리에 실패했습니다");
     }
@@ -122,7 +122,7 @@ export default function NotificationsPage() {
         showSuccess("알림을 삭제했습니다");
         fetchNotifications();
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to delete notification:", error);
       showError("알림 삭제에 실패했습니다");
     }
@@ -140,7 +140,7 @@ export default function NotificationsPage() {
         showSuccess("읽은 알림을 모두 삭제했습니다");
         fetchNotifications();
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to delete all:", error);
       showError("알림 삭제에 실패했습니다");
     }

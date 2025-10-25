@@ -5,48 +5,42 @@ node_modules/
 
 # Testing
 coverage/
+.nyc_output
+*.lcov
+.pytest_cache/
+.coverage
+htmlcov/
 
 # Next.js
 .next/
 out/
 build/
-dist/
 
 # Production
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
+dist/
 
 # Misc
 .DS_Store
 *.pem
 
 # Debug
-lerna-debug.log*
-.pnpm-debug.log*
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
 # Local env files
 .env
-.env*.local
-
-# Prisma
-# prisma/migrations/ - migrations should be tracked in git
-.env.test
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
 
 # Vercel
 .vercel
 
-# Typescript
+# TypeScript
 *.tsbuildinfo
 next-env.d.ts
-
-# Crawled data (디렉토리는 유지, 내용물만 무시)
-crawled_data/*
-!crawled_data/.gitkeep
-logs/*
-!logs/.gitkeep
-*.bak
 
 # Python
 __pycache__/
@@ -54,10 +48,41 @@ __pycache__/
 *$py.class
 *.so
 .Python
-*.egg-info/
-dist/
-build/
+venv/
+ENV/
+.venv/
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.ruff_cache/
 
-# Playwright
-.playwright-mcp/
+# Logs
+logs/
+*.log
 
+# Database
+*.db
+*.db-journal
+prisma/migrations/*.sql
+!prisma/migrations/migration_lock.toml
+
+# Crawled data
+crawled_data/
+crawled_data_test/
+
+# Docker
+*.env.docker
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Husky
+.husky/_

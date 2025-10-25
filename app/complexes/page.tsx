@@ -352,7 +352,7 @@ export default function ComplexesPage() {
       setComplexes(data.complexes || []);
       // 그룹 목록도 새로고침 (그룹 카운트 업데이트를 위해)
       setGroupRefreshTrigger(prev => prev + 1);
-    } catch (error) {
+    } catch (error: any) {
       console.error('[CLIENT_FETCH] 단지목록 조회 실패:', error);
       setComplexes([]); // 에러 시 빈 배열로 설정
     } finally {
@@ -433,7 +433,7 @@ export default function ComplexesPage() {
       setComplexInfo(null);
       setShowAddForm(false);
 
-    } catch (error) {
+    } catch (error: any) {
       dismissToast(crawlToast);
       console.error('Failed to crawl complex:', error);
       showError('크롤링 중 오류가 발생했습니다.');
@@ -474,7 +474,7 @@ export default function ComplexesPage() {
         console.error('[CLIENT_TOGGLE] API 에러:', data);
         showError(data.error || '관심단지 설정 실패');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('[CLIENT_TOGGLE] 예외 발생:', error);
       showError('관심단지 설정 중 오류가 발생했습니다.');
     }
@@ -503,7 +503,7 @@ export default function ComplexesPage() {
         const data = await response.json();
         showError(data.error || '단지 삭제 실패');
       }
-    } catch (error) {
+    } catch (error: any) {
       dismissToast(loadingToast);
       console.error('Failed to delete complex:', error);
       showError('단지 삭제 중 오류가 발생했습니다.');
@@ -559,7 +559,7 @@ export default function ComplexesPage() {
             reject(new Error('Crawl timeout - exceeded 15 minutes'));
             return;
           }
-        } catch (error) {
+        } catch (error: any) {
           console.error('[Complexes] Polling error:', error);
           clearInterval(interval);
           reject(error);
@@ -597,7 +597,7 @@ export default function ComplexesPage() {
       } else {
         showError(data.error || '크롤링 실패');
       }
-    } catch (error) {
+    } catch (error: any) {
       dismissToast(loadingToast);
       console.error('Failed to crawl:', error);
       showError('크롤링 중 오류가 발생했습니다.');
@@ -657,7 +657,7 @@ export default function ComplexesPage() {
       } else {
         showError(data.error || '크롤링 실패');
       }
-    } catch (error) {
+    } catch (error: any) {
       dismissToast(loadingToast);
       console.error('Failed to crawl all:', error);
       showError('크롤링 중 오류가 발생했습니다.');
@@ -697,7 +697,7 @@ export default function ComplexesPage() {
           break;
         }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to update favorite info:', error);
     }
   };
@@ -765,7 +765,7 @@ export default function ComplexesPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ favorites: complexes.map((f, idx) => ({ ...f, order: idx })) })
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to save order:', error);
     }
   };
@@ -1961,7 +1961,7 @@ function SingleComplexCrawler({
           if (complexResponse.ok && complexData.complex) {
             complexName = complexData.complex.complexName || extracted;
           }
-        } catch (e) {
+        } catch (e: any) {
           console.warn('단지명 조회 실패, 단지번호 사용:', e);
         }
 
@@ -1982,7 +1982,7 @@ function SingleComplexCrawler({
       } else {
         setError(data.error || '크롤링 실패');
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to crawl:', err);
       setError('크롤링 중 오류가 발생했습니다.');
     } finally {
@@ -2021,7 +2021,7 @@ function SingleComplexCrawler({
             clearInterval(interval);
             reject(new Error('Timeout'));
           }
-        } catch (error) {
+        } catch (error: any) {
           clearInterval(interval);
           reject(error);
         }

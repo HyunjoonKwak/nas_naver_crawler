@@ -65,7 +65,7 @@ export async function validateRequest<T extends z.ZodTypeAny>(
       success: true,
       data: parsed.data,
     };
-  } catch (error) {
+  } catch (error: any) {
     logger.error('Failed to parse request body', error);
 
     return {
@@ -132,7 +132,7 @@ export function validateQuery<T extends z.ZodTypeAny>(
       success: true,
       data: parsed.data,
     };
-  } catch (error) {
+  } catch (error: any) {
     logger.error('Failed to parse query parameters', error);
 
     return {

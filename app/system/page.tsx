@@ -76,7 +76,7 @@ export default function SystemPage() {
       const response = await fetch('/api/status');
       const data = await response.json();
       setStatus(data);
-    } catch (error) {
+    } catch (error: any) {
       // 상태 조회 실패는 조용히 처리 (페이지는 계속 표시)
     }
   };

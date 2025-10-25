@@ -80,7 +80,7 @@ export default function ComplexDetailPage() {
       } else {
         console.log('No data found for complex:', complexNo);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to fetch complex data:', error);
     } finally {
       setLoading(false);
@@ -145,7 +145,7 @@ export default function ComplexDetailPage() {
       } else {
         showError('크롤링에 실패했습니다.');
       }
-    } catch (error) {
+    } catch (error: any) {
       clearInterval(progressInterval);
       console.error('Crawl error:', error);
       showError('크롤링 중 오류가 발생했습니다.');
@@ -180,7 +180,7 @@ export default function ComplexDetailPage() {
         const data = await response.json();
         showError(`삭제에 실패했습니다: ${data.error || '알 수 없는 오류'}`);
       }
-    } catch (error) {
+    } catch (error: any) {
       dismissToast(loadingToast);
       console.error('Delete error:', error);
       showError('삭제 중 오류가 발생했습니다.');

@@ -33,7 +33,7 @@ export default function FindEmailPage() {
       } else {
         showError(data.error || "해당 이름으로 등록된 계정을 찾을 수 없습니다.");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Find email error:", error);
       showError("이메일 찾기 중 오류가 발생했습니다.");
     } finally {

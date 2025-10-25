@@ -59,7 +59,7 @@ export default function RealPriceAnalysis({ complexNo }: RealPriceAnalysisProps)
         setChartData(result.data.chartData);
         setApiStatus(result.apiStatus || '');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to fetch real price data:', error);
     } finally {
       setLoading(false);

@@ -57,7 +57,7 @@ export function exportToExcel(options: ExcelExportOptions): void {
         options.filename.replace('.xlsx', '.csv')
       );
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error('Failed to export Excel:', error);
   }
 }

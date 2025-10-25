@@ -160,12 +160,12 @@ function getSingleAnalysis(complex: any, tradeTypes?: string[]) {
     value,
   }));
 
-  // 2. 면적별 가격 분포 (산점도 데이터) + 데이터 범위 계산
+  // ✅ 개선: 면적별 가격 분포 (숫자 컬럼 사용)
   const areaVsPriceData = articles
-    .filter((a: any) => a.dealOrWarrantPrc && a.area1)
+    .filter((a: any) => a.dealOrWarrantPrcWon && a.area1)
     .map((a: any) => ({
       area: a.area1,
-      price: parsePriceToNumber(a.dealOrWarrantPrc),
+      price: Number(a.dealOrWarrantPrcWon) / 10000, // 원 → 만원
       tradeType: a.tradeTypeName,
       priceLabel: a.dealOrWarrantPrc,
     }));
@@ -180,12 +180,12 @@ function getSingleAnalysis(complex: any, tradeTypes?: string[]) {
     maxPrice: Math.max(...prices),
   };
 
-  // 3. 가격 추이 데이터 - 평형별로 구분
+  // ✅ 개선: 가격 추이 데이터 (숫자 컬럼 사용)
   const priceByArea = articles
-    .filter((a: any) => a.area1 && a.dealOrWarrantPrc)
+    .filter((a: any) => a.area1 && a.dealOrWarrantPrcWon)
     .reduce((acc: any, article: any) => {
       const pyeong = Math.round(article.area1 * 0.3025);
-      const price = parsePriceToNumber(article.dealOrWarrantPrc);
+      const price = Number(article.dealOrWarrantPrcWon) / 10000; // 원 → 만원
       if (!acc[pyeong]) acc[pyeong] = [];
       acc[pyeong].push(price);
       return acc;
@@ -199,10 +199,10 @@ function getSingleAnalysis(complex: any, tradeTypes?: string[]) {
     }, {}),
   }];
 
-  // 4. 통계 요약 - 전체
+  // ✅ 개선: 통계 요약 (숫자 컬럼 사용)
   const allPrices = articles
-    .filter((a: any) => a.dealOrWarrantPrc)
-    .map((a: any) => parsePriceToNumber(a.dealOrWarrantPrc));
+    .filter((a: any) => a.dealOrWarrantPrcWon)
+    .map((a: any) => Number(a.dealOrWarrantPrcWon) / 10000); // 원 → 만원
 
   const sortedPrices = [...allPrices].sort((a, b) => a - b);
   const avgPrice = Math.round(allPrices.reduce((sum: number, p: number) => sum + p, 0) / allPrices.length);
@@ -211,12 +211,13 @@ function getSingleAnalysis(complex: any, tradeTypes?: string[]) {
   const maxPrice = Math.max(...allPrices);
 
   // 평당 평균가 계산 - 전체
+  // ✅ 개선: 평당 가격 (숫자 컬럼 사용)
   const avgPricePerPyeong = Math.round(
     articles
-      .filter((a: any) => a.area1 && a.dealOrWarrantPrc)
+      .filter((a: any) => a.area1 && a.dealOrWarrantPrcWon)
       .reduce((sum: number, a: any) => {
         const pyeong = a.area1 * 0.3025;
-        const price = parsePriceToNumber(a.dealOrWarrantPrc);
+        const price = Number(a.dealOrWarrantPrcWon) / 10000; // 원 → 만원
         return sum + price / pyeong;
       }, 0) / articles.length
   );
@@ -242,8 +243,9 @@ function getSingleAnalysis(complex: any, tradeTypes?: string[]) {
       return acc;
     }, {});
 
+  // ✅ 개선: 평형별 통계 (숫자 컬럼 사용)
   const statisticsByArea = Object.values(articlesByAreaAndType).map((group: any) => {
-    const prices = group.articles.map((a: any) => parsePriceToNumber(a.dealOrWarrantPrc));
+    const prices = group.articles.map((a: any) => Number(a.dealOrWarrantPrcWon) / 10000); // 원 → 만원
     const sortedPrices = [...prices].sort((a: number, b: number) => a - b);
     const avgPrice = Math.round(prices.reduce((sum: number, p: number) => sum + p, 0) / prices.length);
     const medianPrice = sortedPrices[Math.floor(sortedPrices.length / 2)];
@@ -271,13 +273,14 @@ function getSingleAnalysis(complex: any, tradeTypes?: string[]) {
   });
 
   // 6. 가격 분포 히스토그램 - 평형별 + 거래유형별로 구분
+  // ✅ 개선: 가격 히스토그램 (숫자 컬럼 사용)
   const priceHistogramByAreaAndType = articles
-    .filter((a: any) => a.area1 && a.dealOrWarrantPrc && a.tradeTypeName)
+    .filter((a: any) => a.area1 && a.dealOrWarrantPrcWon && a.tradeTypeName)
     .reduce((acc: any, article: any) => {
       const pyeong = Math.round(article.area1 * 0.3025);
       const tradeType = article.tradeTypeName;
-      const price = parsePriceToNumber(article.dealOrWarrantPrc);
-      const bucket = Math.floor(price / 10000) * 10000; // 1억 단위
+      const priceInManwon = Number(article.dealOrWarrantPrcWon) / 10000; // 원 → 만원
+      const bucket = Math.floor(priceInManwon / 10000) * 10000; // 1억 단위
       const priceRange = `${(bucket / 10000).toFixed(0)}억`;
       const key = `${pyeong}_${tradeType}`;
 
@@ -361,19 +364,21 @@ function getCompareAnalysis(complexes: any[], tradeTypes?: string[]) {
     // 데이터베이스에서 조회한 articles 배열
     const articles = complex.articles || [];
 
+    // ✅ 개선: 가격 데이터 (숫자 컬럼 사용)
     const allPrices = articles
-      .filter((a: any) => a.dealOrWarrantPrc)
-      .map((a: any) => parsePriceToNumber(a.dealOrWarrantPrc));
+      .filter((a: any) => a.dealOrWarrantPrcWon)
+      .map((a: any) => Number(a.dealOrWarrantPrcWon) / 10000); // 원 → 만원
 
     const avgPrice = allPrices.length > 0
       ? Math.round(allPrices.reduce((sum: number, p: number) => sum + p, 0) / allPrices.length)
       : 0;
 
+    // ✅ 개선: 평당 가격 (숫자 컬럼 사용)
     const avgPricePerPyeong = articles
-      .filter((a: any) => a.area1 && a.dealOrWarrantPrc)
+      .filter((a: any) => a.area1 && a.dealOrWarrantPrcWon)
       .reduce((sum: number, a: any) => {
         const pyeong = a.area1 * 0.3025;
-        const price = parsePriceToNumber(a.dealOrWarrantPrc);
+        const price = Number(a.dealOrWarrantPrcWon) / 10000; // 원 → 만원
         return sum + price / pyeong;
       }, 0) / (articles.length || 1);
 
@@ -417,28 +422,5 @@ function getCompareAnalysis(complexes: any[], tradeTypes?: string[]) {
   });
 }
 
-/**
- * 가격 문자열을 숫자로 변환 (만원 단위)
- * 예: "5억 3,000" → 53000
- */
-function parsePriceToNumber(priceStr: string): number {
-  if (!priceStr) return 0;
-
-  let totalInManwon = 0;
-
-  // "억" 파싱
-  const ukMatch = priceStr.match(/(\d+(?:\.\d+)?)\s*억/);
-  if (ukMatch) {
-    totalInManwon += parseFloat(ukMatch[1]) * 10000;
-  }
-
-  // "만" 또는 숫자만 파싱
-  const manMatch = priceStr.match(/(\d{1,3}(?:,\d{3})*)/g);
-  if (manMatch) {
-    // 마지막 숫자 그룹을 만원으로 처리
-    const lastNumber = manMatch[manMatch.length - 1].replace(/,/g, '');
-    totalInManwon += parseInt(lastNumber, 10);
-  }
-
-  return totalInManwon;
-}
+// ✅ parsePriceToNumber 함수 제거 (더 이상 사용하지 않음)
+// dealOrWarrantPrcWon (BigInt) 컬럼을 직접 사용합니다.

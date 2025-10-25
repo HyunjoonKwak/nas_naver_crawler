@@ -81,7 +81,7 @@ export async function GET(request: NextRequest) {
     );
 
     return NextResponse.json({ results: uniqueResults.slice(0, 20) });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Search error:', error);
     return NextResponse.json(
       { error: 'Search failed', results: [] },

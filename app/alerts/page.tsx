@@ -68,7 +68,7 @@ export default function AlertsPage() {
       if (response.ok && data.complexes) {
         setComplexes(data.complexes);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to fetch complexes:', error);
     }
   };
@@ -84,7 +84,7 @@ export default function AlertsPage() {
       } else {
         showError(data.error || '알림 목록 조회 실패');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to fetch alerts:', error);
       showError('알림 목록 조회 중 오류가 발생했습니다.');
     } finally {
@@ -155,7 +155,7 @@ export default function AlertsPage() {
         const data = await response.json();
         showError(data.error || '알림 생성 실패');
       }
-    } catch (error) {
+    } catch (error: any) {
       dismissToast(loadingToast);
       console.error('Failed to create alert:', error);
       showError('알림 생성 중 오류가 발생했습니다.');
@@ -181,7 +181,7 @@ export default function AlertsPage() {
         const data = await response.json();
         showError(data.error || '알림 상태 변경 실패');
       }
-    } catch (error) {
+    } catch (error: any) {
       dismissToast(loadingToast);
       console.error('Failed to toggle alert:', error);
       showError('알림 상태 변경 중 오류가 발생했습니다.');
@@ -207,7 +207,7 @@ export default function AlertsPage() {
         const data = await response.json();
         showError(data.error || '알림 삭제 실패');
       }
-    } catch (error) {
+    } catch (error: any) {
       dismissToast(loadingToast);
       console.error('Failed to delete alert:', error);
       showError('알림 삭제 중 오류가 발생했습니다.');
@@ -244,7 +244,7 @@ export default function AlertsPage() {
         const data = await response.json();
         showError(data.error || '단지 제거 실패');
       }
-    } catch (error) {
+    } catch (error: any) {
       dismissToast(loadingToast);
       console.error('Failed to remove invalid complexes:', error);
       showError('단지 제거 중 오류가 발생했습니다.');

@@ -50,7 +50,7 @@ async function testConnection() {
     console.log('✅ Delete: Success')
 
     console.log('\n🎉 All tests passed!')
-  } catch (error) {
+  } catch (error: any) {
     console.error('❌ Database test failed:', error)
     process.exit(1)
   } finally {

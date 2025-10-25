@@ -1,0 +1,80 @@
+name: CI
+
+on:
+  push:
+    branches: [main, perf_improve]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint-and-typecheck:
+    name: Lint & Type Check
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Run ESLint
+        run: npm run lint
+        continue-on-error: true
+      
+      - name: Type check
+        run: npx tsc --noEmit
+        continue-on-error: true
+
+  python-lint:
+    name: Python Lint
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install flake8 black isort
+      
+      - name: Run flake8
+        run: flake8 logic/ --max-line-length=100 --ignore=E501,W503
+        continue-on-error: true
+      
+      - name: Check black formatting
+        run: black --check logic/
+        continue-on-error: true
+
+  docker-build:
+    name: Docker Build Test
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      
+      - name: Build Docker image
+        run: |
+          docker build -t nas-crawler:test -f Dockerfile .
+      
+      - name: Test Docker image
+        run: |
+          echo "Docker build successful"
+

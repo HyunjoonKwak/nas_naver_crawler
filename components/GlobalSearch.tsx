@@ -46,7 +46,7 @@ export function GlobalSearch({ onClose, autoFocus = true }: GlobalSearchProps) {
           const data = await response.json();
           setResults(data.results || []);
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error('Search error:', error);
       } finally {
         setLoading(false);

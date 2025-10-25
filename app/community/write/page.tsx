@@ -43,7 +43,7 @@ export default function WritePostPage() {
 
       setUploadedImages([...uploadedImages, ...successResults]);
       showSuccess(`${successResults.length}개의 이미지가 업로드되었습니다`);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to upload images:", error);
       showError("이미지 업로드에 실패했습니다");
     } finally {
@@ -83,7 +83,7 @@ export default function WritePostPage() {
       } else {
         showError(data.error || "게시글 작성에 실패했습니다");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to create post:", error);
       showError("게시글 작성에 실패했습니다");
     } finally {

@@ -1,0 +1,19 @@
+[flake8]
+max-line-length = 100
+exclude =
+    .git,
+    __pycache__,
+    .venv,
+    venv,
+    build,
+    dist,
+    *.egg-info,
+    node_modules
+ignore =
+    E203,  # whitespace before ':' (Black 호환)
+    E501,  # line too long (Black에서 처리)
+    W503,  # line break before binary operator (Black 호환)
+    E231,  # missing whitespace after ','
+per-file-ignores =
+    __init__.py:F401
+

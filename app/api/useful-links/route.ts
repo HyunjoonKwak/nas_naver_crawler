@@ -36,7 +36,7 @@ export async function GET() {
       links,
       groupedLinks,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Failed to fetch useful links:', error);
     return NextResponse.json(
       { error: 'Failed to fetch useful links' },
@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
       success: true,
       link,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Failed to create useful link:', error);
     return NextResponse.json(
       { error: 'Failed to create useful link' },
@@ -123,7 +123,7 @@ export async function PUT(request: NextRequest) {
       success: true,
       link,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Failed to update useful link:', error);
     return NextResponse.json(
       { error: 'Failed to update useful link' },
@@ -159,7 +159,7 @@ export async function DELETE(request: NextRequest) {
       success: true,
       message: 'Link deleted successfully',
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Failed to delete useful link:', error);
     return NextResponse.json(
       { error: 'Failed to delete useful link' },

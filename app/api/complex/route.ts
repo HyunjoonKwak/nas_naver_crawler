@@ -90,9 +90,21 @@ export async function GET(request: NextRequest) {
       };
     }
 
+    // ✅ 개선: 필요한 데이터만 조회
     const complexes = await prisma.complex.findMany({
       where: whereCondition,
-      include: {
+      select: {
+        id: true,
+        complexNo: true,
+        complexName: true,
+        address: true,
+        createdAt: true,
+        updatedAt: true,
+        totalHousehold: true,
+        totalDong: true,
+        _count: {
+          select: { articles: true }
+        },
         articles: {
           select: {
             id: true,

@@ -11,7 +11,7 @@ import { calculateDynamicTimeout } from './timeoutCalculator';
 const prisma = new PrismaClient();
 
 // 활성화된 Cron Job들을 저장하는 맵
-const activeCronJobs = new Map<string, cron.ScheduledTask>();
+const activeCronJobs = new Map<string, any>();
 
 /**
  * 다음 실행 시간 계산
@@ -103,7 +103,7 @@ export function getNextRunTime(cronExpr: string): Date | null {
     const utcNext = new Date(Date.UTC(year, monthNum, date, hours, minutes) - 9 * 60 * 60 * 1000);
 
     return utcNext;
-  } catch (error) {
+  } catch (error: any) {
     console.error('Failed to calculate next run time:', error);
     return null;
   }
@@ -396,7 +396,7 @@ async function checkRecentCrawlHistory(complexNos: string[], lookbackTimeout: nu
     }
 
     return null;
-  } catch (error) {
+  } catch (error: any) {
     console.error('Failed to check crawl history:', error);
     return null;
   }
@@ -432,7 +432,7 @@ async function pollCrawlStatus(crawlId: string, timeout: number): Promise<{ succ
 
       // 아직 진행 중이면 대기
       await new Promise(resolve => setTimeout(resolve, checkInterval));
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to poll crawl status:', error);
       await new Promise(resolve => setTimeout(resolve, checkInterval));
     }
@@ -476,9 +476,8 @@ export function registerSchedule(
         executeCrawl(scheduleId);
       },
       {
-        scheduled: true,
         timezone: 'Asia/Seoul',
-      }
+      } as any
     );
 
     activeCronJobs.set(scheduleId, task);
@@ -486,7 +485,7 @@ export function registerSchedule(
     console.log(`   Active cron jobs count: ${activeCronJobs.size}`);
 
     return true;
-  } catch (error) {
+  } catch (error: any) {
     console.error(`   ❌ Failed to register schedule ${scheduleId}:`, error);
     return false;
   }
@@ -505,7 +504,7 @@ export function unregisterSchedule(scheduleId: string): boolean {
       return true;
     }
     return false;
-  } catch (error) {
+  } catch (error: any) {
     console.error(`Failed to unregister schedule ${scheduleId}:`, error);
     return false;
   }
@@ -561,7 +560,7 @@ export async function loadAllSchedules() {
 
     console.log(`✅ Loaded ${loadedCount}/${schedules.length} active schedule(s)`);
     return loadedCount;
-  } catch (error) {
+  } catch (error: any) {
     console.error('❌ Failed to load schedules:', error);
     return 0;
   }
@@ -601,7 +600,7 @@ export async function runScheduleNow(scheduleId: string): Promise<boolean | 'alr
     console.log(`▶️ Running schedule immediately: ${schedule.name}`);
     await executeCrawl(scheduleId);
     return true;
-  } catch (error) {
+  } catch (error: any) {
     console.error(`Failed to run schedule ${scheduleId}:`, error);
     return false;
   }

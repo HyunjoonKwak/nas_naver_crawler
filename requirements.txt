@@ -24,8 +24,8 @@ schedule==1.2.0
 APScheduler==3.10.4
 
 # 알림 기능
-smtplib-ssl==1.0.0
-webhook-sender==0.1.0
+# smtplib는 Python 내장 라이브러리 (설치 불필요)
+# webhook-sender는 존재하지 않는 패키지 (주석 처리)
 
 # 데이터 검증
 pydantic==2.5.0

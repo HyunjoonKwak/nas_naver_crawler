@@ -38,7 +38,7 @@ export async function POST(request: Request) {
       success: true,
       message: "사용자 확인이 완료되었습니다.",
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Verify user error:", error);
     return NextResponse.json(
       { success: false, error: "서버 오류가 발생했습니다." },

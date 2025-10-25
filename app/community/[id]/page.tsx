@@ -107,7 +107,7 @@ export default function PostDetailPage() {
       if (data.success) {
         setIsBookmarked(data.isBookmarked);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to check bookmark:", error);
     }
   };
@@ -124,7 +124,7 @@ export default function PostDetailPage() {
       } else {
         showError(data.error || "북마크 처리에 실패했습니다");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to toggle bookmark:", error);
       showError("북마크 처리에 실패했습니다");
     }
@@ -149,7 +149,7 @@ export default function PostDetailPage() {
         showError(data.error || "게시글을 불러오는데 실패했습니다");
         router.push("/community");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to fetch post:", error);
       showError("게시글을 불러오는데 실패했습니다");
       router.push("/community");
@@ -165,7 +165,7 @@ export default function PostDetailPage() {
       if (data.success) {
         setIsLiked(data.isLiked);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to check like status:", error);
     }
   };
@@ -184,7 +184,7 @@ export default function PostDetailPage() {
       } else {
         showError(data.error || "좋아요 처리에 실패했습니다");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to toggle like:", error);
       showError("좋아요 처리에 실패했습니다");
     }
@@ -210,7 +210,7 @@ export default function PostDetailPage() {
       } else {
         showError(data.error || "댓글 작성에 실패했습니다");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to submit comment:", error);
       showError("댓글 작성에 실패했습니다");
     } finally {
@@ -237,7 +237,7 @@ export default function PostDetailPage() {
       } else {
         showError(data.error || "답글 작성에 실패했습니다");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to submit reply:", error);
       showError("답글 작성에 실패했습니다");
     }
@@ -262,7 +262,7 @@ export default function PostDetailPage() {
       } else {
         showError(data.error || "댓글 수정에 실패했습니다");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to edit comment:", error);
       showError("댓글 수정에 실패했습니다");
     }
@@ -283,7 +283,7 @@ export default function PostDetailPage() {
       } else {
         showError(data.error || "댓글 삭제에 실패했습니다");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to delete comment:", error);
       showError("댓글 삭제에 실패했습니다");
     }
@@ -304,7 +304,7 @@ export default function PostDetailPage() {
       } else {
         showError(data.error || "답변 채택에 실패했습니다");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to accept comment:", error);
       showError("답변 채택에 실패했습니다");
     }
@@ -325,7 +325,7 @@ export default function PostDetailPage() {
       } else {
         showError(data.error || "게시글 삭제에 실패했습니다");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to delete post:", error);
       showError("게시글 삭제에 실패했습니다");
     }
@@ -346,7 +346,7 @@ export default function PostDetailPage() {
       } else {
         showError(data.error || "상단 고정 처리에 실패했습니다");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to toggle pin:", error);
       showError("상단 고정 처리에 실패했습니다");
     }
@@ -377,7 +377,7 @@ export default function PostDetailPage() {
       } else {
         showError(data.error || "신고 접수에 실패했습니다");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to report post:", error);
       showError("신고 접수에 실패했습니다");
     }
@@ -409,7 +409,7 @@ export default function PostDetailPage() {
       } else {
         showError(data.error || "신고 접수에 실패했습니다");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to report comment:", error);
       showError("신고 접수에 실패했습니다");
     }

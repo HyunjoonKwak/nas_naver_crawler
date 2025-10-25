@@ -32,20 +32,61 @@ log_cyan() {
     echo -e "${CYAN}$1${NC}"
 }
 
+# 환경 감지 (프로덕션 or 테스트)
+detect_environment() {
+    # 환경 변수로 명시적 지정 가능
+    if [ ! -z "$DEPLOY_ENV" ]; then
+        echo "$DEPLOY_ENV"
+        return
+    fi
+
+    # 실행 중인 컨테이너로 판단
+    if docker ps --format "{{.Names}}" | grep -q "test"; then
+        echo "test"
+    # test yml 파일이 있고 test 컨테이너가 있으면 (중지 상태 포함)
+    elif [ -f "docker-compose.test.yml" ] && docker ps -a --format "{{.Names}}" | grep -q "test"; then
+        echo "test"
+    else
+        echo "prod"
+    fi
+}
+
 # 현재 실행 중인 컨테이너 이름 확인
 get_running_container() {
-    if docker ps --format "{{.Names}}" | grep -q "^naver-crawler-web$"; then
-        echo "naver-crawler-web"
-    elif docker ps --format "{{.Names}}" | grep -q "naver-crawler-web-dev"; then
-        echo "naver-crawler-web-dev"
+    ENV=$(detect_environment)
+
+    if [[ "$ENV" == "test" ]]; then
+        if docker ps --format "{{.Names}}" | grep -q "naver-crawler-web-test"; then
+            echo "naver-crawler-web-test"
+        else
+            echo ""
+        fi
     else
-        echo ""
+        if docker ps --format "{{.Names}}" | grep -q "^naver-crawler-web$"; then
+            echo "naver-crawler-web"
+        elif docker ps --format "{{.Names}}" | grep -q "naver-crawler-web-dev"; then
+            echo "naver-crawler-web-dev"
+        else
+            echo ""
+        fi
+    fi
+}
+
+# Docker Compose 파일 선택
+get_compose_file() {
+    ENV=$(detect_environment)
+
+    if [[ "$ENV" == "test" ]]; then
+        echo "docker-compose.test.yml"
+    else
+        echo "docker-compose.yml"
     fi
 }
 
 # 현재 모드 확인
 get_current_mode() {
-    DOCKERFILE=$(grep "dockerfile:" docker-compose.yml | awk '{print $2}' | head -1)
+    COMPOSE_FILE=$(get_compose_file)
+    DOCKERFILE=$(grep "dockerfile:" "$COMPOSE_FILE" 2>/dev/null | awk '{print $2}' | head -1)
     if [[ "$DOCKERFILE" == "Dockerfile.dev" ]]; then
         echo "dev"
     else
@@ -56,13 +97,26 @@ get_current_mode() {
 show_menu() {
     clear
     echo -e "${MAGENTA}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo -e "${MAGENTA}  네이버 부동산 크롤러 관리 메뉴 v2.0${NC}"
+    echo -e "${MAGENTA}  네이버 부동산 크롤러 관리 메뉴 v2.1${NC}"
     echo -e "${MAGENTA}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
 
-    # 현재 상태 표시
+    # 현재 환경 및 상태 표시
+    ENV=$(detect_environment)
     CONTAINER=$(get_running_container)
     CURRENT_MODE=$(get_current_mode)
+    COMPOSE_FILE=$(get_compose_file)
+
+    # 환경 표시
+    if [[ "$ENV" == "test" ]]; then
+        echo -e "${BLUE}🧪 환경: 테스트 (perf_improve)${NC}"
+        echo -e "  포트: 3001 | DB: 5435 | Redis: 6380"
+    else
+        echo -e "${GREEN}🏭 환경: 프로덕션 (main)${NC}"
+        echo -e "  포트: 3000 | DB: 5434 | Redis: 6379"
+    fi
+    echo -e "  Compose: ${CYAN}$COMPOSE_FILE${NC}"
+    echo ""
 
     if [ -n "$CONTAINER" ]; then
         echo -e "${GREEN}● 상태: 실행 중${NC}"
@@ -91,17 +145,20 @@ show_menu() {
     echo "  3) 🔄 재시작"
     echo "  4) 📊 상태 확인 (상세)"
     echo "  5) 📝 로그 보기 (실시간)"
+    echo "  6) 📜 로그 보기 (최근 100줄)"
     echo ""
 
     echo -e "${CYAN}=== 모드 관리 ===${NC}"
-    echo "  6) 🔀 모드 전환 (개발 ↔ 프로덕션)"
-    echo "  7) ⚡ 프로덕션 속도 테스트"
+    echo "  7) 🔀 모드 전환 (개발 ↔ 프로덕션)"
+    echo "  8) 🌍 환경 전환 (프로덕션 ↔ 테스트)"
+    echo "  9) ⚡ 프로덕션 속도 테스트"
     echo ""
 
     echo -e "${CYAN}=== 빌드 & 관리 ===${NC}"
-    echo "  8) 🔧 빌드 (프로덕션)"
-    echo "  9) 🗑️  데이터 정리"
-    echo " 10) 🔍 Docker 정보"
+    echo " 10) 🔧 빌드 (프로덕션)"
+    echo " 11) 🗑️  데이터 정리"
+    echo " 12) 🔍 Docker 정보"
+    echo " 13) 🧹 캐시 정리 (.next 삭제)"
     echo ""
 
     echo -e "${CYAN}=== 기타 ===${NC}"
@@ -114,26 +171,38 @@ start_server() {
     log_info "서버 시작 중..."
     echo ""
 
+    ENV=$(detect_environment)
+    COMPOSE_FILE=$(get_compose_file)
     CURRENT_MODE=$(get_current_mode)
 
-    if [[ "$CURRENT_MODE" == "dev" ]]; then
-        log_blue "🔧 개발 모드로 시작합니다."
-        echo "  - Hot Reload 활성화"
-        echo "  - 빌드 불필요"
-        echo "  - 첫 실행 시 npm install (5-10분)"
+    if [[ "$ENV" == "test" ]]; then
+        log_blue "🧪 테스트 환경으로 시작합니다."
+        echo "  - 포트: 3001"
+        echo "  - DB: 5435, Redis: 6380"
     else
-        log_blue "🚀 프로덕션 모드로 시작합니다."
-        echo "  - 최적화된 성능"
-        echo "  - 사전 빌드 필요"
+        if [[ "$CURRENT_MODE" == "dev" ]]; then
+            log_blue "🔧 개발 모드로 시작합니다."
+            echo "  - Hot Reload 활성화"
+            echo "  - 빌드 불필요"
+            echo "  - 첫 실행 시 npm install (5-10분)"
+        else
+            log_blue "🚀 프로덕션 모드로 시작합니다."
+            echo "  - 최적화된 성능"
+            echo "  - 사전 빌드 필요"
+        fi
     fi
 
     echo ""
-    docker-compose up -d
+    docker-compose -f "$COMPOSE_FILE" up -d
 
     if [ $? -eq 0 ]; then
         log_info "✅ 서버 시작 완료!"
         echo ""
-        log_cyan "🌐 웹 UI: http://localhost:3000"
+        if [[ "$ENV" == "test" ]]; then
+            log_cyan "🌐 웹 UI: http://localhost:3001"
+        else
+            log_cyan "🌐 웹 UI: http://localhost:3000"
+        fi
         if [[ "$CURRENT_MODE" == "dev" ]]; then
             echo ""
             log_blue "💡 Hot Reload: 코드 수정 시 자동 반영 (3-5초)"
@@ -147,7 +216,8 @@ start_server() {
 stop_server() {
     log_info "서버 종료 중..."
 
-    docker-compose down
+    COMPOSE_FILE=$(get_compose_file)
+    docker-compose -f "$COMPOSE_FILE" down
 
     if [ $? -eq 0 ]; then
         log_info "✅ 서버 종료 완료!"
@@ -160,7 +230,8 @@ stop_server() {
 restart_server() {
     log_info "서버 재시작 중..."
 
-    docker-compose restart
+    COMPOSE_FILE=$(get_compose_file)
+    docker-compose -f "$COMPOSE_FILE" restart
 
     if [ $? -eq 0 ]; then
         log_info "✅ 서버 재시작 완료!"
@@ -252,7 +323,7 @@ check_status() {
 }
 
 view_logs() {
-    log_info "로그 확인 중..."
+    log_info "실시간 로그 확인 중..."
     echo ""
 
     CONTAINER=$(get_running_container)
@@ -262,9 +333,12 @@ view_logs() {
         return 1
     fi
 
+    ENV=$(detect_environment)
     CURRENT_MODE=$(get_current_mode)
 
-    if [[ "$CURRENT_MODE" == "dev" ]]; then
+    if [[ "$ENV" == "test" ]]; then
+        log_blue "🧪 테스트 환경 로그 (Ctrl+C로 종료)"
+    elif [[ "$CURRENT_MODE" == "dev" ]]; then
         log_blue "🔧 개발 모드 로그 (Ctrl+C로 종료)"
         echo "  - Hot Reload 활성화"
         echo "  - 실시간 로그 스트리밍"
@@ -281,8 +355,131 @@ view_logs() {
     docker logs $CONTAINER -f --tail=100
 }
 
+view_logs_static() {
+    log_info "로그 확인 중 (최근 100줄)..."
+    echo ""
+
+    CONTAINER=$(get_running_container)
+
+    if [ -z "$CONTAINER" ]; then
+        log_error "실행 중인 서버가 없습니다."
+        return 1
+    fi
+
+    ENV=$(detect_environment)
+
+    if [[ "$ENV" == "test" ]]; then
+        log_blue "🧪 테스트 환경 로그"
+    else
+        log_blue "🏭 프로덕션 환경 로그"
+    fi
+
+    echo ""
+    echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo ""
+
+    docker logs $CONTAINER --tail=100
+
+    echo ""
+    echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+}
+
+clean_cache() {
+    log_info "Next.js 캐시 정리 중..."
+    echo ""
+
+    CONTAINER=$(get_running_container)
+
+    if [ -z "$CONTAINER" ]; then
+        log_error "실행 중인 서버가 없습니다."
+        log_warn "서버를 시작한 후 캐시를 정리하세요."
+        return 1
+    fi
+
+    log_warn "⚠️  Next.js 빌드 캐시(.next)를 삭제합니다."
+    echo ""
+    read -p "계속하시겠습니까? (y/N): " confirm
+
+    if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+        log_info "취소되었습니다."
+        return 0
+    fi
+
+    docker exec $CONTAINER rm -rf .next
+
+    if [ $? -eq 0 ]; then
+        log_info "✅ 캐시 삭제 완료!"
+        echo ""
+        log_blue "💡 서버를 재시작하면 Next.js가 다시 빌드됩니다."
+        echo ""
+        read -p "지금 재시작하시겠습니까? (y/N): " restart_confirm
+
+        if [[ "$restart_confirm" =~ ^[Yy]$ ]]; then
+            restart_server
+        fi
+    else
+        log_error "❌ 캐시 삭제 실패!"
+        return 1
+    fi
+}
+
 switch_mode() {
     ./scripts/switch-mode.sh
+}
+
+switch_environment() {
+    log_info "[INFO] 환경 전환"
+    echo ""
+
+    ENV=$(detect_environment)
+
+    if [[ "$ENV" == "test" ]]; then
+        log_blue "현재 환경: 🧪 테스트 (포트 3001)"
+        echo ""
+        echo "프로덕션 환경 (포트 3000)으로 전환하시겠습니까?"
+        read -p "(y/N): " confirm
+
+        if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+            log_info "취소되었습니다."
+            return 0
+        fi
+
+        log_info "테스트 환경 중지 중..."
+        docker-compose -f docker-compose.test.yml down
+
+        log_info "프로덕션 환경 시작 중..."
+        export DEPLOY_ENV=prod
+        start_server
+    else
+        log_blue "현재 환경: 🏭 프로덕션 (포트 3000)"
+        echo ""
+        echo "테스트 환경 (포트 3001)으로 전환하시겠습니까?"
+        echo ""
+        log_warn "⚠️  프로덕션 환경은 그대로 유지됩니다 (동시 실행 가능)"
+        read -p "(y/N): " confirm
+
+        if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+            log_info "취소되었습니다."
+            return 0
+        fi
+
+        log_info "테스트 환경 시작 중..."
+        export DEPLOY_ENV=test
+        docker-compose -f docker-compose.test.yml up -d
+
+        if [ $? -eq 0 ]; then
+            log_info "✅ 테스트 환경 시작 완료!"
+            echo ""
+            log_cyan "🌐 테스트 UI: http://localhost:3001"
+            log_cyan "🌐 프로덕션 UI: http://localhost:3000"
+            echo ""
+            log_blue "💡 관리 메뉴를 재시작하여 테스트 환경을 관리하세요:"
+            echo "   export DEPLOY_ENV=test && ./manage.sh"
+        else
+            log_error "❌ 테스트 환경 시작 실패!"
+            return 1
+        fi
+    fi
 }
 
 test_production() {
@@ -432,19 +629,28 @@ while true; do
             view_logs
             ;;
         6)
-            switch_mode
+            view_logs_static
             ;;
         7)
-            test_production
+            switch_mode
             ;;
         8)
-            build_image
+            switch_environment
             ;;
         9)
-            clean_data
+            test_production
             ;;
         10)
+            build_image
+            ;;
+        11)
+            clean_data
+            ;;
+        12)
             show_docker_info
+            ;;
+        13)
+            clean_cache
             ;;
         0)
             log_info "프로그램을 종료합니다."

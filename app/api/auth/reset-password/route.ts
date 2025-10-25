@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
       success: true,
       message: "비밀번호가 성공적으로 재설정되었습니다.",
     });
-  } catch (error) {
+  } catch (error: any) {
     logger.error("Reset password error", error);
     return NextResponse.json(
       { success: false, error: "서버 오류가 발생했습니다." },

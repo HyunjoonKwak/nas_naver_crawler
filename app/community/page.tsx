@@ -102,7 +102,7 @@ export default function CommunityPage() {
       } else {
         showError(data.error || "게시글 목록을 불러오는데 실패했습니다");
       }
-    } catch (error) {
+    } catch (error: any) {
       showError("게시글 목록을 불러오는데 실패했습니다");
     } finally {
       setIsLoading(false);

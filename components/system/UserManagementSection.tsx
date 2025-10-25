@@ -23,7 +23,7 @@ export const UserManagementSection = () => {
       if (data.success) {
         setUsers(data.users);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to fetch users:', error);
       showError('사용자 목록 조회에 실패했습니다.');
     } finally {

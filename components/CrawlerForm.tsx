@@ -120,7 +120,7 @@ export default function CrawlerForm({ onCrawlComplete }: CrawlerFormProps) {
           setError('❌ 타임아웃 - 15분 초과');
           setLoading(false);
         }
-      } catch (err) {
+      } catch (err: any) {
         console.error('[CrawlerForm] Polling error:', err);
         stopStatusPolling();
         setError('❌ 상태 확인 중 오류 발생');

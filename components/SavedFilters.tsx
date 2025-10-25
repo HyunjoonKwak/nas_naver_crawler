@@ -28,7 +28,7 @@ export function SavedFilters({ currentFilters, onLoadFilter }: SavedFiltersProps
     if (stored) {
       try {
         setSavedFilters(JSON.parse(stored));
-      } catch (error) {
+      } catch (error: any) {
         console.error('Failed to load saved filters:', error);
       }
     }

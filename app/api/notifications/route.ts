@@ -79,7 +79,7 @@ export async function GET(request: NextRequest) {
       try {
         await prisma.$connect();
         console.log('Database reconnected successfully');
-      } catch (reconnectError) {
+      } catch (reconnectError: any) {
         console.error('Failed to reconnect to database:', reconnectError);
       }
     }

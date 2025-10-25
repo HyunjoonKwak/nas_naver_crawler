@@ -46,7 +46,7 @@ export async function POST(request: Request) {
       success: true,
       email: maskedEmail,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Find email error:", error);
     return NextResponse.json(
       { success: false, error: "서버 오류가 발생했습니다." },

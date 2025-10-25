@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
+import type { Session } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { rateLimit, rateLimitPresets } from "@/lib/rate-limit";
@@ -13,7 +14,7 @@ const logger = createLogger('USER-CHANGE-PASSWORD');
 export async function POST(request: NextRequest) {
   try {
     // 인증 확인
-    const session = await getServerSession(authOptions);
+    const session = await getServerSession(authOptions) as Session | null;
     if (!session?.user?.email) {
       return NextResponse.json(
         { success: false, error: "인증되지 않은 요청입니다." },
@@ -80,7 +81,7 @@ export async function POST(request: NextRequest) {
       success: true,
       message: "비밀번호가 성공적으로 변경되었습니다.",
     });
-  } catch (error) {
+  } catch (error: any) {
     logger.error("Change password error", error);
     return NextResponse.json(
       { success: false, error: "서버 오류가 발생했습니다." },

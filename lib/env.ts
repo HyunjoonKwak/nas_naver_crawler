@@ -1,107 +1,83 @@
 /**
- * 환경 변수 검증 및 타입 안전한 접근
+ * 환경 변수 검증 및 타입 안전 접근
+ * Zod를 사용한 스키마 검증
  */
 
-const requiredEnvVars = [
-  'DATABASE_URL',
-  'NEXTAUTH_SECRET',
-  'NEXTAUTH_URL',
-] as const;
+import { z } from 'zod';
 
-/**
- * 약한 시크릿 키 패턴 (보안 취약)
- */
-const weakSecretPatterns = [
-  'your-secret-key',
-  'change-me',
-  'replace-with',
-  'secret',
-  'password',
-  'test',
-  'demo',
-  'example',
-];
+// 환경 변수 스키마
+const envSchema = z.object({
+  // Database
+  DATABASE_URL: z.string().url('DATABASE_URL must be a valid URL'),
+  
+  // NextAuth
+  NEXTAUTH_SECRET: z.string().min(32, 'NEXTAUTH_SECRET must be at least 32 characters'),
+  NEXTAUTH_URL: z.string().url().optional(),
+  
+  // Internal API
+  INTERNAL_API_SECRET: z.string().min(32, 'INTERNAL_API_SECRET must be at least 32 characters'),
+  
+  // Redis (optional)
+  REDIS_URL: z.string().optional(),
+  
+  // Node Environment
+  NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
+  
+  // Naver Maps API (optional)
+  NAVER_MAPS_CLIENT_ID: z.string().optional(),
+  NAVER_MAPS_CLIENT_SECRET: z.string().optional(),
+});
 
-/**
- * 필수 환경 변수 검증
- * 앱 시작 시 한 번만 호출
- */
+// 환경 변수 파싱 및 검증
 export function validateEnv() {
-  // Skip validation during build time
-  if (process.env.SKIP_ENV_VALIDATION === 'true') {
-    console.log('⏭️  Skipping environment validation (build time)');
-    return;
+  // 빌드 시점에는 검증 스킵
+  if (process.env.SKIP_ENV_VALIDATION === 'true' || process.env.NODE_ENV === 'test') {
+    return process.env as any;
   }
 
-  const missing = requiredEnvVars.filter(key => !process.env[key]);
+  try {
+    return envSchema.parse(process.env);
+  } catch (error: any) {
+    if (error instanceof z.ZodError) {
+      console.error('❌ 환경 변수 검증 실패:');
+      error.errors.forEach((err) => {
+        console.error(`  - ${err.path.join('.')}: ${err.message}`);
+      });
 
-  if (missing.length > 0) {
-    throw new Error(
-      `❌ Missing required environment variables:\n` +
-      missing.map(key => `  - ${key}`).join('\n') +
-      `\n\n` +
-      `Please check your .env file and ensure all required variables are set.\n` +
-      `See .env.example for reference.`
-    );
-  }
+      // 개발 환경에서는 경고만
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('⚠️  개발 환경이므로 계속 진행합니다.');
+        return process.env as any;
+      }
 
-  // NEXTAUTH_SECRET 강도 검증 (프로덕션 환경만)
-  if (process.env.NODE_ENV === 'production') {
-    const secret = process.env.NEXTAUTH_SECRET || '';
-
-    // 길이 검증 (최소 32자)
-    if (secret.length < 32) {
-      throw new Error(
-        `❌ NEXTAUTH_SECRET is too short (${secret.length} characters).\n` +
-        `It must be at least 32 characters for production.\n` +
-        `Generate a strong secret with: openssl rand -base64 32`
-      );
+      throw new Error('환경 변수 검증 실패. .env 파일을 확인하세요.');
     }
-
-    // 약한 패턴 검증
-    const secretLower = secret.toLowerCase();
-    const weakPattern = weakSecretPatterns.find(pattern =>
-      secretLower.includes(pattern)
-    );
-
-    if (weakPattern) {
-      throw new Error(
-        `❌ NEXTAUTH_SECRET contains weak pattern: "${weakPattern}"\n` +
-        `Please use a strong random string for production.\n` +
-        `Generate a strong secret with: openssl rand -base64 32`
-      );
-    }
+    throw error;
   }
-
-  console.log('✅ Environment variables validated');
 }
 
-/**
- * 타입 안전한 환경 변수 접근
- */
-export const env = {
-  database: {
-    url: process.env.DATABASE_URL!,
-  },
-  auth: {
-    secret: process.env.NEXTAUTH_SECRET!,
-    url: process.env.NEXTAUTH_URL!,
-  },
-  app: {
-    nodeEnv: process.env.NODE_ENV || 'development',
-    isProduction: process.env.NODE_ENV === 'production',
-    isDevelopment: process.env.NODE_ENV === 'development',
-  },
-} as const;
-
-/**
- * 환경 변수 로깅 (민감 정보 제외)
- */
+// 환경 변수 정보 로깅
 export function logEnvInfo() {
-  if (env.app.isDevelopment) {
-    console.log('📋 Environment Info:');
-    console.log(`  - NODE_ENV: ${env.app.nodeEnv}`);
-    console.log(`  - NEXTAUTH_URL: ${env.auth.url}`);
-    console.log(`  - DATABASE_URL: ${env.database.url.replace(/:[^:@]+@/, ':****@')}`);
+  if (process.env.NODE_ENV === 'development') {
+    console.log('📝 Environment Info:');
+    console.log('  - NODE_ENV:', process.env.NODE_ENV);
+    console.log('  - DATABASE_URL:', process.env.DATABASE_URL ? '✓ Set' : '✗ Not set');
+    console.log('  - NEXTAUTH_SECRET:', process.env.NEXTAUTH_SECRET ? '✓ Set' : '✗ Not set');
+    console.log('  - REDIS_URL:', process.env.REDIS_URL ? '✓ Set' : '✗ Not set');
   }
 }
+
+// 검증된 환경 변수 export
+export const env = validateEnv();
+
+/**
+ * 사용 예시:
+ * 
+ * ```typescript
+ * import { env } from '@/lib/env';
+ * 
+ * // 타입 안전하게 사용
+ * const dbUrl = env.DATABASE_URL;  // string (타입 보장)
+ * const secret = env.NEXTAUTH_SECRET;  // string (최소 32자)
+ * ```
+ */

@@ -58,7 +58,7 @@ export async function GET(request: NextRequest) {
       success: true,
       groups: groupsWithStats
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('그룹 조회 오류:', error);
     return NextResponse.json(
       {
@@ -139,7 +139,7 @@ export async function POST(request: NextRequest) {
       success: true,
       group
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('그룹 생성 오류:', error);
     return NextResponse.json(
       {

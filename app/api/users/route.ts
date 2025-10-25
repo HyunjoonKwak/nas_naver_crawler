@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
+import type { Session } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 
@@ -8,7 +9,7 @@ export const dynamic = 'force-dynamic';
 // GET: 사용자 목록 조회 (관리자 전용)
 export async function GET() {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await getServerSession(authOptions) as Session | null;
 
     if (!session || (session.user as any).role !== 'ADMIN') {
       return NextResponse.json(
@@ -37,7 +38,7 @@ export async function GET() {
       success: true,
       users,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Failed to fetch users:', error);
     return NextResponse.json(
       { error: '사용자 목록 조회에 실패했습니다.' },
@@ -49,7 +50,7 @@ export async function GET() {
 // PUT: 사용자 정보 수정 (관리자 전용)
 export async function PUT(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await getServerSession(authOptions) as Session | null;
 
     if (!session || (session.user as any).role !== 'ADMIN') {
       return NextResponse.json(
@@ -89,7 +90,7 @@ export async function PUT(request: NextRequest) {
       success: true,
       user,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Failed to update user:', error);
     return NextResponse.json(
       { error: '사용자 정보 수정에 실패했습니다.' },
@@ -101,7 +102,7 @@ export async function PUT(request: NextRequest) {
 // DELETE: 사용자 삭제 (관리자 전용)
 export async function DELETE(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await getServerSession(authOptions) as Session | null;
 
     if (!session || (session.user as any).role !== 'ADMIN') {
       return NextResponse.json(
@@ -136,7 +137,7 @@ export async function DELETE(request: NextRequest) {
       success: true,
       message: '사용자가 삭제되었습니다.',
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Failed to delete user:', error);
     return NextResponse.json(
       { error: '사용자 삭제에 실패했습니다.' },

@@ -41,7 +41,7 @@ export default function CrawlerHistory({ refresh }: CrawlerHistoryProps) {
       const response = await fetch('/api/crawl-history');
       const data = await response.json();
       setHistory(data.history || []);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to fetch crawl history:', error);
     } finally {
       setLoading(false);
@@ -210,7 +210,7 @@ export default function CrawlerHistory({ refresh }: CrawlerHistoryProps) {
           [itemId]: []
         }));
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to fetch files:', error);
       setFileContents(prev => ({
         ...prev,

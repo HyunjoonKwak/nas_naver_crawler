@@ -141,7 +141,7 @@ export default function AnalyticsPage() {
       } else {
         throw new Error('Invalid response format');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('[ANALYTICS] Failed to fetch complexes:', error);
       showError('단지 목록 조회 실패');
     }
@@ -203,7 +203,7 @@ export default function AnalyticsPage() {
         showError(data.error || '분석 실패');
         setAnalyticsData(null);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('[ANALYTICS] Error:', error);
       showError('분석 중 오류 발생');
       setAnalyticsData(null);

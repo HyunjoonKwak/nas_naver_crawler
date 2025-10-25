@@ -27,6 +27,28 @@ declare module 'next-auth' {
     role: 'ADMIN' | 'FAMILY' | 'GUEST';
     image?: string | null;
   }
+
+  /**
+   * NextAuthOptions 타입
+   */
+  export interface NextAuthOptions {
+    providers: any[];
+    callbacks?: any;
+    pages?: any;
+    session?: any;
+    secret?: string;
+    jwt?: any;
+  }
+
+  /**
+   * getServerSession 함수
+   */
+  export function getServerSession(...args: any[]): Promise<Session | null>;
+
+  /**
+   * NextAuth default export
+   */
+  export default function NextAuth(options: NextAuthOptions): any;
 }
 
 declare module 'next-auth/jwt' {

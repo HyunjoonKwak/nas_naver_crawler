@@ -27,21 +27,29 @@ log_blue() {
     echo -e "${BLUE}$1${NC}"
 }
 
+# 환경 감지 (프로덕션 vs 테스트)
+detect_environment() {
+    if [ -f "docker-compose.test.yml" ] && docker ps --format "{{.Names}}" | grep -q "test"; then
+        echo "test"
+    else
+        echo "prod"
+    fi
+}
+
 # 현재 모드 확인
 get_current_mode() {
-    # 실행 중인 컨테이너 확인
-    if docker ps -a --format '{{.Image}}' | grep -q "nas_naver_crawler_web"; then
-        # 컨테이너의 NODE_ENV 확인
-        NODE_ENV=$(docker inspect naver-crawler-web 2>/dev/null | grep -o '"NODE_ENV=[^"]*"' | cut -d'=' -f2 | tr -d '"' || echo "")
-        if [[ "$NODE_ENV" == "development" ]]; then
-            echo "dev"
-            return
-        fi
+    ENV=$(detect_environment)
+
+    # 환경에 맞는 compose 파일 선택
+    if [[ "$ENV" == "test" ]]; then
+        COMPOSE_FILE="docker-compose.test.yml"
+    else
+        COMPOSE_FILE="docker-compose.yml"
     fi
 
-    # docker-compose.yml 파일 확인 (기본값은 production)
-    if [[ -f "docker-compose.yml" ]]; then
-        DOCKERFILE=$(grep "dockerfile:" docker-compose.yml | awk '{print $2}' | head -1)
+    # compose 파일에서 dockerfile 확인
+    if [[ -f "$COMPOSE_FILE" ]]; then
+        DOCKERFILE=$(grep "dockerfile:" "$COMPOSE_FILE" | awk '{print $2}' | head -1)
         if [[ "$DOCKERFILE" == "Dockerfile.dev" ]]; then
             echo "dev"
         else
@@ -112,23 +120,29 @@ log_blue "1️⃣  서버 중지 중..."
 # 현재 실행 중인 모든 compose 파일의 컨테이너 중지
 docker-compose -f docker-compose.yml down 2>/dev/null || true
 docker-compose -f docker-compose.dev.yml down 2>/dev/null || true
+docker-compose -f docker-compose.test.yml down 2>/dev/null || true
 
 log_info "✅ 서버 중지 완료"
 
 echo ""
 
 # 2. docker-compose 파일 전환
-log_blue "2️⃣  docker-compose 파일 전환 중..."
+log_blue "2️⃣  docker-compose 파일 수정 중..."
 
-if [[ "$NEW_MODE" == "prod" ]]; then
-    # 프로덕션 모드: docker-compose.yml 사용 (기본값)
-    export COMPOSE_FILE="docker-compose.yml"
-    log_info "✅ 프로덕션 설정 파일 사용: docker-compose.yml"
+ENV=$(detect_environment)
+
+# 환경에 맞는 compose 파일 선택
+if [[ "$ENV" == "test" ]]; then
+    COMPOSE_FILE="docker-compose.test.yml"
+    log_info "✅ 테스트 환경 설정 파일 사용: $COMPOSE_FILE"
 else
-    # 개발 모드: docker-compose.dev.yml 사용
-    export COMPOSE_FILE="docker-compose.dev.yml"
-    log_info "✅ 개발 설정 파일 사용: docker-compose.dev.yml"
+    COMPOSE_FILE="docker-compose.yml"
+    log_info "✅ 프로덕션 환경 설정 파일 사용: $COMPOSE_FILE"
 fi
+
+# Dockerfile 변경
+sed -i "s/dockerfile: Dockerfile.*/dockerfile: $NEW_DOCKERFILE/" "$COMPOSE_FILE"
+log_info "✅ Dockerfile 변경: $NEW_DOCKERFILE"
 
 echo ""
 
@@ -164,7 +178,11 @@ if [[ "$NEW_MODE" == "prod" ]]; then
                 if [ $? -eq 0 ]; then
                     log_info "✅ 서버 시작 완료!"
                     echo ""
-                    echo -e "${CYAN}🌐 웹 UI: http://localhost:3000${NC}"
+                    if [[ "$ENV" == "test" ]]; then
+                        echo -e "${CYAN}🌐 웹 UI: http://localhost:3001 (테스트 환경)${NC}"
+                    else
+                        echo -e "${CYAN}🌐 웹 UI: http://localhost:3000${NC}"
+                    fi
                 else
                     log_error "❌ 서버 시작 실패!"
                 fi
@@ -184,7 +202,11 @@ else
     if [ $? -eq 0 ]; then
         log_info "✅ 서버 시작 완료!"
         echo ""
-        echo -e "${CYAN}🌐 웹 UI: http://localhost:3000${NC}"
+        if [[ "$ENV" == "test" ]]; then
+            echo -e "${CYAN}🌐 웹 UI: http://localhost:3001 (테스트 환경)${NC}"
+        else
+            echo -e "${CYAN}🌐 웹 UI: http://localhost:3000${NC}"
+        fi
         echo -e "${BLUE}💡 Hot Reload: 코드 수정 시 자동 반영 (3-5초)${NC}"
     else
         log_error "❌ 서버 시작 실패!"

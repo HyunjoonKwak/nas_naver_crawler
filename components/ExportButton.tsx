@@ -41,7 +41,7 @@ export function ExportButton<T>({
 
       // 성공 피드백 (선택적)
       console.log(`Exported ${data.length} rows as ${exportFormat.toUpperCase()}`);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Export failed:', error);
     } finally {
       setIsExporting(false);

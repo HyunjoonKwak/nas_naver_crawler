@@ -51,7 +51,7 @@ export async function GET(
       success: true,
       group: groupWithComplexes
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('그룹 조회 오류:', error);
     return NextResponse.json(
       {
@@ -117,7 +117,7 @@ export async function PUT(
       success: true,
       group: updatedGroup
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('그룹 수정 오류:', error);
     return NextResponse.json(
       {
@@ -163,7 +163,7 @@ export async function DELETE(
       message: '그룹이 삭제되었습니다.',
       deletedComplexCount: existingGroup._count.complexGroups
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('그룹 삭제 오류:', error);
     return NextResponse.json(
       {

@@ -29,15 +29,27 @@ interface CrawlEvent {
   };
 }
 
+interface ClientInfo {
+  controller: ReadableStreamDefaultController;
+  connectedAt: number;
+}
+
 class EventBroadcaster {
-  private clients: Set<ReadableStreamDefaultController> = new Set();
+  private clients: Map<ReadableStreamDefaultController, ClientInfo> = new Map();
+  private readonly MAX_CONNECTION_TIME = 600000; // 10분 (밀리초)
 
   /**
    * 새 클라이언트 연결 추가
    */
   addClient(controller: ReadableStreamDefaultController) {
-    this.clients.add(controller);
+    this.clients.set(controller, {
+      controller,
+      connectedAt: Date.now(),
+    });
     console.log(`[SSE] Client connected. Total clients: ${this.clients.size}`);
+
+    // 오래된 연결 정리
+    this.cleanupStaleConnections();
   }
 
   /**
@@ -46,6 +58,37 @@ class EventBroadcaster {
   removeClient(controller: ReadableStreamDefaultController) {
     this.clients.delete(controller);
     console.log(`[SSE] Client disconnected. Total clients: ${this.clients.size}`);
+  }
+
+  /**
+   * 오래된 연결 자동 정리 (10분 이상 유지된 연결)
+   */
+  private cleanupStaleConnections() {
+    const now = Date.now();
+    const staleClients: ReadableStreamDefaultController[] = [];
+
+    this.clients.forEach((info, controller) => {
+      const connectionAge = now - info.connectedAt;
+      if (connectionAge > this.MAX_CONNECTION_TIME) {
+        staleClients.push(controller);
+      }
+    });
+
+    staleClients.forEach((controller) => {
+      const info = this.clients.get(controller)!;
+      const ageSeconds = Math.round((now - info.connectedAt) / 1000);
+      console.log(`[SSE] Removing stale connection (age: ${ageSeconds}s)`);
+      try {
+        controller.close();
+      } catch (error: any) {
+        // 이미 닫힌 경우 무시
+      }
+      this.clients.delete(controller);
+    });
+
+    if (staleClients.length > 0) {
+      console.log(`[SSE] Cleaned up ${staleClients.length} stale connections. Remaining: ${this.clients.size}`);
+    }
   }
 
   /**
@@ -58,11 +101,14 @@ class EventBroadcaster {
 
     console.log(`[SSE] Broadcasting event: ${event.type} to ${this.clients.size} clients`);
 
+    // 오래된 연결 정리
+    this.cleanupStaleConnections();
+
     // 모든 연결된 클라이언트에게 전송
-    this.clients.forEach((controller) => {
+    this.clients.forEach((info, controller) => {
       try {
         controller.enqueue(data);
-      } catch (error) {
+      } catch (error: any) {
         console.error('[SSE] Failed to send to client:', error);
         this.clients.delete(controller);
       }

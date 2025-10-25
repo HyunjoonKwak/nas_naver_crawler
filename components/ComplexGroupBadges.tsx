@@ -47,7 +47,7 @@ export function ComplexGroupBadges({ complexId, complexName, groups, onGroupsCha
       if (data.success) {
         setAllGroups(data.groups || []);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('그룹 조회 오류:', error);
     } finally {
       setLoading(false);
@@ -91,7 +91,7 @@ export function ComplexGroupBadges({ complexId, complexName, groups, onGroupsCha
       showSuccess('그룹이 변경되었습니다.');
       setShowModal(false);
       onGroupsChange();
-    } catch (error) {
+    } catch (error: any) {
       dismissToast(loadingToast);
       console.error('그룹 변경 오류:', error);
       showError('그룹 변경 중 오류가 발생했습니다.');

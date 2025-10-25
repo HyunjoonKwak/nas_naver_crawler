@@ -1,9 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAuth, getComplexWhereCondition } from '@/lib/auth-utils';
-import { calculatePriceStats, calculateTradeTypeStats } from '@/lib/price-utils';
+import { getCached, CacheKeys, CacheTTL } from '@/lib/redis-cache';
 
 export const dynamic = 'force-dynamic';
+
+// ✅ 추가: 가격 포맷팅 헬퍼 함수
+function formatPriceFromWon(won: bigint | null): string {
+  if (!won) return '-';
+  const wonNum = Number(won);
+  const eok = Math.floor(wonNum / 100000000);
+  const man = Math.floor((wonNum % 100000000) / 10000);
+  
+  if (eok > 0 && man > 0) return `${eok}억 ${man.toLocaleString()}`;
+  if (eok > 0) return `${eok}억`;
+  return `${man.toLocaleString()}`;
+}
 
 // 단지 목록 조회 및 검색
 export async function GET(request: NextRequest) {
@@ -12,6 +24,29 @@ export async function GET(request: NextRequest) {
     const currentUser = await requireAuth();
 
     const { searchParams } = new URL(request.url);
+    
+    // ✅ 캐싱 적용 (5분 캐시)
+    const cacheKey = CacheKeys.complex.list(currentUser.id, searchParams.toString());
+    
+    return await getCached(
+      cacheKey,
+      CacheTTL.medium,
+      async () => {
+        return await fetchComplexList(currentUser, searchParams);
+      }
+    );
+  } catch (error: any) {
+    console.error('Complexes fetch error:', error);
+    return NextResponse.json(
+      { error: '단지 조회 중 오류가 발생했습니다.', details: error.message },
+      { status: 500 }
+    );
+  }
+}
+
+// ✅ 리팩토링: 캐싱을 위해 로직 분리
+async function fetchComplexList(currentUser: any, searchParams: URLSearchParams) {
+  try {
 
     // 쿼리 파라미터
     const search = searchParams.get('search'); // 단지명 또는 주소 검색
@@ -64,46 +99,38 @@ export async function GET(request: NextRequest) {
         break;
     }
 
-    // 단지 조회 (현재 사용자의 즐겨찾기 및 그룹만 포함)
+    // ✅ 개선: 단지 기본 정보만 조회 (N+1 방지)
     const complexes = await prisma.complex.findMany({
       where,
-      include: {
+      select: {
+        id: true,
+        complexNo: true,
+        complexName: true,
+        totalHousehold: true,
+        totalDong: true,
+        latitude: true,
+        longitude: true,
+        address: true,
+        roadAddress: true,
+        jibunAddress: true,
+        beopjungdong: true,
+        haengjeongdong: true,
+        createdAt: true,
+        updatedAt: true,
         _count: {
-          select: {
-            articles: true, // 매물 개수
-          },
-        },
-        articles: {
-          orderBy: { createdAt: 'desc' },
-          take: 100, // 최근 100개 매물 (가격 통계용)
-          select: {
-            createdAt: true,
-            dealOrWarrantPrc: true,
-            rentPrc: true,
-            tradeTypeName: true,
-          },
+          select: { articles: true }
         },
         favorites: {
-          where: {
-            userId: currentUser.id, // 본인의 즐겨찾기만 조회
-          },
-          select: {
-            id: true,
-          },
+          where: { userId: currentUser.id },
+          select: { id: true }
         },
         complexGroups: {
           where: {
-            group: {
-              userId: currentUser.id, // 본인의 그룹만 조회 (완전 독립 정책)
-            },
+            group: { userId: currentUser.id }
           },
           include: {
             group: {
-              select: {
-                id: true,
-                name: true,
-                color: true
-              }
+              select: { id: true, name: true, color: true }
             }
           }
         }
@@ -113,21 +140,66 @@ export async function GET(request: NextRequest) {
       skip: offset,
     });
 
+    const complexIds = complexes.map(c => c.id);
+
     // 총 개수
     const total = await prisma.complex.count({ where });
 
-    // 응답 포맷팅
-    const results = complexes.map((complex: any) => {
-      // 가격 통계 계산
-      const priceStats = calculatePriceStats(complex.articles || []);
-      const tradeTypeStats = calculateTradeTypeStats(complex.articles || []);
+    // ✅ 개선: 가격 통계 (DB 집계 - 숫자 컬럼 사용!)
+    const priceStats = await prisma.article.groupBy({
+      by: ['complexId'],
+      where: {
+        complexId: { in: complexIds },
+        dealOrWarrantPrcWon: { gt: 0 }
+      },
+      _avg: { dealOrWarrantPrcWon: true },
+      _min: { dealOrWarrantPrcWon: true },
+      _max: { dealOrWarrantPrcWon: true },
+    });
 
-      // 24시간 매물 변동 계산
-      const now = new Date();
-      const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-      const articlesIn24Hours = complex.articles?.filter((article: any) =>
-        new Date(article.createdAt) >= twentyFourHoursAgo
-      ).length || 0;
+    // ✅ 개선: 거래 유형별 통계 (DB 집계)
+    const tradeTypeStats = await prisma.article.groupBy({
+      by: ['complexId', 'tradeTypeName'],
+      where: {
+        complexId: { in: complexIds },
+        dealOrWarrantPrcWon: { gt: 0 }
+      },
+      _count: true,
+      _avg: { dealOrWarrantPrcWon: true },
+    });
+
+    // ✅ 개선: 24시간 매물 변동 (DB 쿼리)
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const recentCounts = await prisma.article.groupBy({
+      by: ['complexId'],
+      where: {
+        complexId: { in: complexIds },
+        createdAt: { gte: twentyFourHoursAgo }
+      },
+      _count: true,
+    });
+
+    // ✅ 개선: 최근 수집일 (단일 쿼리)
+    const lastCrawled = await prisma.article.groupBy({
+      by: ['complexId'],
+      where: { complexId: { in: complexIds } },
+      _max: { createdAt: true },
+    });
+
+    // ✅ 개선: 결과 조합 (메모리 효율적)
+    const results = complexes.map((complex: any) => {
+      const stats = priceStats.find(s => s.complexId === complex.id);
+      const trades = tradeTypeStats
+        .filter(t => t.complexId === complex.id)
+        .map(t => ({
+          type: t.tradeTypeName,
+          count: t._count,
+          avgPrice: formatPriceFromWon(
+            t._avg.dealOrWarrantPrcWon ? BigInt(Math.floor(t._avg.dealOrWarrantPrcWon)) : null
+          ),
+        }));
+      const recentCount = recentCounts.find(r => r.complexId === complex.id)?._count || 0;
+      const lastCrawl = lastCrawled.find(l => l.complexId === complex.id)?._max.createdAt;
 
       return {
         id: complex.id,
@@ -145,32 +217,28 @@ export async function GET(request: NextRequest) {
         beopjungdong: complex.beopjungdong,
         haengjeongdong: complex.haengjeongdong,
         articleCount: complex._count?.articles || 0,
-        // DB Favorite 테이블 사용 (사용자별 즐겨찾기)
         isFavorite: complex.favorites.length > 0,
-        // 그룹 정보 추가
         groups: complex.complexGroups?.map((cg: any) => ({
           id: cg.group.id,
           name: cg.group.name,
           color: cg.group.color
         })) || [],
-        // 가격 통계
-        priceStats: priceStats ? {
-          avgPrice: priceStats.avgPriceFormatted,
-          minPrice: priceStats.minPriceFormatted,
-          maxPrice: priceStats.maxPriceFormatted,
+        priceStats: stats ? {
+          avgPrice: formatPriceFromWon(
+            stats._avg.dealOrWarrantPrcWon ? BigInt(Math.floor(stats._avg.dealOrWarrantPrcWon)) : null
+          ),
+          minPrice: formatPriceFromWon(
+            stats._min.dealOrWarrantPrcWon ? BigInt(stats._min.dealOrWarrantPrcWon) : null
+          ),
+          maxPrice: formatPriceFromWon(
+            stats._max.dealOrWarrantPrcWon ? BigInt(stats._max.dealOrWarrantPrcWon) : null
+          ),
         } : null,
-        // 거래 유형별 통계
-        tradeTypeStats: tradeTypeStats.map(stat => ({
-          type: stat.tradeTypeName,
-          count: stat.count,
-          avgPrice: stat.priceStats?.avgPriceFormatted || '-',
-        })),
+        tradeTypeStats: trades,
         createdAt: complex.createdAt.toISOString(),
         updatedAt: complex.updatedAt.toISOString(),
-        // 최근 수집일 (가장 최근 매물의 생성일)
-        lastCrawledAt: complex.articles?.[0]?.createdAt?.toISOString() || null,
-        // 24시간 매물 변동
-        articleChange24h: articlesIn24Hours,
+        lastCrawledAt: lastCrawl?.toISOString() || null,
+        articleChange24h: recentCount,
       };
     });
 
@@ -180,13 +248,8 @@ export async function GET(request: NextRequest) {
       limit,
       offset,
     });
-
   } catch (error: any) {
-    console.error('Complexes fetch error:', error);
-    return NextResponse.json(
-      { error: '단지 조회 중 오류가 발생했습니다.', details: error.message },
-      { status: 500 }
-    );
+    throw error;
   }
 }
 

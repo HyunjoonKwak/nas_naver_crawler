@@ -82,16 +82,22 @@ model Article {
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 
+  // === 단일 인덱스 ===
   @@index([complexId])
   @@index([tradeTypeName])
-  @@index([dealOrWarrantPrc])
-  @@index([dealOrWarrantPrcWon]) // 숫자 가격 인덱스 (빠른 정렬/필터링)
-  @@index([rentPrcWon])           // 월세 인덱스
+  // @@index([dealOrWarrantPrc]) // ❌ 제거: 문자열 인덱스 (더 이상 사용 안 함)
+  @@index([dealOrWarrantPrcWon]) // ✅ 숫자 가격 인덱스 (정렬/필터링)
+  @@index([rentPrcWon])           // ✅ 월세 인덱스
+  @@index([area1])                // ✅ 추가: 면적 필터링
   @@index([articleConfirmYmd])
   @@index([createdAt])            // 시계열 조회 최적화
-  @@index([complexId, createdAt]) // 복합 인덱스: 단지별 최신 매물 조회 최적화
-  @@index([complexId, tradeTypeName]) // 복합 인덱스: 단지별 거래유형 필터링 최적화
-  @@index([tradeTypeName, dealOrWarrantPrcWon]) // 복합 인덱스: 거래유형별 가격 정렬 최적화
+  
+  // === 복합 인덱스 (커버링 인덱스) ===
+  @@index([complexId, createdAt(sort: Desc)]) // 단지별 최신 매물 조회
+  @@index([complexId, tradeTypeName]) // 단지별 거래유형 필터링
+  @@index([tradeTypeName, dealOrWarrantPrcWon]) // 거래유형별 가격 정렬
+  @@index([complexId, dealOrWarrantPrcWon, tradeTypeName]) // ✅ 추가: 복합 필터링
+  @@index([complexId, area1, dealOrWarrantPrcWon]) // ✅ 추가: 면적별 가격 조회
   @@map("articles")
 }
 
@@ -123,12 +129,15 @@ model CrawlHistory {
   createdAt         DateTime @default(now()) @map("created_at")
   updatedAt         DateTime @updatedAt @map("updated_at")
 
-  @@index([createdAt])
+  // === 단일 인덱스 ===
   @@index([status])
   @@index([userId])
-  @@index([scheduleId]) // 스케줄별 크롤링 조회용
-  @@index([scheduleId, status]) // 중복 실행 방지 쿼리 최적화
-  @@index([startedAt]) // 시작 시간 기준 정렬
+  @@index([scheduleId])
+  
+  // === 복합 인덱스 (쿼리 패턴 최적화) ===
+  @@index([userId, status, startedAt(sort: Desc)]) // ✅ 추가: 사용자별 히스토리 조회
+  @@index([scheduleId, status]) // 중복 실행 방지
+  @@index([startedAt(sort: Desc)]) // 최신 크롤링 조회
   @@map("crawl_history")
 }
 
@@ -541,10 +550,8 @@ model Notification {
   createdAt DateTime         @default(now())
 
   @@index([userId])
-  @@index([isRead])
-  @@index([createdAt])
-  // 복합 인덱스 추가 - 가장 자주 사용되는 쿼리 패턴에 최적화
-  @@index([userId, isRead, createdAt(sort: Desc)])
+  // === 복합 인덱스 (쿼리 패턴 최적화) ===
+  @@index([userId, isRead, createdAt(sort: Desc)]) // 사용자별 미읽음 알림 조회
   @@map("notifications")
 }
 

@@ -72,7 +72,7 @@ export default function SignUpPage() {
       } else {
         showError(data.error || "회원가입에 실패했습니다.");
       }
-    } catch (error) {
+    } catch (error: any) {
       dismissToast(loadingToast);
       console.error("Signup error:", error);
       showError("회원가입 중 오류가 발생했습니다.");

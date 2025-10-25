@@ -68,7 +68,7 @@ async function readCSVComplexInfo(): Promise<Map<string, any>> {
             });
           }
         }
-      } catch (error) {
+      } catch (error: any) {
         console.log('CSV 읽기 실패 (무시):', error);
       }
 
@@ -119,8 +119,12 @@ export async function GET(request: NextRequest) {
       if (maxArea) where.area1.lte = parseFloat(maxArea);
     }
 
-    // 가격 필터링 (문자열이므로 복잡함 - 일단 간단하게)
-    // TODO: 향후 dealOrWarrantPrc를 숫자로 변환하여 저장하는 것 고려
+    // ✅ 개선: 가격 필터링 (숫자 컬럼 사용)
+    if (minPrice || maxPrice) {
+      where.dealOrWarrantPrcWon = {};
+      if (minPrice) where.dealOrWarrantPrcWon.gte = BigInt(parseInt(minPrice) * 10000); // 만원 → 원
+      if (maxPrice) where.dealOrWarrantPrcWon.lte = BigInt(parseInt(maxPrice) * 10000);
+    }
 
     // 매물 조회
     const articles = await prisma.article.findMany({

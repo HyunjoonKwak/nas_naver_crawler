@@ -55,7 +55,7 @@ export default function PropertyDetail({ data, onClose, onRefresh, onDelete, com
             const result = await response.json();
             setAddressInfo(result.address);
           }
-        } catch (error) {
+        } catch (error: any) {
           console.error('Failed to fetch address:', error);
         } finally {
           setLoadingAddress(false);

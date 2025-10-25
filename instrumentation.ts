@@ -20,7 +20,7 @@ export async function register() {
     try {
       const count = await loadAllSchedules();
       console.log(`✅ Scheduler initialization complete: ${count} schedule(s) loaded`);
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Failed to initialize schedulers:', error);
     }
   }

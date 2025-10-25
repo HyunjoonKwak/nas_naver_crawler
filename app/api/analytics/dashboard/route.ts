@@ -7,9 +7,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAuth } from '@/lib/auth-utils';
-import { parsePriceToWon } from '@/lib/price-utils';
 
 export const dynamic = 'force-dynamic';
+
+// ✅ 추가: 가격 포맷팅 헬퍼 함수
+function formatPriceFromWon(won: bigint | number | null): string {
+  if (!won) return '-';
+  const wonNum = typeof won === 'bigint' ? Number(won) : won;
+  const eok = Math.floor(wonNum / 100000000);
+  const man = Math.floor((wonNum % 100000000) / 10000);
+  
+  if (eok > 0 && man > 0) return `${eok}억 ${man.toLocaleString()}`;
+  if (eok > 0) return `${eok}억`;
+  return `${man.toLocaleString()}`;
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -23,172 +34,162 @@ export async function GET(request: NextRequest) {
 
     const favoriteComplexIds = favorites.map(f => f.complexId);
 
-    // 사용자 단지의 매물 조회
-    const articles = await prisma.article.findMany({
-      where: {
-        complex: {
-          id: { in: favoriteComplexIds },
-        },
-      },
-      select: {
-        id: true,
-        dealOrWarrantPrc: true,
-        rentPrc: true,
-        tradeTypeName: true,
-        area1: true,
-        createdAt: true,
-        complex: {
-          select: {
-            complexNo: true,
-            complexName: true,
+    if (favoriteComplexIds.length === 0) {
+      return NextResponse.json({
+        success: true,
+        data: {
+          overview: {
+            totalArticles: 0,
+            uniqueComplexes: 0,
+            avgPrice: 0,
+            minPrice: 0,
+            maxPrice: 0,
+            avgPriceFormatted: '-',
+            minPriceFormatted: '-',
+            maxPriceFormatted: '-',
           },
+          priceTrend: [],
+          topComplexes: [],
+          tradeTypeDistribution: [],
+          areaAnalysis: [],
         },
+      });
+    }
+
+    // ✅ 개선: 매물 개수만 조회
+    const totalArticles = await prisma.article.count({
+      where: {
+        complex: { id: { in: favoriteComplexIds } },
       },
-      orderBy: {
-        createdAt: 'desc',
-      },
-      take: 1000, // 최근 1000개 매물
     });
 
-    // === 1. 시장 개요 KPI ===
-    const totalArticles = articles.length;
-    const uniqueComplexes = new Set(articles.map(a => a.complex.complexNo)).size;
+    const uniqueComplexes = favoriteComplexIds.length;
 
-    // 가격 통계
-    const prices = articles
-      .map(a => parsePriceToWon(a.dealOrWarrantPrc))
-      .filter(p => p > 0);
+    // ✅ 개선: 가격 통계 (DB 집계)
+    const priceStatsResult = await prisma.article.aggregate({
+      where: {
+        complex: { id: { in: favoriteComplexIds } },
+        dealOrWarrantPrcWon: { gt: 0 }
+      },
+      _avg: { dealOrWarrantPrcWon: true },
+      _min: { dealOrWarrantPrcWon: true },
+      _max: { dealOrWarrantPrcWon: true },
+    });
 
-    const avgPrice = prices.length > 0
-      ? prices.reduce((sum, p) => sum + p, 0) / prices.length
-      : 0;
-    const minPrice = prices.length > 0 ? Math.min(...prices) : 0;
-    const maxPrice = prices.length > 0 ? Math.max(...prices) : 0;
+    const avgPrice = Number(priceStatsResult._avg.dealOrWarrantPrcWon || 0);
+    const minPrice = Number(priceStatsResult._min.dealOrWarrantPrcWon || 0);
+    const maxPrice = Number(priceStatsResult._max.dealOrWarrantPrcWon || 0);
 
-    // 가격 포맷팅
-    const formatPrice = (won: number): string => {
-      if (won === 0) return '-';
-      const eok = Math.floor(won / 100000000);
-      const man = Math.floor((won % 100000000) / 10000);
-
-      if (eok > 0 && man > 0) {
-        return `${eok}억 ${man.toLocaleString()}`;
-      } else if (eok > 0) {
-        return `${eok}억`;
-      } else {
-        return `${man.toLocaleString()}`;
-      }
-    };
-
-    // === 2. 가격 추이 (최근 30일, 일별) ===
+    // ✅ 개선: 가격 추이 (최근 30일, 일별) - DB 쿼리로 직접 계산
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-    const recentArticles = articles.filter(a => new Date(a.createdAt) >= thirtyDaysAgo);
+    const priceTrendRaw = await prisma.$queryRaw<Array<{
+      date: Date;
+      avg_price: number;
+      count: number;
+    }>>`
+      SELECT 
+        DATE(created_at) as date,
+        AVG(deal_or_warrant_prc_won)::numeric as avg_price,
+        COUNT(*)::integer as count
+      FROM articles
+      WHERE complex_id = ANY(${favoriteComplexIds})
+        AND created_at >= ${thirtyDaysAgo}
+        AND deal_or_warrant_prc_won > 0
+      GROUP BY DATE(created_at)
+      ORDER BY date ASC
+    `;
 
-    // 날짜별 그룹화
-    const priceByDate: Record<string, number[]> = {};
-    recentArticles.forEach(article => {
-      const date = new Date(article.createdAt).toISOString().split('T')[0];
-      const price = parsePriceToWon(article.dealOrWarrantPrc);
-      if (price > 0) {
-        if (!priceByDate[date]) priceByDate[date] = [];
-        priceByDate[date].push(price);
-      }
-    });
-
-    const priceTrend = Object.keys(priceByDate)
-      .sort()
-      .map(date => ({
-        date,
-        avgPrice: priceByDate[date].reduce((sum, p) => sum + p, 0) / priceByDate[date].length,
-        count: priceByDate[date].length,
-      }));
-
-    // === 3. 단지별 순위 (TOP 10) ===
-    const complexCounts: Record<string, { name: string; count: number; prices: number[] }> = {};
-    articles.forEach(article => {
-      const complexNo = article.complex.complexNo;
-      const price = parsePriceToWon(article.dealOrWarrantPrc);
-
-      if (!complexCounts[complexNo]) {
-        complexCounts[complexNo] = {
-          name: article.complex.complexName,
-          count: 0,
-          prices: [],
-        };
-      }
-      complexCounts[complexNo].count++;
-      if (price > 0) {
-        complexCounts[complexNo].prices.push(price);
-      }
-    });
-
-    const topComplexes = Object.keys(complexCounts)
-      .map(complexNo => ({
-        complexNo,
-        complexName: complexCounts[complexNo].name,
-        articleCount: complexCounts[complexNo].count,
-        avgPrice: complexCounts[complexNo].prices.length > 0
-          ? complexCounts[complexNo].prices.reduce((sum, p) => sum + p, 0) / complexCounts[complexNo].prices.length
-          : 0,
-        avgPriceFormatted: formatPrice(
-          complexCounts[complexNo].prices.length > 0
-            ? complexCounts[complexNo].prices.reduce((sum, p) => sum + p, 0) / complexCounts[complexNo].prices.length
-            : 0
-        ),
-      }))
-      .sort((a, b) => b.articleCount - a.articleCount)
-      .slice(0, 10);
-
-    // === 4. 거래 유형 분포 ===
-    const tradeTypeCounts: Record<string, number> = {};
-    articles.forEach(article => {
-      tradeTypeCounts[article.tradeTypeName] = (tradeTypeCounts[article.tradeTypeName] || 0) + 1;
-    });
-
-    const tradeTypeDistribution = Object.keys(tradeTypeCounts).map(type => ({
-      type,
-      count: tradeTypeCounts[type],
-      percentage: totalArticles > 0 ? parseFloat((tradeTypeCounts[type] / totalArticles * 100).toFixed(1)) : 0,
+    const priceTrend = priceTrendRaw.map(row => ({
+      date: row.date.toISOString().split('T')[0],
+      avgPrice: Number(row.avg_price),
+      count: row.count,
     }));
 
-    // === 5. 평형별 분석 (면적 기준) ===
-    const areaBuckets = [
-      { label: '소형 (59㎡ 이하)', max: 59, count: 0, prices: [] as number[] },
-      { label: '중형 (60-84㎡)', min: 60, max: 84, count: 0, prices: [] as number[] },
-      { label: '대형 (85-135㎡)', min: 85, max: 135, count: 0, prices: [] as number[] },
-      { label: '특대형 (136㎡ 이상)', min: 136, count: 0, prices: [] as number[] },
-    ];
-
-    articles.forEach(article => {
-      const area = article.area1;
-      const price = parsePriceToWon(article.dealOrWarrantPrc);
-
-      areaBuckets.forEach(bucket => {
-        const minOk = bucket.min === undefined || area >= bucket.min;
-        const maxOk = bucket.max === undefined || area <= bucket.max;
-
-        if (minOk && maxOk) {
-          bucket.count++;
-          if (price > 0) {
-            bucket.prices.push(price);
-          }
-        }
-      });
+    // ✅ 개선: 단지별 순위 (TOP 10) - DB 집계
+    const topComplexesRaw = await prisma.article.groupBy({
+      by: ['complexId'],
+      where: {
+        complex: { id: { in: favoriteComplexIds } },
+        dealOrWarrantPrcWon: { gt: 0 }
+      },
+      _count: true,
+      _avg: { dealOrWarrantPrcWon: true },
+      orderBy: {
+        _count: { complexId: 'desc' }
+      },
+      take: 10,
     });
 
-    const areaAnalysis = areaBuckets.map(bucket => ({
+    // 단지 정보 조회 (한 번에)
+    const topComplexIds = topComplexesRaw.map(t => t.complexId);
+    const complexesInfo = await prisma.complex.findMany({
+      where: { id: { in: topComplexIds } },
+      select: { id: true, complexNo: true, complexName: true }
+    });
+
+    const topComplexes = topComplexesRaw.map(item => {
+      const info = complexesInfo.find(c => c.id === item.complexId);
+      return {
+        complexNo: info?.complexNo || '',
+        complexName: info?.complexName || '',
+        articleCount: item._count,
+        avgPrice: Number(item._avg.dealOrWarrantPrcWon || 0),
+        avgPriceFormatted: formatPriceFromWon(
+          item._avg.dealOrWarrantPrcWon ? BigInt(Math.floor(item._avg.dealOrWarrantPrcWon)) : null
+        ),
+      };
+    });
+
+    // ✅ 개선: 거래 유형 분포 (DB 집계)
+    const tradeTypeDistributionRaw = await prisma.article.groupBy({
+      by: ['tradeTypeName'],
+      where: {
+        complex: { id: { in: favoriteComplexIds } }
+      },
+      _count: true,
+    });
+
+    const tradeTypeDistribution = tradeTypeDistributionRaw.map(item => ({
+      type: item.tradeTypeName,
+      count: item._count,
+      percentage: totalArticles > 0 ? parseFloat((item._count / totalArticles * 100).toFixed(1)) : 0,
+    }));
+
+    // ✅ 개선: 평형별 분석 (DB 쿼리)
+    const areaAnalysisRaw = await prisma.$queryRaw<Array<{
+      label: string;
+      count: number;
+      avg_price: number;
+    }>>`
+      SELECT 
+        CASE 
+          WHEN area1 <= 59 THEN '소형 (59㎡ 이하)'
+          WHEN area1 <= 84 THEN '중형 (60-84㎡)'
+          WHEN area1 <= 135 THEN '대형 (85-135㎡)'
+          ELSE '특대형 (136㎡ 이상)'
+        END as label,
+        COUNT(*)::integer as count,
+        AVG(deal_or_warrant_prc_won)::numeric as avg_price
+      FROM articles
+      WHERE complex_id = ANY(${favoriteComplexIds})
+        AND deal_or_warrant_prc_won > 0
+      GROUP BY label
+      ORDER BY 
+        CASE label
+          WHEN '소형 (59㎡ 이하)' THEN 1
+          WHEN '중형 (60-84㎡)' THEN 2
+          WHEN '대형 (85-135㎡)' THEN 3
+          ELSE 4
+        END
+    `;
+
+    const areaAnalysis = areaAnalysisRaw.map(bucket => ({
       label: bucket.label,
       count: bucket.count,
-      avgPrice: bucket.prices.length > 0
-        ? bucket.prices.reduce((sum, p) => sum + p, 0) / bucket.prices.length
-        : 0,
-      avgPriceFormatted: formatPrice(
-        bucket.prices.length > 0
-          ? bucket.prices.reduce((sum, p) => sum + p, 0) / bucket.prices.length
-          : 0
-      ),
+      avgPrice: Number(bucket.avg_price || 0),
+      avgPriceFormatted: formatPriceFromWon(Number(bucket.avg_price || 0)),
       percentage: totalArticles > 0 ? parseFloat((bucket.count / totalArticles * 100).toFixed(1)) : 0,
     }));
 
@@ -201,9 +202,9 @@ export async function GET(request: NextRequest) {
           avgPrice,
           minPrice,
           maxPrice,
-          avgPriceFormatted: formatPrice(avgPrice),
-          minPriceFormatted: formatPrice(minPrice),
-          maxPriceFormatted: formatPrice(maxPrice),
+          avgPriceFormatted: formatPriceFromWon(avgPrice),
+          minPriceFormatted: formatPriceFromWon(minPrice),
+          maxPriceFormatted: formatPriceFromWon(maxPrice),
         },
         priceTrend,
         topComplexes,

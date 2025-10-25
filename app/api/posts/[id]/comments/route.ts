@@ -66,7 +66,7 @@ export async function GET(
       comments,
     });
   } catch (error: any) {
-    logger.error('Failed to fetch comments', error, { postId: params.id });
+    logger.error('Failed to fetch comments', { error, postId: params.id });
     return NextResponse.json(
       {
         success: false,
@@ -175,7 +175,8 @@ export async function POST(
       comment,
     });
   } catch (error: any) {
-    logger.error('Failed to create comment', error, {
+    logger.error('Failed to create comment', {
+      error,
       postId: params.id,
     });
     return NextResponse.json(

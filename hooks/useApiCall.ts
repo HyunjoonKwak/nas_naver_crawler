@@ -42,7 +42,7 @@ export const useApiCall = () => {
         showError(errorMsg);
         return { success: false, error: error.error };
       }
-    } catch (error) {
+    } catch (error: any) {
       dismissToast(loadingToast);
       console.error('API Call Error:', error);
       const errorMsg = config.errorPrefix

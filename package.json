@@ -1,65 +1,74 @@
 {
-  "name": "property_manager",
-  "version": "1.0.0",
-  "description": "NAS 환경용 네이버 부동산 크롤러 - Next.js 웹 UI 지원",
+  "name": "nas_naver_crawler",
+  "version": "2.10.0",
+  "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "db:generate": "prisma generate",
-    "db:push": "prisma db push",
-    "db:migrate": "prisma migrate dev",
-    "db:studio": "prisma studio",
-    "db:seed": "ts-node --compiler-options {\"module\":\"CommonJS\"} prisma/seed.ts"
+    "type-check": "tsc --noEmit",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,css,md}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,css,md}\"",
+    "prepare": "husky install",
+    "test": "vitest",
+    "test:coverage": "vitest --coverage",
+    "analyze": "ANALYZE=true next build"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/HyunjoonKwak/nas_naver_crawler.git"
+  "lint-staged": {
+    "*.{ts,tsx,js,jsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,md,css}": [
+      "prettier --write"
+    ]
   },
-  "keywords": [
-    "naver",
-    "real-estate",
-    "crawler",
-    "nas",
-    "playwright",
-    "nextjs"
-  ],
-  "author": "Special Risk",
-  "license": "MIT",
-  "bugs": {
-    "url": "https://github.com/HyunjoonKwak/nas_naver_crawler/issues"
-  },
-  "homepage": "https://github.com/HyunjoonKwak/nas_naver_crawler#readme",
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
-    "@prisma/client": "^5.22.0",
+    "@prisma/client": "^5.7.1",
     "@tanstack/react-query": "^5.90.5",
-    "@types/node": "^20.14.0",
-    "@types/react": "^18.3.0",
-    "@types/react-dom": "^18.3.0",
-    "autoprefixer": "^10.4.19",
+    "@types/bcryptjs": "^2.4.6",
     "bcryptjs": "^3.0.2",
-    "cronstrue": "^2.50.0",
+    "cronstrue": "^3.9.0",
     "lucide-react": "^0.546.0",
-    "next": "^14.2.0",
-    "next-auth": "^4.24.11",
-    "node-cron": "^3.0.3",
-    "postcss": "^8.4.38",
-    "react": "^18.3.0",
-    "react-dom": "^18.3.0",
+    "next": "^14.0.4",
+    "next-auth": "^4.24.5",
+    "node-cron": "^4.2.1",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
     "react-hot-toast": "^2.6.0",
-    "recharts": "^3.2.1",
-    "tailwindcss": "^3.4.3",
-    "typescript": "^5.4.5",
-    "zod": "^4.1.12"
+    "recharts": "^2.10.3",
+    "redis": "^4.6.12",
+    "zod": "^3.22.4"
   },
   "devDependencies": {
-    "@types/bcryptjs": "^2.4.6",
+    "@next/bundle-analyzer": "^14.0.4",
+    "@testing-library/jest-dom": "^6.1.5",
+    "@testing-library/react": "^14.1.2",
+    "@testing-library/user-event": "^14.5.1",
+    "@types/node": "^20",
     "@types/node-cron": "^3.0.11",
-    "prisma": "^5.22.0",
-    "ts-node": "^10.9.2"
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "@typescript-eslint/eslint-plugin": "^6.15.0",
+    "@typescript-eslint/parser": "^6.15.0",
+    "@vitejs/plugin-react": "^5.0.4",
+    "@vitest/coverage-v8": "^1.1.0",
+    "autoprefixer": "^10.4.16",
+    "eslint": "^8",
+    "eslint-config-next": "14.0.4",
+    "eslint-config-prettier": "^9.1.0",
+    "husky": "^8.0.3",
+    "jsdom": "^23.0.1",
+    "lint-staged": "^15.2.0",
+    "postcss": "^8.4.32",
+    "prettier": "^3.1.1",
+    "prisma": "^5.7.1",
+    "tailwindcss": "^3.4.0",
+    "typescript": "^5",
+    "vitest": "^1.1.0"
   }
 }

@@ -88,7 +88,7 @@ export async function GET(request: NextRequest) {
           cronDescription = cronstrue.toString(schedule.cronExpr, {
             locale: 'ko',
           });
-        } catch (error) {
+        } catch (error: any) {
           console.error('Failed to parse cron expression:', error);
         }
 

@@ -29,7 +29,7 @@ export default function SystemDetailsPage() {
       const response = await fetch('/api/status');
       const data = await response.json();
       setStatus(data);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to fetch status:', error);
     } finally {
       setLoading(false);

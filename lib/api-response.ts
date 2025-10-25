@@ -1,33 +1,130 @@
 import { NextResponse } from 'next/server';
+import { ApiError, toApiError } from './api-error';
+import { createLogger } from './logger';
+
+const logger = createLogger('API');
 
 /**
  * API 응답 타입 정의
  */
 export type ApiResponse<T = any> =
-  | { success: true; data: T }
-  | { success: false; error: string; details?: string };
+  | { success: true; data: T; message?: string; meta?: any }
+  | { success: false; error: { type: string; message: string; details?: any }; requestId?: string };
 
 /**
- * 성공 응답 생성
+ * 성공 응답 생성 헬퍼
+ * 
+ * @example
+ * ```typescript
+ * return ApiResponse.success(data, '크롤링 완료', { duration: 1234 });
+ * ```
  */
-export function success<T>(data: T, status: number = 200) {
-  return NextResponse.json(
-    { success: true, data },
-    { status }
-  );
+export class ApiResponseHelper {
+  /**
+   * 성공 응답 생성
+   */
+  static success<T>(data: T, message?: string, meta?: any) {
+    return NextResponse.json({
+      success: true,
+      data,
+      ...(message && { message }),
+      ...(meta && { meta }),
+    });
+  }
+
+  /**
+   * 에러 응답 생성
+   * 
+   * @param error - ApiError 또는 일반 Error 객체
+   * @param requestId - 요청 추적용 ID (선택)
+   */
+  static error(error: ApiError | Error | unknown, requestId?: string) {
+    const apiError = toApiError(error);
+    const isDevelopment = process.env.NODE_ENV === 'development';
+
+    // 500 에러는 상세 로그 남기기
+    if (apiError.statusCode >= 500) {
+      logger.error('API Error', {
+        requestId,
+        type: apiError.type,
+        message: apiError.message,
+        statusCode: apiError.statusCode,
+        stack: apiError.stack,
+        details: apiError.details,
+      });
+    } else {
+      logger.warn('API Warning', {
+        requestId,
+        type: apiError.type,
+        message: apiError.message,
+        statusCode: apiError.statusCode,
+      });
+    }
+
+    return NextResponse.json(
+      {
+        success: false,
+        error: {
+          type: apiError.type,
+          message: apiError.message,
+          // 개발 환경에서만 상세 정보 노출
+          ...(isDevelopment && apiError.details ? { details: apiError.details } : {}),
+        },
+        ...(requestId && { requestId }),
+      },
+      { status: apiError.statusCode }
+    );
+  }
+
+  /**
+   * API 핸들러 래퍼 - 자동 에러 처리 및 요청 ID 추가
+   * 
+   * @example
+   * ```typescript
+   * export const POST = ApiResponse.handler(async (request) => {
+   *   const body = await request.json();
+   *   const result = await processData(body);
+   *   return ApiResponse.success(result, '처리 완료');
+   * });
+   * ```
+   */
+  static handler<T extends any[]>(
+    handler: (...args: T) => Promise<NextResponse>
+  ) {
+    return async (...args: T): Promise<NextResponse> => {
+      const requestId = crypto.randomUUID();
+      const startTime = Date.now();
+
+      try {
+        logger.debug('API Request Started', { requestId });
+        
+        const response = await handler(...args);
+        
+        const duration = Date.now() - startTime;
+        logger.info('API Request Completed', { requestId, duration });
+        
+        return response;
+      } catch (err: any) {
+        const duration = Date.now() - startTime;
+        logger.error('API Request Failed', {
+          requestId,
+          duration,
+          error: err instanceof Error ? err.message : String(err),
+        });
+
+        return this.error(err, requestId);
+      }
+    };
+  }
 }
 
-/**
- * 에러 응답 생성
- * 프로덕션 환경에서는 상세 에러 정보를 숨김
- */
-export function error(
-  message: string,
-  status: number = 500,
-  details?: any
-) {
-  const isDevelopment = process.env.NODE_ENV === 'development';
+// Legacy 호환성을 위한 함수 export
+export const success = <T>(data: T, status: number = 200) => {
+  return NextResponse.json({ success: true, data }, { status });
+};
 
+export const error = (message: string, status: number = 500, details?: any) => {
+  const isDevelopment = process.env.NODE_ENV === 'development';
   return NextResponse.json(
     {
       success: false,
@@ -36,36 +133,6 @@ export function error(
     },
     { status }
   );
-}
+};
 
-/**
- * API 핸들러 래퍼 - 자동 에러 처리
- */
-export function apiHandler<T = any>(
-  handler: (...args: any[]) => Promise<NextResponse>
-) {
-  return async (...args: any[]): Promise<NextResponse> => {
-    try {
-      return await handler(...args);
-    } catch (err: any) {
-      console.error('[API Error]', err);
-
-      // 인증 에러
-      if (err.message?.includes('로그인') || err.message?.includes('승인')) {
-        return error(err.message, 401);
-      }
-
-      // 권한 에러
-      if (err.message?.includes('권한')) {
-        return error(err.message, 403);
-      }
-
-      // 일반 에러
-      return error(
-        '서버 오류가 발생했습니다.',
-        500,
-        err.message
-      );
-    }
-  };
-}
+export const apiHandler = ApiResponseHelper.handler;

@@ -10,9 +10,52 @@
 
 ---
 
-## 🆕 최신 업데이트 (v2.10.0 - 2025-10-19)
+## 🆕 최신 업데이트
 
-### 🎯 사용자 경험 개선 (v2.10.0) ✅ 완료
+### ⚡ 성능 최적화 (v2.11.0 - perf_improve 브랜치) 🚧 진행 중
+
+#### 🎯 핵심 성능 이슈 해결
+- **SSE 연결 관리 개선**
+  - 메모리 누수 방지: 10분 타임아웃 추가
+  - Heartbeat 패턴으로 연결 상태 모니터링
+  - 자동 정리: 비활성 연결 제거
+
+- **중복 크롤링 방지**
+  - Redis 기반 크롤링 상태 추적
+  - 동시 크롤링 차단 (409 Conflict)
+  - 3분 TTL로 자동 해제
+
+- **알림 쿼리 최적화**
+  - N+1 쿼리 제거 (N×2 → 1 쿼리)
+  - Prisma `include` 활용한 단일 쿼리
+  - 크롤링 속도 20% 향상
+
+#### 🔧 인프라 개선
+- **테스트 환경 분리**
+  - 프로덕션(3000) / 테스트(3001) 독립 운영
+  - 별도 DB/Redis/세션 관리
+  - `NEXTAUTH_SECRET` 분리로 세션 충돌 방지
+
+- **TypeScript 엄격 모드 완전 지원**
+  - 50+ 파일 타입 에러 수정
+  - catch 블록 타입 명시
+  - Prisma 타입 변환 정확성 개선
+
+- **CI/CD 파이프라인**
+  - GitHub Actions: 린트, 타입 체크, 테스트
+  - Docker 빌드 자동화
+  - 프로덕션 배포 전 검증 강화
+
+#### 📚 문서화 & 자동화
+- **종합 테스트 가이드**: `TESTING_CHECKLIST.md`
+- **자동 검증 스크립트**: `scripts/verify-perf-improve.sh`
+- **배포 가이드**: 테스트 환경 세팅 문서화
+
+**상태**: NAS 테스트 환경에서 검증 중
+
+---
+
+### 🎯 사용자 경험 개선 (v2.10.0 - 2025-10-19) ✅ 완료
 
 #### ⚡ 데이터 분석 접근성 향상
 - **자동 분석 실행 기능**
@@ -122,9 +165,10 @@
 - 스마트 컨테이너 감지
 - 스케줄러 타임아웃 개선
 
-**전체 변경 이력**: [CHANGELOG.md](CHANGELOG.md)
-**향후 계획**: [TODO.md](TODO.md)
-**효율성 분석**: [ANALYSIS_REPORT.md](ANALYSIS_REPORT.md)
+**전체 변경 이력**: [CHANGELOG.md](CHANGELOG.md)  
+**향후 계획**: [TODO.md](TODO.md)  
+**효율성 분석**: [ANALYSIS_REPORT.md](ANALYSIS_REPORT.md)  
+**🚀 성능 개선**: [PERFORMANCE_UPGRADE_GUIDE.md](PERFORMANCE_UPGRADE_GUIDE.md) ⭐ 신규!
 
 ---
 
@@ -240,7 +284,31 @@ docker-compose restart web  # 3초 완료!
 http://NAS_IP:3000
 ```
 
-### 3️⃣ 크롤링 실행
+### 3️⃣ 유틸리티 스크립트
+
+**개발 모드 (Hot Reload)**
+```bash
+./scripts/dev_mode.sh
+```
+
+**모드 전환 (프로덕션 ↔ 개발)**
+```bash
+./scripts/switch-mode.sh
+```
+
+**Docker 정리**
+```bash
+./scripts/cleanup-docker.sh
+```
+
+**perf_improve 브랜치 검증**
+```bash
+./scripts/verify-perf-improve.sh
+```
+
+---
+
+### 4️⃣ 크롤링 실행
 
 #### 📋 메인 페이지에서 일회성 크롤링
 1. **단지번호 입력** (예: `22065`)

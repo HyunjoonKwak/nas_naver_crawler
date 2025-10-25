@@ -121,7 +121,7 @@ export const DatabaseSection = ({
       const response = await fetch('/api/db-stats');
       const data = await response.json();
       setDbStats(data);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to fetch DB stats:', error);
     } finally {
       setDbLoading(false);
@@ -135,7 +135,7 @@ export const DatabaseSection = ({
       const data = await response.json();
       setCsvFiles(data.csvFiles || []);
       setJsonFiles(data.jsonFiles || []);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to fetch files:', error);
     } finally {
       setFilesLoading(false);
@@ -173,7 +173,7 @@ export const DatabaseSection = ({
       } else {
         showError(`초기화 실패: ${data.error}`);
       }
-    } catch (error) {
+    } catch (error: any) {
       dismissToast(loadingToast);
       console.error('Database reset error:', error);
       showError('데이터베이스 초기화 중 오류가 발생했습니다.');
@@ -210,7 +210,7 @@ export const DatabaseSection = ({
         const error = await response.json();
         showError(`삭제 실패: ${error.error}`);
       }
-    } catch (error) {
+    } catch (error: any) {
       dismissToast(loadingToast);
       console.error('Delete error:', error);
       showError('파일 삭제 중 오류가 발생했습니다.');
@@ -248,7 +248,7 @@ export const DatabaseSection = ({
 
       setSelectedFiles(new Set());
       await fetchFiles();
-    } catch (error) {
+    } catch (error: any) {
       dismissToast(loadingToast);
       console.error('Bulk delete error:', error);
       showError('파일 삭제 중 오류가 발생했습니다.');

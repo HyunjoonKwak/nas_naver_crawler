@@ -36,7 +36,7 @@ export const UsefulLinksSection = () => {
         setLinks(data.links);
         setGroupedLinks(data.groupedLinks);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to fetch links:', error);
     } finally {
       setLinksLoading(false);

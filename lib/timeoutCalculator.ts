@@ -78,7 +78,7 @@ export async function calculateDynamicTimeout(complexCount: number): Promise<num
     console.log(`   [Timeout] Calculated timeout: ${Math.floor(finalTimeout)}s (${Math.floor(finalTimeout / 60)}min)`);
 
     return finalTimeout * 1000; // 밀리초로 변환
-  } catch (error) {
+  } catch (error: any) {
     console.error('   [Timeout] Failed to calculate dynamic timeout:', error);
     // 에러 시 안전한 기본값 반환: 단지당 3분 + 5분 버퍼
     const fallbackTimeout = (complexCount * 3 * 60 + 5 * 60) * 1000;

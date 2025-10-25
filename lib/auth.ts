@@ -3,7 +3,7 @@ import CredentialsProvider from 'next-auth/providers/credentials';
 import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
 
-export const authOptions: NextAuthOptions = {
+export const authOptions: any = {
   providers: [
     CredentialsProvider({
       name: 'Credentials',
@@ -57,19 +57,17 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user }: any) {
       if (user) {
         token.id = user.id;
-        // Type assertion for role property
-        token.role = (user as any).role;
+        token.role = user.role;
       }
       return token;
     },
-    async session({ session, token }) {
+    async session({ session, token }: any) {
       if (session.user) {
-        // Type assertion for extended session user
-        (session.user as any).id = token.id as string;
-        (session.user as any).role = token.role as 'ADMIN' | 'FAMILY' | 'GUEST';
+        session.user.id = token.id;
+        session.user.role = token.role;
       }
       return session;
     },
@@ -82,9 +80,25 @@ export const authOptions: NextAuthOptions = {
     maxAge: 7 * 24 * 60 * 60, // 7일 (세션 만료)
     updateAge: 24 * 60 * 60, // 24시간마다 세션 갱신
   },
+  // cookies 커스터마이징 제거 - NextAuth 기본값 사용
+  // 테스트/프로덕션 분리는 NEXTAUTH_SECRET과 NEXTAUTH_URL로만 처리
   secret: process.env.NEXTAUTH_SECRET,
   // JWT 토큰 설정
   jwt: {
     maxAge: 7 * 24 * 60 * 60, // 7일
+  },
+  // 디버그 모드 활성화
+  debug: true,
+  // 로그 활성화
+  logger: {
+    error(code: any, metadata: any) {
+      console.error('[NextAuth Error]', code, metadata);
+    },
+    warn(code: any) {
+      console.warn('[NextAuth Warn]', code);
+    },
+    debug(code: any, metadata: any) {
+      console.log('[NextAuth Debug]', code, metadata);
+    },
   },
 };

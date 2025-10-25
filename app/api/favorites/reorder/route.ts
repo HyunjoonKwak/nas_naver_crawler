@@ -57,7 +57,7 @@ export async function POST(request: Request) {
       success: true,
       message: 'Order updated successfully',
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Failed to update order:', error);
     return NextResponse.json(
       { error: 'Failed to update order' },

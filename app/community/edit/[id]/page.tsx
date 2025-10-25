@@ -65,7 +65,7 @@ export default function EditPostPage() {
         showError(data.error || "게시글을 불러오는데 실패했습니다");
         router.push("/community");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to fetch post:", error);
       showError("게시글을 불러오는데 실패했습니다");
       router.push("/community");
@@ -100,7 +100,7 @@ export default function EditPostPage() {
       } else {
         showError(data.error || "게시글 수정에 실패했습니다");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to update post:", error);
       showError("게시글 수정에 실패했습니다");
     } finally {

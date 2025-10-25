@@ -106,7 +106,7 @@ export async function POST(request: NextRequest) {
         'Complex',
       ],
     });
-  } catch (error) {
+  } catch (error: any) {
     logger.error('Database reset failed', error);
     return NextResponse.json(
       { error: '데이터베이스 초기화 중 오류가 발생했습니다.' },
@@ -153,7 +153,7 @@ export async function GET(request: NextRequest) {
       },
       total,
     });
-  } catch (error) {
+  } catch (error: any) {
     logger.error('Database status check failed', error);
     return NextResponse.json(
       { error: '데이터베이스 상태 확인 중 오류가 발생했습니다.' },

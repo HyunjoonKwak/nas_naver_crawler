@@ -31,7 +31,7 @@ export function RecentActivity({ limit = 10 }: RecentActivityProps) {
         const data = await response.json();
         setActivities(data.activities || []);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to fetch activities:', error);
     } finally {
       setLoading(false);

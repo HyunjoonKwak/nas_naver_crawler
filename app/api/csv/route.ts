@@ -189,7 +189,7 @@ export async function GET(request: Request) {
             }
           });
         }
-      } catch (error) {
+      } catch (error: any) {
         return NextResponse.json(
           { error: '파일을 찾을 수 없습니다.' },
           { status: 404 }

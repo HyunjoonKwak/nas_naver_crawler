@@ -58,7 +58,7 @@ export async function POST(
       message: `${result.count}개의 단지가 그룹에 추가되었습니다.`,
       addedCount: result.count
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('단지 추가 오류:', error);
     return NextResponse.json(
       {
@@ -102,7 +102,7 @@ export async function DELETE(
       message: `${result.count}개의 단지가 그룹에서 제거되었습니다.`,
       removedCount: result.count
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('단지 제거 오류:', error);
     return NextResponse.json(
       {

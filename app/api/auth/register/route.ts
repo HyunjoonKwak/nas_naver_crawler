@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
         isApproved: user.isApproved,
       },
     });
-  } catch (error) {
+  } catch (error: any) {
     logger.error('User registration failed', error);
     return NextResponse.json(
       { error: '회원가입 중 오류가 발생했습니다.' },

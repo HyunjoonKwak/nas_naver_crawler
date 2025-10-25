@@ -106,7 +106,7 @@ export function SchedulerSettings() {
       });
 
       setComplexes(complexList);
-    } catch (error) {
+    } catch (error: any) {
       console.error("[SCHEDULER] Failed to fetch data:", error);
     } finally {
       setLoading(false);
@@ -211,7 +211,7 @@ export function SchedulerSettings() {
         const data = await response.json();
         showError(data.error || "스케줄 저장에 실패했습니다.");
       }
-    } catch (error) {
+    } catch (error: any) {
       dismissToast(loadingToast);
       console.error("Failed to save schedule:", error);
       showError("스케줄 저장 중 오류가 발생했습니다.");
@@ -235,7 +235,7 @@ export function SchedulerSettings() {
       } else {
         showError("스케줄 상태 변경에 실패했습니다.");
       }
-    } catch (error) {
+    } catch (error: any) {
       dismissToast(loadingToast);
       console.error("Failed to toggle schedule:", error);
       showError("스케줄 상태 변경 중 오류가 발생했습니다.");
@@ -263,7 +263,7 @@ export function SchedulerSettings() {
       } else {
         showError("스케줄 삭제에 실패했습니다.");
       }
-    } catch (error) {
+    } catch (error: any) {
       dismissToast(loadingToast);
       console.error("Failed to delete schedule:", error);
       showError("스케줄 삭제 중 오류가 발생했습니다.");
@@ -294,7 +294,7 @@ export function SchedulerSettings() {
       } else {
         showError("스케줄 실행에 실패했습니다.");
       }
-    } catch (error) {
+    } catch (error: any) {
       dismissToast(loadingToast);
       console.error("Failed to run schedule:", error);
       showError("스케줄 실행 중 오류가 발생했습니다.");

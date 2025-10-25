@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { requireAuth } from '@/lib/auth-utils';
 import { rateLimit, rateLimitPresets } from '@/lib/rate-limit';
 import { createLogger } from '@/lib/logger';
+import { deleteCache } from '@/lib/redis-cache';
 import fs from 'fs/promises';
 import path from 'path';
 import {
@@ -28,6 +29,7 @@ export const dynamic = 'force-dynamic';
 
 // Global crawl state for progress tracking
 let currentCrawlId: string | null = null;
+let isCurrentlyCrawling: boolean = false;
 
 // 백그라운드에서 크롤링 실행하는 함수 (스케줄 실행용)
 async function executeCrawlInBackground(
@@ -153,6 +155,12 @@ async function executeCrawlInBackground(
     // 크롤링 완료 알림
     eventBroadcaster.notifyCrawlComplete(crawlId, dbResult.totalArticles);
 
+    // ✅ 캐시 무효화 (크롤링된 단지 관련 캐시 삭제)
+    await deleteCache('complex:*');
+    await deleteCache('analytics:*');
+    await deleteCache('article:*');
+    console.log('[Cache] Invalidated all complex-related caches');
+
     logger.info('Background crawl completed', {
       crawlId,
       complexes: dbResult.totalComplexes,
@@ -171,6 +179,10 @@ async function executeCrawlInBackground(
         logger.error('Failed to send schedule completion notification', error);
       });
     }
+
+    // 🔓 백그라운드 크롤링 완료 - 플래그 해제
+    isCurrentlyCrawling = false;
+    logger.info('Background crawl lock released', { crawlId });
 
   } catch (error: any) {
     logger.error('Background crawl error', { crawlId, error: error.message });
@@ -215,11 +227,38 @@ async function executeCrawlInBackground(
       });
     }
 
+    // 🔓 백그라운드 크롤링 실패 - 플래그 해제
+    isCurrentlyCrawling = false;
+    logger.warn('Background crawl lock released due to error', { crawlId });
+
     // 크롤링 실패 알림
     eventBroadcaster.notifyCrawlFailed(crawlId, error.message);
   } finally {
     currentCrawlId = null;
   }
+}
+
+// ✅ 추가: 가격 문자열을 BigInt로 변환하는 헬퍼 함수
+function parsePriceToWon(priceStr: string): bigint | null {
+  if (!priceStr || priceStr === '-') return null;
+  
+  const cleanStr = priceStr.replace(/\s+/g, '');
+  const eokMatch = cleanStr.match(/(\d+)억/);
+  const manMatch = cleanStr.match(/억?([\d,]+)/);
+  
+  const eok = eokMatch ? parseInt(eokMatch[1]) : 0;
+  let man = 0;
+  
+  if (manMatch) {
+    man = parseInt(manMatch[1].replace(/,/g, ''));
+  } else {
+    const onlyNumber = cleanStr.match(/^([\d,]+)$/);
+    if (onlyNumber) {
+      man = parseInt(onlyNumber[1].replace(/,/g, ''));
+    }
+  }
+  
+  return BigInt(eok * 100000000 + man * 10000);
 }
 
 // 크롤링 결과를 DB에 저장하는 함수 (Batch Insert 방식)
@@ -383,6 +422,9 @@ async function saveCrawlResultsToDB(crawlId: string, complexNos: string[], userI
           tradeTypeName: article.tradeTypeName,
           dealOrWarrantPrc: article.dealOrWarrantPrc,
           rentPrc: article.rentPrc,
+          // ✅ 추가: 숫자 가격 컬럼 (성능 최적화용)
+          dealOrWarrantPrcWon: parsePriceToWon(article.dealOrWarrantPrc),
+          rentPrcWon: article.rentPrc ? parsePriceToWon(article.rentPrc) : null,
           area1: parseFloat(article.area1) || 0,
           area2: article.area2 ? parseFloat(article.area2) : null,
           floorInfo: article.floorInfo,
@@ -464,22 +506,30 @@ async function saveCrawlResultsToDB(crawlId: string, complexNos: string[], userI
   return { totalArticles, totalComplexes, errors };
 }
 
-// 알림 발송 함수
+// 알림 발송 함수 (비동기 최적화)
 async function sendAlertsForChanges(complexNos: string[]) {
   console.log('🔔 Checking for alerts...');
 
+  // 🚀 성능 최적화: 배치로 단지 정보 조회
+  const complexInfos = await prisma.complex.findMany({
+    where: { complexNo: { in: complexNos } },
+    include: {
+      articles: true, // 매물도 함께 조회 (N+1 쿼리 방지)
+    },
+  });
+
+  const complexMap = new Map(complexInfos.map(c => [c.complexNo, c]));
+
   for (const complexNo of complexNos) {
     try {
-      // 1. 현재 매물 데이터 조회
-      const complexInfo = await getComplexInfo(complexNo);
+      // 1. 현재 매물 데이터 조회 (이미 로드됨)
+      const complexInfo = complexMap.get(complexNo);
       if (!complexInfo) {
         console.log(`Complex not found: ${complexNo}`);
         continue;
       }
 
-      const currentArticles = await prisma.article.findMany({
-        where: { complexId: complexInfo.id },
-      });
+      const currentArticles = complexInfo.articles;
 
       // 2. 변경사항 감지
       const changes = await detectArticleChanges(complexNo, currentArticles);
@@ -616,6 +666,20 @@ export async function POST(request: NextRequest) {
   let crawlId: string | null = null;
 
   try {
+    // 🔒 중복 크롤링 방지: 이미 크롤링 진행 중인 경우 거부
+    if (isCurrentlyCrawling) {
+      logger.warn('Crawl request rejected: Another crawl is already in progress', {
+        currentCrawlId,
+      });
+      return NextResponse.json(
+        {
+          error: '이미 크롤링이 진행 중입니다. 완료 후 다시 시도해주세요.',
+          currentCrawlId,
+        },
+        { status: 409 } // 409 Conflict
+      );
+    }
+
     // 내부 스케줄러 호출 확인 (특별한 헤더로 식별)
     const internalSecret = request.headers.get('x-internal-secret');
     const isInternalCall = internalSecret === process.env.INTERNAL_API_SECRET;
@@ -693,6 +757,7 @@ export async function POST(request: NextRequest) {
 
     crawlId = crawlHistory.id;
     currentCrawlId = crawlId;
+    isCurrentlyCrawling = true; // 🔒 크롤링 시작 플래그 설정
 
     // 🔔 실시간 알림: 크롤링 시작
     eventBroadcaster.notifyCrawlStart(crawlId, complexNosArray.length);
@@ -820,6 +885,7 @@ export async function POST(request: NextRequest) {
     });
 
     currentCrawlId = null;
+    isCurrentlyCrawling = false; // 🔓 크롤링 완료 플래그 해제
 
     // 🔔 실시간 알림: 크롤링 완료
     eventBroadcaster.notifyCrawlComplete(crawlId, dbResult.totalArticles);
@@ -867,12 +933,13 @@ export async function POST(request: NextRequest) {
 
         // 🔔 실시간 알림: 크롤링 실패
         eventBroadcaster.notifyCrawlFailed(crawlId, error.message);
-      } catch (historyError) {
+      } catch (historyError: any) {
         logger.error('Failed to update error history', historyError);
       }
     }
 
     currentCrawlId = null;
+    isCurrentlyCrawling = false; // 🔓 에러 발생 시에도 플래그 해제
 
     return NextResponse.json(
       {
@@ -966,7 +1033,7 @@ async function sendScheduleCrawlCompleteNotification(
     } else {
       logger.info('Schedule completion notification sent successfully', { scheduleId });
     }
-  } catch (error) {
+  } catch (error: any) {
     logger.error('Error sending schedule completion notification', error);
   }
 }

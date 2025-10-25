@@ -44,7 +44,7 @@ export function BatchActions({
     try {
       await action.action(selectedIds);
       onClearSelection();
-    } catch (error) {
+    } catch (error: any) {
       console.error(`Batch action ${action.id} failed:`, error);
       alert('작업 실행 중 오류가 발생했습니다.');
     } finally {

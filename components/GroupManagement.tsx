@@ -81,7 +81,7 @@ export function GroupManagement({ selectedGroupId, onGroupSelect, onGroupsChange
       if (data.success) {
         setGroups(data.groups || []);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('그룹 조회 오류:', error);
     } finally {
       setLoading(false);
@@ -118,7 +118,7 @@ export function GroupManagement({ selectedGroupId, onGroupSelect, onGroupsChange
       } else {
         showError(data.error || '그룹 생성에 실패했습니다.');
       }
-    } catch (error) {
+    } catch (error: any) {
       dismissToast(loadingToast);
       console.error('그룹 생성 오류:', error);
       showError('그룹 생성 중 오류가 발생했습니다.');
@@ -156,7 +156,7 @@ export function GroupManagement({ selectedGroupId, onGroupSelect, onGroupsChange
       } else {
         showError(data.error || '그룹 수정에 실패했습니다.');
       }
-    } catch (error) {
+    } catch (error: any) {
       dismissToast(loadingToast);
       console.error('그룹 수정 오류:', error);
       showError('그룹 수정 중 오류가 발생했습니다.');
@@ -187,7 +187,7 @@ export function GroupManagement({ selectedGroupId, onGroupSelect, onGroupsChange
       } else {
         showError(data.error || '그룹 삭제에 실패했습니다.');
       }
-    } catch (error) {
+    } catch (error: any) {
       dismissToast(loadingToast);
       console.error('그룹 삭제 오류:', error);
       showError('그룹 삭제 중 오류가 발생했습니다.');

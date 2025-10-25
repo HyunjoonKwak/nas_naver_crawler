@@ -55,7 +55,7 @@ export default function LandingPage() {
         router.push("/home");
         router.refresh();
       }
-    } catch (error) {
+    } catch (error: any) {
       dismissToast(loadingToast);
       console.error("Login error:", error);
       showError("로그인 중 오류가 발생했습니다.");

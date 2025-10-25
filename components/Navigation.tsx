@@ -123,7 +123,7 @@ export const Navigation = () => {
       } else {
         setPasswordError(data.error);
       }
-    } catch (error) {
+    } catch (error: any) {
       setPasswordError('서버 오류가 발생했습니다.');
     }
   };
@@ -197,7 +197,7 @@ export const Navigation = () => {
         setNotifications(data.notifications);
         setUnreadCount(data.unreadCount);
       }
-    } catch (error) {
+    } catch (error: any) {
       // 알림 조회 실패는 조용히 처리 (UX 방해 방지)
     }
   };
@@ -212,7 +212,7 @@ export const Navigation = () => {
       if (response.ok) {
         fetchNotifications();
       }
-    } catch (error) {
+    } catch (error: any) {
       // 읽음 표시 실패는 조용히 처리
     }
   };
@@ -227,7 +227,7 @@ export const Navigation = () => {
       if (response.ok) {
         fetchNotifications();
       }
-    } catch (error) {
+    } catch (error: any) {
       // 전체 읽음 표시 실패는 조용히 처리
     }
   };

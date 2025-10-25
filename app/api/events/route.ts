@@ -8,7 +8,7 @@ import { eventBroadcaster } from '@/lib/eventBroadcaster';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs'; // Edge runtime 대신 Node.js runtime 사용
-export const maxDuration = 3600; // 60분 (크롤링이 길어질 수 있으므로 충분한 시간 확보)
+export const maxDuration = 600; // 10분 (크롤링 완료 후 자동 종료되므로 충분함)
 
 export async function GET(request: NextRequest) {
   const encoder = new TextEncoder();
@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
           encoder.encode(`data: ${JSON.stringify({ type: 'connected', timestamp: new Date().toISOString() })}\n\n`)
         );
         console.log('[SSE] Sent connected message');
-      } catch (error) {
+      } catch (error: any) {
         console.error('[SSE] Failed to send connected message:', error);
       }
 
@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
       try {
         controller.enqueue(encoder.encode(': heartbeat\n\n'));
         console.log('[SSE] Sent initial heartbeat');
-      } catch (error) {
+      } catch (error: any) {
         console.error('[SSE] Failed to send initial heartbeat:', error);
       }
 
@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
           controller.enqueue(encoder.encode(': heartbeat\n\n'));
           const elapsed = Math.round((Date.now() - startTime) / 1000);
           console.log(`[SSE] Heartbeat #${heartbeatCount} sent (connection alive for ${elapsed}s)`);
-        } catch (error) {
+        } catch (error: any) {
           console.error('[SSE] Heartbeat failed:', error);
           if (heartbeatInterval) clearInterval(heartbeatInterval);
           eventBroadcaster.removeClient(controller);
@@ -64,7 +64,7 @@ export async function GET(request: NextRequest) {
         eventBroadcaster.removeClient(controller);
         try {
           controller.close();
-        } catch (error) {
+        } catch (error: any) {
           // 이미 닫힌 경우 무시
         }
       });
