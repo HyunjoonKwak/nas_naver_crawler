@@ -29,13 +29,37 @@ https://sgis.kostat.go.kr/
 
 ## 🔧 NAS 서버 설정 방법
 
-### SSH로 NAS 접속
+### 방법 1: echo로 한 번에 추가 (권장 ⭐)
+
+SSH로 NAS 접속 후 다음 명령어를 복사-붙여넣기하세요:
+
 ```bash
-ssh your-nas-user@your-nas-ip
+cd /volume1/docker/nas_naver_crawler && cat >> .env << 'EOF'
+
+# SGIS (통계지리정보서비스) API - 역지오코딩용
+SGIS_CONSUMER_KEY="YOUR_CONSUMER_KEY_HERE"
+SGIS_CONSUMER_SECRET="YOUR_CONSUMER_SECRET_HERE"
+EOF
+docker-compose restart web
 ```
 
-### .env 파일 수정
+**실제 예시 (발급받은 키로 변경하세요):**
 ```bash
+cd /volume1/docker/nas_naver_crawler && cat >> .env << 'EOF'
+
+# SGIS (통계지리정보서비스) API - 역지오코딩용
+SGIS_CONSUMER_KEY="1fda8e6202ad463d91aa"
+SGIS_CONSUMER_SECRET="b2b879daf06c47e8b500"
+EOF
+docker-compose restart web
+```
+
+### 방법 2: 텍스트 에디터로 수정
+
+```bash
+# SSH로 NAS 접속
+ssh your-nas-user@your-nas-ip
+
 # 프로젝트 디렉토리로 이동
 cd /volume1/docker/nas_naver_crawler
 
@@ -45,29 +69,16 @@ nano .env
 vi .env
 ```
 
-### 환경 변수 추가
-다음 내용을 `.env` 파일 끝에 추가:
-
+다음 내용을 파일 끝에 추가:
 ```bash
 # SGIS (통계지리정보서비스) API - 역지오코딩용
 SGIS_CONSUMER_KEY="YOUR_CONSUMER_KEY_HERE"
 SGIS_CONSUMER_SECRET="YOUR_CONSUMER_SECRET_HERE"
 ```
 
-**실제 예시:**
+저장 후:
 ```bash
-SGIS_CONSUMER_KEY="1fda8e6202ad463d91aa"
-SGIS_CONSUMER_SECRET="b2b879daf06c47e8b500"
-```
-
-### Docker 컨테이너 재시작
-```bash
-# 웹 서비스만 재시작 (빠름)
 docker-compose restart web
-
-# 또는 전체 재시작
-docker-compose down
-docker-compose up -d
 ```
 
 ---
