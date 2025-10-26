@@ -67,7 +67,7 @@ services:
       - PYTHONUNBUFFERED=1
       - DATABASE_URL=postgresql://crawler_user:crawler_pass_2025@db:5432/naver_crawler
       - REDIS_URL=redis://redis:6379
-      - NODE_ENV=production
+      - NODE_ENV=development
 
     # 볼륨 마운트 (프로덕션 모드 - 데이터만 마운트)
     volumes:
