@@ -1,0 +1,339 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Project Overview
+
+**Naver Real Estate Crawler** - A NAS-optimized web crawler for collecting apartment listings from Naver Real Estate with a Next.js web interface. The system runs in development mode for fast hot-reload deployments on NAS environments.
+
+**⚠️ Important:** This project runs on a NAS and operates in **development mode** by default for rapid deployment. Do NOT convert to production mode without explicit instructions. Database operations are remote (NAS-based) - do not attempt local database searches.
+
+## Essential Commands
+
+### Development & Deployment
+```bash
+# Start development mode (default, 3-second restart)
+./manage.sh  # Option 8: Start dev mode
+docker-compose -f docker-compose.dev.yml up -d
+
+# Quick deployment after git pull
+cd /volume1/docker/naver-crawler
+git pull origin main
+docker-compose restart web  # 3 seconds!
+
+# Build (production mode only)
+./manage.sh  # Option 6: Build
+next build
+
+# Type checking
+npm run type-check
+
+# Linting
+npm run lint
+
+# Testing
+npm test                    # Run all tests
+npm run test:coverage       # With coverage
+vitest run __tests__/lib/api-error.test.ts  # Single test
+```
+
+### Database Operations
+```bash
+# Prisma operations
+npx prisma generate        # Generate client after schema changes
+npx prisma migrate dev     # Create and apply migration
+npx prisma db push         # Push schema without migration
+npx prisma studio          # Open database GUI
+
+# Direct database access
+docker exec -it naver-crawler-db psql -U crawler_user -d naver_crawler
+```
+
+### Crawler Operations
+```bash
+# Run crawler manually (Python)
+python3 logic/nas_playwright_crawler.py --complex-no 22065
+
+# Check crawler logs
+docker-compose logs -f web | grep "Crawler"
+
+# Performance verification
+./scripts/verify-perf-improve.sh
+```
+
+## Architecture
+
+### Full-Stack Architecture (Next.js + Python + PostgreSQL + Redis)
+
+This is a **hybrid monorepo** combining TypeScript (Next.js) frontend/API and Python (Playwright) crawling engine:
+
+**Frontend/API Layer (TypeScript/Next.js 14)**
+- `app/` - Next.js App Router with Pages and API routes
+- `components/` - React components (forms, tables, modals)
+- `lib/` - Shared utilities, auth, caching, validation
+
+**Crawler Engine (Python)**
+- `logic/nas_playwright_crawler.py` - Playwright-based headless browser crawler
+- `logic/scheduler.py` - Cron-based scheduling engine
+- Communicates with Next.js via file system and database
+
+**Data Layer**
+- PostgreSQL: Primary database (Prisma ORM)
+- Redis: L2 cache layer (multi-layer caching with in-memory L1)
+- File system: Crawled data stored as JSON/CSV
+
+### Key Subsystems
+
+#### Authentication & Authorization (NextAuth.js)
+- Credentials-based auth with bcrypt password hashing
+- Role-based access: ADMIN, FAMILY, GUEST
+- Approval workflow: Users must be approved by admin
+- Session strategy: JWT (7-day expiry, 24-hour refresh)
+- Location: `lib/auth.ts`, `app/api/auth/[...nextauth]/route.ts`
+
+#### Caching Strategy (Redis + Memory)
+- **L1 Cache**: In-memory Map (60s TTL, fast local access)
+- **L2 Cache**: Redis (configurable TTL: 60s-86400s)
+- Cache-Aside pattern with automatic write-through
+- Location: `lib/redis-cache.ts`
+- Cache invalidation: Pattern-based deletion (e.g., `complex:*`)
+
+#### Crawler Architecture (Python Playwright)
+- Headless Chromium browser for bot detection avoidance
+- Infinite scroll handling: Progressive 800px scrolling with dynamic waits
+- API interception: Captures Naver API responses during scroll
+- Deduplication: "Same address grouping" to merge duplicate listings
+- Database integration: Direct Prisma writes for real-time data
+- Location: `logic/nas_playwright_crawler.py`
+
+#### Scheduling System (node-cron)
+- Cron-based automatic crawling with timezone handling (KST)
+- Dynamic vs. static complex list modes:
+  - Dynamic: Uses user's current bookmarked complexes
+  - Static: Fixed list of complex numbers
+- Duplicate execution prevention via Redis locks (3min TTL)
+- Location: `lib/scheduler.ts`, `app/api/schedules/`
+
+#### Real-time Updates (Server-Sent Events)
+- SSE for live crawler progress streaming
+- Connection lifecycle: 10-minute timeout, heartbeat pattern
+- Automatic cleanup of inactive connections
+- Location: `lib/eventBroadcaster.ts`, `lib/sseClient.ts`
+
+#### Alert System
+- Condition-based notifications (price, area, trade type)
+- Multi-channel delivery: Browser, Email, Webhook
+- Execution during crawling: Checks new articles against alert rules
+- Location: `app/api/alerts/`, database Alert model
+
+#### Analytics Engine
+- Dashboard API: Market overview KPIs, price trends (30d), rankings
+- Real-price integration: Government transaction data API
+- Performance optimization: Numeric price columns (BigInt) for fast sorting
+- Location: `app/api/analytics/`, `lib/real-price-api.ts`
+
+### Database Schema Highlights
+
+**Core Models** (see `prisma/schema.prisma`):
+- `Complex`: Building complex metadata (name, location, geocoded address)
+- `Article`: Individual listings with dual price columns (string + BigInt)
+- `CrawlHistory`: Execution logs with progress tracking fields
+- `Favorite`: User bookmarks for complexes
+- `Alert`: Notification rules with condition logic
+- `Schedule`: Cron jobs with dynamic/static modes
+- `Group`: Custom complex grouping (auto-rules supported)
+
+**Performance Indexes**:
+- Composite indexes for common query patterns (e.g., `[complexId, createdAt]`)
+- Numeric price indexes for fast filtering/sorting
+- Covering indexes to avoid table lookups
+
+### Critical Integration Points
+
+**Next.js ↔ Python Crawler**:
+- Next.js API calls Python subprocess via `child_process.spawn()`
+- Python writes progress updates to database
+- Next.js streams updates via SSE using database polling
+- Shared file system for JSON/CSV output
+
+**Frontend ↔ API**:
+- Server Components fetch directly from Prisma (no client-side API calls)
+- Client Components use React Query for API mutations
+- Real-time updates via SSE connections
+
+**Caching Flow**:
+1. Request → Check L1 (memory)
+2. L1 miss → Check L2 (Redis)
+3. L2 miss → Fetch from DB → Write to L2 & L1
+4. Invalidation: Pattern-based deletion on writes
+
+## Development Practices
+
+### Code Patterns
+
+**API Route Structure** (`app/api/*/route.ts`):
+```typescript
+// Use standardized response helpers
+import { apiResponse, apiError } from '@/lib/api-response';
+
+// Always validate with Zod schemas
+import { z } from 'zod';
+const schema = z.object({ ... });
+
+// Return consistent API format
+return apiResponse(data, 'Success message', 200);
+return apiError('Error message', 400);
+```
+
+**Database Queries**:
+```typescript
+// Use Prisma include for N+1 prevention
+const complexes = await prisma.complex.findMany({
+  include: {
+    articles: true,  // ✅ Single query
+    favorites: true,
+  }
+});
+
+// Leverage numeric price columns for performance
+where: {
+  dealOrWarrantPrcWon: { gte: minPrice, lte: maxPrice }
+}
+```
+
+**Caching Pattern**:
+```typescript
+import { getCached, CacheKeys, CacheTTL } from '@/lib/redis-cache';
+
+const data = await getCached(
+  CacheKeys.complex.list(userId, params),
+  CacheTTL.medium,
+  async () => await prisma.complex.findMany({ ... })
+);
+```
+
+**Error Handling**:
+```typescript
+// Use custom ApiError class
+import { ApiError } from '@/lib/api-error';
+
+if (!resource) {
+  throw new ApiError('Resource not found', 404, 'NOT_FOUND');
+}
+```
+
+### File Organization
+
+**API Routes** (`app/api/`):
+- Each feature has its own directory with `route.ts`
+- Dynamic routes use `[param]/route.ts`
+- Shared logic extracted to `lib/` utilities
+
+**Components** (`components/`):
+- No nested directories - all flat for easy discovery
+- Naming: PascalCase, descriptive (e.g., `CrawlerHistory.tsx`)
+- Shared UI primitives: `BaseModal.tsx`, `LoadingSpinner.tsx`, `EmptyState.tsx`
+
+**Library Code** (`lib/`):
+- Single-responsibility modules (auth, cache, logger, etc.)
+- Export utilities, not classes when possible
+- Type definitions in same file or `types/` directory
+
+### Critical Constraints
+
+1. **Development Mode Policy**: Do NOT change `docker-compose.dev.yml` to production mode. Hot reload is intentional for fast NAS deployment.
+
+2. **Database Location**: Database runs in Docker on NAS. Never attempt local database connections or searches outside the containerized environment.
+
+3. **TypeScript Strict Mode**: `tsconfig.json` has `strict: true`. All code must pass strict type checking. Use `npm run type-check` before committing.
+
+4. **Crawler Performance**: The Python crawler is optimized for 4min 12sec (5 complexes). Changes to scroll timing or wait intervals must maintain bot-detection avoidance (see `docs/PERFORMANCE.md`).
+
+5. **Redis Dependency**: Application degrades gracefully without Redis (cache misses fallback to DB), but performance suffers. Ensure Redis is running for production-like testing.
+
+6. **Session Isolation**: Test/production environments use separate `NEXTAUTH_SECRET` values to prevent session conflicts. Never share secrets across environments.
+
+## Testing Strategy
+
+**Test Structure**:
+- Tests in `__tests__/` directory mirroring `app/` structure
+- Vitest config: `vitest.config.ts` (jsdom environment)
+- Coverage threshold: Not enforced, but aim for critical paths
+
+**Running Tests**:
+```bash
+npm test                    # All tests
+vitest --ui                 # Interactive UI
+vitest --coverage           # Coverage report
+```
+
+**Test Patterns**:
+- Mock Prisma with `vi.mock('@/lib/prisma')`
+- Use `@testing-library/react` for component tests
+- API tests should mock database calls
+
+## Performance Optimization
+
+**Crawler Performance** (v1.1.0 - 51.3% faster):
+- Optimized scroll distance: 800px (was 500px)
+- Dynamic wait times: 0.3s/1.0s based on API patterns
+- Fast exit condition: 3 consecutive empties (was 8)
+- Metrics: 0.99 articles/sec, 4min 12sec for 5 complexes
+
+**Database Performance**:
+- Numeric price columns for fast sorting (BigInt vs String)
+- Composite indexes for common queries
+- N+1 query elimination via Prisma `include`
+
+**Caching Performance**:
+- L1 (memory): 60s TTL, instant access
+- L2 (Redis): 5min-30min TTL, <5ms latency
+- Cache hit rate target: >80% for complex lists
+
+## Common Troubleshooting
+
+**Crawler stops at 20 articles**:
+- Check scroll logs: `docker-compose logs web | grep "스크롤"`
+- Verify `scrollHeight` changes in debug output
+- Ensure localStorage "sameAddressGroup" is set
+
+**Type errors after Prisma schema change**:
+- Run `npx prisma generate` to regenerate client
+- Restart TypeScript server in IDE
+- Clear `.next` directory if stale types persist
+
+**SSE connection timeout**:
+- Check Redis connection (SSE uses Redis for state)
+- Verify 10-minute timeout in `lib/sseClient.ts`
+- Look for "SSE cleanup" logs
+
+**Session issues**:
+- Verify `NEXTAUTH_SECRET` is set in `config.env`
+- Check session cookie name doesn't conflict with other apps
+- Clear browser cookies if switching between test/prod
+
+**Redis connection failures**:
+- Application continues without cache (degraded performance)
+- Check `docker-compose logs redis`
+- Verify `REDIS_URL=redis://redis:6379` in environment
+
+## Key Files Reference
+
+- **Main Application**: `app/page.tsx` (dashboard overview)
+- **Crawler Entry**: `logic/nas_playwright_crawler.py`
+- **Database Schema**: `prisma/schema.prisma`
+- **Auth Config**: `lib/auth.ts`
+- **API Standards**: `lib/api-response.ts`, `lib/api-error.ts`
+- **Caching Logic**: `lib/redis-cache.ts`
+- **Scheduler**: `lib/scheduler.ts`
+- **Type Definitions**: `types/` directory (if exists) or inline in lib files
+
+## Documentation
+
+- **Getting Started**: `docs/GETTING_STARTED.md`
+- **Performance Guide**: `docs/PERFORMANCE.md`
+- **Development Policy**: `docs/DEVELOPMENT_POLICY.md`
+- **Quick Deploy**: `docs/QUICK_DEPLOY.md`
+- **Site Map**: `SITEMAP.md` (all pages and API routes)
+- **TODO Roadmap**: `TODO.md`
+- **Changelog**: `CHANGELOG.md`
