@@ -235,22 +235,64 @@ export default function RealPriceAnalysis({ complexNo }: RealPriceAnalysisProps)
   }
 
   if (error) {
+    const isBeopjungdongError = error.includes('beopjungdong') || error.includes('법정동');
+
     return (
       <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-8">
-        <div className="text-center">
-          <div className="text-6xl mb-4">⚠️</div>
+        <div className="text-center max-w-2xl mx-auto">
+          <div className="text-6xl mb-4">{isBeopjungdongError ? '📍' : '⚠️'}</div>
           <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3">
-            실거래가 데이터 조회 실패
+            {isBeopjungdongError ? '법정동 정보가 필요합니다' : '실거래가 데이터 조회 실패'}
           </h3>
-          <p className="text-gray-600 dark:text-gray-400 mb-6 whitespace-pre-line">
+          <p className="text-gray-600 dark:text-gray-400 mb-6">
             {error}
           </p>
-          <button
-            onClick={fetchRealPriceData}
-            className="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors font-semibold"
-          >
-            🔄 다시 시도
-          </button>
+
+          {isBeopjungdongError && (
+            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-6 mb-6 text-left">
+              <h4 className="font-bold text-blue-900 dark:text-blue-200 mb-3 flex items-center gap-2">
+                <span>💡</span>
+                <span>해결 방법</span>
+              </h4>
+              <ol className="space-y-3 text-sm text-blue-800 dark:text-blue-300">
+                <li className="flex gap-3">
+                  <span className="font-bold">1.</span>
+                  <div>
+                    <strong>단지 목록으로 돌아가기</strong>
+                    <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                      단지 목록에서 해당 단지를 찾아 <strong>"크롤링"</strong> 버튼을 클릭하세요.
+                      크롤링 시 자동으로 법정동 정보가 수집됩니다.
+                    </p>
+                  </div>
+                </li>
+                <li className="flex gap-3">
+                  <span className="font-bold">2.</span>
+                  <div>
+                    <strong>또는 매물 수집 후 다시 시도</strong>
+                    <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                      상단의 <strong>"🔄 매물 새로고침"</strong> 버튼을 클릭하여 매물 수집 후
+                      실거래가 분석 탭을 다시 열어보세요.
+                    </p>
+                  </div>
+                </li>
+              </ol>
+            </div>
+          )}
+
+          <div className="flex gap-3 justify-center">
+            <button
+              onClick={fetchRealPriceData}
+              className="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors font-semibold shadow-lg"
+            >
+              🔄 다시 시도
+            </button>
+            <button
+              onClick={() => window.history.back()}
+              className="px-6 py-3 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 rounded-lg transition-colors font-semibold"
+            >
+              ← 돌아가기
+            </button>
+          </div>
         </div>
       </div>
     );
