@@ -77,6 +77,13 @@ export default function ComplexDetailPage() {
         console.log('Complex Data:', complexData);
         console.log('Articles:', complexData.articles);
         setData(complexData);
+
+        // ✅ 자동 역지오코딩: 법정동 정보가 없으면 자동으로 역지오코딩 수행
+        const overview = complexData.overview;
+        if (overview && !overview.beopjungdong && (overview.latitude || overview.location?.latitude)) {
+          console.log('[Auto-Geocoding] Complex has no beopjungdong, triggering geocoding...');
+          autoGeocode();
+        }
       } else {
         console.log('No data found for complex:', complexNo);
       }
@@ -84,6 +91,42 @@ export default function ComplexDetailPage() {
       console.error('Failed to fetch complex data:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // 자동 역지오코딩 함수 (무한 루프 방지를 위한 플래그 추가)
+  const autoGeocode = async () => {
+    try {
+      console.log(`[Auto-Geocoding] Starting geocoding for complex ${complexNo}...`);
+
+      const response = await fetch(`/api/complex/${complexNo}/geocode`, {
+        method: 'POST',
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        console.log('[Auto-Geocoding] Success:', result.data);
+
+        // 성공 시 데이터만 업데이트 (무한 루프 방지 - API가 이미 업데이트했으므로)
+        setData(prev => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            overview: {
+              ...prev.overview,
+              beopjungdong: result.data.beopjungdong,
+              haengjeongdong: result.data.haengjeongdong,
+              address: result.data.address || prev.overview.address,
+            }
+          };
+        });
+      } else {
+        console.warn('[Auto-Geocoding] Failed:', result.error);
+      }
+    } catch (error: any) {
+      console.error('[Auto-Geocoding] Error:', error);
+      // 에러가 발생해도 페이지는 정상적으로 표시되어야 하므로 무시
     }
   };
 
