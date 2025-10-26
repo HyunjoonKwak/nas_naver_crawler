@@ -1284,6 +1284,16 @@ export default function ComplexesPage() {
                       </div>
                     )}
 
+                    {/* 법정동 */}
+                    {complex.beopjungdong && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-600 dark:text-gray-400">법정동</span>
+                        <span className="text-purple-600 dark:text-purple-400 font-medium text-xs">
+                          {complex.beopjungdong}
+                        </span>
+                      </div>
+                    )}
+
                     {/* 등록일 */}
                     <div className="flex items-center justify-between">
                       <span className="text-gray-600 dark:text-gray-400">등록일</span>
@@ -1453,6 +1463,9 @@ export default function ComplexesPage() {
                     단지번호
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    법정동
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     평균 가격
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
@@ -1491,6 +1504,15 @@ export default function ComplexesPage() {
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                       {favorite.complexNo}
+                    </td>
+                    <td className="px-4 py-4 whitespace-nowrap">
+                      {favorite.beopjungdong ? (
+                        <span className="text-sm text-purple-600 dark:text-purple-400 font-medium">
+                          {favorite.beopjungdong}
+                        </span>
+                      ) : (
+                        <span className="text-sm text-gray-400">-</span>
+                      )}
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap">
                       {favorite.priceStats ? (

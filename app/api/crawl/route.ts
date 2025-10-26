@@ -368,6 +368,45 @@ async function saveCrawlResultsToDB(crawlId: string, complexNos: string[], userI
       // No need to update here to avoid progress bar confusion
     }
 
+    // ✅ 역지오코딩: 좌표가 있지만 법정동 정보가 없는 단지에 대해 자동으로 주소 정보 추가
+    await prisma.crawlHistory.update({
+      where: { id: crawlId },
+      data: {
+        currentStep: 'Reverse geocoding addresses',
+      },
+    });
+
+    for (const complex of complexesToUpsert) {
+      if (complex.latitude && complex.longitude && !complex.beopjungdong) {
+        try {
+          // 내부 geocode API 호출
+          const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
+          const geocodeUrl = `${baseUrl}/api/geocode?latitude=${complex.latitude}&longitude=${complex.longitude}`;
+
+          const geocodeRes = await fetch(geocodeUrl);
+          const geocodeData = await geocodeRes.json();
+
+          if (geocodeData.success && geocodeData.data) {
+            complex.beopjungdong = geocodeData.data.beopjungdong || null;
+            complex.haengjeongdong = geocodeData.data.haengjeongdong || null;
+
+            // 주소 정보도 업데이트 (기존 address가 없는 경우)
+            if (!complex.address && geocodeData.data.fullAddress) {
+              complex.address = geocodeData.data.fullAddress;
+            }
+
+            console.log(`✅ Geocoded: ${complex.complexName} → ${complex.beopjungdong}`);
+          }
+        } catch (err: any) {
+          console.error(`[Geocoding Error] Failed for complex ${complex.complexNo} (${complex.complexName}):`, err.message);
+          // 역지오코딩 실패는 치명적이지 않으므로 계속 진행
+        }
+
+        // Rate limiting 방지 (SGIS API 호출 제한)
+        await new Promise(resolve => setTimeout(resolve, 300));
+      }
+    }
+
     // Batch upsert complexes
     await prisma.crawlHistory.update({
       where: { id: crawlId },
