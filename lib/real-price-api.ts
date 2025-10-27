@@ -218,7 +218,8 @@ export class RealPriceApiClient {
 
       // 응답 검증
       const { resultCode, resultMsg } = parsed.response.header;
-      if (resultCode !== '00') {
+      // 성공 코드: '00' 또는 '000' (API 버전에 따라 다름)
+      if (resultCode !== '00' && resultCode !== '000') {
         console.error(`[Real Price API] Error: ${resultMsg} (code: ${resultCode})`);
         console.error(`[Real Price API] URL:`, url.replace(this.serviceKey, '***'));
         throw new Error(`API Error: ${resultMsg} (code: ${resultCode})`);
