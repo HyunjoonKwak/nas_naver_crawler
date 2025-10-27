@@ -202,7 +202,7 @@ export class RealPriceApiClient {
     // URL 파라미터 구성 (serviceKey는 이미 인코딩된 상태이므로 직접 구성)
     const url = `${this.baseUrl}?serviceKey=${this.serviceKey}&LAWD_CD=${lawdCd}&DEAL_YMD=${dealYmd}&pageNo=${pageNo}&numOfRows=${numOfRows}`;
 
-    console.log(`[Real Price API] Fetching: ${dealYmd}, lawdCd: ${lawdCd}`);
+    // Fetching: ${dealYmd}, lawdCd: ${lawdCd}
 
     try {
       // API 호출
@@ -235,7 +235,7 @@ export class RealPriceApiClient {
         throw new Error(`API Error: ${resultMsg} (code: ${resultCode})`);
       }
 
-      console.log(`[Real Price API] Success: ${parsed.response.body.totalCount || 0} items`);
+      // Success: ${parsed.response.body.totalCount || 0} items
 
       // 데이터 추출
       const body = parsed.response.body;
@@ -295,7 +295,7 @@ export class RealPriceApiClient {
       }
     }
 
-    console.log(`[Real Price API] Total fetched: ${allItems.length} items`);
+    // Total fetched: ${allItems.length} items
     return allItems;
   }
 
@@ -389,6 +389,11 @@ export class RealPriceApiClient {
     aptName?: string
   ): Promise<ProcessedRealPrice[] | null> {
     try {
+      // Prisma 클라이언트에 realPriceCache 모델이 없으면 스킵 (마이그레이션 전)
+      if (!prisma.realPriceCache) {
+        return null;
+      }
+
       const normalizedAptName = aptName ? aptName.replace(/\s+/g, '').toLowerCase() : '';
 
       // 아파트명이 있으면 해당 아파트 캐시만, 없으면 전체 지역 캐시
@@ -408,14 +413,13 @@ export class RealPriceApiClient {
 
       // 만료 확인
       if (new Date() > cacheEntry.expiresAt) {
-        console.log(`[Real Price Cache] Expired cache for ${lawdCd}-${dealYmd}-${normalizedAptName}`);
         return null;
       }
 
-      console.log(`[Real Price Cache] HIT for ${lawdCd}-${dealYmd}-${normalizedAptName} (${cacheEntry.totalCount} items)`);
+      console.log(`[Cache] 💾 HIT ${lawdCd}-${dealYmd} (${cacheEntry.totalCount} items)`);
       return cacheEntry.cachedData as ProcessedRealPrice[];
     } catch (error) {
-      console.error('[Real Price Cache] Error reading cache:', error);
+      // 캐시 읽기 실패는 조용히 무시 (fallback to API)
       return null;
     }
   }
@@ -431,6 +435,11 @@ export class RealPriceApiClient {
     data: ProcessedRealPrice[]
   ): Promise<void> {
     try {
+      // Prisma 클라이언트에 realPriceCache 모델이 없으면 스킵 (마이그레이션 전)
+      if (!prisma.realPriceCache) {
+        return;
+      }
+
       const normalizedAptName = aptName.replace(/\s+/g, '').toLowerCase();
       const expiresAt = new Date();
       expiresAt.setDate(expiresAt.getDate() + 30); // 30일 후 만료
@@ -459,10 +468,9 @@ export class RealPriceApiClient {
         },
       });
 
-      console.log(`[Real Price Cache] SET for ${lawdCd}-${dealYmd}-${normalizedAptName} (${data.length} items)`);
+      console.log(`[Cache] 💿 SAVE ${lawdCd}-${dealYmd} (${data.length} items)`);
     } catch (error) {
-      console.error('[Real Price Cache] Error writing cache:', error);
-      // 캐시 저장 실패는 무시 (원본 데이터는 반환됨)
+      // 캐시 저장 실패는 조용히 무시 (원본 데이터는 반환됨)
     }
   }
 
@@ -493,7 +501,6 @@ export class RealPriceApiClient {
     }
 
     // 2. 캐시 미스 - API 호출
-    console.log(`[Real Price Cache] MISS for ${lawdCd}-${dealYmd}-${normalizedAptName}, fetching from API...`);
     const allItems = await this.searchAll(lawdCd, dealYmd);
 
     // 3. 필터링
@@ -539,6 +546,10 @@ export function getRealPriceApiClient(): RealPriceApiClient {
  */
 export async function cleanExpiredRealPriceCache(): Promise<number> {
   try {
+    if (!prisma.realPriceCache) {
+      return 0;
+    }
+
     const result = await prisma.realPriceCache.deleteMany({
       where: {
         expiresAt: {
@@ -547,10 +558,11 @@ export async function cleanExpiredRealPriceCache(): Promise<number> {
       },
     });
 
-    console.log(`[Real Price Cache] Cleaned ${result.count} expired cache entries`);
+    if (result.count > 0) {
+      console.log(`[Cache] 🗑️ Cleaned ${result.count} expired entries`);
+    }
     return result.count;
   } catch (error) {
-    console.error('[Real Price Cache] Error cleaning expired cache:', error);
     return 0;
   }
 }
@@ -564,6 +576,10 @@ export async function invalidateRealPriceCache(
   aptName?: string
 ): Promise<number> {
   try {
+    if (!prisma.realPriceCache) {
+      return 0;
+    }
+
     const where: any = {};
 
     if (lawdCd) where.lawdCd = lawdCd;
@@ -572,10 +588,11 @@ export async function invalidateRealPriceCache(
 
     const result = await prisma.realPriceCache.deleteMany({ where });
 
-    console.log(`[Real Price Cache] Invalidated ${result.count} cache entries`);
+    if (result.count > 0) {
+      console.log(`[Cache] ♻️ Invalidated ${result.count} entries`);
+    }
     return result.count;
   } catch (error) {
-    console.error('[Real Price Cache] Error invalidating cache:', error);
     return 0;
   }
 }
