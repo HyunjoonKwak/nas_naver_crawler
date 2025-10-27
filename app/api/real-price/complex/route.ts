@@ -145,6 +145,20 @@ export async function GET(request: NextRequest) {
       return new Date(b.dealDate).getTime() - new Date(a.dealDate).getTime();
     });
 
+    // 프론트엔드 형식에 맞게 변환
+    const formattedItems = allResults.map(item => {
+      const [year, month, day] = item.dealDate.split('-');
+      return {
+        ...item,
+        apartmentName: item.aptName,
+        exclusiveArea: item.area,
+        dealAmount: item.dealPriceFormatted,
+        dealYear: parseInt(year),
+        dealMonth: parseInt(month),
+        dealDay: parseInt(day),
+      };
+    });
+
     return NextResponse.json({
       success: true,
       data: {
@@ -155,8 +169,8 @@ export async function GET(request: NextRequest) {
           lawdCd,
         },
         months: targetMonths,
-        items: allResults,
-        totalCount: allResults.length,
+        items: formattedItems,
+        totalCount: formattedItems.length,
       },
     });
   } catch (error: unknown) {
