@@ -121,27 +121,23 @@ export async function GET(request: NextRequest) {
     const targetMonths = getRecentMonths(months);
     const client = getRealPriceApiClient();
 
-    // 각 달의 실거래가 조회 (캐시 우선, 아파트명 정확 매칭)
+    // 각 달의 실거래가 조회 (아파트명 필터링 - 정확히 일치하는 것만)
     const allResults = [];
     for (const dealYmd of targetMonths) {
       try {
-        console.log(`[Real Price] Fetching ${dealYmd} for ${complex.complexName} (lawdCd: ${lawdCd})`);
-        // 캐시된 데이터가 있으면 즉시 반환, 없으면 API 호출 후 캐시 저장
-        const items = await client.searchByAptNameCached(
+        const items = await client.searchByAptName(
           lawdCd,
           dealYmd,
           complex.complexName,
-          true, // exactMatch = true: 정확히 일치하는 아파트만 조회
-          false  // useCache = false: 캐시 비활성화 (디버깅)
+          true // exactMatch = true: 정확히 일치하는 아파트만 조회
         );
-        console.log(`[Real Price] Found ${items.length} items for ${dealYmd}`);
         allResults.push(...items);
 
-        // Rate limiting 방지 (캐시 히트 시에도 적용 - 다른 월 조회를 위해)
-        await new Promise(resolve => setTimeout(resolve, 100));
+        // Rate limiting 방지
+        await new Promise(resolve => setTimeout(resolve, 500));
       } catch (error: unknown) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        console.error(`[Real Price] ERROR fetching ${dealYmd}:`, errorMessage);
+        console.error(`Failed to fetch data for ${dealYmd}:`, errorMessage);
       }
     }
 
