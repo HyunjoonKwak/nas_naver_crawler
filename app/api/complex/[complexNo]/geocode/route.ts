@@ -83,12 +83,15 @@ export async function POST(
       data: {
         beopjungdong: geocodeData.data.beopjungdong || null,
         haengjeongdong: geocodeData.data.haengjeongdong || null,
+        sidoCode: geocodeData.data.sidoCode || null,
+        sigunguCode: geocodeData.data.sigunguCode || null,
+        dongCode: geocodeData.data.dongCode || null,
         // 기존 주소가 없으면 역지오코딩으로 얻은 주소 사용
         address: complex.address || geocodeData.data.fullAddress || null,
       },
     });
 
-    console.log(`✅ Geocoded on-demand: ${complex.complexName} (${complexNo}) → ${geocodeData.data.beopjungdong}`);
+    console.log(`✅ Geocoded on-demand: ${complex.complexName} (${complexNo}) → ${geocodeData.data.beopjungdong} (법정동코드: ${geocodeData.data.lawdCd})`);
 
     return NextResponse.json({
       success: true,

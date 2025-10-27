@@ -111,6 +111,9 @@ export async function GET(request: NextRequest) {
         complexNo: true,
         complexName: true,
         beopjungdong: true,
+        sidoCode: true,
+        sigunguCode: true,
+        dongCode: true,
         address: true,
       },
     });
@@ -122,20 +125,30 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // 법정동코드 추출
-    const lawdCd = complex.beopjungdong
-      ? getBeopjungdongCode(complex.beopjungdong)
-      : null;
+    // 법정동코드 추출 (SGIS 코드 우선, 없으면 기존 매핑 함수 사용)
+    let lawdCd: string | null = null;
+
+    if (complex.sidoCode && complex.sigunguCode) {
+      // SGIS에서 받은 코드로 법정동코드 생성 (시도 2자리 + 시군구 3자리)
+      lawdCd = complex.sidoCode + complex.sigunguCode;
+      console.log(`[Real Price] Using SGIS lawdCd: ${lawdCd} for ${complex.complexName}`);
+    } else if (complex.beopjungdong) {
+      // 기존 매핑 함수 사용 (레거시 지원)
+      lawdCd = getBeopjungdongCode(complex.beopjungdong);
+      console.log(`[Real Price] Using legacy mapping lawdCd: ${lawdCd} for ${complex.complexName}`);
+    }
 
     if (!lawdCd) {
       return NextResponse.json(
         {
           error: 'Cannot determine beopjungdong code for this complex',
-          message: `법정동 정보가 없거나 지원되지 않는 지역입니다: ${complex.beopjungdong || 'N/A'}`,
+          message: `법정동 코드 정보가 없습니다. 단지 상세 페이지를 한번 열어보시면 자동으로 역지오코딩이 수행됩니다.`,
           complex: {
             complexNo: complex.complexNo,
             complexName: complex.complexName,
             beopjungdong: complex.beopjungdong,
+            sidoCode: complex.sidoCode,
+            sigunguCode: complex.sigunguCode,
           },
         },
         { status: 400 }

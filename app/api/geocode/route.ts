@@ -35,12 +35,13 @@ interface AddressInfo {
   sigungu?: string;       // 시/군/구
   dong?: string;          // 동/읍/면
   ri?: string;            // 리
-  beopjungdong?: string;  // 법정동
-  haengjeongdong?: string; // 행정동
+  beopjungdong?: string;  // 법정동명
+  haengjeongdong?: string; // 행정동명
   fullAddress?: string;
-  sidoCode?: string;      // 시도코드
-  sigunguCode?: string;   // 시군구코드
-  dongCode?: string;      // 읍면동코드
+  sidoCode?: string;      // 시도코드 (2자리)
+  sigunguCode?: string;   // 시군구코드 (3자리)
+  dongCode?: string;      // 읍면동코드 (3자리)
+  lawdCd?: string;        // 법정동코드 (시도+시군구 = 5자리)
 }
 
 // AccessToken 캐시 (메모리 저장)
@@ -184,6 +185,9 @@ export async function GET(request: NextRequest) {
       addressInfo.sigunguCode = addr.sgg_cd;
       addressInfo.dongCode = addr.emdong_cd;
 
+      // 법정동코드 생성 (시도 2자리 + 시군구 3자리 = 5자리)
+      addressInfo.lawdCd = addr.sido_cd + addr.sgg_cd;
+
       // 법정동/행정동 (SGIS는 행정동 기준)
       addressInfo.beopjungdong = addr.emdong_nm;
       addressInfo.haengjeongdong = addr.emdong_nm;
@@ -201,6 +205,7 @@ export async function GET(request: NextRequest) {
       console.log('[SGIS Geocoding]   시도:', addressInfo.sido, `(${addressInfo.sidoCode})`);
       console.log('[SGIS Geocoding]   시군구:', addressInfo.sigungu, `(${addressInfo.sigunguCode})`);
       console.log('[SGIS Geocoding]   읍면동:', addressInfo.dong, `(${addressInfo.dongCode})`);
+      console.log('[SGIS Geocoding]   법정동코드:', addressInfo.lawdCd);
       console.log('[SGIS Geocoding]   전체주소:', addressInfo.fullAddress);
     } else {
       console.warn('[SGIS Geocoding] ⚠️  결과가 없습니다 (좌표에 해당하는 주소를 찾을 수 없음)');

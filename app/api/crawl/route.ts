@@ -389,13 +389,16 @@ async function saveCrawlResultsToDB(crawlId: string, complexNos: string[], userI
           if (geocodeData.success && geocodeData.data) {
             complex.beopjungdong = geocodeData.data.beopjungdong || null;
             complex.haengjeongdong = geocodeData.data.haengjeongdong || null;
+            complex.sidoCode = geocodeData.data.sidoCode || null;
+            complex.sigunguCode = geocodeData.data.sigunguCode || null;
+            complex.dongCode = geocodeData.data.dongCode || null;
 
             // 주소 정보도 업데이트 (기존 address가 없는 경우)
             if (!complex.address && geocodeData.data.fullAddress) {
               complex.address = geocodeData.data.fullAddress;
             }
 
-            console.log(`✅ Geocoded: ${complex.complexName} → ${complex.beopjungdong}`);
+            console.log(`✅ Geocoded: ${complex.complexName} → ${complex.beopjungdong} (법정동코드: ${geocodeData.data.lawdCd})`);
           }
         } catch (err: any) {
           console.error(`[Geocoding Error] Failed for complex ${complex.complexNo} (${complex.complexName}):`, err.message);

@@ -24,8 +24,11 @@ model Complex {
   address        String?   // 주소
   roadAddress    String?   // 도로명 주소
   jibunAddress   String?   // 지번 주소
-  beopjungdong   String?   // 법정동
-  haengjeongdong String?   // 행정동
+  beopjungdong   String?   // 법정동명
+  haengjeongdong String?   // 행정동명
+  sidoCode       String?   // 시도 코드 (SGIS)
+  sigunguCode    String?   // 시군구 코드 (SGIS)
+  dongCode       String?   // 읍면동 코드 (SGIS)
   pyeongs        Json?     // 평형별 타입 정보
   userId         String    // 생성한 사용자 ID
   user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
