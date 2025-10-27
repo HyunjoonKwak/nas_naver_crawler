@@ -19,6 +19,10 @@ interface GeocodeResponse {
   data?: {
     beopjungdong: string;
     haengjeongdong: string;
+    sidoCode: string;
+    sigunguCode: string;
+    dongCode: string;
+    lawdCd: string;
     fullAddress: string;
   };
   error?: string;
@@ -89,12 +93,15 @@ async function main() {
           data: {
             beopjungdong: result.data.beopjungdong,
             haengjeongdong: result.data.haengjeongdong,
+            sidoCode: result.data.sidoCode,
+            sigunguCode: result.data.sigunguCode,
+            dongCode: result.data.dongCode,
             // 기존 주소가 없으면 역지오코딩으로 얻은 주소 사용
             address: complex.address || result.data.fullAddress,
           },
         });
 
-        console.log(`  ✅ Success: ${result.data.beopjungdong}`);
+        console.log(`  ✅ Success: ${result.data.beopjungdong} (법정동코드: ${result.data.lawdCd})`);
         successCount++;
       } else {
         console.log(`  ❌ Failed: ${result.error || 'Unknown error'}`);
