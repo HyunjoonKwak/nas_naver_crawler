@@ -33,6 +33,8 @@ export default function RealPricePage() {
   const [selectedDong, setSelectedDong] = useState(""); // 선택된 읍면동명
   const [period, setPeriod] = useState("3m"); // 기본값: 최근 3개월
   const [aptName, setAptName] = useState("");
+  const [minArea, setMinArea] = useState(""); // 최소 면적 (평)
+  const [maxArea, setMaxArea] = useState(""); // 최대 면적 (평)
   const [searchResults, setSearchResults] = useState<RealPriceItem[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
@@ -140,12 +142,23 @@ export default function RealPricePage() {
       // 거래일 기준 내림차순 정렬
       allResults.sort((a, b) => b.dealDate.localeCompare(a.dealDate));
 
-      // 읍면동이 선택된 경우 필터링
+      // 필터링: 읍면동, 면적
       let filteredResults = allResults;
+
+      // 읍면동 필터링
       if (selectedDong) {
-        filteredResults = allResults.filter(item => {
-          // dong 필드에 선택된 읍면동명이 포함되는지 확인
+        filteredResults = filteredResults.filter(item => {
           return item.dong && item.dong.includes(selectedDong);
+        });
+      }
+
+      // 면적 필터링 (평 기준)
+      if (minArea || maxArea) {
+        const min = minArea ? parseFloat(minArea) : 0;
+        const max = maxArea ? parseFloat(maxArea) : Infinity;
+
+        filteredResults = filteredResults.filter(item => {
+          return item.areaPyeong >= min && item.areaPyeong <= max;
         });
       }
 
@@ -219,7 +232,7 @@ export default function RealPricePage() {
               )}
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               {/* 조회 기간 */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -236,6 +249,30 @@ export default function RealPricePage() {
                   <option value="2y" className="text-gray-900 dark:text-white">최근 2년</option>
                   <option value="3y" className="text-gray-900 dark:text-white">최근 3년</option>
                 </select>
+              </div>
+
+              {/* 전용면적 필터 */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  전용면적 (평)
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    value={minArea}
+                    onChange={(e) => setMinArea(e.target.value)}
+                    placeholder="최소"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white text-gray-900 dark:text-white"
+                  />
+                  <span className="text-gray-500">~</span>
+                  <input
+                    type="number"
+                    value={maxArea}
+                    onChange={(e) => setMaxArea(e.target.value)}
+                    placeholder="최대"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white text-gray-900 dark:text-white"
+                  />
+                </div>
               </div>
 
               {/* 아파트명 (선택) */}
@@ -354,10 +391,13 @@ export default function RealPricePage() {
                                 층
                               </th>
                               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                                건축년도
+                              </th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                                 거래일
                               </th>
                               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                                주소
+                                동/주소
                               </th>
                             </tr>
                           </thead>
@@ -372,11 +412,19 @@ export default function RealPricePage() {
                                     평당 {(item.pricePerPyeong / 10000).toLocaleString()}만원
                                   </div>
                                 </td>
-                                <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                                  {item.area.toFixed(2)}㎡ ({item.areaPyeong}평)
+                                <td className="px-4 py-3 whitespace-nowrap">
+                                  <div className="text-sm font-medium text-gray-900 dark:text-white">
+                                    {item.areaPyeong}평
+                                  </div>
+                                  <div className="text-xs text-gray-500 dark:text-gray-400">
+                                    {item.area.toFixed(2)}㎡
+                                  </div>
                                 </td>
                                 <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                                   {item.floor}층
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                                  {item.buildYear}년
                                 </td>
                                 <td className="px-4 py-3 whitespace-nowrap">
                                   <div className="flex items-center gap-2">
@@ -387,10 +435,13 @@ export default function RealPricePage() {
                                   </div>
                                 </td>
                                 <td className="px-4 py-3">
-                                  <div className="flex items-start gap-2">
-                                    <MapPin className="w-4 h-4 text-gray-400 mt-0.5" />
-                                    <span className="text-sm text-gray-600 dark:text-gray-300">
-                                      {item.address}
+                                  <div className="text-sm text-gray-900 dark:text-white font-medium">
+                                    {item.dong}
+                                  </div>
+                                  <div className="flex items-start gap-1 mt-0.5">
+                                    <MapPin className="w-3 h-3 text-gray-400 mt-0.5" />
+                                    <span className="text-xs text-gray-600 dark:text-gray-400">
+                                      {item.jibun}
                                     </span>
                                   </div>
                                 </td>
