@@ -27,6 +27,7 @@ export async function POST(
         beopjungdong: true,
         haengjeongdong: true,
         address: true,
+        lawdCd: true,
       },
     });
 
@@ -37,14 +38,15 @@ export async function POST(
       );
     }
 
-    // 2. 이미 법정동 정보가 있으면 스킵
-    if (complex.beopjungdong) {
+    // 2. 이미 법정동 정보와 lawdCd가 있으면 스킵
+    if (complex.beopjungdong && complex.lawdCd) {
       return NextResponse.json({
         success: true,
-        message: 'Complex already has beopjungdong',
+        message: 'Complex already has complete geocoding data',
         data: {
           beopjungdong: complex.beopjungdong,
           haengjeongdong: complex.haengjeongdong,
+          lawdCd: complex.lawdCd,
         },
       });
     }
