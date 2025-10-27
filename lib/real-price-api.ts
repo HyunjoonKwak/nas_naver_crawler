@@ -301,11 +301,16 @@ export class RealPriceApiClient {
   /**
    * 특정 아파트의 실거래가 조회
    * 공백을 제거하고 비교하여 띄어쓰기 차이 무시
+   * @param lawdCd 법정동코드 (5자리)
+   * @param dealYmd 조회 년월 (YYYYMM)
+   * @param aptName 아파트명
+   * @param exactMatch true면 정확히 일치하는 것만, false면 부분 일치 포함 (기본값: false)
    */
   async searchByAptName(
     lawdCd: string,
     dealYmd: string,
-    aptName: string
+    aptName: string,
+    exactMatch: boolean = false
   ): Promise<ProcessedRealPrice[]> {
     // 전체 데이터 가져오기
     const allItems = await this.searchAll(lawdCd, dealYmd);
@@ -315,8 +320,15 @@ export class RealPriceApiClient {
 
     return allItems.filter(item => {
       const normalizedItemName = item.aptName.replace(/\s+/g, '').toLowerCase();
-      return normalizedItemName.includes(normalizedSearchName) ||
-             normalizedSearchName.includes(normalizedItemName);
+
+      if (exactMatch) {
+        // 정확히 일치하는 것만
+        return normalizedItemName === normalizedSearchName;
+      } else {
+        // 부분 일치 포함 (기존 동작)
+        return normalizedItemName.includes(normalizedSearchName) ||
+               normalizedSearchName.includes(normalizedItemName);
+      }
     });
   }
 

@@ -111,7 +111,8 @@ export default function RealPriceAnalysis({ complexNo }: RealPriceAnalysisProps)
     });
 
     const statsArray: AreaStats[] = Object.entries(areaGroups).map(([pyeong, items]) => {
-      const prices = items.map(item => parseFloat(item.dealAmount.replace(/,/g, '')) * 10000);
+      // dealAmount는 만원 단위 숫자 문자열 (예: "44500")
+      const prices = items.map(item => parseFloat(item.dealAmount) * 10000);
       const avgArea = items.reduce((sum, item) => sum + item.exclusiveArea, 0) / items.length;
 
       return {
@@ -135,7 +136,8 @@ export default function RealPriceAnalysis({ complexNo }: RealPriceAnalysisProps)
     const monthlyGroups: { [key: string]: number[] } = {};
     rawData.items.forEach(item => {
       const monthKey = `${item.dealYear}.${String(item.dealMonth).padStart(2, '0')}`;
-      const price = parseFloat(item.dealAmount.replace(/,/g, '')) * 10000;
+      // dealAmount는 만원 단위 숫자 문자열
+      const price = parseFloat(item.dealAmount) * 10000;
 
       if (!monthlyGroups[monthKey]) {
         monthlyGroups[monthKey] = [];
@@ -194,8 +196,9 @@ export default function RealPriceAnalysis({ complexNo }: RealPriceAnalysisProps)
           compareResult = dateA.getTime() - dateB.getTime();
           break;
         case 'price':
-          const priceA = parseFloat(a.dealAmount.replace(/,/g, ''));
-          const priceB = parseFloat(b.dealAmount.replace(/,/g, ''));
+          // dealAmount는 만원 단위 숫자 문자열
+          const priceA = parseFloat(a.dealAmount);
+          const priceB = parseFloat(b.dealAmount);
           compareResult = priceA - priceB;
           break;
         case 'area':
@@ -560,7 +563,8 @@ export default function RealPriceAnalysis({ complexNo }: RealPriceAnalysisProps)
             </thead>
             <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
               {filteredTransactions.slice(0, 20).map((transaction, index) => {
-                const price = parseFloat(transaction.dealAmount.replace(/,/g, '')) * 10000;
+                // dealAmount는 만원 단위 숫자 문자열
+                const price = parseFloat(transaction.dealAmount) * 10000;
                 const pyeong = Math.floor(transaction.exclusiveArea / 3.3058);
 
                 return (

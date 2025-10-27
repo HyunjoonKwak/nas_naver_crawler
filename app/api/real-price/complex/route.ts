@@ -121,14 +121,15 @@ export async function GET(request: NextRequest) {
     const targetMonths = getRecentMonths(months);
     const client = getRealPriceApiClient();
 
-    // 각 달의 실거래가 조회 (아파트명 필터링)
+    // 각 달의 실거래가 조회 (아파트명 필터링 - 정확히 일치하는 것만)
     const allResults = [];
     for (const dealYmd of targetMonths) {
       try {
         const items = await client.searchByAptName(
           lawdCd,
           dealYmd,
-          complex.complexName
+          complex.complexName,
+          true // exactMatch = true: 정확히 일치하는 아파트만 조회
         );
         allResults.push(...items);
 
@@ -152,7 +153,9 @@ export async function GET(request: NextRequest) {
         ...item,
         apartmentName: item.aptName,
         exclusiveArea: item.area,
-        dealAmount: item.dealPriceFormatted,
+        dealAmount: item.dealPrice.toString(), // 숫자를 문자열로 (만원 단위)
+        dealPrice: item.dealPrice, // 원본 숫자 값 (만원 단위)
+        dealPriceFormatted: item.dealPriceFormatted, // 포맷된 문자열 (표시용)
         dealYear: parseInt(year),
         dealMonth: parseInt(month),
         dealDay: parseInt(day),
