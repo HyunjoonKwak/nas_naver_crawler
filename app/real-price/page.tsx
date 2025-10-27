@@ -7,7 +7,7 @@ import { MobileNavigation } from "@/components/MobileNavigation";
 import { showSuccess, showError, showLoading, dismissToast } from "@/lib/toast";
 import { AuthGuard } from "@/components/AuthGuard";
 import { Search, Loader2, TrendingUp, Home, Calendar, MapPin, ChevronDown, ChevronUp, Building2 } from "lucide-react";
-import { formatPrice } from "@/lib/real-price-api";
+import { formatPrice } from "@/lib/price-format";
 import DongCodeSelector from "@/components/DongCodeSelector";
 
 interface RealPriceItem {

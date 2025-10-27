@@ -7,6 +7,7 @@
 
 import { parseStringPromise } from 'xml2js';
 import { prisma } from './prisma';
+import { formatPrice as formatPriceUtil } from './price-format';
 
 // ============================================
 // 타입 정의
@@ -121,20 +122,9 @@ function parsePrice(priceStr: string): number {
 }
 
 /**
- * 가격을 억/만원 형식으로 포맷팅
+ * 가격을 억/만원 형식으로 포맷팅 (재export)
  */
-export function formatPrice(price: number): string {
-  const eok = Math.floor(price / 100000000);
-  const man = Math.floor((price % 100000000) / 10000);
-
-  if (eok > 0 && man > 0) {
-    return `${eok}억 ${man.toLocaleString()}만원`;
-  } else if (eok > 0) {
-    return `${eok}억원`;
-  } else {
-    return `${man.toLocaleString()}만원`;
-  }
-}
+export const formatPrice = formatPriceUtil;
 
 /**
  * 제곱미터를 평으로 변환
