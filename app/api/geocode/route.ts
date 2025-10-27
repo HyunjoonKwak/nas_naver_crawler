@@ -74,12 +74,14 @@ async function getAccessToken(serviceId: string, securityKey: string): Promise<s
     throw new Error(`SGIS 인증 오류: ${data.errMsg} (코드: ${data.errCd})`);
   }
 
-  // 토큰 캐시 저장 (4시간 유효)
+  // 토큰 캐시 저장 (API에서 제공하는 만료시간 사용)
   cachedAccessToken = data.result.accessToken;
-  tokenExpiryTime = now + 4 * 60 * 60 * 1000; // 4시간 후
+  // accessTimeout이 Unix timestamp(밀리초)로 제공됨
+  tokenExpiryTime = parseInt(data.result.accessTimeout);
 
   console.log('[SGIS Auth] ✅ AccessToken 발급 완료');
   console.log('[SGIS Auth]   만료시간:', new Date(tokenExpiryTime).toLocaleString('ko-KR'));
+  console.log('[SGIS Auth]   유효시간:', Math.floor((tokenExpiryTime - now) / 1000 / 60), '분');
 
   return cachedAccessToken;
 }
