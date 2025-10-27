@@ -17,6 +17,7 @@ import { parseStringPromise } from 'xml2js';
 export interface RealPriceItem {
   // 거래 정보
   aptNm: string;                    // 아파트명
+  aptDong: string;                  // 아파트 동 (예: "101동", "A동")
   dealAmount: string;               // 거래금액 (예: " 82,500")
   dealYear: string;                 // 거래년도
   dealMonth: string;                // 거래월
@@ -27,6 +28,9 @@ export interface RealPriceItem {
   umdNm: string;                    // 읍면동명
   umdCd: string;                    // 읍면동코드
   jibun: string;                    // 지번
+  roadNm?: string;                  // 도로명
+  bonbun?: string;                  // 본번
+  bubun?: string;                   // 부번
 
   // 건물 정보
   excluUseAr: string;               // 전용면적 (제곱미터)
@@ -42,6 +46,7 @@ export interface RealPriceItem {
   rgstDate: string;                 // 등록일자
   slerGbn: string;                  // 매도자구분
   buyerGbn: string;                 // 매수자구분
+  landLeaseholdGbn?: string;        // 토지임대 여부 (N: 일반, Y: 토지임대)
 }
 
 /**
@@ -50,13 +55,14 @@ export interface RealPriceItem {
 export interface ProcessedRealPrice {
   // 거래 정보
   aptName: string;                  // 아파트명
+  aptDong: string;                  // 아파트 동 (예: "101동", 공백이면 빈 문자열)
   dealPrice: number;                // 거래금액 (원 단위)
   dealPriceFormatted: string;       // 거래금액 (억/만원 형식)
   dealDate: string;                 // 거래일자 (YYYY-MM-DD)
 
   // 위치 정보
   address: string;                  // 전체 주소
-  dong: string;                     // 동명
+  dong: string;                     // 읍면동명
   jibun: string;                    // 지번
 
   // 건물 정보
@@ -66,8 +72,9 @@ export interface ProcessedRealPrice {
   buildYear: number;                // 건축년도
 
   // 기타
-  dealType: string;                 // 거래유형
+  dealType: string;                 // 거래유형 (직거래/중개거래)
   pricePerPyeong: number;           // 평당 가격
+  rgstDate: string;                 // 등록일자 (등기 여부 판단용)
 }
 
 /**
@@ -145,6 +152,7 @@ export function processRealPriceItem(item: RealPriceItem): ProcessedRealPrice {
 
   return {
     aptName: item.aptNm,
+    aptDong: (item.aptDong || '').trim(), // 공백 제거
     dealPrice,
     dealPriceFormatted: formatPrice(dealPrice),
     dealDate: `${item.dealYear}-${item.dealMonth.padStart(2, '0')}-${item.dealDay.padStart(2, '0')}`,
@@ -158,8 +166,9 @@ export function processRealPriceItem(item: RealPriceItem): ProcessedRealPrice {
     floor: parseInt(item.floor, 10),
     buildYear: parseInt(item.buildYear, 10),
 
-    dealType: item.cdealType || '직거래',
+    dealType: item.dealingGbn || item.cdealType || '직거래',
     pricePerPyeong: Math.round(dealPrice / areaPyeong),
+    rgstDate: (item.rgstDate || '').trim(), // 등록일자
   };
 }
 

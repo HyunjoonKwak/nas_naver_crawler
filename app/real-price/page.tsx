@@ -12,6 +12,7 @@ import DongCodeSelector from "@/components/DongCodeSelector";
 
 interface RealPriceItem {
   aptName: string;
+  aptDong: string;
   dealPrice: number;
   dealPriceFormatted: string;
   dealDate: string;
@@ -24,6 +25,7 @@ interface RealPriceItem {
   buildYear: number;
   dealType: string;
   pricePerPyeong: number;
+  rgstDate: string;
 }
 
 export default function RealPricePage() {
@@ -388,6 +390,9 @@ export default function RealPricePage() {
                                 전용면적
                               </th>
                               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                                동
+                              </th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                                 층
                               </th>
                               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
@@ -397,7 +402,10 @@ export default function RealPricePage() {
                                 거래일
                               </th>
                               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                                동/주소
+                                거래유형
+                              </th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                                위치
                               </th>
                             </tr>
                           </thead>
@@ -412,13 +420,11 @@ export default function RealPricePage() {
                                     평당 {(item.pricePerPyeong / 10000).toLocaleString()}만원
                                   </div>
                                 </td>
-                                <td className="px-4 py-3 whitespace-nowrap">
-                                  <div className="text-sm font-medium text-gray-900 dark:text-white">
-                                    {item.areaPyeong}평
-                                  </div>
-                                  <div className="text-xs text-gray-500 dark:text-gray-400">
-                                    {item.area.toFixed(2)}㎡
-                                  </div>
+                                <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                                  전용 {item.area.toFixed(2)}㎡
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                                  {item.aptDong || '-'}
                                 </td>
                                 <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                                   {item.floor}층
@@ -433,6 +439,14 @@ export default function RealPricePage() {
                                       {item.dealDate}
                                     </span>
                                   </div>
+                                  {item.rgstDate && (
+                                    <div className="text-xs text-green-600 dark:text-green-400 mt-0.5">
+                                      등기: {item.rgstDate}
+                                    </div>
+                                  )}
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                                  {item.dealType}
                                 </td>
                                 <td className="px-4 py-3">
                                   <div className="text-sm text-gray-900 dark:text-white font-medium">
