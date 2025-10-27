@@ -189,16 +189,8 @@ export class RealPriceApiClient {
   }> {
     const { lawdCd, dealYmd, pageNo = 1, numOfRows = 100 } = params;
 
-    // URL 파라미터 구성
-    const queryParams = new URLSearchParams({
-      serviceKey: this.serviceKey,
-      LAWD_CD: lawdCd,
-      DEAL_YMD: dealYmd,
-      pageNo: pageNo.toString(),
-      numOfRows: numOfRows.toString(),
-    });
-
-    const url = `${this.baseUrl}?${queryParams.toString()}`;
+    // URL 파라미터 구성 (serviceKey는 이미 인코딩된 상태이므로 직접 구성)
+    const url = `${this.baseUrl}?serviceKey=${this.serviceKey}&LAWD_CD=${lawdCd}&DEAL_YMD=${dealYmd}&pageNo=${pageNo}&numOfRows=${numOfRows}`;
 
     console.log(`[Real Price API] Fetching: ${dealYmd}, lawdCd: ${lawdCd}`);
 
