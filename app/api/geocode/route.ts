@@ -12,20 +12,17 @@ interface SGISAuthResponse {
 
 // SGIS Reverse Geocoding 응답
 interface SGISReverseGeocodeResponse {
-  errMsg: string;
-  errCd: number;
-  result: Array<{
-    sido_cd: string;      // 시도코드
-    sgg_cd: string;       // 시군구코드
-    emd_cd: string;       // 읍면동코드
-    ri_cd?: string;       // 리코드
-    sido_nm: string;      // 시도명
-    sgg_nm: string;       // 시군구명
-    emd_nm: string;       // 읍면동명
-    ri_nm?: string;       // 리명
-    full_nm: string;      // 전체주소
-    full_nm_eng?: string; // 전체주소(영문)
-  }>;
+  errMsg?: string;
+  errCd?: number;
+  id?: string;
+  trId?: string;
+  sido_cd?: string;      // 시도코드
+  sgg_cd?: string;       // 시군구코드
+  emdong_cd?: string;    // 읍면동코드
+  sido_nm?: string;      // 시도명
+  sgg_nm?: string;       // 시군구명
+  emdong_nm?: string;    // 읍면동명
+  full_addr?: string;    // 전체주소
 }
 
 interface AddressInfo {
@@ -152,7 +149,8 @@ export async function GET(request: NextRequest) {
 
     const data: SGISReverseGeocodeResponse = await response.json();
 
-    if (data.errCd !== 0) {
+    // errCd가 있고 0이 아닌 경우 에러
+    if (data.errCd !== undefined && data.errCd !== 0) {
       console.error('[SGIS Geocoding] ❌ API 응답 오류:', data.errMsg);
       return NextResponse.json(
         {
@@ -165,38 +163,34 @@ export async function GET(request: NextRequest) {
     }
 
     console.log(`[SGIS Geocoding] ✅ API 응답 수신`);
-    console.log(`[SGIS Geocoding]   결과 개수: ${data.result?.length || 0}`);
     console.log(`[SGIS Geocoding]   전체 응답:`, JSON.stringify(data, null, 2));
 
-    // 결과 파싱
+    // 결과 파싱 (SGIS는 배열이 아닌 단일 객체 반환)
     const addressInfo: AddressInfo = {};
 
-    if (data.result && data.result.length > 0) {
-      const addr = data.result[0]; // 첫 번째 결과 사용
-
+    if (data.sido_nm && data.emdong_nm) {
       // 행정구역 정보
-      addressInfo.sido = addr.sido_nm;
-      addressInfo.sigungu = addr.sgg_nm;
-      addressInfo.dong = addr.emd_nm;
-      addressInfo.ri = addr.ri_nm || '';
+      addressInfo.sido = data.sido_nm;
+      addressInfo.sigungu = data.sgg_nm;
+      addressInfo.dong = data.emdong_nm;
 
       // 행정구역 코드
-      addressInfo.sidoCode = addr.sido_cd;
-      addressInfo.sigunguCode = addr.sgg_cd;
-      addressInfo.dongCode = addr.emd_cd;
+      addressInfo.sidoCode = data.sido_cd;
+      addressInfo.sigunguCode = data.sgg_cd;
+      addressInfo.dongCode = data.emdong_cd;
 
       // 법정동/행정동 (SGIS는 행정동 기준)
-      addressInfo.beopjungdong = addr.emd_nm;
-      addressInfo.haengjeongdong = addr.emd_nm;
+      addressInfo.beopjungdong = data.emdong_nm;
+      addressInfo.haengjeongdong = data.emdong_nm;
 
       // 전체 주소
-      addressInfo.fullAddress = addr.full_nm;
+      addressInfo.fullAddress = data.full_addr;
 
       // 지번 주소 (SGIS는 행정동 기준이므로 fullAddress 사용)
-      addressInfo.jibunAddress = addr.full_nm;
+      addressInfo.jibunAddress = data.full_addr;
 
       // 도로명 주소는 SGIS rgeocode에서 제공하지 않음
-      addressInfo.roadAddress = addr.full_nm;
+      addressInfo.roadAddress = data.full_addr;
 
       console.log('[SGIS Geocoding] 🎯 변환 성공:');
       console.log('[SGIS Geocoding]   시도:', addressInfo.sido, `(${addressInfo.sidoCode})`);
@@ -214,7 +208,7 @@ export async function GET(request: NextRequest) {
         latitude: parseFloat(latitude),
         longitude: parseFloat(longitude),
       },
-      address: addressInfo,
+      data: addressInfo,
     });
 
   } catch (error: any) {
