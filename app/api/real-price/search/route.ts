@@ -61,28 +61,25 @@ export async function GET(request: NextRequest) {
     // API 클라이언트 가져오기
     const client = getRealPriceApiClient();
 
-    // 아파트명 필터링 여부에 따라 다른 메서드 호출
-    let result;
+    // 전체 데이터 가져오기 (페이징 자동 처리)
+    let items: any[];
+
     if (aptName) {
-      const items = await client.searchByAptName(lawdCd, dealYmd, aptName);
-      result = {
-        items,
-        totalCount: items.length,
-        pageNo: 1,
-        numOfRows: items.length,
-      };
+      // 아파트명 필터링
+      items = await client.searchByAptName(lawdCd, dealYmd, aptName);
     } else {
-      result = await client.search({
-        lawdCd,
-        dealYmd,
-        pageNo,
-        numOfRows,
-      });
+      // 전체 조회
+      items = await client.searchAll(lawdCd, dealYmd);
     }
 
     return NextResponse.json({
       success: true,
-      data: result,
+      data: {
+        items,
+        totalCount: items.length,
+        pageNo: 1,
+        numOfRows: items.length,
+      },
     });
   } catch (error: unknown) {
     console.error('Real price search error:', error);

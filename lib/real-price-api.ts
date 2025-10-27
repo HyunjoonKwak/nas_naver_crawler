@@ -250,6 +250,46 @@ export class RealPriceApiClient {
   }
 
   /**
+   * 전체 데이터를 페이징하여 모두 가져오기
+   * totalCount가 100건 이상인 경우 자동으로 여러 번 호출
+   */
+  async searchAll(
+    lawdCd: string,
+    dealYmd: string
+  ): Promise<ProcessedRealPrice[]> {
+    const allItems: ProcessedRealPrice[] = [];
+    let currentPage = 1;
+    const rowsPerPage = 1000; // 한 번에 최대 1000건까지 가져오기
+
+    while (true) {
+      const result = await this.search({
+        lawdCd,
+        dealYmd,
+        pageNo: currentPage,
+        numOfRows: rowsPerPage,
+      });
+
+      allItems.push(...result.items);
+
+      // 모든 데이터를 가져왔는지 확인
+      if (allItems.length >= result.totalCount || result.items.length === 0) {
+        break;
+      }
+
+      currentPage++;
+
+      // 안전장치: 최대 10페이지까지만 (10,000건)
+      if (currentPage > 10) {
+        console.warn(`[Real Price API] Reached max page limit (10 pages, ${allItems.length} items)`);
+        break;
+      }
+    }
+
+    console.log(`[Real Price API] Total fetched: ${allItems.length} items`);
+    return allItems;
+  }
+
+  /**
    * 특정 아파트의 실거래가 조회
    * 공백을 제거하고 비교하여 띄어쓰기 차이 무시
    */
@@ -258,12 +298,13 @@ export class RealPriceApiClient {
     dealYmd: string,
     aptName: string
   ): Promise<ProcessedRealPrice[]> {
-    const result = await this.search({ lawdCd, dealYmd });
+    // 전체 데이터 가져오기
+    const allItems = await this.searchAll(lawdCd, dealYmd);
 
     // 공백 제거 후 비교 (띄어쓰기 차이 무시)
     const normalizedSearchName = aptName.replace(/\s+/g, '').toLowerCase();
 
-    return result.items.filter(item => {
+    return allItems.filter(item => {
       const normalizedItemName = item.aptName.replace(/\s+/g, '').toLowerCase();
       return normalizedItemName.includes(normalizedSearchName) ||
              normalizedSearchName.includes(normalizedItemName);
