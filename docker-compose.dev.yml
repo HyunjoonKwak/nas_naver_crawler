@@ -63,6 +63,7 @@ services:
       - ./tsconfig.json:/app/tsconfig.json
       - ./tailwind.config.js:/app/tailwind.config.js
       - ./postcss.config.js:/app/postcss.config.js
+      - ./dong_code_active.txt:/app/dong_code_active.txt  # 법정동코드 파일
 
       # === 캐시/빌드 결과 (컨테이너 내부 - 성능 최적화) ===
       - node_modules:/app/node_modules
