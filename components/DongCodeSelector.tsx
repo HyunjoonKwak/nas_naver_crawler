@@ -9,7 +9,7 @@ import { useState, useEffect } from "react";
 import { Loader2, ChevronDown } from "lucide-react";
 
 interface DongCodeSelectorProps {
-  onSelect: (lawdCd: string, fullName: string) => void;
+  onSelect: (lawdCd: string, fullName: string, dongName?: string) => void;
   value?: string;
 }
 
@@ -82,14 +82,14 @@ export default function DongCodeSelector({ onSelect, value }: DongCodeSelectorPr
       const selected = dongList.find(d => d.code === selectedDong);
       if (selected) {
         // 읍/면/동까지 선택했지만, 실거래가 API는 5자리만 사용하므로
-        // 시/군/구 코드 유지하고 이름만 업데이트
+        // 시/군/구 코드 유지하고 이름 + 읍면동명 전달
         const sigungu = sigunguList.find(s => s.code === selectedSigungu);
         if (sigungu) {
-          onSelect(sigungu.fullCode, selected.fullName);
+          onSelect(sigungu.fullCode, selected.fullName, selected.name);
         }
       }
     }
-  }, [selectedDong]);
+  }, [selectedDong, dongList, sigunguList, selectedSigungu, onSelect]);
 
   const loadSidoList = async () => {
     setIsLoadingSido(true);
@@ -148,11 +148,11 @@ export default function DongCodeSelector({ onSelect, value }: DongCodeSelectorPr
             value={selectedSido}
             onChange={(e) => setSelectedSido(e.target.value)}
             disabled={isLoadingSido}
-            className="w-full px-4 py-2 pr-10 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white appearance-none"
+            className="w-full px-4 py-2 pr-10 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white appearance-none text-gray-900 dark:text-white"
           >
-            <option value="">시/도 선택</option>
+            <option value="" className="text-gray-500">시/도 선택</option>
             {sidoList.map((sido) => (
-              <option key={sido.code} value={sido.code}>
+              <option key={sido.code} value={sido.code} className="text-gray-900 dark:text-white">
                 {sido.name}
               </option>
             ))}
@@ -174,11 +174,11 @@ export default function DongCodeSelector({ onSelect, value }: DongCodeSelectorPr
             value={selectedSigungu}
             onChange={(e) => setSelectedSigungu(e.target.value)}
             disabled={!selectedSido || isLoadingSigungu}
-            className="w-full px-4 py-2 pr-10 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white appearance-none disabled:bg-gray-100 disabled:cursor-not-allowed dark:disabled:bg-gray-800"
+            className="w-full px-4 py-2 pr-10 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white appearance-none disabled:bg-gray-100 disabled:cursor-not-allowed dark:disabled:bg-gray-800 text-gray-900 dark:text-white"
           >
-            <option value="">시/군/구 선택</option>
+            <option value="" className="text-gray-500">시/군/구 선택</option>
             {sigunguList.map((sigungu) => (
-              <option key={sigungu.code} value={sigungu.code}>
+              <option key={sigungu.code} value={sigungu.code} className="text-gray-900 dark:text-white">
                 {sigungu.name}
               </option>
             ))}
@@ -200,11 +200,11 @@ export default function DongCodeSelector({ onSelect, value }: DongCodeSelectorPr
             value={selectedDong}
             onChange={(e) => setSelectedDong(e.target.value)}
             disabled={!selectedSigungu || isLoadingDong || dongList.length === 0}
-            className="w-full px-4 py-2 pr-10 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white appearance-none disabled:bg-gray-100 disabled:cursor-not-allowed dark:disabled:bg-gray-800"
+            className="w-full px-4 py-2 pr-10 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white appearance-none disabled:bg-gray-100 disabled:cursor-not-allowed dark:disabled:bg-gray-800 text-gray-900 dark:text-white"
           >
-            <option value="">읍/면/동 선택</option>
+            <option value="" className="text-gray-500">읍/면/동 선택</option>
             {dongList.map((dong) => (
-              <option key={dong.code} value={dong.code}>
+              <option key={dong.code} value={dong.code} className="text-gray-900 dark:text-white">
                 {dong.name}
               </option>
             ))}

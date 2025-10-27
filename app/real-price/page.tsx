@@ -4,7 +4,6 @@ import { useState } from "react";
 import { useSession } from "next-auth/react";
 import { Navigation } from "@/components/Navigation";
 import { MobileNavigation } from "@/components/MobileNavigation";
-import { ThemeToggle } from "@/components/ui";
 import { showSuccess, showError, showLoading, dismissToast } from "@/lib/toast";
 import { AuthGuard } from "@/components/AuthGuard";
 import { Search, Loader2, TrendingUp, Home, Calendar, MapPin } from "lucide-react";
@@ -31,6 +30,7 @@ export default function RealPricePage() {
   const { data: session } = useSession();
   const [lawdCd, setLawdCd] = useState(""); // DongCodeSelector로부터 받음
   const [selectedArea, setSelectedArea] = useState(""); // 선택된 지역명
+  const [selectedDong, setSelectedDong] = useState(""); // 선택된 읍면동명
   const [period, setPeriod] = useState("3m"); // 기본값: 최근 3개월
   const [aptName, setAptName] = useState("");
   const [searchResults, setSearchResults] = useState<RealPriceItem[]>([]);
@@ -101,11 +101,23 @@ export default function RealPricePage() {
       // 거래일 기준 내림차순 정렬
       allResults.sort((a, b) => b.dealDate.localeCompare(a.dealDate));
 
-      setSearchResults(allResults);
-      setTotalCount(allResults.length);
+      // 읍면동이 선택된 경우 필터링
+      let filteredResults = allResults;
+      if (selectedDong) {
+        filteredResults = allResults.filter(item => {
+          // dong 필드에 선택된 읍면동명이 포함되는지 확인
+          return item.dong && item.dong.includes(selectedDong);
+        });
+      }
 
-      if (allResults.length > 0) {
-        showSuccess(`${allResults.length}건의 실거래가를 찾았습니다`);
+      setSearchResults(filteredResults);
+      setTotalCount(filteredResults.length);
+
+      if (filteredResults.length > 0) {
+        const message = selectedDong
+          ? `${selectedDong} 지역에서 ${filteredResults.length}건의 실거래가를 찾았습니다`
+          : `${filteredResults.length}건의 실거래가를 찾았습니다`;
+        showSuccess(message);
       } else {
         showError("검색 결과가 없습니다");
       }
@@ -136,17 +148,14 @@ export default function RealPricePage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* 헤더 */}
           <div className="mb-8">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
-                  <TrendingUp className="w-8 h-8 text-blue-600 dark:text-blue-400" />
-                  아파트 실거래가 검색
-                </h1>
-                <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-                  국토교통부 실거래가 데이터를 기반으로 아파트 거래 정보를 조회합니다
-                </p>
-              </div>
-              <ThemeToggle />
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
+                <TrendingUp className="w-8 h-8 text-blue-600 dark:text-blue-400" />
+                아파트 실거래가 검색
+              </h1>
+              <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                국토교통부 실거래가 데이터를 기반으로 아파트 거래 정보를 조회합니다
+              </p>
             </div>
           </div>
 
@@ -158,9 +167,10 @@ export default function RealPricePage() {
                 지역 선택
               </label>
               <DongCodeSelector
-                onSelect={(code, name) => {
+                onSelect={(code, name, dongName) => {
                   setLawdCd(code);
                   setSelectedArea(name);
+                  setSelectedDong(dongName || "");
                 }}
               />
               {selectedArea && (
