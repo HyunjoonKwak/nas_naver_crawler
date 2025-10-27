@@ -11,25 +11,21 @@ CREATE INDEX IF NOT EXISTS "articles_area1_idx" ON "articles"("area1");
 
 -- 3. 복합 인덱스 추가 (커버링 인덱스)
 -- 단지 + 가격 + 거래유형 (복합 필터링)
-CREATE INDEX IF NOT EXISTS "articles_complexId_dealOrWarrantPrcWon_tradeTypeName_idx" 
-  ON "articles"("complex_id", "deal_or_warrant_prc_won", "trade_type_name");
+CREATE INDEX IF NOT EXISTS "articles_complexId_dealOrWarrantPrcWon_tradeTypeName_idx"
+  ON "articles"("complexId", "deal_or_warrant_prc_won", "tradeTypeName");
 
 -- 단지 + 면적 + 가격 (면적별 가격 조회)
-CREATE INDEX IF NOT EXISTS "articles_complexId_area1_dealOrWarrantPrcWon_idx" 
-  ON "articles"("complex_id", "area1", "deal_or_warrant_prc_won");
+CREATE INDEX IF NOT EXISTS "articles_complexId_area1_dealOrWarrantPrcWon_idx"
+  ON "articles"("complexId", "area1", "deal_or_warrant_prc_won");
 
 -- ===== CrawlHistory 테이블 인덱스 최적화 =====
 
 -- 4. 사용자별 히스토리 조회 복합 인덱스
-CREATE INDEX IF NOT EXISTS "crawl_history_userId_status_startedAt_idx" 
-  ON "crawl_history"("user_id", "status", "started_at" DESC);
+CREATE INDEX IF NOT EXISTS "crawl_history_userId_status_createdAt_idx"
+  ON "crawl_history"("userId", "status", "createdAt" DESC);
 
--- 5. 최신 크롤링 조회 인덱스
-CREATE INDEX IF NOT EXISTS "crawl_history_startedAt_idx" 
-  ON "crawl_history"("started_at" DESC);
-
--- 6. 불필요한 단일 인덱스 제거 (복합 인덱스로 대체됨)
-DROP INDEX IF EXISTS "crawl_history_createdAt_idx";
+-- 5. 최신 크롤링 조회 인덱스 (이미 존재하므로 유지)
+-- crawl_history_createdAt_idx는 이미 존재함
 
 -- ===== Notification 테이블 인덱스 최적화 =====
 
