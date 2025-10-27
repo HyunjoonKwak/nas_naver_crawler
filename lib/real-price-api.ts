@@ -192,7 +192,7 @@ export class RealPriceApiClient {
     // URL 파라미터 구성 (serviceKey는 이미 인코딩된 상태이므로 직접 구성)
     const url = `${this.baseUrl}?serviceKey=${this.serviceKey}&LAWD_CD=${lawdCd}&DEAL_YMD=${dealYmd}&pageNo=${pageNo}&numOfRows=${numOfRows}`;
 
-    // Fetching: ${dealYmd}, lawdCd: ${lawdCd}
+    console.log(`[Real Price API] Calling: ${this.baseUrl}?serviceKey=***&LAWD_CD=${lawdCd}&DEAL_YMD=${dealYmd}&pageNo=${pageNo}&numOfRows=${numOfRows}`);
 
     try {
       // API 호출
@@ -202,6 +202,8 @@ export class RealPriceApiClient {
           'Accept': 'application/xml',
         },
       });
+
+      console.log(`[Real Price API] Response status: ${response.status}`);
 
       if (!response.ok) {
         const errorText = await response.text();
