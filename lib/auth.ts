@@ -74,6 +74,7 @@ export const authOptions: any = {
   },
   pages: {
     signIn: '/',
+    signOut: '/',
   },
   session: {
     strategy: 'jwt',
