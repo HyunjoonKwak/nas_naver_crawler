@@ -166,6 +166,7 @@ export async function GET(request: NextRequest) {
 
     console.log(`[SGIS Geocoding] ✅ API 응답 수신`);
     console.log(`[SGIS Geocoding]   결과 개수: ${data.result?.length || 0}`);
+    console.log(`[SGIS Geocoding]   전체 응답:`, JSON.stringify(data, null, 2));
 
     // 결과 파싱
     const addressInfo: AddressInfo = {};
