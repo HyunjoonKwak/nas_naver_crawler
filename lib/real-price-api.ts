@@ -200,6 +200,8 @@ export class RealPriceApiClient {
 
     const url = `${this.baseUrl}?${queryParams.toString()}`;
 
+    console.log(`[Real Price API] Fetching: ${dealYmd}, lawdCd: ${lawdCd}`);
+
     try {
       // API 호출
       const response = await fetch(url, {
@@ -210,6 +212,8 @@ export class RealPriceApiClient {
       });
 
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`[Real Price API] HTTP ${response.status}:`, errorText.substring(0, 500));
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
@@ -223,8 +227,12 @@ export class RealPriceApiClient {
       // 응답 검증
       const { resultCode, resultMsg } = parsed.response.header;
       if (resultCode !== '00') {
+        console.error(`[Real Price API] Error: ${resultMsg} (code: ${resultCode})`);
+        console.error(`[Real Price API] URL:`, url.replace(this.serviceKey, '***'));
         throw new Error(`API Error: ${resultMsg} (code: ${resultCode})`);
       }
+
+      console.log(`[Real Price API] Success: ${parsed.response.body.totalCount || 0} items`);
 
       // 데이터 추출
       const body = parsed.response.body;

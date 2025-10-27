@@ -87,14 +87,23 @@ export const authOptions: any = {
   jwt: {
     maxAge: 7 * 24 * 60 * 60, // 7일
   },
-  // 디버그 모드 활성화
-  debug: true,
-  // 로그 활성화
+  // 디버그 모드 (개발 환경에서만)
+  debug: process.env.NODE_ENV === 'development' && process.env.DEBUG_ENABLED === 'true',
+  // 로그 활성화 (에러만)
   logger: {
     error(code: any, metadata: any) {
+      // JWT 세션 복호화 실패는 쿠키 만료 시 정상적으로 발생할 수 있음 (경고 수준으로 낮춤)
+      if (code?.name === 'JWT_SESSION_ERROR' || code?.code === 'ERR_JWE_DECRYPTION_FAILED') {
+        // 무시 또는 경고만 출력
+        return;
+      }
       console.error('[NextAuth Error]', code, metadata);
     },
     warn(code: any) {
+      // NEXTAUTH_URL, DEBUG_ENABLED 경고 무시
+      if (code === 'NEXTAUTH_URL' || code === 'DEBUG_ENABLED') {
+        return;
+      }
       console.warn('[NextAuth Warn]', code);
     },
     debug(code: any, metadata: any) {
