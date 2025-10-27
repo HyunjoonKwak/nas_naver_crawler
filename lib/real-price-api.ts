@@ -251,6 +251,7 @@ export class RealPriceApiClient {
 
   /**
    * 특정 아파트의 실거래가 조회
+   * 공백을 제거하고 비교하여 띄어쓰기 차이 무시
    */
   async searchByAptName(
     lawdCd: string,
@@ -258,9 +259,15 @@ export class RealPriceApiClient {
     aptName: string
   ): Promise<ProcessedRealPrice[]> {
     const result = await this.search({ lawdCd, dealYmd });
-    return result.items.filter(item =>
-      item.aptName.includes(aptName) || aptName.includes(item.aptName)
-    );
+
+    // 공백 제거 후 비교 (띄어쓰기 차이 무시)
+    const normalizedSearchName = aptName.replace(/\s+/g, '').toLowerCase();
+
+    return result.items.filter(item => {
+      const normalizedItemName = item.aptName.replace(/\s+/g, '').toLowerCase();
+      return normalizedItemName.includes(normalizedSearchName) ||
+             normalizedSearchName.includes(normalizedItemName);
+    });
   }
 
   /**
