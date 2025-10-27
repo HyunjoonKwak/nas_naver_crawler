@@ -6,6 +6,7 @@
  */
 
 import { parseStringPromise } from 'xml2js';
+import { prisma } from './prisma';
 
 // ============================================
 // 타입 정의
@@ -377,6 +378,143 @@ export class RealPriceApiClient {
 
     return results;
   }
+
+  /**
+   * 캐시에서 데이터 조회 (만료되지 않은 캐시만)
+   * @private
+   */
+  private async getCachedData(
+    lawdCd: string,
+    dealYmd: string,
+    aptName?: string
+  ): Promise<ProcessedRealPrice[] | null> {
+    try {
+      const normalizedAptName = aptName ? aptName.replace(/\s+/g, '').toLowerCase() : '';
+
+      // 아파트명이 있으면 해당 아파트 캐시만, 없으면 전체 지역 캐시
+      const cacheEntry = await prisma.realPriceCache.findUnique({
+        where: {
+          lawdCd_dealYmd_aptName: {
+            lawdCd,
+            dealYmd,
+            aptName: normalizedAptName,
+          },
+        },
+      });
+
+      if (!cacheEntry) {
+        return null;
+      }
+
+      // 만료 확인
+      if (new Date() > cacheEntry.expiresAt) {
+        console.log(`[Real Price Cache] Expired cache for ${lawdCd}-${dealYmd}-${normalizedAptName}`);
+        return null;
+      }
+
+      console.log(`[Real Price Cache] HIT for ${lawdCd}-${dealYmd}-${normalizedAptName} (${cacheEntry.totalCount} items)`);
+      return cacheEntry.cachedData as ProcessedRealPrice[];
+    } catch (error) {
+      console.error('[Real Price Cache] Error reading cache:', error);
+      return null;
+    }
+  }
+
+  /**
+   * 캐시에 데이터 저장 (30일 TTL)
+   * @private
+   */
+  private async setCachedData(
+    lawdCd: string,
+    dealYmd: string,
+    aptName: string,
+    data: ProcessedRealPrice[]
+  ): Promise<void> {
+    try {
+      const normalizedAptName = aptName.replace(/\s+/g, '').toLowerCase();
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 30); // 30일 후 만료
+
+      await prisma.realPriceCache.upsert({
+        where: {
+          lawdCd_dealYmd_aptName: {
+            lawdCd,
+            dealYmd,
+            aptName: normalizedAptName,
+          },
+        },
+        create: {
+          lawdCd,
+          dealYmd,
+          aptName: normalizedAptName,
+          cachedData: data as any,
+          totalCount: data.length,
+          expiresAt,
+        },
+        update: {
+          cachedData: data as any,
+          totalCount: data.length,
+          expiresAt,
+          updatedAt: new Date(),
+        },
+      });
+
+      console.log(`[Real Price Cache] SET for ${lawdCd}-${dealYmd}-${normalizedAptName} (${data.length} items)`);
+    } catch (error) {
+      console.error('[Real Price Cache] Error writing cache:', error);
+      // 캐시 저장 실패는 무시 (원본 데이터는 반환됨)
+    }
+  }
+
+  /**
+   * 특정 아파트의 실거래가 조회 (캐시 우선)
+   * 공백을 제거하고 비교하여 띄어쓰기 차이 무시
+   * @param lawdCd 법정동코드 (5자리)
+   * @param dealYmd 조회 년월 (YYYYMM)
+   * @param aptName 아파트명
+   * @param exactMatch true면 정확히 일치하는 것만, false면 부분 일치 포함 (기본값: false)
+   * @param useCache 캐시 사용 여부 (기본값: true)
+   */
+  async searchByAptNameCached(
+    lawdCd: string,
+    dealYmd: string,
+    aptName: string,
+    exactMatch: boolean = false,
+    useCache: boolean = true
+  ): Promise<ProcessedRealPrice[]> {
+    const normalizedAptName = aptName.replace(/\s+/g, '').toLowerCase();
+
+    // 1. 캐시 확인
+    if (useCache) {
+      const cached = await this.getCachedData(lawdCd, dealYmd, normalizedAptName);
+      if (cached) {
+        return cached;
+      }
+    }
+
+    // 2. 캐시 미스 - API 호출
+    console.log(`[Real Price Cache] MISS for ${lawdCd}-${dealYmd}-${normalizedAptName}, fetching from API...`);
+    const allItems = await this.searchAll(lawdCd, dealYmd);
+
+    // 3. 필터링
+    const filtered = allItems.filter(item => {
+      const normalizedItemName = item.aptName.replace(/\s+/g, '').toLowerCase();
+
+      if (exactMatch) {
+        return normalizedItemName === normalizedAptName;
+      } else {
+        return normalizedItemName.includes(normalizedAptName) ||
+               normalizedAptName.includes(normalizedItemName);
+      }
+    });
+
+    // 4. 캐시 저장 (정확히 일치하는 아파트만 캐시)
+    if (useCache && exactMatch && filtered.length > 0) {
+      await this.setCachedData(lawdCd, dealYmd, normalizedAptName, filtered);
+    }
+
+    return filtered;
+  }
 }
 
 // ============================================
@@ -394,6 +532,52 @@ export function getRealPriceApiClient(): RealPriceApiClient {
     apiClient = new RealPriceApiClient(serviceKey);
   }
   return apiClient;
+}
+
+/**
+ * 만료된 캐시 정리 (크론잡 등에서 주기적으로 호출)
+ */
+export async function cleanExpiredRealPriceCache(): Promise<number> {
+  try {
+    const result = await prisma.realPriceCache.deleteMany({
+      where: {
+        expiresAt: {
+          lt: new Date(),
+        },
+      },
+    });
+
+    console.log(`[Real Price Cache] Cleaned ${result.count} expired cache entries`);
+    return result.count;
+  } catch (error) {
+    console.error('[Real Price Cache] Error cleaning expired cache:', error);
+    return 0;
+  }
+}
+
+/**
+ * 특정 지역/기간의 캐시 강제 삭제 (수동 갱신용)
+ */
+export async function invalidateRealPriceCache(
+  lawdCd?: string,
+  dealYmd?: string,
+  aptName?: string
+): Promise<number> {
+  try {
+    const where: any = {};
+
+    if (lawdCd) where.lawdCd = lawdCd;
+    if (dealYmd) where.dealYmd = dealYmd;
+    if (aptName) where.aptName = aptName.replace(/\s+/g, '').toLowerCase();
+
+    const result = await prisma.realPriceCache.deleteMany({ where });
+
+    console.log(`[Real Price Cache] Invalidated ${result.count} cache entries`);
+    return result.count;
+  } catch (error) {
+    console.error('[Real Price Cache] Error invalidating cache:', error);
+    return 0;
+  }
 }
 
 /**
