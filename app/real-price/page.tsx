@@ -9,6 +9,7 @@ import { showSuccess, showError, showLoading, dismissToast } from "@/lib/toast";
 import { AuthGuard } from "@/components/AuthGuard";
 import { Search, Loader2, TrendingUp, Home, Calendar, MapPin } from "lucide-react";
 import { formatPrice } from "@/lib/real-price-api";
+import DongCodeSelector from "@/components/DongCodeSelector";
 
 interface RealPriceItem {
   aptName: string;
@@ -28,22 +29,42 @@ interface RealPriceItem {
 
 export default function RealPricePage() {
   const { data: session } = useSession();
-  const [lawdCd, setLawdCd] = useState("11110"); // 기본값: 서울 종로구
-  const [dealYmd, setDealYmd] = useState(() => {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, "0");
-    return `${year}${month}`;
-  });
+  const [lawdCd, setLawdCd] = useState(""); // DongCodeSelector로부터 받음
+  const [selectedArea, setSelectedArea] = useState(""); // 선택된 지역명
+  const [period, setPeriod] = useState("3m"); // 기본값: 최근 3개월
   const [aptName, setAptName] = useState("");
   const [searchResults, setSearchResults] = useState<RealPriceItem[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
 
+  // 기간에 따른 조회 월 목록 생성
+  const getMonthsToSearch = () => {
+    const now = new Date();
+    const months: string[] = [];
+
+    let monthCount = 3; // 기본값
+    switch (period) {
+      case "3m": monthCount = 3; break;
+      case "6m": monthCount = 6; break;
+      case "12m": monthCount = 12; break;
+      case "2y": monthCount = 24; break;
+      case "3y": monthCount = 36; break;
+    }
+
+    for (let i = 0; i < monthCount; i++) {
+      const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      months.push(`${year}${month}`);
+    }
+
+    return months;
+  };
+
   // 검색 실행
   const handleSearch = async () => {
-    if (!lawdCd || !dealYmd) {
-      showError("법정동코드와 거래년월을 입력해주세요");
+    if (!lawdCd) {
+      showError("지역을 선택해주세요");
       return;
     }
 
@@ -51,24 +72,43 @@ export default function RealPricePage() {
     setIsLoading(true);
 
     try {
-      const params = new URLSearchParams({
-        lawdCd,
-        dealYmd,
-        ...(aptName && { aptName }),
-      });
+      const monthsToSearch = getMonthsToSearch();
+      const allResults: RealPriceItem[] = [];
 
-      const response = await fetch(`/api/real-price/search?${params.toString()}`);
-      const data = await response.json();
+      // 각 월별로 API 호출
+      for (const dealYmd of monthsToSearch) {
+        const params = new URLSearchParams({
+          lawdCd,
+          dealYmd,
+          ...(aptName && { aptName }),
+        });
+
+        const response = await fetch(`/api/real-price/search?${params.toString()}`);
+        const data = await response.json();
+
+        if (!response.ok) {
+          console.error(`${dealYmd} 조회 실패:`, data.error);
+          continue;
+        }
+
+        if (data.data.items && data.data.items.length > 0) {
+          allResults.push(...data.data.items);
+        }
+      }
 
       dismissToast(loadingToast);
 
-      if (!response.ok) {
-        throw new Error(data.error || "검색 실패");
-      }
+      // 거래일 기준 내림차순 정렬
+      allResults.sort((a, b) => b.dealDate.localeCompare(a.dealDate));
 
-      setSearchResults(data.data.items);
-      setTotalCount(data.data.totalCount);
-      showSuccess(`${data.data.items.length}건의 실거래가를 찾았습니다`);
+      setSearchResults(allResults);
+      setTotalCount(allResults.length);
+
+      if (allResults.length > 0) {
+        showSuccess(`${allResults.length}건의 실거래가를 찾았습니다`);
+      } else {
+        showError("검색 결과가 없습니다");
+      }
     } catch (error: unknown) {
       dismissToast(loadingToast);
       const errorMessage = error instanceof Error ? error.message : "알 수 없는 오류";
@@ -112,40 +152,41 @@ export default function RealPricePage() {
 
           {/* 검색 폼 */}
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-8">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              {/* 법정동코드 */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  법정동코드 (5자리)
-                </label>
-                <input
-                  type="text"
-                  value={lawdCd}
-                  onChange={(e) => setLawdCd(e.target.value)}
-                  onKeyPress={handleKeyPress}
-                  placeholder="11110"
-                  maxLength={5}
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                />
-                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                  예: 서울 종로구 = 11110
+            {/* 법정동 선택 */}
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                지역 선택
+              </label>
+              <DongCodeSelector
+                onSelect={(code, name) => {
+                  setLawdCd(code);
+                  setSelectedArea(name);
+                }}
+              />
+              {selectedArea && (
+                <p className="mt-2 text-sm text-green-600 dark:text-green-400">
+                  선택된 지역: <strong>{selectedArea}</strong> (코드: {lawdCd})
                 </p>
-              </div>
+              )}
+            </div>
 
-              {/* 거래년월 */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* 조회 기간 */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  거래년월 (YYYYMM)
+                  조회 기간
                 </label>
-                <input
-                  type="text"
-                  value={dealYmd}
-                  onChange={(e) => setDealYmd(e.target.value)}
-                  onKeyPress={handleKeyPress}
-                  placeholder="202501"
-                  maxLength={6}
+                <select
+                  value={period}
+                  onChange={(e) => setPeriod(e.target.value)}
                   className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                />
+                >
+                  <option value="3m">최근 3개월</option>
+                  <option value="6m">최근 6개월</option>
+                  <option value="12m">최근 12개월</option>
+                  <option value="2y">최근 2년</option>
+                  <option value="3y">최근 3년</option>
+                </select>
               </div>
 
               {/* 아파트명 (선택) */}
@@ -167,7 +208,7 @@ export default function RealPricePage() {
               <div className="flex items-end">
                 <button
                   onClick={handleSearch}
-                  disabled={isLoading}
+                  disabled={isLoading || !lawdCd}
                   className="w-full px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
                 >
                   {isLoading ? (
@@ -185,19 +226,10 @@ export default function RealPricePage() {
               </div>
             </div>
 
-            {/* 법정동코드 안내 */}
+            {/* 안내 메시지 */}
             <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
               <p className="text-sm text-blue-800 dark:text-blue-300">
-                💡 <strong>법정동코드 확인:</strong>{" "}
-                <a
-                  href="https://www.code.go.kr/stdcode/regCodeL.do"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="underline hover:text-blue-600"
-                >
-                  행정표준코드관리시스템
-                </a>
-                에서 확인 가능합니다.
+                💡 <strong>사용 방법:</strong> 시/도 → 시/군/구 순으로 선택하면 해당 지역의 실거래가를 조회할 수 있습니다. 읍/면/동은 선택 사항입니다.
               </p>
             </div>
           </div>
