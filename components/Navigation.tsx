@@ -379,17 +379,18 @@ export const Navigation = () => {
                   )}
                 </div>
 
-                <div className="relative" ref={profileDropdownRef}>
-                  <button
-                    onClick={() => setIsProfileModalOpen(!isProfileModalOpen)}
-                    className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-sm text-gray-700 dark:text-gray-300 font-medium transition-colors"
-                  >
-                    <User className="w-4 h-4" />
-                    <span className="whitespace-nowrap">{session.user?.name}</span>
-                  </button>
+                <div className="flex items-center gap-2">
+                  <div className="relative" ref={profileDropdownRef}>
+                    <button
+                      onClick={() => setIsProfileModalOpen(!isProfileModalOpen)}
+                      className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-sm text-gray-700 dark:text-gray-300 font-medium transition-colors"
+                    >
+                      <User className="w-4 h-4" />
+                      <span className="whitespace-nowrap">{session.user?.name}</span>
+                    </button>
 
-                  {/* 프로필 드롭다운 */}
-                  {isProfileModalOpen && (
+                    {/* 프로필 드롭다운 */}
+                    {isProfileModalOpen && (
                     <div className="absolute right-0 top-full mt-2 w-80 bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 z-50">
                       <div className="p-4">
                         {/* 사용자 정보 */}
@@ -533,15 +534,19 @@ export const Navigation = () => {
                         )}
                       </div>
                     </div>
-                  )}
+                    )}
+                  </div>
+
+                  {/* 로그아웃 버튼 - 이름 옆에 배치 */}
+                  <button
+                    onClick={() => signOut({ callbackUrl: '/' })}
+                    className="p-2 rounded-lg bg-red-600 hover:bg-red-700 text-white transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                    title="로그아웃"
+                    aria-label="로그아웃"
+                  >
+                    <LogOut className="w-4 h-4" />
+                  </button>
                 </div>
-                <button
-                  onClick={() => signOut({ callbackUrl: '/' })}
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white text-sm font-medium whitespace-nowrap transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-                >
-                  <LogOut className="w-4 h-4" />
-                  <span>로그아웃</span>
-                </button>
               </div>
             ) : (
               <div className="flex items-center gap-2 ml-2 pl-2 border-l border-gray-300 dark:border-gray-600">
