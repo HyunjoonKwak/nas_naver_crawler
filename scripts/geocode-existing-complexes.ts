@@ -48,12 +48,16 @@ async function geocodeComplex(latitude: number, longitude: number): Promise<Geoc
 async function main() {
   console.log('🚀 Starting batch geocoding for existing complexes...\n');
 
-  // 1. 좌표는 있지만 법정동이 없는 단지 찾기
+  // 1. 좌표는 있지만 법정동 코드가 없는 단지 찾기 (beopjungdong은 있지만 sidoCode가 없는 경우도 포함)
   const complexesNeedingGeocode = await prisma.complex.findMany({
     where: {
       latitude: { not: null },
       longitude: { not: null },
-      beopjungdong: null,
+      OR: [
+        { beopjungdong: null },
+        { sidoCode: null },
+        { sigunguCode: null },
+      ],
     },
     select: {
       id: true,
@@ -65,10 +69,10 @@ async function main() {
     },
   });
 
-  console.log(`📊 Found ${complexesNeedingGeocode.length} complexes without beopjungdong\n`);
+  console.log(`📊 Found ${complexesNeedingGeocode.length} complexes needing geocoding\n`);
 
   if (complexesNeedingGeocode.length === 0) {
-    console.log('✅ All complexes already have beopjungdong information!');
+    console.log('✅ All complexes already have complete geocoding information!');
     return;
   }
 
