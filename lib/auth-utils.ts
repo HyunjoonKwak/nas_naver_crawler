@@ -17,24 +17,30 @@ type ExtendedSession = {
  * 현재 로그인한 사용자 정보를 가져옵니다.
  */
 export async function getCurrentUser() {
-  const session = await getServerSession(authOptions) as ExtendedSession | null;
-  if (!session?.user?.id) {
+  try {
+    const session = await getServerSession(authOptions) as ExtendedSession | null;
+    if (!session?.user?.id) {
+      return null;
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        isApproved: true,
+        isActive: true,
+      },
+    });
+
+    return user;
+  } catch (error) {
+    // JWT 복호화 실패 등의 세션 오류는 null 반환 (재로그인 유도)
+    console.error('[Auth] Session error:', error instanceof Error ? error.message : 'Unknown error');
     return null;
   }
-
-  const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    select: {
-      id: true,
-      email: true,
-      name: true,
-      role: true,
-      isApproved: true,
-      isActive: true,
-    },
-  });
-
-  return user;
 }
 
 /**

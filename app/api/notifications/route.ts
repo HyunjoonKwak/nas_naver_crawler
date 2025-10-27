@@ -74,6 +74,17 @@ export async function GET(request: NextRequest) {
   } catch (error: any) {
     console.error('Failed to fetch notifications:', error);
 
+    // 인증 오류인 경우 401 반환
+    if (error.message?.includes('로그인') || error.message?.includes('승인') || error.message?.includes('비활성화')) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: error.message,
+        },
+        { status: 401 }
+      );
+    }
+
     // 데이터베이스 연결 오류인 경우 재연결 시도
     if (error.code === 'P1001' || error.message?.includes("Can't reach database")) {
       try {
