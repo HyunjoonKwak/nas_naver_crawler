@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useSession } from "next-auth/react";
 import { Navigation } from "@/components/Navigation";
 import { MobileNavigation } from "@/components/MobileNavigation";
 import { showSuccess, showError, showLoading, dismissToast } from "@/lib/toast";
 import { AuthGuard } from "@/components/AuthGuard";
-import { Search, Loader2, TrendingUp, Home, Calendar, MapPin } from "lucide-react";
+import { Search, Loader2, TrendingUp, Home, Calendar, MapPin, ChevronDown, ChevronUp, Building2 } from "lucide-react";
 import { formatPrice } from "@/lib/real-price-api";
 import DongCodeSelector from "@/components/DongCodeSelector";
 
@@ -36,6 +36,45 @@ export default function RealPricePage() {
   const [searchResults, setSearchResults] = useState<RealPriceItem[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
+  const [expandedApts, setExpandedApts] = useState<Set<string>>(new Set());
+
+  // 아파트별로 그룹핑
+  const groupedResults = useMemo(() => {
+    const groups = new Map<string, RealPriceItem[]>();
+
+    searchResults.forEach(item => {
+      if (!groups.has(item.aptName)) {
+        groups.set(item.aptName, []);
+      }
+      groups.get(item.aptName)!.push(item);
+    });
+
+    // 각 그룹을 배열로 변환하고 거래 건수 기준 내림차순 정렬
+    return Array.from(groups.entries())
+      .map(([aptName, items]) => ({
+        aptName,
+        items,
+        count: items.length,
+        // 평균 가격 계산
+        avgPrice: items.reduce((sum, item) => sum + item.dealPrice, 0) / items.length,
+        // 최근 거래일
+        latestDate: items[0].dealDate, // 이미 날짜 정렬되어 있음
+      }))
+      .sort((a, b) => b.count - a.count); // 거래 건수 내림차순
+  }, [searchResults]);
+
+  // 아파트 확장/축소 토글
+  const toggleApartment = (aptName: string) => {
+    setExpandedApts(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(aptName)) {
+        newSet.delete(aptName);
+      } else {
+        newSet.add(aptName);
+      }
+      return newSet;
+    });
+  };
 
   // 기간에 따른 조회 월 목록 생성
   const getMonthsToSearch = () => {
@@ -189,13 +228,13 @@ export default function RealPricePage() {
                 <select
                   value={period}
                   onChange={(e) => setPeriod(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white text-gray-900 dark:text-white"
                 >
-                  <option value="3m">최근 3개월</option>
-                  <option value="6m">최근 6개월</option>
-                  <option value="12m">최근 12개월</option>
-                  <option value="2y">최근 2년</option>
-                  <option value="3y">최근 3년</option>
+                  <option value="3m" className="text-gray-900 dark:text-white">최근 3개월</option>
+                  <option value="6m" className="text-gray-900 dark:text-white">최근 6개월</option>
+                  <option value="12m" className="text-gray-900 dark:text-white">최근 12개월</option>
+                  <option value="2y" className="text-gray-900 dark:text-white">최근 2년</option>
+                  <option value="3y" className="text-gray-900 dark:text-white">최근 3년</option>
                 </select>
               </div>
 
@@ -244,86 +283,126 @@ export default function RealPricePage() {
             </div>
           </div>
 
-          {/* 검색 결과 */}
+          {/* 검색 결과 - 아파트별 그룹핑 */}
           {searchResults.length > 0 && (
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-                  검색 결과 ({totalCount}건)
-                </h2>
+            <div className="space-y-4">
+              {/* 헤더 */}
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+                    검색 결과
+                  </h2>
+                  <div className="text-sm text-gray-600 dark:text-gray-400">
+                    총 <span className="font-semibold text-blue-600 dark:text-blue-400">{groupedResults.length}개</span> 아파트,{" "}
+                    <span className="font-semibold text-blue-600 dark:text-blue-400">{totalCount}건</span>의 거래
+                  </div>
+                </div>
               </div>
 
-              {/* 테이블 */}
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-gray-50 dark:bg-gray-700">
-                    <tr>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                        아파트명
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                        거래금액
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                        전용면적
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                        층
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                        거래일
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                        주소
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                    {searchResults.map((item, index) => (
-                      <tr key={index} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                        <td className="px-4 py-4 whitespace-nowrap">
-                          <div className="flex items-center gap-2">
-                            <Home className="w-4 h-4 text-gray-400" />
-                            <span className="text-sm font-medium text-gray-900 dark:text-white">
-                              {item.aptName}
-                            </span>
-                          </div>
-                        </td>
-                        <td className="px-4 py-4 whitespace-nowrap">
-                          <div className="text-sm font-semibold text-blue-600 dark:text-blue-400">
-                            {item.dealPriceFormatted}
-                          </div>
-                          <div className="text-xs text-gray-500 dark:text-gray-400">
-                            평당 {(item.pricePerPyeong / 10000).toLocaleString()}만원
-                          </div>
-                        </td>
-                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                          {item.area.toFixed(2)}㎡ ({item.areaPyeong}평)
-                        </td>
-                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                          {item.floor}층
-                        </td>
-                        <td className="px-4 py-4 whitespace-nowrap">
-                          <div className="flex items-center gap-2">
-                            <Calendar className="w-4 h-4 text-gray-400" />
-                            <span className="text-sm text-gray-900 dark:text-white">
-                              {item.dealDate}
-                            </span>
-                          </div>
-                        </td>
-                        <td className="px-4 py-4">
-                          <div className="flex items-start gap-2">
-                            <MapPin className="w-4 h-4 text-gray-400 mt-0.5" />
-                            <span className="text-sm text-gray-600 dark:text-gray-300">
-                              {item.address}
-                            </span>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              {/* 아파트별 그룹 */}
+              {groupedResults.map((group) => (
+                <div
+                  key={group.aptName}
+                  className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden"
+                >
+                  {/* 아파트 헤더 (클릭 가능) */}
+                  <button
+                    onClick={() => toggleApartment(group.aptName)}
+                    className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                  >
+                    <div className="flex items-center gap-4">
+                      <Building2 className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                      <div className="text-left">
+                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                          {group.aptName}
+                        </h3>
+                        <div className="flex items-center gap-4 mt-1 text-sm text-gray-600 dark:text-gray-400">
+                          <span>거래 {group.count}건</span>
+                          <span>•</span>
+                          <span>평균 {formatPrice(group.avgPrice)}</span>
+                          <span>•</span>
+                          <span>최근 {group.latestDate}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-gray-500 dark:text-gray-400">
+                        {expandedApts.has(group.aptName) ? "접기" : "상세보기"}
+                      </span>
+                      {expandedApts.has(group.aptName) ? (
+                        <ChevronUp className="w-5 h-5 text-gray-400" />
+                      ) : (
+                        <ChevronDown className="w-5 h-5 text-gray-400" />
+                      )}
+                    </div>
+                  </button>
+
+                  {/* 거래 목록 (확장 시) */}
+                  {expandedApts.has(group.aptName) && (
+                    <div className="border-t border-gray-200 dark:border-gray-700">
+                      <div className="overflow-x-auto">
+                        <table className="w-full">
+                          <thead className="bg-gray-50 dark:bg-gray-700">
+                            <tr>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                                거래금액
+                              </th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                                전용면적
+                              </th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                                층
+                              </th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                                거래일
+                              </th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                                주소
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                            {group.items.map((item, index) => (
+                              <tr key={index} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                                <td className="px-4 py-3 whitespace-nowrap">
+                                  <div className="text-sm font-semibold text-blue-600 dark:text-blue-400">
+                                    {item.dealPriceFormatted}
+                                  </div>
+                                  <div className="text-xs text-gray-500 dark:text-gray-400">
+                                    평당 {(item.pricePerPyeong / 10000).toLocaleString()}만원
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                                  {item.area.toFixed(2)}㎡ ({item.areaPyeong}평)
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                                  {item.floor}층
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap">
+                                  <div className="flex items-center gap-2">
+                                    <Calendar className="w-4 h-4 text-gray-400" />
+                                    <span className="text-sm text-gray-900 dark:text-white">
+                                      {item.dealDate}
+                                    </span>
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3">
+                                  <div className="flex items-start gap-2">
+                                    <MapPin className="w-4 h-4 text-gray-400 mt-0.5" />
+                                    <span className="text-sm text-gray-600 dark:text-gray-300">
+                                      {item.address}
+                                    </span>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
           )}
 
