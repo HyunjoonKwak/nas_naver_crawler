@@ -12,55 +12,7 @@ import { getRealPriceApiClient } from '@/lib/real-price-api';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-
-/**
- * 법정동명에서 법정동코드 추출 (간단한 매핑)
- * 실제 운영 시에는 공공데이터포털의 법정동코드 API나 DB를 활용해야 합니다.
- *
- * 참고: https://www.code.go.kr/stdcode/regCodeL.do
- */
-function getBeopjungdongCode(beopjungdong: string): string | null {
-  // 서울 주요 구 매핑 (예시)
-  const seoulMapping: Record<string, string> = {
-    '종로구': '11110',
-    '중구': '11140',
-    '용산구': '11170',
-    '성동구': '11200',
-    '광진구': '11215',
-    '동대문구': '11230',
-    '중랑구': '11260',
-    '성북구': '11290',
-    '강북구': '11305',
-    '도봉구': '11320',
-    '노원구': '11350',
-    '은평구': '11380',
-    '서대문구': '11410',
-    '마포구': '11440',
-    '양천구': '11470',
-    '강서구': '11500',
-    '구로구': '11530',
-    '금천구': '11545',
-    '영등포구': '11560',
-    '동작구': '11590',
-    '관악구': '11620',
-    '서초구': '11650',
-    '강남구': '11680',
-    '송파구': '11710',
-    '강동구': '11740',
-  };
-
-  // TODO: 전국 시군구 코드 매핑 필요
-  // 현재는 서울만 지원
-
-  // 법정동에서 구 이름 추출
-  for (const [guName, code] of Object.entries(seoulMapping)) {
-    if (beopjungdong && beopjungdong.includes(guName)) {
-      return code;
-    }
-  }
-
-  return null;
-}
+import { extractSggCodeFromAddress, findSggCodeByName } from '@/lib/dong-code';
 
 /**
  * 최근 N개월의 YYYYMM 배열 생성
@@ -111,10 +63,8 @@ export async function GET(request: NextRequest) {
         complexNo: true,
         complexName: true,
         beopjungdong: true,
-        sidoCode: true,
-        sigunguCode: true,
-        dongCode: true,
         address: true,
+        lawdCd: true, // 저장된 법정동코드 (5자리)
       },
     });
 
@@ -125,17 +75,19 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // 법정동코드 추출 (SGIS 코드 우선, 없으면 기존 매핑 함수 사용)
-    let lawdCd: string | null = null;
+    // 법정동코드 추출 (우선순위: DB > 주소에서 추출 > 법정동명에서 검색)
+    let lawdCd: string | null = complex.lawdCd || null;
 
-    if (complex.sidoCode && complex.sigunguCode) {
-      // SGIS에서 받은 코드로 법정동코드 생성 (시도 2자리 + 시군구 3자리)
-      lawdCd = complex.sidoCode + complex.sigunguCode;
-      console.log(`[Real Price] Using SGIS lawdCd: ${lawdCd} for ${complex.complexName}`);
-    } else if (complex.beopjungdong) {
-      // 기존 매핑 함수 사용 (레거시 지원)
-      lawdCd = getBeopjungdongCode(complex.beopjungdong);
-      console.log(`[Real Price] Using legacy mapping lawdCd: ${lawdCd} for ${complex.complexName}`);
+    if (!lawdCd && complex.address) {
+      // 주소에서 자동 추출 (dong_code_active.txt 활용)
+      lawdCd = extractSggCodeFromAddress(complex.address);
+      console.log(`[Real Price] Extracted lawdCd from address: ${lawdCd} for ${complex.complexName}`);
+    }
+
+    if (!lawdCd && complex.beopjungdong) {
+      // 법정동명에서 검색
+      lawdCd = findSggCodeByName(complex.beopjungdong);
+      console.log(`[Real Price] Found lawdCd from beopjungdong: ${lawdCd} for ${complex.complexName}`);
     }
 
     if (!lawdCd) {
@@ -147,12 +99,22 @@ export async function GET(request: NextRequest) {
             complexNo: complex.complexNo,
             complexName: complex.complexName,
             beopjungdong: complex.beopjungdong,
-            sidoCode: complex.sidoCode,
-            sigunguCode: complex.sigunguCode,
+            address: complex.address,
+            lawdCd: complex.lawdCd,
           },
+          hint: 'dong_code_active.txt 파일에서 해당 지역을 찾을 수 없습니다.',
         },
         { status: 400 }
       );
+    }
+
+    // 법정동코드를 찾았는데 DB에 없으면 저장
+    if (lawdCd && !complex.lawdCd) {
+      await prisma.complex.update({
+        where: { complexNo },
+        data: { lawdCd },
+      });
+      console.log(`[Real Price] Saved lawdCd to DB: ${lawdCd} for ${complex.complexName}`);
     }
 
     // 최근 N개월 조회

@@ -100,6 +100,7 @@ async function main() {
             sidoCode: result.data.sidoCode,
             sigunguCode: result.data.sigunguCode,
             dongCode: result.data.dongCode,
+            lawdCd: result.data.lawdCd, // 법정동코드 (5자리) 저장
             // 기존 주소가 없으면 역지오코딩으로 얻은 주소 사용
             address: complex.address || result.data.fullAddress,
           },

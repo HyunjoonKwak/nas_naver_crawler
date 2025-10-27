@@ -29,6 +29,7 @@ model Complex {
   sidoCode       String?   // 시도 코드 (SGIS)
   sigunguCode    String?   // 시군구 코드 (SGIS)
   dongCode       String?   // 읍면동 코드 (SGIS)
+  lawdCd         String?   // 법정동코드 (5자리, 공공데이터 API용)
   pyeongs        Json?     // 평형별 타입 정보
   userId         String    // 생성한 사용자 ID
   user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -44,6 +45,7 @@ model Complex {
   @@index([complexName])
   @@index([beopjungdong])
   @@index([haengjeongdong])
+  @@index([lawdCd])
   @@index([userId])
   @@map("complexes")
 }
