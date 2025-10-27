@@ -407,7 +407,7 @@ export class RealPriceApiClient {
       }
 
       console.log(`[Cache] 💾 HIT ${lawdCd}-${dealYmd} (${cacheEntry.totalCount} items)`);
-      return cacheEntry.cachedData as ProcessedRealPrice[];
+      return cacheEntry.cachedData as unknown as ProcessedRealPrice[];
     } catch (error) {
       // 캐시 읽기 실패는 조용히 무시 (fallback to API)
       return null;
