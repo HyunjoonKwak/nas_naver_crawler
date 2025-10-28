@@ -66,6 +66,10 @@ export default function RealPriceAnalysis({ complexNo }: RealPriceAnalysisProps)
   const [selectedArea, setSelectedArea] = useState<string>('all');
   const [sortField, setSortField] = useState<'date' | 'price' | 'area'>('date');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(20);
+  const [showCancelledDeals, setShowCancelledDeals] = useState(true); // 취소 거래 표시 여부
+  const [isCrawling, setIsCrawling] = useState(false); // 크롤링 진행 상태
 
   useEffect(() => {
     fetchRealPriceData();
@@ -90,6 +94,39 @@ export default function RealPriceAnalysis({ complexNo }: RealPriceAnalysisProps)
       setError('실거래가 데이터를 불러오는 중 오류가 발생했습니다.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCrawl = async () => {
+    try {
+      setIsCrawling(true);
+
+      const response = await fetch('/api/crawler/start', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          complexNos: [complexNo],
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        alert('크롤링이 시작되었습니다. 완료 후 자동으로 법정동 정보가 수집됩니다.');
+        // 크롤링이 완료될 때까지 대기 후 다시 시도
+        setTimeout(() => {
+          fetchRealPriceData();
+        }, 10000); // 10초 후 자동으로 다시 시도
+      } else {
+        alert(`크롤링 실패: ${result.error || result.message}`);
+      }
+    } catch (error: any) {
+      console.error('Failed to start crawling:', error);
+      alert('크롤링 시작 중 오류가 발생했습니다.');
+    } finally {
+      setIsCrawling(false);
     }
   };
 
@@ -180,6 +217,11 @@ export default function RealPriceAnalysis({ complexNo }: RealPriceAnalysisProps)
 
     let filtered = data.items;
 
+    // 취소 거래 필터
+    if (!showCancelledDeals) {
+      filtered = filtered.filter(item => !item.cancelDealType || item.cancelDealType === '');
+    }
+
     // 평형 필터
     if (selectedArea !== 'all') {
       const targetPyeong = parseInt(selectedArea);
@@ -221,6 +263,60 @@ export default function RealPriceAnalysis({ complexNo }: RealPriceAnalysisProps)
       setSortField(field);
       setSortDirection('desc');
     }
+    setCurrentPage(1); // 정렬 변경 시 첫 페이지로 이동
+  };
+
+  const handleAreaFilterChange = (area: string) => {
+    setSelectedArea(area);
+    setCurrentPage(1); // 필터 변경 시 첫 페이지로 이동
+  };
+
+  const handleDownloadCSV = () => {
+    if (!data) return;
+
+    const transactions = getFilteredTransactions();
+
+    // CSV 헤더
+    const headers = ['거래일자', '평형', '전용면적(㎡)', '거래가격', '층', '동', '지번', '건축년도', '상태'];
+
+    // CSV 데이터
+    const rows = transactions.map(transaction => {
+      const pyeong = Math.round(transaction.exclusiveArea / 3.3058 * 10) / 10;
+      const pyeongInt = Math.floor(pyeong);
+      const isCancelled = transaction.cancelDealType && transaction.cancelDealType !== '';
+
+      return [
+        `${transaction.dealYear}.${String(transaction.dealMonth).padStart(2, '0')}.${String(transaction.dealDay).padStart(2, '0')}`,
+        `${pyeongInt}평형`,
+        transaction.exclusiveArea.toFixed(1),
+        transaction.dealPriceFormatted,
+        `${transaction.floor}층`,
+        transaction.dong,
+        transaction.jibun,
+        `${transaction.buildYear}년`,
+        isCancelled ? '거래취소' : '정상'
+      ];
+    });
+
+    // CSV 문자열 생성
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+    ].join('\n');
+
+    // BOM 추가 (Excel에서 한글 깨짐 방지)
+    const BOM = '\uFEFF';
+    const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
+
+    // 다운로드
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `실거래가_${data.complex.complexName}_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const getSortIcon = (field: string) => {
@@ -285,9 +381,19 @@ export default function RealPriceAnalysis({ complexNo }: RealPriceAnalysisProps)
           )}
 
           <div className="flex gap-3 justify-center">
+            {isBeopjungdongError && (
+              <button
+                onClick={handleCrawl}
+                disabled={isCrawling}
+                className="px-6 py-3 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white rounded-lg transition-colors font-semibold shadow-lg disabled:cursor-not-allowed"
+              >
+                {isCrawling ? '🔄 크롤링 중...' : '🚀 지금 크롤링하기'}
+              </button>
+            )}
             <button
               onClick={fetchRealPriceData}
-              className="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors font-semibold shadow-lg"
+              disabled={isCrawling}
+              className="px-6 py-3 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-400 text-white rounded-lg transition-colors font-semibold shadow-lg disabled:cursor-not-allowed"
             >
               🔄 다시 시도
             </button>
@@ -323,6 +429,10 @@ export default function RealPriceAnalysis({ complexNo }: RealPriceAnalysisProps)
   }
 
   const filteredTransactions = getFilteredTransactions();
+  const totalPages = Math.ceil(filteredTransactions.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentTransactions = filteredTransactions.slice(startIndex, endIndex);
 
   return (
     <div className="space-y-6">
@@ -393,7 +503,7 @@ export default function RealPriceAnalysis({ complexNo }: RealPriceAnalysisProps)
             <div
               key={stat.areaType}
               className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 hover:shadow-lg transition-shadow cursor-pointer"
-              onClick={() => setSelectedArea(stat.areaType.replace('평형', ''))}
+              onClick={() => handleAreaFilterChange(stat.areaType.replace('평형', ''))}
             >
               <div className="flex items-center justify-between mb-4">
                 <h4 className="text-lg font-bold text-gray-900 dark:text-white">
@@ -516,19 +626,45 @@ export default function RealPriceAnalysis({ complexNo }: RealPriceAnalysisProps)
               {filteredTransactions.length}건의 거래
             </p>
           </div>
-          {/* 평형 필터 */}
-          <select
-            value={selectedArea}
-            onChange={(e) => setSelectedArea(e.target.value)}
-            className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 text-sm"
-          >
-            <option value="all">전체 평형</option>
-            {areaStats.map(stat => (
-              <option key={stat.areaType} value={stat.areaType.replace('평형', '')}>
-                {stat.areaType} ({stat.transactionCount}건)
-              </option>
-            ))}
-          </select>
+          {/* 필터 컨트롤 */}
+          <div className="flex items-center gap-4">
+            {/* CSV 다운로드 버튼 */}
+            <button
+              onClick={handleDownloadCSV}
+              className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors text-sm font-medium flex items-center gap-2"
+            >
+              <span>📥</span>
+              <span>CSV 다운로드</span>
+            </button>
+
+            {/* 취소 거래 필터 */}
+            <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={showCancelledDeals}
+                onChange={(e) => {
+                  setShowCancelledDeals(e.target.checked);
+                  setCurrentPage(1);
+                }}
+                className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
+              />
+              <span>취소 거래 포함</span>
+            </label>
+
+            {/* 평형 필터 */}
+            <select
+              value={selectedArea}
+              onChange={(e) => handleAreaFilterChange(e.target.value)}
+              className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 text-sm"
+            >
+              <option value="all">전체 평형</option>
+              {areaStats.map(stat => (
+                <option key={stat.areaType} value={stat.areaType.replace('평형', '')}>
+                  {stat.areaType} ({stat.transactionCount}건)
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
@@ -564,18 +700,28 @@ export default function RealPriceAnalysis({ complexNo }: RealPriceAnalysisProps)
               </tr>
             </thead>
             <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-              {filteredTransactions.slice(0, 20).map((transaction, index) => {
+              {currentTransactions.map((transaction, index) => {
                 // 실거래가 페이지와 동일한 방식으로 평형 계산
                 const pyeong = Math.round(transaction.exclusiveArea / 3.3058 * 10) / 10;
                 const pyeongInt = Math.floor(pyeong);
+                const isCancelled = transaction.cancelDealType && transaction.cancelDealType !== '';
 
                 return (
                   <tr
                     key={index}
-                    className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                    className={`hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${
+                      isCancelled ? 'bg-red-50 dark:bg-red-900/20' : ''
+                    }`}
                   >
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                      {transaction.dealYear}.{String(transaction.dealMonth).padStart(2, '0')}.{String(transaction.dealDay).padStart(2, '0')}
+                      <div className="flex items-center gap-2">
+                        {transaction.dealYear}.{String(transaction.dealMonth).padStart(2, '0')}.{String(transaction.dealDay).padStart(2, '0')}
+                        {isCancelled && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
+                            취소
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                       <div>{pyeongInt}평형</div>
@@ -602,13 +748,99 @@ export default function RealPriceAnalysis({ complexNo }: RealPriceAnalysisProps)
             </tbody>
           </table>
         </div>
-        {filteredTransactions.length > 20 && (
-          <div className="px-6 py-3 bg-gray-50 dark:bg-gray-900 text-center border-t border-gray-200 dark:border-gray-700">
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              총 {filteredTransactions.length}건 중 최근 20건 표시
-            </p>
+
+        {/* 페이지네이션 */}
+        {filteredTransactions.length > 0 && (
+          <div className="px-6 py-4 bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700">
+            <div className="flex items-center justify-between">
+              {/* 페이지 정보 */}
+              <div className="flex items-center gap-4">
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  총 {filteredTransactions.length}건 중 {startIndex + 1}-{Math.min(endIndex, filteredTransactions.length)}건 표시
+                </p>
+                <select
+                  value={itemsPerPage}
+                  onChange={(e) => {
+                    setItemsPerPage(Number(e.target.value));
+                    setCurrentPage(1);
+                  }}
+                  className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                >
+                  <option value={10}>10개씩</option>
+                  <option value={20}>20개씩</option>
+                  <option value={50}>50개씩</option>
+                  <option value={100}>100개씩</option>
+                </select>
+              </div>
+
+              {/* 페이지 버튼 */}
+              {totalPages > 1 && (
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setCurrentPage(1)}
+                    disabled={currentPage === 1}
+                    className="px-3 py-1 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-gray-600"
+                  >
+                    처음
+                  </button>
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                    disabled={currentPage === 1}
+                    className="px-3 py-1 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-gray-600"
+                  >
+                    이전
+                  </button>
+
+                  {/* 페이지 번호 */}
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                      let pageNum;
+                      if (totalPages <= 5) {
+                        pageNum = i + 1;
+                      } else if (currentPage <= 3) {
+                        pageNum = i + 1;
+                      } else if (currentPage >= totalPages - 2) {
+                        pageNum = totalPages - 4 + i;
+                      } else {
+                        pageNum = currentPage - 2 + i;
+                      }
+
+                      return (
+                        <button
+                          key={pageNum}
+                          onClick={() => setCurrentPage(pageNum)}
+                          className={`px-3 py-1 text-sm rounded-lg ${
+                            currentPage === pageNum
+                              ? 'bg-purple-600 text-white font-semibold'
+                              : 'border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600'
+                          }`}
+                        >
+                          {pageNum}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                    disabled={currentPage === totalPages}
+                    className="px-3 py-1 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-gray-600"
+                  >
+                    다음
+                  </button>
+                  <button
+                    onClick={() => setCurrentPage(totalPages)}
+                    disabled={currentPage === totalPages}
+                    className="px-3 py-1 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-gray-600"
+                  >
+                    마지막
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         )}
+
         {filteredTransactions.length === 0 && (
           <div className="px-6 py-12 text-center">
             <p className="text-gray-500 dark:text-gray-400">선택한 조건에 맞는 거래 내역이 없습니다.</p>
