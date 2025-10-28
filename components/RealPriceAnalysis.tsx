@@ -9,6 +9,7 @@ interface RealPriceItem {
   jibun: string;
   apartmentName: string;
   exclusiveArea: number;
+  supplyPyeong: number | null; // 공급평형 (매물정보 기준)
   dealAmount: string; // 문자열 (원 단위)
   dealPrice: number; // 숫자 (원 단위)
   dealPriceFormatted: string; // 포맷된 문자열
@@ -20,6 +21,12 @@ interface RealPriceItem {
   cancelDealType?: string;
 }
 
+interface AreaMapping {
+  exclusivePyeong: number; // 전용면적 평형
+  supplyPyeong: number; // 공급면적 평형
+  supplyArea: number; // 공급면적 ㎡
+}
+
 interface ComplexInfo {
   complexNo: string;
   complexName: string;
@@ -29,6 +36,7 @@ interface ComplexInfo {
 
 interface RealPriceData {
   complex: ComplexInfo;
+  areaMapping: AreaMapping[]; // 면적 매핑 정보
   months: string[];
   items: RealPriceItem[];
   totalCount: number;
@@ -137,27 +145,33 @@ export default function RealPriceAnalysis({ complexNo }: RealPriceAnalysisProps)
       return;
     }
 
-    // 평형별 통계 계산
+    // 평형별 통계 계산 (공급평형 기준으로 그룹핑)
     const areaGroups: { [key: string]: RealPriceItem[] } = {};
     rawData.items.forEach(item => {
-      // 실거래가 페이지와 동일한 방식으로 평형 계산
-      const pyeong = Math.round(item.exclusiveArea / 3.3058 * 10) / 10; // 소수점 1자리
-      const pyeongInt = Math.floor(pyeong); // 평형 그룹핑은 정수로
-      const areaKey = `${pyeongInt}`;
+      // 공급평형이 있으면 공급평형으로, 없으면 전용평형으로 그룹핑
+      const exclusivePyeong = Math.floor(item.exclusiveArea / 3.3058);
+      const groupKey = item.supplyPyeong !== null ? `${item.supplyPyeong}` : `${exclusivePyeong}`;
 
-      if (!areaGroups[areaKey]) {
-        areaGroups[areaKey] = [];
+      if (!areaGroups[groupKey]) {
+        areaGroups[groupKey] = [];
       }
-      areaGroups[areaKey].push(item);
+      areaGroups[groupKey].push(item);
     });
 
     const statsArray: AreaStats[] = Object.entries(areaGroups).map(([pyeong, items]) => {
       // dealPrice는 이미 원(won) 단위 숫자
       const prices = items.map(item => item.dealPrice);
       const avgArea = items.reduce((sum, item) => sum + item.exclusiveArea, 0) / items.length;
+      const avgExclusivePyeong = Math.round(avgArea / 3.3058);
+
+      // 공급평형이 있는지 확인
+      const hasSupplyPyeong = items[0].supplyPyeong !== null;
+      const displayPyeong = hasSupplyPyeong ? items[0].supplyPyeong : parseInt(pyeong);
 
       return {
-        areaType: `${pyeong}평형`,
+        areaType: hasSupplyPyeong
+          ? `${displayPyeong}평형 (전용 ${avgExclusivePyeong}평)`
+          : `${pyeong}평형`,
         exclusiveArea: avgArea,
         avgPrice: Math.floor(prices.reduce((a, b) => a + b, 0) / prices.length),
         maxPrice: Math.max(...prices),
@@ -222,11 +236,14 @@ export default function RealPriceAnalysis({ complexNo }: RealPriceAnalysisProps)
       filtered = filtered.filter(item => !item.cancelDealType || item.cancelDealType === '');
     }
 
-    // 평형 필터
+    // 평형 필터 (공급평형 기준)
     if (selectedArea !== 'all') {
       const targetPyeong = parseInt(selectedArea);
       filtered = filtered.filter(item => {
-        const pyeong = Math.floor(item.exclusiveArea / 3.3058);
+        // 공급평형이 있으면 공급평형으로, 없으면 전용평형으로 비교
+        const pyeong = item.supplyPyeong !== null
+          ? item.supplyPyeong
+          : Math.floor(item.exclusiveArea / 3.3058);
         return pyeong === targetPyeong;
       });
     }
@@ -281,13 +298,18 @@ export default function RealPriceAnalysis({ complexNo }: RealPriceAnalysisProps)
 
     // CSV 데이터
     const rows = transactions.map(transaction => {
-      const pyeong = Math.round(transaction.exclusiveArea / 3.3058 * 10) / 10;
-      const pyeongInt = Math.floor(pyeong);
+      const exclusivePyeong = Math.round(transaction.exclusiveArea / 3.3058 * 10) / 10;
+      const exclusivePyeongInt = Math.floor(exclusivePyeong);
       const isCancelled = transaction.cancelDealType && transaction.cancelDealType !== '';
+
+      // 평형 표시: 공급평형이 있으면 함께 표시
+      const pyeongDisplay = transaction.supplyPyeong !== null
+        ? `${transaction.supplyPyeong}평형 (전용 ${exclusivePyeongInt}평)`
+        : `전용 ${exclusivePyeongInt}평`;
 
       return [
         `${transaction.dealYear}.${String(transaction.dealMonth).padStart(2, '0')}.${String(transaction.dealDay).padStart(2, '0')}`,
-        `${pyeongInt}평형`,
+        pyeongDisplay,
         transaction.exclusiveArea.toFixed(1),
         transaction.dealPriceFormatted,
         `${transaction.floor}층`,
@@ -443,8 +465,11 @@ export default function RealPriceAnalysis({ complexNo }: RealPriceAnalysisProps)
             <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
               📊 실거래가 분석
             </h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
               {data.complex.complexName} · {data.complex.beopjungdong || '법정동 정보 없음'}
+            </p>
+            <p className="text-xs text-blue-600 dark:text-blue-400">
+              💡 실거래가는 전용면적 기준입니다. 매물정보의 공급면적과 다를 수 있습니다.
             </p>
           </div>
           <div className="flex gap-2">
@@ -701,10 +726,14 @@ export default function RealPriceAnalysis({ complexNo }: RealPriceAnalysisProps)
             </thead>
             <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
               {currentTransactions.map((transaction, index) => {
-                // 실거래가 페이지와 동일한 방식으로 평형 계산
-                const pyeong = Math.round(transaction.exclusiveArea / 3.3058 * 10) / 10;
-                const pyeongInt = Math.floor(pyeong);
+                // 전용면적 계산
+                const exclusivePyeong = Math.round(transaction.exclusiveArea / 3.3058 * 10) / 10;
+                const exclusivePyeongInt = Math.floor(exclusivePyeong);
                 const isCancelled = transaction.cancelDealType && transaction.cancelDealType !== '';
+
+                // 공급평형이 있으면 표시
+                const hasSupplyPyeong = transaction.supplyPyeong !== null;
+                const displayPyeong = hasSupplyPyeong ? transaction.supplyPyeong : exclusivePyeongInt;
 
                 return (
                   <tr
@@ -724,10 +753,21 @@ export default function RealPriceAnalysis({ complexNo }: RealPriceAnalysisProps)
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                      <div>{pyeongInt}평형</div>
-                      <div className="text-xs text-gray-500 dark:text-gray-400">
-                        {transaction.exclusiveArea.toFixed(1)}㎡ ({pyeong}평)
-                      </div>
+                      {hasSupplyPyeong ? (
+                        <>
+                          <div>{displayPyeong}평형 (전용 {exclusivePyeongInt}평)</div>
+                          <div className="text-xs text-gray-500 dark:text-gray-400">
+                            전용 {transaction.exclusiveArea.toFixed(1)}㎡
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div>전용 {exclusivePyeongInt}평</div>
+                          <div className="text-xs text-gray-500 dark:text-gray-400">
+                            {transaction.exclusiveArea.toFixed(1)}㎡ ({exclusivePyeong}평)
+                          </div>
+                        </>
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-purple-600 dark:text-purple-400">
                       {transaction.dealPriceFormatted}

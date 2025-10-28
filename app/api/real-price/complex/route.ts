@@ -32,6 +32,40 @@ function getRecentMonths(count: number): string[] {
   return months;
 }
 
+/**
+ * 매물 데이터에서 전용면적 -> 공급면적 매핑 생성
+ */
+function createAreaMapping(articles: { area1: number; area2: number | null }[]) {
+  const mapping = new Map<number, { supplyArea: number; supplyPyeong: number }>();
+
+  articles.forEach(article => {
+    if (article.area2) {
+      // 전용면적을 정수 평형으로 그룹핑 (예: 59.1㎡ -> 17평)
+      const exclusivePyeong = Math.floor(article.area1 / 3.3058);
+      const supplyPyeong = Math.floor(article.area2 / 3.3058);
+
+      // 이미 있으면 스킵 (첫 번째 매물 기준)
+      if (!mapping.has(exclusivePyeong)) {
+        mapping.set(exclusivePyeong, {
+          supplyArea: article.area2,
+          supplyPyeong: supplyPyeong,
+        });
+      }
+    }
+  });
+
+  return mapping;
+}
+
+/**
+ * 전용면적에 해당하는 공급평형 찾기
+ */
+function findSupplyPyeong(exclusiveArea: number, areaMapping: Map<number, { supplyArea: number; supplyPyeong: number }>): number | null {
+  const exclusivePyeong = Math.floor(exclusiveArea / 3.3058);
+  const mapped = areaMapping.get(exclusivePyeong);
+  return mapped ? mapped.supplyPyeong : null;
+}
+
 export async function GET(request: NextRequest) {
   try {
     // 인증 확인
@@ -57,7 +91,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // 단지 정보 조회
+    // 단지 정보 조회 (매물 면적 정보 포함)
     const complex = await prisma.complex.findUnique({
       where: { complexNo },
       select: {
@@ -66,6 +100,12 @@ export async function GET(request: NextRequest) {
         beopjungdong: true,
         address: true,
         lawdCd: true, // 저장된 법정동코드 (5자리)
+        articles: {
+          select: {
+            area1: true, // 전용면적
+            area2: true, // 공급면적
+          },
+        },
       },
     });
 
@@ -161,13 +201,19 @@ export async function GET(request: NextRequest) {
       return new Date(b.dealDate).getTime() - new Date(a.dealDate).getTime();
     });
 
+    // 매물 데이터에서 면적 매핑 생성
+    const areaMapping = createAreaMapping(complex.articles);
+
     // 프론트엔드 형식에 맞게 변환
     const formattedItems = allResults.map(item => {
       const [year, month, day] = item.dealDate.split('-');
+      const supplyPyeong = findSupplyPyeong(item.area, areaMapping);
+
       return {
         ...item,
         apartmentName: item.aptName,
         exclusiveArea: item.area,
+        supplyPyeong: supplyPyeong, // 공급평형 추가
         dealAmount: item.dealPrice.toString(), // 숫자를 문자열로 (만원 단위)
         dealPrice: item.dealPrice, // 원본 숫자 값 (만원 단위)
         dealPriceFormatted: item.dealPriceFormatted, // 포맷된 문자열 (표시용)
@@ -176,6 +222,13 @@ export async function GET(request: NextRequest) {
         dealDay: parseInt(day),
       };
     });
+
+    // 면적 매핑 정보를 배열로 변환 (프론트엔드에서 사용)
+    const areaMappingArray = Array.from(areaMapping.entries()).map(([exclusivePyeong, data]) => ({
+      exclusivePyeong,
+      supplyPyeong: data.supplyPyeong,
+      supplyArea: data.supplyArea,
+    }));
 
     return NextResponse.json({
       success: true,
@@ -186,6 +239,7 @@ export async function GET(request: NextRequest) {
           beopjungdong: complex.beopjungdong,
           lawdCd,
         },
+        areaMapping: areaMappingArray, // 면적 매핑 정보 추가
         months: targetMonths,
         items: formattedItems,
         totalCount: formattedItems.length,
