@@ -7,6 +7,7 @@ import dynamicImport from "next/dynamic";
 import Link from "next/link";
 import { Navigation } from "@/components/Navigation";
 import { MobileNavigation } from "@/components/MobileNavigation";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { ThemeToggle } from "@/components/ui";
 import { showSuccess, showError, showLoading, dismissToast } from "@/lib/toast";
 import { useCrawlEvents } from "@/hooks/useCrawlEvents";
@@ -14,12 +15,12 @@ import { AuthGuard } from "@/components/AuthGuard";
 
 // 무거운 차트 컴포넌트를 동적 로딩 (코드 스플리팅)
 const SingleAnalysis = dynamicImport(() => import("./SingleAnalysis").then(mod => ({ default: mod.SingleAnalysis })), {
-  loading: () => <div className="flex items-center justify-center py-20"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div></div>,
+  loading: () => <LoadingSpinner message="차트를 불러오는 중..." />,
   ssr: false,
 });
 
 const CompareAnalysis = dynamicImport(() => import("./CompareAnalysis").then(mod => ({ default: mod.CompareAnalysis })), {
-  loading: () => <div className="flex items-center justify-center py-20"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div></div>,
+  loading: () => <LoadingSpinner message="비교 차트를 불러오는 중..." />,
   ssr: false,
 });
 
@@ -459,12 +460,7 @@ export default function AnalyticsPage() {
 
         {/* 분석 결과 */}
         {loading ? (
-          <div className="flex items-center justify-center h-64">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-              <p className="text-gray-600 dark:text-gray-400">분석 중...</p>
-            </div>
-          </div>
+          <LoadingSpinner message="분석 중..." />
         ) : mode === "single" ? (
           <SingleAnalysis analyticsData={analyticsData} tradeTypes={tradeTypes} />
         ) : (

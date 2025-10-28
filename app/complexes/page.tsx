@@ -6,6 +6,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { Navigation } from "@/components/Navigation";
 import { MobileNavigation } from "@/components/MobileNavigation";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
+import { EmptyState } from "@/components/EmptyState";
 import { ThemeToggle, Dialog } from "@/components/ui";
 import { GroupManagement } from "@/components/GroupManagement";
 import { ComplexSortFilter } from "@/components/ComplexSortFilter";
@@ -1133,35 +1135,27 @@ export default function ComplexesPage() {
 
         {/* Complex Cards/List */}
         {loading ? (
-          <div className="flex items-center justify-center py-20">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-          </div>
+          <LoadingSpinner message="단지 목록을 불러오는 중..." />
         ) : complexes.length === 0 ? (
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-12 text-center">
-            <div className="text-6xl mb-4">📭</div>
-            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
-              등록된 단지가 없습니다
-            </h3>
-            <p className="text-gray-500 dark:text-gray-400 mb-4">
-              "단지 추가" 버튼을 클릭하여 단지를 등록하세요
-            </p>
-          </div>
+          <EmptyState
+            icon="📭"
+            title="등록된 단지가 없습니다"
+            description='"단지 추가" 버튼을 클릭하여 단지를 등록하세요'
+          />
         ) : filteredComplexes.length === 0 ? (
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-12 text-center">
-            <div className="text-6xl mb-4">🔍</div>
-            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
-              필터 조건에 맞는 단지가 없습니다
-            </h3>
-            <p className="text-gray-500 dark:text-gray-400 mb-4">
-              다른 필터 조건을 선택해보세요
-            </p>
-            <button
-              onClick={() => setFilters({ priceRange: 'all', articleCount: 'all' })}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
-            >
-              필터 초기화
-            </button>
-          </div>
+          <EmptyState
+            icon="🔍"
+            title="필터 조건에 맞는 단지가 없습니다"
+            description="다른 필터 조건을 선택해보세요"
+            action={
+              <button
+                onClick={() => setFilters({ priceRange: 'all', articleCount: 'all' })}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+              >
+                필터 초기화
+              </button>
+            }
+          />
         ) : viewMode === 'card' ? (
           // 카드 뷰 (카드 최소 너비 380px 유지, 화면 크기에 따라 자동 배치)
           <div className="grid gap-6" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))' }}>

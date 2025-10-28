@@ -4,6 +4,8 @@ import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { Navigation } from "@/components/Navigation";
 import { MobileNavigation } from "@/components/MobileNavigation";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
+import { EmptyState } from "@/components/EmptyState";
 import { AuthGuard } from "@/components/AuthGuard";
 import { showSuccess, showError, showLoading, dismissToast } from "@/lib/toast";
 import { Bell, Plus, Edit, Trash2, ChevronDown, ChevronUp } from "lucide-react";
@@ -307,26 +309,22 @@ export default function AlertsPage() {
 
           {/* 알림 목록 */}
           {loading ? (
-            <div className="flex items-center justify-center py-20">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-            </div>
+            <LoadingSpinner message="알림 목록을 불러오는 중..." />
           ) : alerts.length === 0 ? (
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-12 text-center">
-              <div className="text-6xl mb-4">🔔</div>
-              <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
-                설정된 알림이 없습니다
-              </h3>
-              <p className="text-gray-500 dark:text-gray-400 mb-6">
-                "새 알림 만들기" 버튼을 클릭하여 첫 알림을 설정하세요
-              </p>
-              <button
-                onClick={() => setShowCreateForm(true)}
-                className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium"
-              >
-                <Plus className="w-5 h-5" />
-                <span>새 알림 만들기</span>
-              </button>
-            </div>
+            <EmptyState
+              icon="🔔"
+              title="설정된 알림이 없습니다"
+              description='"새 알림 만들기" 버튼을 클릭하여 첫 알림을 설정하세요'
+              action={
+                <button
+                  onClick={() => setShowCreateForm(true)}
+                  className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium"
+                >
+                  <Plus className="w-5 h-5" />
+                  <span>새 알림 만들기</span>
+                </button>
+              }
+            />
           ) : (
             <div className="space-y-4">
               {alerts.map((alert) => (

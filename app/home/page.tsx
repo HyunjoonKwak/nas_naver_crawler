@@ -7,6 +7,7 @@ import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { Navigation } from "@/components/Navigation";
 import { MobileNavigation } from "@/components/MobileNavigation";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { useCrawlEvents } from "@/hooks/useCrawlEvents";
 import { AuthGuard } from "@/components/AuthGuard";
 
@@ -247,7 +248,7 @@ export default function Home() {
   if (status === "loading" || status === "unauthenticated") {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <LoadingSpinner />
       </div>
     );
   }
@@ -269,7 +270,7 @@ export default function Home() {
 
           {/* 크롤링 상태 배너 */}
           {crawlingStatus.isActive && (
-            <div className="mb-6 bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-700 dark:to-indigo-700 rounded-xl shadow-lg p-5">
+            <div className="mb-6 bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-700 dark:to-blue-800 rounded-xl shadow-lg p-5">
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center flex-shrink-0">
                   <svg className="animate-spin h-7 w-7 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -495,7 +496,7 @@ export default function Home() {
                 </p>
                 <Link
                   href="/complexes"
-                  className="inline-block px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-lg transition-all font-semibold shadow-lg"
+                  className="inline-block px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-lg transition-all font-semibold shadow-lg"
                 >
                   ➕ 단지 추가하기
                 </Link>
@@ -532,9 +533,9 @@ export default function Home() {
 
                         {/* 거래유형별 통계 */}
                         <div className="grid grid-cols-3 gap-2">
-                          <div className="text-center p-2 bg-indigo-50 dark:bg-indigo-900/20 rounded">
+                          <div className="text-center p-2 bg-blue-50 dark:bg-blue-900/20 rounded">
                             <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">매매</div>
-                            <div className="text-lg font-bold text-indigo-600 dark:text-indigo-400">
+                            <div className="text-lg font-bold text-blue-600 dark:text-blue-400">
                               {fav.stats.A1}
                             </div>
                           </div>
@@ -573,7 +574,7 @@ export default function Home() {
                   <div className="mt-6 text-center">
                     <button
                       onClick={() => setShowAll(!showAll)}
-                      className="px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-lg font-semibold shadow-lg transition-all hover:shadow-xl"
+                      className="px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-lg font-semibold shadow-lg transition-all hover:shadow-xl"
                     >
                       {showAll ? '접기 ▲' : `더보기 (${favoritesWithStats.length - 6}개 더) ▼`}
                     </button>

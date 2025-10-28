@@ -21,7 +21,9 @@ import {
   Loader2,
   Clock,
   Key,
-  TrendingUp
+  TrendingUp,
+  ChevronDown,
+  Cog
 } from 'lucide-react';
 
 type Theme = 'light' | 'dark' | 'system';
@@ -30,6 +32,8 @@ export const Navigation = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [openDesktopDropdown, setOpenDesktopDropdown] = useState<string | null>(null);
+  const [openMobileDropdown, setOpenMobileDropdown] = useState<string | null>(null);
   const [theme, setTheme] = useState<Theme>('dark');
   const [unreadCount, setUnreadCount] = useState(0);
   const [notifications, setNotifications] = useState<any[]>([]);
@@ -42,6 +46,7 @@ export const Navigation = () => {
   const [passwordError, setPasswordError] = useState('');
   const [passwordSuccess, setPasswordSuccess] = useState('');
   const profileDropdownRef = useRef<HTMLDivElement>(null);
+  const settingsDropdownRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
   const { data: session, status} = useSession();
 
@@ -129,7 +134,7 @@ export const Navigation = () => {
     }
   };
 
-  // ESC 키로 메뉴/알림/프로필 모달 닫기
+  // ESC 키로 메뉴/알림/프로필 모달/드롭다운 닫기
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -139,6 +144,7 @@ export const Navigation = () => {
           setIsProfileModalOpen(false);
           setShowPasswordChange(false);
         }
+        if (openDesktopDropdown) setOpenDesktopDropdown(null);
       }
     };
 
@@ -151,6 +157,9 @@ export const Navigation = () => {
         setIsProfileModalOpen(false);
         setShowPasswordChange(false);
       }
+      if (openDesktopDropdown && settingsDropdownRef.current && !settingsDropdownRef.current.contains(target)) {
+        setOpenDesktopDropdown(null);
+      }
     };
 
     document.addEventListener('keydown', handleEscape);
@@ -159,7 +168,7 @@ export const Navigation = () => {
       document.removeEventListener('keydown', handleEscape);
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [isMobileMenuOpen, isNotificationOpen, isProfileModalOpen]);
+  }, [isMobileMenuOpen, isNotificationOpen, isProfileModalOpen, openDesktopDropdown]);
 
   // 모바일 메뉴 열릴 때 body 스크롤 방지
   useEffect(() => {
@@ -174,10 +183,12 @@ export const Navigation = () => {
     };
   }, [isMobileMenuOpen]);
 
-  // 경로 변경 시 모바일 메뉴 닫기
+  // 경로 변경 시 모바일 메뉴 및 드롭다운 닫기
   useEffect(() => {
     setIsMobileMenuOpen(false);
     setIsNotificationOpen(false);
+    setOpenDesktopDropdown(null);
+    setOpenMobileDropdown(null);
   }, [pathname]);
 
   // 알림 가져오기
@@ -235,13 +246,19 @@ export const Navigation = () => {
 
   const navLinks = [
     { href: '/home', label: '홈', icon: Home },
-    { href: '/complexes', label: '매물 관리', icon: Building2 },
+    { href: '/complexes', label: '단지 관리', icon: Building2 },
     { href: '/real-price', label: '실거래가', icon: TrendingUp },
     { href: '/analytics', label: '데이터 분석', icon: BarChart3 },
     { href: '/community', label: '커뮤니티', icon: MessageSquare },
-    { href: '/alerts', label: '알림 설정', icon: Bell },
-    { href: '/scheduler', label: '스케줄러', icon: Clock },
-    { href: '/system', label: '시스템', icon: Settings },
+    {
+      label: '설정',
+      icon: Settings,
+      submenu: [
+        { href: '/alerts', label: '매물 알림', icon: Bell },
+        { href: '/scheduler', label: '스케줄러', icon: Clock },
+        { href: '/system', label: '시스템', icon: Cog },
+      ]
+    },
   ];
 
   const isActive = (href: string) => {
@@ -249,6 +266,10 @@ export const Navigation = () => {
       return pathname === '/';
     }
     return pathname?.startsWith(href);
+  };
+
+  const isSubmenuActive = (submenu: any[]) => {
+    return submenu.some(item => isActive(item.href));
   };
 
   return (
@@ -265,7 +286,7 @@ export const Navigation = () => {
             className="flex items-center gap-3 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-lg"
             aria-label="부동산 인사이트 홈으로 이동"
           >
-            <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center text-white shadow-lg">
+            <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg flex items-center justify-center text-white shadow-lg">
               <Home className="w-6 h-6" />
             </div>
             <div className="hidden sm:block">
@@ -277,8 +298,58 @@ export const Navigation = () => {
 
           {/* Desktop Navigation - All Links Visible */}
           <div className="hidden md:flex items-center gap-2 flex-1 justify-end">
-            {navLinks.map((link) => {
+            {navLinks.map((link, index) => {
               const IconComponent = link.icon;
+
+              // 드롭다운 메뉴인 경우
+              if ('submenu' in link && link.submenu) {
+                const isOpen = openDesktopDropdown === link.label;
+                const hasActiveItem = isSubmenuActive(link.submenu);
+
+                return (
+                  <div key={link.label} className="relative" ref={link.label === '설정' ? settingsDropdownRef : undefined}>
+                    <button
+                      onClick={() => setOpenDesktopDropdown(isOpen ? null : link.label)}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors text-sm font-medium whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
+                        hasActiveItem
+                          ? 'bg-blue-600 text-white'
+                          : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800'
+                      }`}
+                    >
+                      <IconComponent className="w-4 h-4" />
+                      <span>{link.label}</span>
+                      <ChevronDown className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                    </button>
+
+                    {/* 드롭다운 메뉴 */}
+                    {isOpen && (
+                      <div className="absolute right-0 top-full mt-2 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50">
+                        <div className="py-2">
+                          {link.submenu.map((subItem) => {
+                            const SubIcon = subItem.icon;
+                            return (
+                              <Link
+                                key={subItem.href}
+                                href={subItem.href}
+                                className={`flex items-center gap-3 px-4 py-2 text-sm transition-colors ${
+                                  isActive(subItem.href)
+                                    ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 font-medium'
+                                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+                                }`}
+                              >
+                                <SubIcon className="w-4 h-4" />
+                                <span>{subItem.label}</span>
+                              </Link>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              }
+
+              // 일반 링크인 경우
               return (
                 <Link
                   key={link.href}
@@ -437,7 +508,7 @@ export const Navigation = () => {
                                 </svg>
                               )}
                               {theme === 'dark' && (
-                                <svg className="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
                                 </svg>
                               )}
@@ -610,6 +681,56 @@ export const Navigation = () => {
             <nav className="space-y-1 mb-3" aria-label="모바일 네비게이션">
               {navLinks.map((link) => {
                 const IconComponent = link.icon;
+
+                // 드롭다운 메뉴인 경우 (아코디언 스타일)
+                if ('submenu' in link && link.submenu) {
+                  const isOpen = openMobileDropdown === link.label;
+                  const hasActiveItem = isSubmenuActive(link.submenu);
+
+                  return (
+                    <div key={link.label}>
+                      <button
+                        onClick={() => setOpenMobileDropdown(isOpen ? null : link.label)}
+                        className={`w-full flex items-center justify-between gap-3 px-3 py-2 rounded-lg transition-colors text-sm font-medium ${
+                          hasActiveItem
+                            ? 'bg-blue-600 text-white'
+                            : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <IconComponent className="w-5 h-5" />
+                          <span>{link.label}</span>
+                        </div>
+                        <ChevronDown className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                      </button>
+
+                      {/* 아코디언 서브메뉴 */}
+                      {isOpen && (
+                        <div className="mt-1 ml-4 space-y-1">
+                          {link.submenu.map((subItem) => {
+                            const SubIcon = subItem.icon;
+                            return (
+                              <Link
+                                key={subItem.href}
+                                href={subItem.href}
+                                className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-sm ${
+                                  isActive(subItem.href)
+                                    ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 font-medium'
+                                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+                                }`}
+                              >
+                                <SubIcon className="w-4 h-4" />
+                                <span>{subItem.label}</span>
+                              </Link>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                }
+
+                // 일반 링크인 경우
                 return (
                   <Link
                     key={link.href}
@@ -678,7 +799,7 @@ export const Navigation = () => {
 
       {/* 크롤링 상태 인디케이터 (모든 페이지에 표시) */}
       {crawlingStatus.isActive && (
-        <div className="absolute left-0 right-0 top-full bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-700 dark:to-indigo-700 shadow-md z-40">
+        <div className="absolute left-0 right-0 top-full bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-700 dark:to-blue-800 shadow-md z-40">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2">
             <div className="flex items-center gap-3 text-white text-sm">
               <svg className="animate-spin h-4 w-4 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">

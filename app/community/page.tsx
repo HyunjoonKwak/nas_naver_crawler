@@ -6,6 +6,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Navigation } from "@/components/Navigation";
 import { MobileNavigation } from "@/components/MobileNavigation";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
+import { EmptyState } from "@/components/EmptyState";
 import { AuthGuard } from "@/components/AuthGuard";
 import { showError } from "@/lib/toast";
 
@@ -187,7 +189,7 @@ export default function CommunityPage() {
                   onClick={() => handleTabChange(tab)}
                   className={`pb-3 px-1 border-b-2 font-medium text-sm whitespace-nowrap transition-colors ${
                     activeTab === tab
-                      ? "border-indigo-500 text-indigo-600 dark:text-indigo-400"
+                      ? "border-blue-500 text-blue-600 dark:text-blue-400"
                       : "border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
                   }`}
                 >
@@ -206,7 +208,7 @@ export default function CommunityPage() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="제목 또는 내용 검색..."
-                  className="w-full px-4 py-2 pl-10 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 text-sm"
+                  className="w-full px-4 py-2 pl-10 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 text-sm"
                 />
                 <svg
                   className="absolute left-3 top-2.5 w-5 h-5 text-gray-400"
@@ -239,7 +241,7 @@ export default function CommunityPage() {
 
             <Link
               href="/community/write"
-              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium transition-colors text-sm whitespace-nowrap"
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors text-sm whitespace-nowrap"
             >
               ✏️ 글쓰기
             </Link>
@@ -247,15 +249,13 @@ export default function CommunityPage() {
 
           {/* Posts List */}
           {isLoading ? (
-            <div className="flex justify-center items-center py-20">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
-            </div>
+            <LoadingSpinner message="게시글을 불러오는 중..." />
           ) : posts.length === 0 ? (
-            <div className="text-center py-20">
-              <p className="text-gray-500 dark:text-gray-400">
-                게시글이 없습니다
-              </p>
-            </div>
+            <EmptyState
+              icon="📝"
+              title="게시글이 없습니다"
+              description="첫 번째 게시글을 작성해보세요"
+            />
           ) : (
             <div className="bg-white dark:bg-gray-900 rounded-lg shadow overflow-hidden">
               <div className="divide-y divide-gray-200 dark:divide-gray-800">
@@ -394,7 +394,7 @@ export default function CommunityPage() {
                             onClick={() => setPagination({ ...pagination, page })}
                             className={`px-4 py-2 rounded-lg ${
                               pagination.page === page
-                                ? "bg-indigo-600 text-white"
+                                ? "bg-blue-600 text-white"
                                 : "border border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"
                             }`}
                           >
@@ -409,7 +409,7 @@ export default function CommunityPage() {
                         onClick={() => setPagination({ ...pagination, page })}
                         className={`px-4 py-2 rounded-lg ${
                           pagination.page === page
-                            ? "bg-indigo-600 text-white"
+                            ? "bg-blue-600 text-white"
                             : "border border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"
                         }`}
                       >
