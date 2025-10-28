@@ -56,15 +56,36 @@ export default function SignUpPage() {
       dismissToast(loadingToast);
 
       if (response.ok) {
-        showSuccess(data.message);
-
-        // 첫 번째 사용자(관리자)인 경우 바로 홈으로
+        // 회원가입 성공 후 로그인 유도
         if (data.user.role === "ADMIN") {
+          showSuccess(
+            <div className="text-left">
+              <p className="font-semibold mb-2">🎉 회원가입 완료!</p>
+              <p className="text-sm text-gray-300 mb-2">
+                첫 번째 사용자로 관리자 권한이 부여되었습니다.
+              </p>
+              <p className="text-sm text-gray-400">
+                로그인 페이지로 이동합니다...
+              </p>
+            </div>,
+            { duration: 3000 }
+          );
           setTimeout(() => {
             router.push("/");
           }, 2000);
         } else {
-          // 일반 사용자인 경우 승인 대기 안내 후 메인으로
+          showSuccess(
+            <div className="text-left">
+              <p className="font-semibold mb-2">✅ 회원가입 완료!</p>
+              <p className="text-sm text-gray-300 mb-2">
+                관리자 승인 후 로그인이 가능합니다.
+              </p>
+              <p className="text-sm text-gray-400">
+                로그인 페이지로 이동합니다...
+              </p>
+            </div>,
+            { duration: 4000 }
+          );
           setTimeout(() => {
             router.push("/");
           }, 3000);

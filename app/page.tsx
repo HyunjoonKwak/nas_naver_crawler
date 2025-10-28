@@ -49,7 +49,26 @@ export default function LandingPage() {
       dismissToast(loadingToast);
 
       if (result?.error) {
-        showError(result.error);
+        // 존재하지 않는 사용자일 때 회원가입 유도
+        if (result.error.includes("존재하지 않는 사용자")) {
+          showError(
+            <div className="text-left">
+              <p className="font-semibold mb-2">가입되지 않은 이메일입니다.</p>
+              <p className="text-sm text-gray-300 mb-3">
+                계정이 없으신가요? 회원가입을 진행해주세요.
+              </p>
+              <a
+                href="/auth/signup"
+                className="inline-block px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
+              >
+                회원가입 하러 가기 →
+              </a>
+            </div>,
+            { duration: 6000 }
+          );
+        } else {
+          showError(result.error);
+        }
       } else if (result?.ok) {
         showSuccess("로그인 성공!");
         router.push("/home");
