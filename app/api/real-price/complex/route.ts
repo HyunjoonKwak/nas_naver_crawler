@@ -65,11 +65,23 @@ function createAreaMapping(articles: { area1: number; area2: number | null }[]) 
 
 /**
  * 전용면적에 해당하는 공급평형 찾기
+ * 정확히 일치하지 않으면 ±1평 범위 내에서 찾기
  */
 function findSupplyPyeong(exclusiveArea: number, areaMapping: Map<number, { supplyArea: number; supplyPyeong: number }>): number | null {
   const exclusivePyeong = Math.floor(exclusiveArea / 3.3058);
-  const mapped = areaMapping.get(exclusivePyeong);
-  return mapped ? mapped.supplyPyeong : null;
+
+  // 정확히 일치하는 매핑 찾기
+  let mapped = areaMapping.get(exclusivePyeong);
+  if (mapped) return mapped.supplyPyeong;
+
+  // ±1평 범위 내에서 찾기
+  mapped = areaMapping.get(exclusivePyeong - 1);
+  if (mapped) return mapped.supplyPyeong;
+
+  mapped = areaMapping.get(exclusivePyeong + 1);
+  if (mapped) return mapped.supplyPyeong;
+
+  return null;
 }
 
 export async function GET(request: NextRequest) {
