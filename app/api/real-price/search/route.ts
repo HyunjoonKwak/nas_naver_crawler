@@ -12,6 +12,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getRealPriceApiClient } from '@/lib/real-price-api';
+import { getRealPriceCache, setRealPriceCache } from '@/lib/real-price-cache';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 
@@ -65,11 +66,25 @@ export async function GET(request: NextRequest) {
     let items: any[];
 
     if (aptName) {
-      // 아파트명 필터링
+      // 아파트명 필터링: 일단 캐시 없이 직접 조회 (Phase 1)
+      // TODO Phase 2: 캐시에서 가져와서 메모리 필터링
       items = await client.searchByAptName(lawdCd, dealYmd, aptName);
     } else {
-      // 전체 조회
-      items = await client.searchAll(lawdCd, dealYmd);
+      // 전체 조회: 캐싱 적용
+      const cached = await getRealPriceCache(lawdCd, dealYmd);
+
+      if (cached) {
+        // 캐시 히트
+        items = cached;
+      } else {
+        // 캐시 미스: API 호출
+        items = await client.searchAll(lawdCd, dealYmd);
+
+        // 비동기로 캐시 저장 (응답 지연 방지)
+        setRealPriceCache(lawdCd, dealYmd, items).catch((error) => {
+          console.error('[Real Price Search] Cache save failed:', error);
+        });
+      }
     }
 
     return NextResponse.json({

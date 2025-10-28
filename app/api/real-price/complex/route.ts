@@ -9,6 +9,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getRealPriceApiClient } from '@/lib/real-price-api';
+import { getRealPriceCache, setRealPriceCache } from '@/lib/real-price-cache';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
@@ -121,20 +122,34 @@ export async function GET(request: NextRequest) {
     const targetMonths = getRecentMonths(months);
     const client = getRealPriceApiClient();
 
-    // 각 달의 실거래가 조회 (아파트명 필터링 - 정확히 일치하는 것만)
+    // 각 달의 실거래가 조회 (캐싱 적용)
     const allResults = [];
     for (const dealYmd of targetMonths) {
       try {
-        const items = await client.searchByAptName(
-          lawdCd,
-          dealYmd,
-          complex.complexName,
-          true // exactMatch = true: 정확히 일치하는 아파트만 조회
-        );
-        allResults.push(...items);
+        // 캐시 확인
+        let monthData = await getRealPriceCache(lawdCd, dealYmd);
 
-        // Rate limiting 방지
-        await new Promise(resolve => setTimeout(resolve, 500));
+        if (!monthData) {
+          // 캐시 미스: 지역 전체 데이터 API 조회
+          monthData = await client.searchAll(lawdCd, dealYmd);
+
+          // 비동기로 캐시 저장 (응답 지연 방지)
+          setRealPriceCache(lawdCd, dealYmd, monthData).catch((error) => {
+            console.error('[Real Price Complex] Cache save failed:', error);
+          });
+
+          // Rate limiting 방지 (API 호출 시에만)
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
+
+        // 메모리에서 아파트명 필터링 (정확히 일치하는 것만)
+        const normalizedComplexName = complex.complexName.replace(/\s+/g, '').toLowerCase();
+        const filtered = monthData.filter(item => {
+          const normalizedItemName = item.aptName.replace(/\s+/g, '').toLowerCase();
+          return normalizedItemName === normalizedComplexName;
+        });
+
+        allResults.push(...filtered);
       } catch (error: unknown) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
         console.error(`Failed to fetch data for ${dealYmd}:`, errorMessage);
