@@ -92,6 +92,9 @@ export default function RealPriceAnalysis({ complexNo }: RealPriceAnalysisProps)
       const result = await response.json();
 
       if (result.success) {
+        console.log('[RealPriceAnalysis] API Response:', result.data);
+        console.log('[RealPriceAnalysis] Area Mapping:', result.data.areaMapping);
+        console.log('[RealPriceAnalysis] First Item:', result.data.items[0]);
         setData(result.data);
         processData(result.data);
       } else {
