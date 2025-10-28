@@ -628,6 +628,10 @@ export default function RealPriceAnalysis({ complexNo }: RealPriceAnalysisProps)
                 tickFormatter={formatChartPrice}
                 tick={{ fill: '#6b7280', fontSize: 12 }}
                 stroke="#9ca3af"
+                domain={[
+                  (dataMin: number) => Math.floor(dataMin * 0.9),
+                  (dataMax: number) => Math.ceil(dataMax * 1.1)
+                ]}
               />
               <Tooltip
                 formatter={(value: any) => formatPrice(value)}
@@ -689,6 +693,10 @@ export default function RealPriceAnalysis({ complexNo }: RealPriceAnalysisProps)
                 tickFormatter={formatChartPrice}
                 tick={{ fill: '#6b7280', fontSize: 12 }}
                 stroke="#9ca3af"
+                domain={[
+                  (dataMin: number) => Math.floor(dataMin * 0.9),
+                  (dataMax: number) => Math.ceil(dataMax * 1.1)
+                ]}
               />
               <Tooltip
                 formatter={(value: any) => formatPrice(value)}
