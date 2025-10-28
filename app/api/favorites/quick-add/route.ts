@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import prisma from '@/lib/prisma';
-import { apiResponse, apiError } from '@/lib/api-response';
+import { ApiResponseHelper } from '@/lib/api-response';
 
 /**
  * POST /api/favorites/quick-add
@@ -15,14 +15,20 @@ export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
-      return apiError('인증이 필요합니다', 401);
+      return NextResponse.json(
+        { success: false, error: '인증이 필요합니다' },
+        { status: 401 }
+      );
     }
 
     const body = await request.json();
     const { aptName, lawdCd, address } = body;
 
     if (!aptName) {
-      return apiError('아파트명이 필요합니다', 400);
+      return NextResponse.json(
+        { success: false, error: '아파트명이 필요합니다' },
+        { status: 400 }
+      );
     }
 
     // 1. 아파트명으로 Complex 검색
@@ -47,6 +53,7 @@ export async function POST(request: NextRequest) {
           address: address || null,
           beopjungdong: null,
           haengjeongdong: null,
+          userId: session.user.id, // userId 추가
         },
       });
     }
@@ -62,15 +69,15 @@ export async function POST(request: NextRequest) {
     });
 
     if (existingFavorite) {
-      return apiResponse(
-        {
+      return NextResponse.json({
+        success: true,
+        data: {
           complexNo: complex.complexNo,
           complexId: complex.id,
           alreadyFavorite: true
         },
-        '이미 즐겨찾기에 추가된 단지입니다',
-        200
-      );
+        message: '이미 즐겨찾기에 추가된 단지입니다'
+      });
     }
 
     // 4. 즐겨찾기 추가
@@ -91,17 +98,20 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    return apiResponse(
-      {
+    return NextResponse.json({
+      success: true,
+      data: {
         complexNo: complex.complexNo,
         complexId: complex.id,
         complexName: complex.complexName,
       },
-      '즐겨찾기에 추가되었습니다',
-      201
-    );
+      message: '즐겨찾기에 추가되었습니다'
+    }, { status: 201 });
   } catch (error: any) {
     console.error('[Quick Add Favorite Error]:', error);
-    return apiError('즐겨찾기 추가 중 오류가 발생했습니다', 500);
+    return NextResponse.json(
+      { success: false, error: '즐겨찾기 추가 중 오류가 발생했습니다' },
+      { status: 500 }
+    );
   }
 }
