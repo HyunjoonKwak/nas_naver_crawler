@@ -40,14 +40,22 @@ function createAreaMapping(articles: { area1: number; area2: number | null }[]) 
 
   articles.forEach(article => {
     if (article.area2) {
-      // 전용면적을 정수 평형으로 그룹핑 (예: 59.1㎡ -> 17평)
-      const exclusivePyeong = Math.floor(article.area1 / 3.3058);
-      const supplyPyeong = Math.floor(article.area2 / 3.3058);
+      // area1이 더 큰 경우: area1=공급, area2=전용 (데이터 반대로 저장됨)
+      // area1이 더 작은 경우: area1=전용, area2=공급 (정상)
+      const isReversed = article.area1 > article.area2;
+
+      const exclusiveArea = isReversed ? article.area2 : article.area1;
+      const supplyArea = isReversed ? article.area1 : article.area2;
+
+      const exclusivePyeong = Math.floor(exclusiveArea / 3.3058);
+      const supplyPyeong = Math.floor(supplyArea / 3.3058);
+
+      console.log(`[Area Mapping] area1=${article.area1}, area2=${article.area2} → 전용${exclusivePyeong}평(${exclusiveArea}㎡) → 공급${supplyPyeong}평(${supplyArea}㎡)`);
 
       // 이미 있으면 스킵 (첫 번째 매물 기준)
       if (!mapping.has(exclusivePyeong)) {
         mapping.set(exclusivePyeong, {
-          supplyArea: article.area2,
+          supplyArea: supplyArea,
           supplyPyeong: supplyPyeong,
         });
       }
