@@ -78,15 +78,25 @@ export const authOptions: any = {
   },
   session: {
     strategy: 'jwt',
-    maxAge: 7 * 24 * 60 * 60, // 7일 (세션 만료)
+    maxAge: 24 * 60 * 60, // 1일 (세션 만료)
     updateAge: 24 * 60 * 60, // 24시간마다 세션 갱신
   },
-  // cookies 커스터마이징 제거 - NextAuth 기본값 사용
-  // 테스트/프로덕션 분리는 NEXTAUTH_SECRET과 NEXTAUTH_URL로만 처리
+  cookies: {
+    sessionToken: {
+      name: `next-auth.session-token`,
+      options: {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        secure: process.env.NODE_ENV === 'production',
+        maxAge: undefined, // 브라우저 종료 시 삭제 (세션 쿠키)
+      },
+    },
+  },
   secret: process.env.NEXTAUTH_SECRET,
   // JWT 토큰 설정
   jwt: {
-    maxAge: 7 * 24 * 60 * 60, // 7일
+    maxAge: 24 * 60 * 60, // 1일
   },
   // 디버그 모드 (개발 환경에서만)
   debug: process.env.NODE_ENV === 'development' && process.env.DEBUG_ENABLED === 'true',
