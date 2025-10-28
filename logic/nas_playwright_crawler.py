@@ -318,18 +318,26 @@ class NASNaverRealEstateCrawler:
         for attempt in range(1, max_attempts + 1):
             try:
                 url = f"https://new.land.naver.com/complexes/{complex_no}"
-                response = await self.page.goto(url, wait_until='domcontentloaded', timeout=self.timeout)
+                # wait_until='commit'으로 변경: 네트워크 응답만 기다림 (더 빠름)
+                # domcontentloaded는 SPA에서 타임아웃 발생 가능
+                response = await self.page.goto(url, wait_until='commit', timeout=self.timeout)
+
+                # 잠시 대기 (페이지 초기 렌더링)
+                await asyncio.sleep(1)
 
                 # HTTP 상태 코드 확인
                 if response and response.status >= 400:
                     print(f"❌ 단지 {complex_no}: HTTP {response.status} - 존재하지 않거나 접근 불가")
                     return False
 
-                # 페이지 타이틀 확인
-                title = await self.page.title()
-                if '오류' in title or 'error' in title.lower() or 'not found' in title.lower():
-                    print(f"❌ 단지 {complex_no}: 페이지 오류 - {title}")
-                    return False
+                # 페이지 타이틀 확인 (타임아웃 추가)
+                try:
+                    title = await self.page.title()
+                    if '오류' in title or 'error' in title.lower() or 'not found' in title.lower():
+                        print(f"❌ 단지 {complex_no}: 페이지 오류 - {title}")
+                        return False
+                except Exception as title_error:
+                    print(f"⚠️ 타이틀 확인 실패, 무시하고 계속: {title_error}")
 
                 print(f"✅ 단지 {complex_no} 유효성 확인 완료")
                 return True
