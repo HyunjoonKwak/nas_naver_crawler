@@ -117,6 +117,7 @@ async function fetchComplexListData(currentUser: any, searchParams: URLSearchPar
         jibunAddress: true,
         beopjungdong: true,
         haengjeongdong: true,
+        lawdCd: true,
         createdAt: true,
         updatedAt: true,
         _count: {
@@ -218,6 +219,7 @@ async function fetchComplexListData(currentUser: any, searchParams: URLSearchPar
         jibunAddress: complex.jibunAddress,
         beopjungdong: complex.beopjungdong,
         haengjeongdong: complex.haengjeongdong,
+        lawdCd: complex.lawdCd,
         articleCount: complex._count?.articles || 0,
         isFavorite: complex.favorites.length > 0,
         groups: complex.complexGroups?.map((cg: any) => ({

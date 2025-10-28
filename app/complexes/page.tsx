@@ -13,6 +13,8 @@ import { GroupManagement } from "@/components/GroupManagement";
 import { ComplexSortFilter } from "@/components/ComplexSortFilter";
 import { ComplexGroupBadges } from "@/components/ComplexGroupBadges";
 import { GlobalSearch } from "@/components/GlobalSearch";
+import { Breadcrumb } from "@/components/Breadcrumb";
+import { Sparkline } from "@/components/Sparkline";
 import { showSuccess, showError, showLoading, dismissToast, showInfo } from "@/lib/toast";
 import { AuthGuard } from "@/components/AuthGuard";
 import {
@@ -29,7 +31,8 @@ import {
   Rocket,
   FileText,
   Search as SearchIcon,
-  BarChart3
+  BarChart3,
+  TrendingUp
 } from "lucide-react";
 
 interface ComplexGroup {
@@ -59,6 +62,7 @@ interface ComplexItem {
   jibunAddress?: string;
   beopjungdong?: string;
   haengjeongdong?: string;
+  lawdCd?: string;
   articleCount: number;
   isFavorite: boolean;
   groups: ComplexGroup[];
@@ -834,6 +838,11 @@ export default function ComplexesPage() {
 
           {/* 메인 컨텐츠 */}
           <div className="flex-1 min-w-0">
+        {/* Breadcrumb */}
+        <div className="mb-4">
+          <Breadcrumb items={[{ label: '단지 관리' }]} />
+        </div>
+
         {/* Search Bar - 메인 컨텐츠 상단으로 이동 */}
         <div className="mb-6">
           <button
@@ -1328,11 +1337,46 @@ export default function ComplexesPage() {
                     <>
                       <div className="border-t border-gray-200 dark:border-gray-700 my-4"></div>
                       <div className="space-y-2.5">
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-gray-600 dark:text-gray-400">평균 가격</span>
-                          <span className="text-blue-600 dark:text-blue-400 font-bold">
-                            {complex.priceStats.avgPrice}
-                          </span>
+                        {/* 평균 가격 + 미니 차트 */}
+                        <div className="flex items-center justify-between text-sm gap-2">
+                          <div className="flex items-center gap-2 flex-1 min-w-0">
+                            <span className="text-gray-600 dark:text-gray-400 flex-shrink-0">평균 가격</span>
+                            <span className="text-blue-600 dark:text-blue-400 font-bold truncate">
+                              {complex.priceStats.avgPrice}
+                            </span>
+                          </div>
+                          {/* Sparkline 차트 */}
+                          {(() => {
+                            // 가격 문자열을 숫자로 변환
+                            const parsePrice = (priceStr: string): number => {
+                              let total = 0;
+                              const eokMatch = priceStr.match(/(\d+)억/);
+                              const manMatch = priceStr.match(/(\d+,?\d*)만?$/);
+                              if (eokMatch) total += parseInt(eokMatch[1]) * 10000;
+                              if (manMatch) total += parseInt(manMatch[1].replace(/,/g, ''));
+                              return total;
+                            };
+
+                            const minPrice = parsePrice(complex.priceStats.minPrice);
+                            const avgPrice = parsePrice(complex.priceStats.avgPrice);
+                            const maxPrice = parsePrice(complex.priceStats.maxPrice);
+
+                            // 간단한 추세 데이터 생성 (최저 → 평균 → 최고)
+                            const trendData = [minPrice, avgPrice, maxPrice];
+
+                            return trendData.length === 3 && trendData.every(v => v > 0) ? (
+                              <div className="flex-shrink-0">
+                                <Sparkline
+                                  data={trendData}
+                                  width={60}
+                                  height={24}
+                                  color="#3b82f6"
+                                  fillColor="rgba(59, 130, 246, 0.1)"
+                                  showArea={true}
+                                />
+                              </div>
+                            ) : null;
+                          })()}
                         </div>
                         <div className="flex items-center justify-between text-xs">
                           <span className="text-gray-500 dark:text-gray-500">최저가</span>
@@ -1436,6 +1480,18 @@ export default function ComplexesPage() {
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
+                    {/* 세 번째 줄: 주변 실거래가 보기 */}
+                    {complex.lawdCd && (
+                      <div className="flex gap-2">
+                        <Link
+                          href={`/real-price?lawdCd=${complex.lawdCd}&autoSearch=true`}
+                          className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg border-2 border-orange-300 dark:border-orange-700 text-orange-700 dark:text-orange-300 hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-colors text-sm font-medium"
+                        >
+                          <TrendingUp className="w-4 h-4" />
+                          <span>{complex.beopjungdong || '주변'} 지역 실거래가 보기</span>
+                        </Link>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

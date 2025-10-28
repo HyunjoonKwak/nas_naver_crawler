@@ -8,6 +8,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Navigation } from "@/components/Navigation";
 import { Dialog } from "@/components/ui";
+import { NearbyComplexes } from "@/components/NearbyComplexes";
 import { showSuccess, showError, showLoading, dismissToast } from "@/lib/toast";
 import { AuthGuard } from "@/components/AuthGuard";
 
@@ -594,6 +595,17 @@ export default function ComplexDetailPage() {
                     </div>
                   ))}
                 </div>
+              </div>
+            )}
+
+            {/* 같은 지역 다른 아파트 추천 */}
+            {(overview.beopjungdong || overview.lawdCd) && (
+              <div className="mt-6">
+                <NearbyComplexes
+                  currentComplexId={overview.id || complexNo}
+                  beopjungdong={overview.beopjungdong}
+                  lawdCd={overview.lawdCd}
+                />
               </div>
             )}
           </div>
