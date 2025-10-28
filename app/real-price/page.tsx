@@ -218,12 +218,12 @@ export default function RealPricePage() {
 
   // 검색 기록에서 재검색
   const searchFromHistory = (item: { lawdCd: string; areaName: string; dongName?: string }) => {
-    setLawdCd(item.lawdCd);
-    setSelectedArea(item.areaName);
-    setSelectedDong(item.dongName || '');
-    setTimeout(() => {
-      handleSearch();
-    }, 100);
+    // 직접 매개변수로 전달하여 즉시 검색
+    handleSearch({
+      lawdCd: item.lawdCd,
+      areaName: item.areaName,
+      dongName: item.dongName || ''
+    });
   };
 
   // 아파트 확장/축소 토글
@@ -264,10 +264,22 @@ export default function RealPricePage() {
   };
 
   // 검색 실행
-  const handleSearch = async () => {
-    if (!lawdCd) {
+  const handleSearch = async (searchParams?: { lawdCd?: string; areaName?: string; dongName?: string }) => {
+    // 매개변수로 받은 값이 있으면 사용, 없으면 state 사용
+    const searchLawdCd = searchParams?.lawdCd || lawdCd;
+    const searchArea = searchParams?.areaName || selectedArea;
+    const searchDong = searchParams?.dongName || selectedDong;
+
+    if (!searchLawdCd) {
       showError("지역을 선택해주세요");
       return;
+    }
+
+    // State 업데이트 (매개변수로 받은 값이 있으면)
+    if (searchParams?.lawdCd) {
+      setLawdCd(searchParams.lawdCd);
+      setSelectedArea(searchParams.areaName || '');
+      setSelectedDong(searchParams.dongName || '');
     }
 
     const loadingToast = showLoading("실거래가 조회 중...");
@@ -280,7 +292,7 @@ export default function RealPricePage() {
       // 각 월별로 API 호출
       for (const dealYmd of monthsToSearch) {
         const params = new URLSearchParams({
-          lawdCd,
+          lawdCd: searchLawdCd,
           dealYmd,
           ...(aptName && { aptName }),
         });
@@ -307,9 +319,9 @@ export default function RealPricePage() {
       let filteredResults = allResults;
 
       // 읍면동 필터링
-      if (selectedDong) {
+      if (searchDong) {
         filteredResults = filteredResults.filter(item => {
-          return item.dong && item.dong.includes(selectedDong);
+          return item.dong && item.dong.includes(searchDong);
         });
       }
 
@@ -327,13 +339,13 @@ export default function RealPricePage() {
       setTotalCount(filteredResults.length);
 
       if (filteredResults.length > 0) {
-        const message = selectedDong
-          ? `${selectedDong} 지역에서 ${filteredResults.length}건의 실거래가를 찾았습니다`
+        const message = searchDong
+          ? `${searchDong} 지역에서 ${filteredResults.length}건의 실거래가를 찾았습니다`
           : `${filteredResults.length}건의 실거래가를 찾았습니다`;
         showSuccess(message);
 
         // 검색 기록에 저장
-        saveToHistory(lawdCd, selectedArea, selectedDong);
+        saveToHistory(searchLawdCd, searchArea, searchDong);
       } else {
         showError("검색 결과가 없습니다");
       }
@@ -359,13 +371,10 @@ export default function RealPricePage() {
     const autoSearch = searchParams.get('autoSearch');
 
     if (urlLawdCd && autoSearch === 'true' && !autoSearchTriggered) {
-      setLawdCd(urlLawdCd);
       setAutoSearchTriggered(true);
 
-      // lawdCd가 설정되면 짧은 지연 후 자동 검색 실행
-      setTimeout(() => {
-        handleSearch();
-      }, 500);
+      // 직접 매개변수로 전달하여 즉시 검색
+      handleSearch({ lawdCd: urlLawdCd });
     }
   }, [searchParams, autoSearchTriggered]);
 
