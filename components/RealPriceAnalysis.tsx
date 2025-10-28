@@ -9,7 +9,9 @@ interface RealPriceItem {
   jibun: string;
   apartmentName: string;
   exclusiveArea: number;
-  dealAmount: string;
+  dealAmount: string; // 문자열 (원 단위)
+  dealPrice: number; // 숫자 (원 단위)
+  dealPriceFormatted: string; // 포맷된 문자열
   floor: number;
   buildYear: number;
   dealYear: number;
@@ -101,8 +103,10 @@ export default function RealPriceAnalysis({ complexNo }: RealPriceAnalysisProps)
     // 평형별 통계 계산
     const areaGroups: { [key: string]: RealPriceItem[] } = {};
     rawData.items.forEach(item => {
-      const pyeong = Math.floor(item.exclusiveArea / 3.3058);
-      const areaKey = `${pyeong}`;
+      // 실거래가 페이지와 동일한 방식으로 평형 계산
+      const pyeong = Math.round(item.exclusiveArea / 3.3058 * 10) / 10; // 소수점 1자리
+      const pyeongInt = Math.floor(pyeong); // 평형 그룹핑은 정수로
+      const areaKey = `${pyeongInt}`;
 
       if (!areaGroups[areaKey]) {
         areaGroups[areaKey] = [];
@@ -111,8 +115,8 @@ export default function RealPriceAnalysis({ complexNo }: RealPriceAnalysisProps)
     });
 
     const statsArray: AreaStats[] = Object.entries(areaGroups).map(([pyeong, items]) => {
-      // dealAmount는 만원 단위 숫자 문자열 (예: "44500")
-      const prices = items.map(item => parseFloat(item.dealAmount) * 10000);
+      // dealPrice는 이미 원(won) 단위 숫자
+      const prices = items.map(item => item.dealPrice);
       const avgArea = items.reduce((sum, item) => sum + item.exclusiveArea, 0) / items.length;
 
       return {
@@ -136,8 +140,8 @@ export default function RealPriceAnalysis({ complexNo }: RealPriceAnalysisProps)
     const monthlyGroups: { [key: string]: number[] } = {};
     rawData.items.forEach(item => {
       const monthKey = `${item.dealYear}.${String(item.dealMonth).padStart(2, '0')}`;
-      // dealAmount는 만원 단위 숫자 문자열
-      const price = parseFloat(item.dealAmount) * 10000;
+      // dealPrice는 이미 원(won) 단위 숫자
+      const price = item.dealPrice;
 
       if (!monthlyGroups[monthKey]) {
         monthlyGroups[monthKey] = [];
@@ -196,10 +200,8 @@ export default function RealPriceAnalysis({ complexNo }: RealPriceAnalysisProps)
           compareResult = dateA.getTime() - dateB.getTime();
           break;
         case 'price':
-          // dealAmount는 만원 단위 숫자 문자열
-          const priceA = parseFloat(a.dealAmount);
-          const priceB = parseFloat(b.dealAmount);
-          compareResult = priceA - priceB;
+          // dealPrice는 원 단위 숫자
+          compareResult = a.dealPrice - b.dealPrice;
           break;
         case 'area':
           compareResult = a.exclusiveArea - b.exclusiveArea;
@@ -563,9 +565,9 @@ export default function RealPriceAnalysis({ complexNo }: RealPriceAnalysisProps)
             </thead>
             <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
               {filteredTransactions.slice(0, 20).map((transaction, index) => {
-                // dealAmount는 만원 단위 숫자 문자열
-                const price = parseFloat(transaction.dealAmount) * 10000;
-                const pyeong = Math.floor(transaction.exclusiveArea / 3.3058);
+                // 실거래가 페이지와 동일한 방식으로 평형 계산
+                const pyeong = Math.round(transaction.exclusiveArea / 3.3058 * 10) / 10;
+                const pyeongInt = Math.floor(pyeong);
 
                 return (
                   <tr
@@ -576,13 +578,13 @@ export default function RealPriceAnalysis({ complexNo }: RealPriceAnalysisProps)
                       {transaction.dealYear}.{String(transaction.dealMonth).padStart(2, '0')}.{String(transaction.dealDay).padStart(2, '0')}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                      <div>{pyeong}평형</div>
+                      <div>{pyeongInt}평형</div>
                       <div className="text-xs text-gray-500 dark:text-gray-400">
-                        {transaction.exclusiveArea.toFixed(1)}㎡
+                        {transaction.exclusiveArea.toFixed(1)}㎡ ({pyeong}평)
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-purple-600 dark:text-purple-400">
-                      {formatPrice(price)}
+                      {transaction.dealPriceFormatted}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                       {transaction.floor}층
