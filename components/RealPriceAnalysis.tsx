@@ -78,7 +78,6 @@ export default function RealPriceAnalysis({ complexNo }: RealPriceAnalysisProps)
   const [pyeongChartData, setPyeongChartData] = useState<PyeongChartData[]>([]);
   const [months, setMonths] = useState(6);
   const [selectedArea, setSelectedArea] = useState<string>('all');
-  const [selectedPyeongForSummary, setSelectedPyeongForSummary] = useState<string>('all'); // 요약 통계용 평형 필터
   const [chartViewMode, setChartViewMode] = useState<'overall' | 'byPyeong'>('byPyeong'); // 차트 보기 모드
   const [sortField, setSortField] = useState<'date' | 'price' | 'area'>('date');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
@@ -489,9 +488,9 @@ export default function RealPriceAnalysis({ complexNo }: RealPriceAnalysisProps)
 
   return (
     <div className="space-y-6">
-      {/* 기간 선택 및 통계 헤더 */}
+      {/* 기간 선택 헤더 */}
       <div className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-xl border border-purple-200 dark:border-purple-800 p-6">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between">
           <div>
             <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
               📊 실거래가 분석
@@ -517,63 +516,6 @@ export default function RealPriceAnalysis({ complexNo }: RealPriceAnalysisProps)
                 {m}개월
               </button>
             ))}
-          </div>
-        </div>
-
-        {/* 평형 선택 드롭다운 */}
-        <div className="mb-4">
-          <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 block">
-            평형별 통계 보기
-          </label>
-          <select
-            value={selectedPyeongForSummary}
-            onChange={(e) => setSelectedPyeongForSummary(e.target.value)}
-            className="w-full md:w-64 px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-          >
-            <option value="all">전체 평형</option>
-            {areaStats.map((stat) => (
-              <option key={stat.areaType} value={stat.areaType}>
-                {stat.areaType}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* 요약 통계 */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-purple-100 dark:border-purple-800">
-            <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">총 거래</div>
-            <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
-              {selectedPyeongForSummary === 'all'
-                ? `${data.totalCount}건`
-                : `${areaStats.find(s => s.areaType === selectedPyeongForSummary)?.transactionCount || 0}건`}
-            </div>
-          </div>
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-purple-100 dark:border-purple-800">
-            <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">평균가</div>
-            <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-              {selectedPyeongForSummary === 'all'
-                ? formatChartPrice(chartData.reduce((sum, d) => sum + d.avgPrice, 0) / chartData.length || 0)
-                : formatPrice(areaStats.find(s => s.areaType === selectedPyeongForSummary)?.avgPrice || 0)}
-            </div>
-          </div>
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-purple-100 dark:border-purple-800">
-            <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">최고가</div>
-            <div className="text-2xl font-bold text-red-600 dark:text-red-400">
-              {selectedPyeongForSummary === 'all'
-                ? formatChartPrice(Math.max(...chartData.map(d => d.maxPrice)))
-                : formatPrice(areaStats.find(s => s.areaType === selectedPyeongForSummary)?.maxPrice || 0)}
-            </div>
-          </div>
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-purple-100 dark:border-purple-800">
-            <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">
-              {selectedPyeongForSummary === 'all' ? '평형 종류' : '최저가'}
-            </div>
-            <div className="text-2xl font-bold text-green-600 dark:text-green-400">
-              {selectedPyeongForSummary === 'all'
-                ? `${areaStats.length}개`
-                : formatPrice(areaStats.find(s => s.areaType === selectedPyeongForSummary)?.minPrice || 0)}
-            </div>
           </div>
         </div>
       </div>
