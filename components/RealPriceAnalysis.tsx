@@ -616,13 +616,16 @@ export default function RealPriceAnalysis({ complexNo }: RealPriceAnalysisProps)
           </div>
         </div>
         {chartViewMode === 'overall' ? (
-          <ResponsiveContainer width="100%" height={350}>
+          <ResponsiveContainer width="100%" height={400}>
             <LineChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
               <XAxis
                 dataKey="month"
-                tick={{ fill: '#6b7280', fontSize: 12 }}
+                tick={{ fill: '#6b7280', fontSize: 11, angle: -45 }}
                 stroke="#9ca3af"
+                height={80}
+                interval="preserveStartEnd"
+                textAnchor="end"
               />
               <YAxis
                 tickFormatter={formatChartPrice}
@@ -681,13 +684,16 @@ export default function RealPriceAnalysis({ complexNo }: RealPriceAnalysisProps)
             </LineChart>
           </ResponsiveContainer>
         ) : (
-          <ResponsiveContainer width="100%" height={350}>
+          <ResponsiveContainer width="100%" height={400}>
             <LineChart data={pyeongChartData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
               <XAxis
                 dataKey="month"
-                tick={{ fill: '#6b7280', fontSize: 12 }}
+                tick={{ fill: '#6b7280', fontSize: 11, angle: -45 }}
                 stroke="#9ca3af"
+                height={80}
+                interval="preserveStartEnd"
+                textAnchor="end"
               />
               <YAxis
                 tickFormatter={formatChartPrice}
