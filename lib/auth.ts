@@ -93,9 +93,15 @@ export const authOptions: any = {
   // 로그 활성화 (에러만)
   logger: {
     error(code: any, metadata: any) {
-      // JWT 세션 복호화 실패는 쿠키 만료 시 정상적으로 발생할 수 있음 (경고 수준으로 낮춤)
-      if (code?.name === 'JWT_SESSION_ERROR' || code?.code === 'ERR_JWE_DECRYPTION_FAILED') {
-        // 무시 또는 경고만 출력
+      // JWT 세션 복호화 실패는 쿠키 만료 시 정상적으로 발생할 수 있음 (무시)
+      const errorString = String(code);
+      if (
+        errorString.includes('JWT_SESSION_ERROR') ||
+        errorString.includes('ERR_JWE_DECRYPTION_FAILED') ||
+        code?.name === 'JWT_SESSION_ERROR' ||
+        code?.code === 'ERR_JWE_DECRYPTION_FAILED'
+      ) {
+        // 무시 (로그 출력 안 함)
         return;
       }
       console.error('[NextAuth Error]', code, metadata);
