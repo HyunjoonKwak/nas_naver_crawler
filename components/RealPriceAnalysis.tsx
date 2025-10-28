@@ -510,8 +510,8 @@ export default function RealPriceAnalysis({ complexNo }: RealPriceAnalysisProps)
               💡 실거래가는 전용면적 기준입니다. 매물정보의 공급면적과 다를 수 있습니다.
             </p>
           </div>
-          <div className="flex gap-2">
-            {[3, 6, 9, 12].map((m) => (
+          <div className="flex gap-2 flex-wrap">
+            {[3, 6, 9, 12, 24, 36].map((m) => (
               <button
                 key={m}
                 onClick={() => setMonths(m)}
@@ -521,7 +521,7 @@ export default function RealPriceAnalysis({ complexNo }: RealPriceAnalysisProps)
                     : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-300 dark:border-gray-600'
                 }`}
               >
-                {m}개월
+                {m >= 12 ? `${m / 12}년` : `${m}개월`}
               </button>
             ))}
           </div>
