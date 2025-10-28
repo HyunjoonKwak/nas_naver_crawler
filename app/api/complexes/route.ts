@@ -25,16 +25,18 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     
-    // ✅ 캐싱 적용 (5분 캐시)
+    // ✅ 캐싱 적용 (5분 캐시) - 데이터만 캐싱, Response는 항상 새로 생성
     const cacheKey = CacheKeys.complex.list(currentUser.id, searchParams.toString());
-    
-    return await getCached(
+
+    const data = await getCached(
       cacheKey,
       CacheTTL.medium,
       async () => {
-        return await fetchComplexList(currentUser, searchParams);
+        return await fetchComplexListData(currentUser, searchParams);
       }
     );
+
+    return NextResponse.json(data);
   } catch (error: any) {
     console.error('Complexes fetch error:', error);
     return NextResponse.json(
@@ -44,8 +46,8 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// ✅ 리팩토링: 캐싱을 위해 로직 분리
-async function fetchComplexList(currentUser: any, searchParams: URLSearchParams) {
+// ✅ 리팩토링: 캐싱을 위해 로직 분리 (데이터만 반환, Response 객체 반환 안함)
+async function fetchComplexListData(currentUser: any, searchParams: URLSearchParams) {
   try {
 
     // 쿼리 파라미터
@@ -242,12 +244,12 @@ async function fetchComplexList(currentUser: any, searchParams: URLSearchParams)
       };
     });
 
-    return NextResponse.json({
+    return {
       complexes: results,
       total,
       limit,
       offset,
-    });
+    };
   } catch (error: any) {
     throw error;
   }
