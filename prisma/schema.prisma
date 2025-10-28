@@ -567,21 +567,18 @@ enum NotificationType {
   NOTICE        // 공지사항
 }
 
-// 실거래가 캐시 테이블
+// 실거래가 캐시 테이블 (지역 단위 캐싱)
 model RealPriceCache {
   id           String   @id @default(uuid())
   lawdCd       String   // 법정동코드 (5자리)
   dealYmd      String   // 거래 년월 (YYYYMM)
-  aptName      String   // 아파트명 (정규화된 이름)
-  cachedData   Json     // 캐시된 실거래가 데이터 (ProcessedRealPrice[])
+  cachedData   Json     // 캐시된 실거래가 데이터 - 해당 지역 전체 (ProcessedRealPrice[])
   totalCount   Int      // 캐시된 데이터 건수
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   expiresAt    DateTime // 캐시 만료 시간 (30일 기본)
 
-  @@unique([lawdCd, dealYmd, aptName]) // 같은 지역코드+기간+아파트는 하나만
-  @@index([lawdCd, dealYmd]) // 지역코드+기간으로 조회
+  @@unique([lawdCd, dealYmd]) // 지역코드+기간 조합은 유일 (아파트별 X)
   @@index([expiresAt]) // 만료된 캐시 정리용
-  @@index([updatedAt]) // 캐시 신선도 확인용
   @@map("real_price_cache")
 }
