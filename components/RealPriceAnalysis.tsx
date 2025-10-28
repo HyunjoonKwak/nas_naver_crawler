@@ -211,8 +211,13 @@ export default function RealPriceAnalysis({ complexNo }: RealPriceAnalysisProps)
       monthlyPyeongGroups[monthKey][pyeongKey].push(item.dealPrice);
     });
 
-    // 월별 전체 평균 (기존 로직 유지)
+    // 월별 전체 평균 (실제 거래가 있는 월만 포함)
     const chartArray: ChartData[] = Object.entries(monthlyPyeongGroups)
+      .filter(([month, pyeongGroups]) => {
+        // 해당 월에 거래가 있는지 확인
+        const allPrices = Object.values(pyeongGroups).flat();
+        return allPrices.length > 0;
+      })
       .sort((a, b) => a[0].localeCompare(b[0]))
       .map(([month, pyeongGroups]) => {
         const allPrices = Object.values(pyeongGroups).flat();
@@ -225,15 +230,18 @@ export default function RealPriceAnalysis({ complexNo }: RealPriceAnalysisProps)
         };
       });
 
-    // 평형별 월별 차트 데이터 (평형별로 분리된 라인)
+    // 평형별 월별 차트 데이터 (평형별로 분리된 라인, 거래 없는 월은 undefined)
     const pyeongChartArray: PyeongChartData[] = Object.entries(monthlyPyeongGroups)
       .sort((a, b) => a[0].localeCompare(b[0]))
       .map(([month, pyeongGroups]) => {
         const monthData: PyeongChartData = { month };
 
         Object.entries(pyeongGroups).forEach(([pyeong, prices]) => {
-          const avgPrice = Math.floor(prices.reduce((a, b) => a + b, 0) / prices.length);
-          monthData[`${pyeong}평`] = avgPrice;
+          if (prices.length > 0) {
+            const avgPrice = Math.floor(prices.reduce((a, b) => a + b, 0) / prices.length);
+            monthData[`${pyeong}평`] = avgPrice;
+          }
+          // prices.length === 0 인 경우 undefined로 남겨둠 (선이 끊어짐)
         });
 
         return monthData;
@@ -706,7 +714,7 @@ export default function RealPriceAnalysis({ complexNo }: RealPriceAnalysisProps)
                     strokeWidth={2}
                     dot={{ fill: colors[index % colors.length], r: 4 }}
                     name={stat.areaType}
-                    connectNulls
+                    connectNulls={false}
                   />
                 );
               })}
