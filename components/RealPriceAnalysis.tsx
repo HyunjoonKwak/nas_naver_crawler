@@ -92,25 +92,6 @@ export default function RealPriceAnalysis({ complexNo }: RealPriceAnalysisProps)
       const result = await response.json();
 
       if (result.success) {
-        console.log('[RealPriceAnalysis] API Response:', result.data);
-        console.log('[RealPriceAnalysis] Area Mapping:', result.data.areaMapping);
-        console.log('[RealPriceAnalysis] First Item:', result.data.items[0]);
-
-        // 상세 로그
-        if (result.data.areaMapping && result.data.areaMapping.length > 0) {
-          console.log('[RealPriceAnalysis] Area Mapping Details:');
-          result.data.areaMapping.forEach((mapping: any, idx: number) => {
-            console.log(`  ${idx + 1}. 전용${mapping.exclusivePyeong}평 → 공급${mapping.supplyPyeong}평 (${mapping.supplyArea}㎡)`);
-          });
-        }
-
-        if (result.data.items[0]) {
-          console.log('[RealPriceAnalysis] First Item Details:');
-          console.log('  - exclusiveArea:', result.data.items[0].exclusiveArea);
-          console.log('  - supplyPyeong:', result.data.items[0].supplyPyeong);
-          console.log('  - 전용평형:', Math.floor(result.data.items[0].exclusiveArea / 3.3058));
-        }
-
         setData(result.data);
         processData(result.data);
       } else {

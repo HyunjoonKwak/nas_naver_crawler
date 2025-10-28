@@ -50,8 +50,6 @@ function createAreaMapping(articles: { area1: number; area2: number | null }[]) 
       const exclusivePyeong = Math.floor(exclusiveArea / 3.3058);
       const supplyPyeong = Math.floor(supplyArea / 3.3058);
 
-      console.log(`[Area Mapping] area1=${article.area1}, area2=${article.area2} → 전용${exclusivePyeong}평(${exclusiveArea}㎡) → 공급${supplyPyeong}평(${supplyArea}㎡)`);
-
       // 이미 있으면 스킵 (첫 번째 매물 기준)
       if (!mapping.has(exclusivePyeong)) {
         mapping.set(exclusivePyeong, {
