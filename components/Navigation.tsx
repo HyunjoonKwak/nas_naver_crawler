@@ -256,6 +256,7 @@ export const Navigation = () => {
       submenu: [
         { href: '/alerts', label: '매물 알림', icon: Bell },
         { href: '/scheduler', label: '스케줄러', icon: Clock },
+        { href: '/settings/env-config', label: '환경 변수', icon: Key },
         { href: '/system', label: '시스템', icon: Cog },
       ]
     },

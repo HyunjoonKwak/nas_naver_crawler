@@ -582,3 +582,22 @@ model RealPriceCache {
   @@index([expiresAt]) // 만료된 캐시 정리용
   @@map("real_price_cache")
 }
+
+// 환경 변수 설정 테이블
+model EnvConfig {
+  id          String   @id @default(uuid())
+  key         String   @unique // 환경 변수 키 (예: OPENDATA_SERVICE_KEY)
+  value       String   @db.Text // 환경 변수 값 (암호화된 값)
+  displayName String   // 화면에 표시될 이름
+  description String?  @db.Text // 설명
+  category    String   // 카테고리 (api, webhook, system, notification 등)
+  isSecret    Boolean  @default(true) // 민감한 정보 여부 (화면에서 마스킹)
+  isActive    Boolean  @default(true) // 활성화 여부
+  updatedBy   String?  // 마지막 수정자 ID
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([category])
+  @@index([isActive])
+  @@map("env_configs")
+}
