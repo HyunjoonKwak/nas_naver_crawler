@@ -316,6 +316,7 @@ export default function Home() {
               label="등록 단지"
               value={stats.totalComplexes}
               color="green"
+              link="/complexes"
             />
             <StatCard
               icon="🏘️"
