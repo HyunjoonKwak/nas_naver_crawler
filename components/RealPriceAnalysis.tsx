@@ -60,6 +60,11 @@ interface ChartData {
   count: number;
 }
 
+interface PyeongChartData {
+  month: string;
+  [pyeong: string]: string | number; // 동적 평형별 가격 필드
+}
+
 interface RealPriceAnalysisProps {
   complexNo: string;
 }
@@ -70,8 +75,10 @@ export default function RealPriceAnalysis({ complexNo }: RealPriceAnalysisProps)
   const [data, setData] = useState<RealPriceData | null>(null);
   const [areaStats, setAreaStats] = useState<AreaStats[]>([]);
   const [chartData, setChartData] = useState<ChartData[]>([]);
+  const [pyeongChartData, setPyeongChartData] = useState<PyeongChartData[]>([]);
   const [months, setMonths] = useState(6);
   const [selectedArea, setSelectedArea] = useState<string>('all');
+  const [chartViewMode, setChartViewMode] = useState<'overall' | 'byPyeong'>('byPyeong'); // 차트 보기 모드
   const [sortField, setSortField] = useState<'date' | 'price' | 'area'>('date');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [currentPage, setCurrentPage] = useState(1);
@@ -187,30 +194,53 @@ export default function RealPriceAnalysis({ complexNo }: RealPriceAnalysisProps)
 
     setAreaStats(statsArray);
 
-    // 월별 차트 데이터 계산
-    const monthlyGroups: { [key: string]: number[] } = {};
+    // 월별 + 평형별 차트 데이터 계산
+    const monthlyPyeongGroups: { [monthKey: string]: { [pyeong: string]: number[] } } = {};
+
     rawData.items.forEach(item => {
       const monthKey = `${item.dealYear}.${String(item.dealMonth).padStart(2, '0')}`;
-      // dealPrice는 이미 원(won) 단위 숫자
-      const price = item.dealPrice;
+      const exclusivePyeong = Math.floor(item.exclusiveArea / 3.3058);
+      const pyeongKey = item.supplyPyeong !== null ? `${item.supplyPyeong}` : `${exclusivePyeong}`;
 
-      if (!monthlyGroups[monthKey]) {
-        monthlyGroups[monthKey] = [];
+      if (!monthlyPyeongGroups[monthKey]) {
+        monthlyPyeongGroups[monthKey] = {};
       }
-      monthlyGroups[monthKey].push(price);
+      if (!monthlyPyeongGroups[monthKey][pyeongKey]) {
+        monthlyPyeongGroups[monthKey][pyeongKey] = [];
+      }
+      monthlyPyeongGroups[monthKey][pyeongKey].push(item.dealPrice);
     });
 
-    const chartArray: ChartData[] = Object.entries(monthlyGroups)
+    // 월별 전체 평균 (기존 로직 유지)
+    const chartArray: ChartData[] = Object.entries(monthlyPyeongGroups)
       .sort((a, b) => a[0].localeCompare(b[0]))
-      .map(([month, prices]) => ({
-        month,
-        avgPrice: Math.floor(prices.reduce((a, b) => a + b, 0) / prices.length),
-        maxPrice: Math.max(...prices),
-        minPrice: Math.min(...prices),
-        count: prices.length,
-      }));
+      .map(([month, pyeongGroups]) => {
+        const allPrices = Object.values(pyeongGroups).flat();
+        return {
+          month,
+          avgPrice: Math.floor(allPrices.reduce((a, b) => a + b, 0) / allPrices.length),
+          maxPrice: Math.max(...allPrices),
+          minPrice: Math.min(...allPrices),
+          count: allPrices.length,
+        };
+      });
+
+    // 평형별 월별 차트 데이터 (평형별로 분리된 라인)
+    const pyeongChartArray: PyeongChartData[] = Object.entries(monthlyPyeongGroups)
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([month, pyeongGroups]) => {
+        const monthData: PyeongChartData = { month };
+
+        Object.entries(pyeongGroups).forEach(([pyeong, prices]) => {
+          const avgPrice = Math.floor(prices.reduce((a, b) => a + b, 0) / prices.length);
+          monthData[`${pyeong}평`] = avgPrice;
+        });
+
+        return monthData;
+      });
 
     setChartData(chartArray);
+    setPyeongChartData(pyeongChartArray);
   };
 
   const formatPrice = (price: number) => {
@@ -573,70 +603,140 @@ export default function RealPriceAnalysis({ complexNo }: RealPriceAnalysisProps)
 
       {/* 실거래가 추이 차트 */}
       <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
-        <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
-          <span>📈</span>
-          <span>월별 실거래가 추이</span>
-        </h3>
-        <ResponsiveContainer width="100%" height={350}>
-          <LineChart data={chartData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-            <XAxis
-              dataKey="month"
-              tick={{ fill: '#6b7280', fontSize: 12 }}
-              stroke="#9ca3af"
-            />
-            <YAxis
-              tickFormatter={formatChartPrice}
-              tick={{ fill: '#6b7280', fontSize: 12 }}
-              stroke="#9ca3af"
-            />
-            <Tooltip
-              formatter={(value: any) => formatPrice(value)}
-              contentStyle={{
-                backgroundColor: '#fff',
-                border: '1px solid #e5e7eb',
-                borderRadius: '8px',
-                padding: '12px'
-              }}
-              labelFormatter={(label) => `${label} (${chartData.find(d => d.month === label)?.count || 0}건)`}
-            />
-            <Legend
-              wrapperStyle={{ paddingTop: '20px' }}
-              formatter={(value) => {
-                if (value === 'avgPrice') return '평균가';
-                if (value === 'maxPrice') return '최고가';
-                if (value === 'minPrice') return '최저가';
-                return value;
-              }}
-            />
-            <Line
-              type="monotone"
-              dataKey="avgPrice"
-              stroke="#8b5cf6"
-              strokeWidth={3}
-              dot={{ fill: '#8b5cf6', r: 5 }}
-              name="avgPrice"
-            />
-            <Line
-              type="monotone"
-              dataKey="maxPrice"
-              stroke="#ef4444"
-              strokeWidth={2}
-              strokeDasharray="5 5"
-              dot={{ fill: '#ef4444', r: 4 }}
-              name="maxPrice"
-            />
-            <Line
-              type="monotone"
-              dataKey="minPrice"
-              stroke="#10b981"
-              strokeWidth={2}
-              strokeDasharray="5 5"
-              dot={{ fill: '#10b981', r: 4 }}
-              name="minPrice"
-            />
-          </LineChart>
-        </ResponsiveContainer>
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+            <span>📈</span>
+            <span>월별 실거래가 추이</span>
+          </h3>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setChartViewMode('byPyeong')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                chartViewMode === 'byPyeong'
+                  ? 'bg-purple-600 text-white shadow-lg'
+                  : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
+              }`}
+            >
+              평형별 분석
+            </button>
+            <button
+              onClick={() => setChartViewMode('overall')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                chartViewMode === 'overall'
+                  ? 'bg-purple-600 text-white shadow-lg'
+                  : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
+              }`}
+            >
+              전체 평균
+            </button>
+          </div>
+        </div>
+        {chartViewMode === 'overall' ? (
+          <ResponsiveContainer width="100%" height={350}>
+            <LineChart data={chartData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+              <XAxis
+                dataKey="month"
+                tick={{ fill: '#6b7280', fontSize: 12 }}
+                stroke="#9ca3af"
+              />
+              <YAxis
+                tickFormatter={formatChartPrice}
+                tick={{ fill: '#6b7280', fontSize: 12 }}
+                stroke="#9ca3af"
+              />
+              <Tooltip
+                formatter={(value: any) => formatPrice(value)}
+                contentStyle={{
+                  backgroundColor: '#fff',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '8px',
+                  padding: '12px'
+                }}
+                labelFormatter={(label) => `${label} (${chartData.find(d => d.month === label)?.count || 0}건)`}
+              />
+              <Legend
+                wrapperStyle={{ paddingTop: '20px' }}
+                formatter={(value) => {
+                  if (value === 'avgPrice') return '평균가';
+                  if (value === 'maxPrice') return '최고가';
+                  if (value === 'minPrice') return '최저가';
+                  return value;
+                }}
+              />
+              <Line
+                type="monotone"
+                dataKey="avgPrice"
+                stroke="#8b5cf6"
+                strokeWidth={3}
+                dot={{ fill: '#8b5cf6', r: 5 }}
+                name="avgPrice"
+              />
+              <Line
+                type="monotone"
+                dataKey="maxPrice"
+                stroke="#ef4444"
+                strokeWidth={2}
+                strokeDasharray="5 5"
+                dot={{ fill: '#ef4444', r: 4 }}
+                name="maxPrice"
+              />
+              <Line
+                type="monotone"
+                dataKey="minPrice"
+                stroke="#10b981"
+                strokeWidth={2}
+                strokeDasharray="5 5"
+                dot={{ fill: '#10b981', r: 4 }}
+                name="minPrice"
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        ) : (
+          <ResponsiveContainer width="100%" height={350}>
+            <LineChart data={pyeongChartData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+              <XAxis
+                dataKey="month"
+                tick={{ fill: '#6b7280', fontSize: 12 }}
+                stroke="#9ca3af"
+              />
+              <YAxis
+                tickFormatter={formatChartPrice}
+                tick={{ fill: '#6b7280', fontSize: 12 }}
+                stroke="#9ca3af"
+              />
+              <Tooltip
+                formatter={(value: any) => formatPrice(value)}
+                contentStyle={{
+                  backgroundColor: '#fff',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '8px',
+                  padding: '12px'
+                }}
+              />
+              <Legend wrapperStyle={{ paddingTop: '20px' }} />
+              {/* 동적으로 평형별 Line 생성 */}
+              {areaStats.map((stat, index) => {
+                const colors = ['#8b5cf6', '#ef4444', '#10b981', '#f59e0b', '#3b82f6', '#ec4899'];
+                const pyeongKey = `${stat.areaType.split('평')[0]}평`;
+
+                return (
+                  <Line
+                    key={pyeongKey}
+                    type="monotone"
+                    dataKey={pyeongKey}
+                    stroke={colors[index % colors.length]}
+                    strokeWidth={2}
+                    dot={{ fill: colors[index % colors.length], r: 4 }}
+                    name={stat.areaType}
+                    connectNulls
+                  />
+                );
+              })}
+            </LineChart>
+          </ResponsiveContainer>
+        )}
       </div>
 
       {/* 실거래 내역 테이블 */}
