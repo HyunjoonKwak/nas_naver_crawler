@@ -214,7 +214,18 @@ class NASNaverRealEstateCrawler:
                     '--disable-ipc-flooding-protection',
                     '--disable-renderer-backgrounding',
                     '--memory-pressure-off',
-                    '--js-flags=--max-old-space-size=512'  # V8 힙 크기 512MB로 제한 (메모리 절약)
+                    '--js-flags=--max-old-space-size=512',  # V8 힙 크기 512MB로 제한 (메모리 절약)
+                    # 🚀 추가 성능 최적화 (초기화 속도 개선)
+                    '--disable-blink-features=AutomationControlled',  # 봇 감지 회피
+                    '--disable-sync',  # 동기화 비활성화
+                    '--disable-translate',  # 번역 기능 비활성화
+                    '--disable-default-apps',  # 기본 앱 비활성화
+                    '--no-first-run',  # 첫 실행 프로세스 스킵
+                    '--no-default-browser-check',  # 기본 브라우저 체크 스킵
+                    '--disable-component-update',  # 컴포넌트 업데이트 비활성화
+                    '--disable-domain-reliability',  # 도메인 신뢰성 체크 비활성화
+                    '--metrics-recording-only',  # 메트릭 기록만 (UMA 비활성화)
+                    '--mute-audio',  # 오디오 음소거
                 ]
             }
 
@@ -240,7 +251,16 @@ class NASNaverRealEstateCrawler:
             self.page = await self.context.new_page()
             print(f"⏱️  페이지 생성: {time.time() - start:.2f}초")
 
-            # 5. 타임아웃 설정
+            # 5. 불필요한 리소스 차단 (속도 개선)
+            start = time.time()
+            await self.page.route("**/*.{png,jpg,jpeg,gif,svg,webp,ico}", lambda route: route.abort())
+            await self.page.route("**/*.{woff,woff2,ttf,eot}", lambda route: route.abort())
+            await self.page.route("**/gtm.js", lambda route: route.abort())
+            await self.page.route("**/analytics.js", lambda route: route.abort())
+            await self.page.route("**/ga.js", lambda route: route.abort())
+            print(f"⏱️  리소스 차단 설정: {time.time() - start:.2f}초")
+
+            # 6. 타임아웃 설정
             self.page.set_default_timeout(self.timeout)
 
             print("✅ 브라우저 설정 완료")
