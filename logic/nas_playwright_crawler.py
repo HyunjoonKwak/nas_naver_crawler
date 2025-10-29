@@ -1007,7 +1007,12 @@ class NASNaverRealEstateCrawler:
                     # 최근 실거래가
                     real_price = overview.get('realPrice')
                     if real_price:
-                        trade_date = f"{real_price.get('tradeYear')}.{real_price.get('tradeMonth'):02d}.{real_price.get('tradeDate'):02d}"
+                        # 타입 안전하게 변환 (문자열/정수 모두 처리)
+                        trade_year = str(real_price.get('tradeYear', ''))
+                        trade_month = int(real_price.get('tradeMonth', 0)) if real_price.get('tradeMonth') else 0
+                        trade_day = int(real_price.get('tradeDate', 0)) if real_price.get('tradeDate') else 0
+
+                        trade_date = f"{trade_year}.{trade_month:02d}.{trade_day:02d}"
                         price = real_price.get('formattedPrice', '')
                         floor = real_price.get('floor', '')
                         area = real_price.get('representativeArea', '')
