@@ -765,7 +765,7 @@ class NASNaverRealEstateCrawler:
                     
                     if clicked:
                         print("[DEBUG] 체크박스 클릭 완료, 데이터 재로딩 대기...")
-                        await asyncio.sleep(3)
+                        await asyncio.sleep(7)  # 네이버 부동산 재로딩 시간 고려하여 증가
                         print("✅ 동일매물 묶기 활성화 완료")
                     else:
                         print("[DEBUG] 체크박스를 찾지 못함")
@@ -790,8 +790,8 @@ class NASNaverRealEstateCrawler:
                 while not list_container and container_retry_count < max_container_retries:
                     if container_retry_count > 0:
                         print(f"⚠️  컨테이너를 찾지 못했습니다. 페이지 새로고침 후 재시도 ({container_retry_count}/{max_container_retries})...")
-                        await self.page.reload(wait_until='domcontentloaded', timeout=30000)
-                        await asyncio.sleep(3)
+                        await self.page.reload(wait_until='domcontentloaded', timeout=60000)
+                        await asyncio.sleep(5)  # 로드 후 충분한 대기 시간
 
                         # 매물 탭 다시 클릭
                         try:
