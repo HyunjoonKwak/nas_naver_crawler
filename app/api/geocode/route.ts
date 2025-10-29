@@ -60,9 +60,17 @@ async function getAccessToken(serviceId: string, securityKey: string): Promise<s
 
   // 새 AccessToken 발급
   console.log('[SGIS Auth] 🔑 새 AccessToken 발급 시작');
-  const authUrl = `https://sgisapi.kostat.go.kr/OpenAPI3/auth/authentication.json?consumer_key=${serviceId}&consumer_secret=${securityKey}`;
+  // 캐싱 방지를 위해 타임스탬프 추가
+  const timestamp = Date.now();
+  const authUrl = `https://sgisapi.kostat.go.kr/OpenAPI3/auth/authentication.json?consumer_key=${serviceId}&consumer_secret=${securityKey}&_t=${timestamp}`;
 
-  const response = await fetch(authUrl);
+  const response = await fetch(authUrl, {
+    cache: 'no-store', // 브라우저/fetch 캐싱 방지
+    headers: {
+      'Cache-Control': 'no-cache',
+      'Pragma': 'no-cache'
+    }
+  });
 
   if (!response.ok) {
     throw new Error(`인증 실패: ${response.status} ${response.statusText}`);
@@ -137,13 +145,21 @@ export async function GET(request: NextRequest) {
     }
 
     // SGIS Reverse Geocoding API 호출 (WGS84 좌표계)
-    const apiUrl = `https://sgisapi.kostat.go.kr/OpenAPI3/addr/rgeocodewgs84.json?accessToken=${accessToken}&x_coor=${longitude}&y_coor=${latitude}&addr_type=20`;
+    // 캐싱 방지를 위해 타임스탬프 추가
+    const timestamp = Date.now();
+    const apiUrl = `https://sgisapi.kostat.go.kr/OpenAPI3/addr/rgeocodewgs84.json?accessToken=${accessToken}&x_coor=${longitude}&y_coor=${latitude}&addr_type=20&_t=${timestamp}`;
 
     console.log(`[SGIS Geocoding] 🗺️  Reverse Geocoding 호출 시작`);
     console.log(`[SGIS Geocoding]   좌표: ${latitude}, ${longitude}`);
     console.log(`[SGIS Geocoding]   URL: ${apiUrl.replace(accessToken, '***')}`);
 
-    const response = await fetch(apiUrl);
+    const response = await fetch(apiUrl, {
+      cache: 'no-store',
+      headers: {
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache'
+      }
+    });
 
     if (!response.ok) {
       const errorText = await response.text();
