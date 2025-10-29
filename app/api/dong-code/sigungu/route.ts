@@ -30,15 +30,25 @@ export async function GET(request: NextRequest) {
         if (!sigunguSet.has(entry.sggCode)) {
           sigunguSet.add(entry.sggCode);
 
-          // dongName에서 시/도를 제외한 나머지 부분 추출
-          // 예: "경기도 수원시 장안구" → "수원시 장안구"
-          // 예: "경기도 화성시" → "화성시"
-          const parts = entry.dongName.split(' ');
-          const nameWithoutSido = parts.slice(1).join(' ');
+          // 시/군/구 이름 구성:
+          // - 구가 있는 경우 (00000으로 끝남): "수원시 장안구"
+          // - 구가 없는 경우: "광명시", "평택시" (읍/면/동 제외)
+          let displayName: string;
+
+          if (entry.fullCode.endsWith('00000')) {
+            // 구 레벨: dongName에서 시/도 제외하고 전체 표시
+            // 예: "경기도 수원시 장안구" → "수원시 장안구"
+            const parts = entry.dongName.split(' ');
+            displayName = parts.slice(1).join(' ');
+          } else {
+            // 시/군 레벨: sigungu만 표시 (동/읍/면 제외)
+            // 예: "광명시", "평택시"
+            displayName = entry.sigungu;
+          }
 
           sigunguList.push({
             code: entry.sggCode.substring(2, 5), // 3자리 시군구 코드 (2~5번째)
-            name: nameWithoutSido,
+            name: displayName,
             fullCode: entry.sggCode, // 5자리 전체 코드
           });
         }
