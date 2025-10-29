@@ -187,8 +187,13 @@ class NASNaverRealEstateCrawler:
     async def setup_browser(self):
         """브라우저 설정 및 초기화"""
         try:
+            import time
+
+            # 1. Playwright 시작
+            start = time.time()
             playwright = await async_playwright().start()
-            
+            print(f"⏱️  Playwright 시작: {time.time() - start:.2f}초")
+
             # 브라우저 옵션 설정 (NAS 환경에 최적화)
             browser_options = {
                 'headless': self.headless,
@@ -212,11 +217,14 @@ class NASNaverRealEstateCrawler:
                     '--js-flags=--max-old-space-size=512'  # V8 힙 크기 512MB로 제한 (메모리 절약)
                 ]
             }
-            
-            # Chrome 브라우저 실행
+
+            # 2. Chrome 브라우저 실행
+            start = time.time()
             self.browser = await playwright.chromium.launch(**browser_options)
-            
-            # 컨텍스트 생성 (쿠키, 세션 관리)
+            print(f"⏱️  Chromium 실행: {time.time() - start:.2f}초")
+
+            # 3. 컨텍스트 생성 (쿠키, 세션 관리)
+            start = time.time()
             self.context = await self.browser.new_context(
                 viewport={'width': 1920, 'height': 1080},
                 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
@@ -225,17 +233,20 @@ class NASNaverRealEstateCrawler:
                     'Accept-Encoding': 'gzip, deflate, br',
                 }
             )
-            
-            # 페이지 생성
+            print(f"⏱️  컨텍스트 생성: {time.time() - start:.2f}초")
+
+            # 4. 페이지 생성
+            start = time.time()
             self.page = await self.context.new_page()
-            
-            # 타임아웃 설정
+            print(f"⏱️  페이지 생성: {time.time() - start:.2f}초")
+
+            # 5. 타임아웃 설정
             self.page.set_default_timeout(self.timeout)
-            
-            print("브라우저 설정 완료")
-            
+
+            print("✅ 브라우저 설정 완료")
+
         except Exception as e:
-            print(f"브라우저 설정 실패: {e}")
+            print(f"❌ 브라우저 설정 실패: {e}")
             raise
 
     async def close_browser(self):
@@ -1262,15 +1273,21 @@ class NASNaverRealEstateCrawler:
 
     async def run_crawling(self, complex_numbers: List[str]):
         """크롤링 실행"""
+        import time
+
         # 상태 파일 및 시작 시간 설정
         timestamp = get_kst_now().strftime("%Y%m%d_%H%M%S")
         self.status_file = self.output_dir / f"crawl_status_{timestamp}.json"
         self.start_time = get_kst_now()  # 시작 시간 기록
-        
+
         try:
             # 브라우저 설정
+            setup_start = time.time()
+            print("⏱️  브라우저 설정 시작...")
             await self.setup_browser()
-            
+            setup_duration = time.time() - setup_start
+            print(f"⏱️  브라우저 설정 총 소요시간: {setup_duration:.2f}초")
+
             # 크롤링 시작 상태 업데이트
             self.update_status(
                 status="running",
