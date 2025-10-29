@@ -55,11 +55,15 @@ export function loadDongCodeData(): DongCodeEntry[] {
           return null;
         }
 
-        // 주소 파싱 (예: "서울특별시 종로구 청운동")
+        // 주소 파싱 (예: "서울특별시 종로구 청운동", "경기도 수원시 장안구 파장동")
         const parts = dongName.split(' ');
         const sido = parts[0] || '';
         const sigungu = parts[1] || '';
-        const dongOnly = parts.slice(2).join(' ') || '';
+
+        // dongOnly 추출: 마지막 토큰만 (동/읍/면 이름)
+        // 예: "경기도 수원시 장안구 파장동" → "파장동"
+        // 예: "경기도 광명시 광명동" → "광명동"
+        const dongOnly = parts[parts.length - 1] || '';
 
         return {
           fullCode,
