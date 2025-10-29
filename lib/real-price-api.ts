@@ -72,7 +72,8 @@ export interface ProcessedRealPrice {
   buildYear: number;                // 건축년도
 
   // 기타
-  dealType: string;                 // 거래유형 (직거래/중개거래)
+  tradeType: string;                // 거래유형 (매매/전세/월세)
+  dealMethod: string;               // 거래방법 (직거래/중개거래)
   pricePerPyeong: number;           // 평당 가격
   rgstDate: string;                 // 등록일자 (등기 여부 판단용)
 }
@@ -171,7 +172,8 @@ export function processRealPriceItem(item: RealPriceItem, debug = false): Proces
     floor: parseInt(item.floor, 10),
     buildYear: parseInt(item.buildYear, 10),
 
-    dealType: item.dealingGbn || item.cdealType || '직거래',
+    tradeType: item.dealingGbn || '매매', // 거래유형: 매매/전세/월세 (기본값: 매매)
+    dealMethod: item.cdealType || '중개거래', // 거래방법: 직거래/중개거래 (기본값: 중개거래)
     pricePerPyeong: Math.round(dealPrice / areaPyeong),
     rgstDate: (item.rgstDate || '').trim(), // 등록일자
   };

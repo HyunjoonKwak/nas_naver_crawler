@@ -28,7 +28,8 @@ interface RealPriceItem {
   areaPyeong: number;
   floor: number;
   buildYear: number;
-  dealType: string;
+  tradeType: string; // 거래유형 (매매/전세/월세)
+  dealMethod: string; // 거래방법 (직거래/중개거래)
   pricePerPyeong: number;
   rgstDate: string;
 }
@@ -66,6 +67,9 @@ export default function RealPricePage() {
   const [maxFloor, setMaxFloor] = useState("");
   const [minBuildYear, setMinBuildYear] = useState("");
   const [maxBuildYear, setMaxBuildYear] = useState("");
+
+  // 아파트별 매물 목록 정렬 상태 (key: aptName, value: {sortBy, sortOrder})
+  const [itemSorts, setItemSorts] = useState<Record<string, {sortBy: 'dealDate' | 'area' | 'dong' | 'floor', sortOrder: 'asc' | 'desc'}>>({});
 
   // 비교 기능
   const [selectedForComparison, setSelectedForComparison] = useState<Set<string>>(new Set());
@@ -106,10 +110,10 @@ export default function RealPricePage() {
       );
     }
 
-    // 거래 유형 필터링
+    // 거래 유형 필터링 (tradeType 사용)
     if (tradeTypes.length > 0) {
       filteredItems = filteredItems.filter(item =>
-        tradeTypes.includes(item.dealType)
+        tradeTypes.includes(item.tradeType)
       );
     }
 
@@ -249,6 +253,45 @@ export default function RealPricePage() {
         newSet.add(aptName);
       }
       return newSet;
+    });
+  };
+
+  // 아파트별 매물 정렬 변경
+  const setItemSort = (aptName: string, sortBy: 'dealDate' | 'area' | 'dong' | 'floor') => {
+    setItemSorts(prev => {
+      const current = prev[aptName];
+      const newSortOrder = current?.sortBy === sortBy && current?.sortOrder === 'desc' ? 'asc' : 'desc';
+      return {
+        ...prev,
+        [aptName]: { sortBy, sortOrder: newSortOrder }
+      };
+    });
+  };
+
+  // 아파트별 매물 정렬 적용
+  const getSortedItems = (aptName: string, items: RealPriceItem[]) => {
+    const sort = itemSorts[aptName];
+    if (!sort) return items;
+
+    return [...items].sort((a, b) => {
+      let compareValue = 0;
+
+      switch (sort.sortBy) {
+        case 'dealDate':
+          compareValue = a.dealDate.localeCompare(b.dealDate);
+          break;
+        case 'area':
+          compareValue = a.area - b.area;
+          break;
+        case 'dong':
+          compareValue = (a.aptDong || '').localeCompare(b.aptDong || '');
+          break;
+        case 'floor':
+          compareValue = a.floor - b.floor;
+          break;
+      }
+
+      return sort.sortOrder === 'asc' ? compareValue : -compareValue;
     });
   };
 
@@ -408,6 +451,7 @@ export default function RealPricePage() {
       const headers = [
         '아파트명',
         '거래유형',
+        '거래방법',
         '거래가격',
         '평당가격',
         '거래일',
@@ -424,7 +468,8 @@ export default function RealPricePage() {
       const rows = groupedResults.flatMap(group =>
         group.items.map(item => [
           item.aptName,
-          item.dealType,
+          item.tradeType,
+          item.dealMethod,
           item.dealPriceFormatted,
           `${(item.pricePerPyeong / 10000).toFixed(0)}만원`,
           item.dealDate,
@@ -1033,23 +1078,62 @@ export default function RealPricePage() {
                               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                                 거래금액
                               </th>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                                전용면적
+                              <th
+                                className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
+                                onClick={() => setItemSort(group.aptName, 'area')}
+                                title="클릭하여 정렬"
+                              >
+                                <div className="flex items-center gap-1">
+                                  전용면적
+                                  {itemSorts[group.aptName]?.sortBy === 'area' && (
+                                    <span>{itemSorts[group.aptName].sortOrder === 'desc' ? '↓' : '↑'}</span>
+                                  )}
+                                </div>
                               </th>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                                동
+                              <th
+                                className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
+                                onClick={() => setItemSort(group.aptName, 'dong')}
+                                title="클릭하여 정렬"
+                              >
+                                <div className="flex items-center gap-1">
+                                  동
+                                  {itemSorts[group.aptName]?.sortBy === 'dong' && (
+                                    <span>{itemSorts[group.aptName].sortOrder === 'desc' ? '↓' : '↑'}</span>
+                                  )}
+                                </div>
                               </th>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                                층
+                              <th
+                                className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
+                                onClick={() => setItemSort(group.aptName, 'floor')}
+                                title="클릭하여 정렬"
+                              >
+                                <div className="flex items-center gap-1">
+                                  층
+                                  {itemSorts[group.aptName]?.sortBy === 'floor' && (
+                                    <span>{itemSorts[group.aptName].sortOrder === 'desc' ? '↓' : '↑'}</span>
+                                  )}
+                                </div>
                               </th>
                               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                                 건축년도
                               </th>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                                거래일
+                              <th
+                                className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
+                                onClick={() => setItemSort(group.aptName, 'dealDate')}
+                                title="클릭하여 정렬"
+                              >
+                                <div className="flex items-center gap-1">
+                                  거래일
+                                  {itemSorts[group.aptName]?.sortBy === 'dealDate' && (
+                                    <span>{itemSorts[group.aptName].sortOrder === 'desc' ? '↓' : '↑'}</span>
+                                  )}
+                                </div>
                               </th>
                               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                                 거래유형
+                              </th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                                거래방법
                               </th>
                               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                                 위치
@@ -1057,7 +1141,7 @@ export default function RealPricePage() {
                             </tr>
                           </thead>
                           <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                            {group.items.map((item, index) => (
+                            {getSortedItems(group.aptName, group.items).map((item, index) => (
                               <tr key={index} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                                 <td className="px-4 py-3 whitespace-nowrap">
                                   <div className="text-sm font-semibold text-blue-600 dark:text-blue-400">
@@ -1092,8 +1176,17 @@ export default function RealPricePage() {
                                     </div>
                                   )}
                                 </td>
-                                <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                                  {item.dealType}
+                                <td className="px-4 py-3 whitespace-nowrap">
+                                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                    item.tradeType === '매매' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300' :
+                                    item.tradeType === '전세' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' :
+                                    'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300'
+                                  }`}>
+                                    {item.tradeType}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-600 dark:text-gray-400">
+                                  {item.dealMethod}
                                 </td>
                                 <td className="px-4 py-3">
                                   <div className="text-sm text-gray-900 dark:text-white font-medium">
