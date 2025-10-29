@@ -69,10 +69,11 @@ export default function DongCodeSelector({ onSelect, value }: DongCodeSelectorPr
         const sidoName = sidoList.find(s => s.code === selectedSido)?.name || "";
         onSelect(selected.fullCode, `${sidoName} ${selected.name}`);
 
-        // 읍/면/동 목록도 로드 (선택 사항)
+        // 읍/면/동 목록 초기화 후 새로 로드
+        setDongList([]);
+        setSelectedDong("");
         loadDongList(selected.fullCode);
       }
-      setSelectedDong("");
     }
   }, [selectedSigungu]);
 
