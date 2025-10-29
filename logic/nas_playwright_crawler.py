@@ -398,129 +398,74 @@ class NASNaverRealEstateCrawler:
         return None
 
     async def crawl_complex_overview(self, complex_no: str) -> Optional[Dict]:
-        """단지 개요 정보 크롤링 (page.reload() 제거, goto() 사용)"""
+        """단지 개요 정보 크롤링 (명시적 API 대기 방식)"""
         try:
             print(f"단지 개요 정보 크롤링 시작: {complex_no}")
 
-            # 네트워크 요청 모니터링하여 API 응답 캐치
+            # 네이버 부동산 단지 페이지 접속
+            url = f"https://new.land.naver.com/complexes/{complex_no}"
             overview_data = None
 
-            async def handle_response(response):
-                nonlocal overview_data
-                if f'/api/complexes/overview/{complex_no}' in response.url:
+            try:
+                try:
+                    # 명시적으로 Overview API 응답을 기다림 (최대 30초)
+                    print(f"[대기] Overview API 응답 대기 중...")
+                    async with self.page.expect_response(
+                        lambda response: f'/api/complexes/overview/{complex_no}' in response.url,
+                        timeout=self.timeout
+                    ) as response_info:
+                        # 페이지 접속과 동시에 API 응답 대기
+                        await self.page.goto(url, wait_until='commit', timeout=self.timeout)
+
+                    # API 응답 받기
+                    response = await response_info.value
+
                     # Protocol Error 재시도 로직
                     max_retries = 3
                     for attempt in range(max_retries):
                         try:
-                            # 즉시 body 읽기 (리소스 정리 전에)
-                            data = await response.json()
-                            overview_data = data
-                            print(f"단지 개요 API 응답 캐치됨: {data.get('complexName', 'Unknown')}")
-                            break  # 성공하면 루프 종료
+                            overview_data = await response.json()
+                            print(f"✅ 단지 개요 API 응답 수신 성공: {overview_data.get('complexName', 'Unknown')}")
+                            break
                         except Exception as e:
                             if attempt < max_retries - 1:
                                 print(f"API 응답 파싱 실패 (재시도 {attempt + 1}/{max_retries}): {e}")
-                                await asyncio.sleep(0.5)  # 0.5초 대기 후 재시도
+                                await asyncio.sleep(0.5)
                             else:
                                 print(f"API 응답 파싱 최종 실패: {e}")
+                                raise
 
-            # 응답 핸들러 등록
-            self.page.on('response', handle_response)
+                except Exception as api_wait_error:
+                    # API 응답 대기 실패 (타임아웃 등)
+                    print(f"⚠️ Overview API 응답 대기 실패: {api_wait_error}")
 
-            # 네이버 부동산 단지 페이지 접속
-            url = f"https://new.land.naver.com/complexes/{complex_no}"
-            try:
-                try:
-                    # wait_until='commit'로 변경 (네트워크 요청만 성공하면 OK, DOM 로딩 기다리지 않음)
-                    await self.page.goto(url, wait_until='commit', timeout=self.timeout)
-
-                    # ✅ 접속 직후 스크린샷 저장 (봇 탐지 확인용)
-                    initial_screenshot_path = self.output_dir / f"initial_page_{complex_no}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
+                    # 스크린샷 저장 시도
+                    screenshot_path = self.output_dir / f"api_timeout_{complex_no}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
                     try:
-                        await self.page.screenshot(path=str(initial_screenshot_path), full_page=True, timeout=5000)
-                        print(f"📸 접속 직후 스크린샷 저장: {initial_screenshot_path}")
+                        await self.page.screenshot(path=str(screenshot_path), full_page=True, timeout=5000)
+                        print(f"📸 타임아웃 스크린샷 저장: {screenshot_path}")
                     except Exception as ss_error:
-                        print(f"[WARNING] 초기 스크린샷 저장 실패: {ss_error}")
+                        print(f"[WARNING] 스크린샷 저장 실패: {ss_error}")
 
-                    # 현재 URL 확인 (404 리다이렉트 감지)
+                    # URL 확인
                     current_url = self.page.url
                     print(f"현재 URL: {current_url}")
 
                     # 봇 탐지 패턴 분석
                     if '/404' in current_url:
                         print(f"⚠️ 404 페이지로 리다이렉트 감지! {url} → {current_url}")
-                        print(f"   이것은 봇 탐지입니다.")
                     elif f'/complexes/{complex_no}' not in current_url:
-                        # 단지 ID가 URL에서 제거됨 (예: /complexes/22065 → /complexes?ms=0,0,0)
                         print(f"⚠️ 봇 탐지로 인한 리다이렉트 감지! {url} → {current_url}")
-                        print(f"   단지 ID가 URL에서 제거되었습니다. 이것은 봇 탐지입니다.")
+                        print(f"   단지 ID가 URL에서 제거되었습니다.")
                     elif current_url.startswith(f'https://new.land.naver.com/complexes/{complex_no}'):
-                        # 단지 ID가 유지되고 쿼리스트링만 추가됨 (정상)
                         if '?' in current_url:
-                            print(f"✅ 정상 접속 확인 (쿼리스트링 자동 추가됨): {current_url}")
+                            print(f"✅ URL은 정상이나 API 응답 없음: {current_url}")
                         else:
-                            print(f"✅ 정상 접속 확인: {current_url}")
-                    else:
-                        # 예상치 못한 리다이렉트
-                        print(f"⚠️ 예상치 못한 리다이렉트: {url} → {current_url}")
+                            print(f"✅ URL은 정상이나 API 응답 없음: {current_url}")
 
-                except Exception as goto_error:
-                    # 타임아웃 발생 시 스크린샷 저장 (별도 타임아웃 5초)
-                    screenshot_path = self.output_dir / f"timeout_screenshot_{complex_no}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
-                    try:
-                        await self.page.screenshot(path=str(screenshot_path), full_page=True, timeout=5000)
-                        print(f"🖼️  타임아웃 스크린샷 저장: {screenshot_path}")
-                    except Exception as ss_error:
-                        print(f"[WARNING] 스크린샷 저장 실패: {ss_error}")
-                    # 원래 에러 다시 발생
-                    raise goto_error
-
-                # API 응답 대기
-                await asyncio.sleep(3)
-
-                # 응답이 없으면 reload 대신 goto 재시도
-                if not overview_data:
-                    print("Overview 데이터 없음, 페이지 재접속 (goto)...")
-                    # reload() 대신 goto() 사용 (CDP 리소스 정리 문제 회피)
-                    try:
-                        await self.page.goto(url, wait_until='commit', timeout=self.timeout)
-
-                        # ✅ 재접속 후에도 URL 확인
-                        retry_url = self.page.url
-                        print(f"재접속 후 URL: {retry_url}")
-
-                        # 봇 탐지 패턴 분석
-                        if '/404' in retry_url:
-                            print(f"⚠️ [재시도] 404 페이지로 리다이렉트 감지! {url} → {retry_url}")
-                            print(f"   이것은 봇 탐지입니다.")
-                        elif f'/complexes/{complex_no}' not in retry_url:
-                            print(f"⚠️ [재시도] 봇 탐지로 인한 리다이렉트 감지! {url} → {retry_url}")
-                            print(f"   단지 ID가 URL에서 제거되었습니다.")
-                        elif retry_url.startswith(f'https://new.land.naver.com/complexes/{complex_no}'):
-                            if '?' in retry_url:
-                                print(f"✅ [재시도] 정상 접속 확인 (쿼리스트링 자동 추가됨): {retry_url}")
-                            else:
-                                print(f"✅ [재시도] 정상 접속 확인: {retry_url}")
-                        else:
-                            print(f"⚠️ [재시도] 예상치 못한 리다이렉트: {url} → {retry_url}")
-
-                    except Exception as goto_error2:
-                        # 재시도 타임아웃 시에도 스크린샷 (별도 타임아웃 5초)
-                        screenshot_path = self.output_dir / f"timeout_retry_screenshot_{complex_no}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
-                        try:
-                            await self.page.screenshot(path=str(screenshot_path), full_page=True, timeout=5000)
-                            print(f"🖼️  재시도 타임아웃 스크린샷 저장: {screenshot_path}")
-                        except Exception as ss_error:
-                            print(f"[WARNING] 스크린샷 저장 실패: {ss_error}")
-                        raise goto_error2
-                    await asyncio.sleep(3)
-            finally:
-                # 응답 핸들러 제거 (에러 발생해도 반드시 실행)
-                try:
-                    self.page.remove_listener('response', handle_response)
-                    print(f"[DEBUG] Response 핸들러 제거 완료")
-                except Exception as e:
-                    print(f"[WARNING] 핸들러 제거 실패: 'response' - {e}")
+            except Exception as e:
+                print(f"단지 개요 크롤링 중 오류: {e}")
+                raise
 
             if overview_data:
                 print(f"✅ Overview 수집 성공: {overview_data.get('complexName', 'Unknown')}")
