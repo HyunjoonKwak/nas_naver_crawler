@@ -256,8 +256,9 @@ export const Navigation = () => {
       submenu: [
         { href: '/alerts', label: '매물 알림', icon: Bell },
         { href: '/scheduler', label: '스케줄러', icon: Clock },
-        { href: '/settings/env-config', label: '환경 변수', icon: Key },
-        { href: '/system', label: '시스템', icon: Cog },
+        { href: '/settings/my-env', label: '내 환경 변수', icon: Key },
+        { href: '/settings/system-env', label: '시스템 설정', icon: Cog, adminOnly: true },
+        { href: '/system', label: '시스템 정보', icon: Cog },
       ]
     },
   ];
@@ -326,7 +327,9 @@ export const Navigation = () => {
                     {isOpen && (
                       <div className="absolute right-0 top-full mt-2 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50">
                         <div className="py-2">
-                          {link.submenu.map((subItem) => {
+                          {link.submenu
+                            .filter((subItem: any) => !subItem.adminOnly || session?.user?.role === 'ADMIN')
+                            .map((subItem: any) => {
                             const SubIcon = subItem.icon;
                             return (
                               <Link
@@ -708,7 +711,9 @@ export const Navigation = () => {
                       {/* 아코디언 서브메뉴 */}
                       {isOpen && (
                         <div className="mt-1 ml-4 space-y-1">
-                          {link.submenu.map((subItem) => {
+                          {link.submenu
+                            .filter((subItem: any) => !subItem.adminOnly || session?.user?.role === 'ADMIN')
+                            .map((subItem: any) => {
                             const SubIcon = subItem.icon;
                             return (
                               <Link
