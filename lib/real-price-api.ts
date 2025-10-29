@@ -39,9 +39,9 @@ export interface RealPriceItem {
 
   // 기타
   aptSeq: string;                   // 일련번호
-  cdealType: string;                // 거래유형 (직거래, 중개거래)
+  cdealType: string;                // 해제 여부 (O: 해제, 공백: 정상) - 실제로는 거의 사용 안 함
   cdealDay: string;                 // 해제사유발생일
-  dealingGbn: string;               // 거래구분 (매매, 전세 등)
+  dealingGbn: string;               // 거래방법 (직거래, 중개거래)
   estateAgentSggNm: string;         // 중개사소재지
   rgstDate: string;                 // 등록일자
   slerGbn: string;                  // 매도자구분
@@ -146,24 +146,15 @@ function toPyeong(squareMeter: number): number {
 /**
  * 원본 데이터를 사용자 친화적 형식으로 변환
  */
-export function processRealPriceItem(item: RealPriceItem, debug = false): ProcessedRealPrice {
+export function processRealPriceItem(item: RealPriceItem): ProcessedRealPrice {
   const dealPrice = parsePrice(item.dealAmount);
   const area = parseFloat(item.excluUseAr);
   const areaPyeong = toPyeong(area);
 
-  // 거래방법 결정
-  const dealMethod = item.cdealType && item.cdealType.trim() !== '' ? item.cdealType : '중개거래';
-
-  // 디버그: 처리 결과 출력
-  if (debug) {
-    console.log('[Real Price API Debug] Processing:', {
-      aptNm: item.aptNm,
-      dealDate: `${item.dealYear}-${item.dealMonth}-${item.dealDay}`,
-      'cdealType (raw)': item.cdealType,
-      'dealMethod (processed)': dealMethod,
-      'dealingGbn (raw)': item.dealingGbn
-    });
-  }
+  // 거래방법 결정: dealingGbn 필드 사용 (직거래/중개거래)
+  const dealMethod = item.dealingGbn && item.dealingGbn.trim() !== ''
+    ? item.dealingGbn.trim()
+    : '중개거래';
 
   return {
     aptName: item.aptNm,
@@ -183,7 +174,7 @@ export function processRealPriceItem(item: RealPriceItem, debug = false): Proces
 
     // 거래유형: 아파트 매매 API는 매매만 제공하므로 '매매'로 고정
     tradeType: '매매',
-    // 거래방법: API 응답의 cdealType 사용 (없으면 중개거래로 추정)
+    // 거래방법: dealingGbn 사용 (직거래/중개거래)
     dealMethod: dealMethod,
     pricePerPyeong: Math.round(dealPrice / areaPyeong),
     rgstDate: (item.rgstDate || '').trim(), // 등록일자
@@ -262,19 +253,7 @@ export class RealPriceApiClient {
       // 데이터 가공
       const processedItems = items
         .filter((item: RealPriceItem) => item && item.aptNm)
-        .map((item: RealPriceItem, index: number) => {
-          // 첫 5개 항목만 디버그 로그 출력
-          const debug = index < 5;
-
-          // 디버그: 거래유형과 거래방법 필드 확인
-          if (debug) {
-            console.log('[Real Price API Debug] Item #' + index + ':', JSON.stringify(item, null, 2));
-            console.log('[Real Price API Debug] dealingGbn:', item.dealingGbn || '(empty)');
-            console.log('[Real Price API Debug] cdealType:', item.cdealType || '(empty)');
-          }
-
-          return processRealPriceItem(item, debug);
-        });
+        .map((item: RealPriceItem) => processRealPriceItem(item));
 
       return {
         items: processedItems,
