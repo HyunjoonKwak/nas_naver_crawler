@@ -9,7 +9,6 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { maskValue } from '@/lib/encryption';
 
 export const dynamic = 'force-dynamic';
 
@@ -249,9 +248,7 @@ export async function GET(request: NextRequest) {
 
       return {
         key: def.key,
-        value: def.canView
-          ? (def.isSecret ? maskValue(value, 4) : value)
-          : '********',
+        value: def.canView ? value : '********',
         displayName: def.displayName,
         description: def.description,
         category: def.category,
