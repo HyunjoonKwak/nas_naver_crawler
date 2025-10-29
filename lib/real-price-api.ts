@@ -145,10 +145,15 @@ function toPyeong(squareMeter: number): number {
 /**
  * 원본 데이터를 사용자 친화적 형식으로 변환
  */
-export function processRealPriceItem(item: RealPriceItem): ProcessedRealPrice {
+export function processRealPriceItem(item: RealPriceItem, debug = false): ProcessedRealPrice {
   const dealPrice = parsePrice(item.dealAmount);
   const area = parseFloat(item.excluUseAr);
   const areaPyeong = toPyeong(area);
+
+  // 디버그: 첫 번째 항목의 umdNm 출력
+  if (debug) {
+    console.log('[Real Price API Debug] umdNm (읍면동명):', item.umdNm);
+  }
 
   return {
     aptName: item.aptNm,
@@ -244,7 +249,11 @@ export class RealPriceApiClient {
       // 데이터 가공
       const processedItems = items
         .filter((item: RealPriceItem) => item && item.aptNm)
-        .map((item: RealPriceItem) => processRealPriceItem(item));
+        .map((item: RealPriceItem, index: number) => {
+          // 첫 5개 항목만 디버그 로그 출력
+          const debug = index < 5;
+          return processRealPriceItem(item, debug);
+        });
 
       return {
         items: processedItems,
