@@ -421,12 +421,13 @@ class NASNaverRealEstateCrawler:
             # 네이버 부동산 단지 페이지 접속
             url = f"https://new.land.naver.com/complexes/{complex_no}"
             try:
-                await self.page.goto(url, wait_until='domcontentloaded', timeout=self.timeout)
+                # wait_until='commit'로 변경 (네트워크 요청만 성공하면 OK, DOM 로딩 기다리지 않음)
+                await self.page.goto(url, wait_until='commit', timeout=self.timeout)
             except Exception as goto_error:
-                # 타임아웃 발생 시 스크린샷 저장
+                # 타임아웃 발생 시 스크린샷 저장 (별도 타임아웃 5초)
                 screenshot_path = self.output_dir / f"timeout_screenshot_{complex_no}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
                 try:
-                    await self.page.screenshot(path=str(screenshot_path), full_page=True)
+                    await self.page.screenshot(path=str(screenshot_path), full_page=True, timeout=5000)
                     print(f"🖼️  타임아웃 스크린샷 저장: {screenshot_path}")
                 except Exception as ss_error:
                     print(f"[WARNING] 스크린샷 저장 실패: {ss_error}")
@@ -441,12 +442,12 @@ class NASNaverRealEstateCrawler:
                 print("Overview 데이터 없음, 페이지 재접속 (goto)...")
                 # reload() 대신 goto() 사용 (CDP 리소스 정리 문제 회피)
                 try:
-                    await self.page.goto(url, wait_until='domcontentloaded', timeout=self.timeout)
+                    await self.page.goto(url, wait_until='commit', timeout=self.timeout)
                 except Exception as goto_error2:
-                    # 재시도 타임아웃 시에도 스크린샷
+                    # 재시도 타임아웃 시에도 스크린샷 (별도 타임아웃 5초)
                     screenshot_path = self.output_dir / f"timeout_retry_screenshot_{complex_no}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
                     try:
-                        await self.page.screenshot(path=str(screenshot_path), full_page=True)
+                        await self.page.screenshot(path=str(screenshot_path), full_page=True, timeout=5000)
                         print(f"🖼️  재시도 타임아웃 스크린샷 저장: {screenshot_path}")
                     except Exception as ss_error:
                         print(f"[WARNING] 스크린샷 저장 실패: {ss_error}")
@@ -841,10 +842,10 @@ class NASNaverRealEstateCrawler:
                 error_msg = str(e)
                 print(f"스크롤 크롤링 중 오류: {e}")
 
-                # 에러 발생 시 스크린샷 저장
+                # 에러 발생 시 스크린샷 저장 (별도 타임아웃 5초)
                 screenshot_path = self.output_dir / f"scroll_error_screenshot_{complex_no}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
                 try:
-                    await self.page.screenshot(path=str(screenshot_path), full_page=True)
+                    await self.page.screenshot(path=str(screenshot_path), full_page=True, timeout=5000)
                     print(f"🖼️  에러 스크린샷 저장: {screenshot_path}")
                 except Exception as ss_error:
                     print(f"[WARNING] 스크린샷 저장 실패: {ss_error}")
