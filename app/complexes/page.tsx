@@ -32,7 +32,8 @@ import {
   FileText,
   Search as SearchIcon,
   BarChart3,
-  TrendingUp
+  TrendingUp,
+  Edit
 } from "lucide-react";
 
 interface ComplexGroup {
@@ -137,6 +138,8 @@ export default function ComplexesPage() {
   const [deleteComplexDialog, setDeleteComplexDialog] = useState<{ isOpen: boolean; complexNo: string | null; complexName: string | null }>({ isOpen: false, complexNo: null, complexName: null });
   const [crawlAllDialog, setCrawlAllDialog] = useState(false);
   const [stopTrackingDialog, setStopTrackingDialog] = useState(false);
+  const [editComplexDialog, setEditComplexDialog] = useState<{ isOpen: boolean; complexNo: string | null; complexName: string | null }>({ isOpen: false, complexNo: null, complexName: null });
+  const [editComplexNo, setEditComplexNo] = useState("");
 
   // 검색 상태
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -486,6 +489,51 @@ export default function ComplexesPage() {
     }
   };
 
+  const handleEditComplex = (complexNo: string, complexName: string) => {
+    setEditComplexDialog({ isOpen: true, complexNo, complexName });
+    setEditComplexNo(complexNo); // 현재 단지 번호로 초기화
+  };
+
+  const confirmEditComplex = async () => {
+    if (!editComplexDialog.complexNo || !editComplexNo) return;
+
+    // 변경사항 없으면 취소
+    if (editComplexNo === editComplexDialog.complexNo) {
+      setEditComplexDialog({ isOpen: false, complexNo: null, complexName: null });
+      showInfo('변경사항이 없습니다.');
+      return;
+    }
+
+    const loadingToast = showLoading('단지 번호 수정 중...');
+    try {
+      const response = await fetch(`/api/complex`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          oldComplexNo: editComplexDialog.complexNo,
+          newComplexNo: editComplexNo
+        })
+      });
+
+      dismissToast(loadingToast);
+
+      if (response.ok) {
+        await fetchComplexes();
+        showSuccess('단지 번호가 수정되었습니다');
+      } else {
+        const data = await response.json();
+        showError(data.error || '단지 번호 수정 실패');
+      }
+    } catch (error: any) {
+      dismissToast(loadingToast);
+      console.error('Failed to edit complex:', error);
+      showError('단지 번호 수정 중 오류가 발생했습니다.');
+    } finally {
+      setEditComplexDialog({ isOpen: false, complexNo: null, complexName: null });
+      setEditComplexNo('');
+    }
+  };
+
   const handleDeleteComplex = (complexNo: string, complexName: string) => {
     setDeleteComplexDialog({ isOpen: true, complexNo, complexName });
   };
@@ -574,7 +622,19 @@ export default function ComplexesPage() {
     });
   };
 
+  // 임시 complexNo인지 확인 (실거래가 페이지에서 생성된 임시 단지)
+  const isTempComplexNo = (complexNo: string): boolean => {
+    // 패턴: lawdCd_timestamp 또는 TEMP_timestamp
+    return /^\d{5}_\d+$/.test(complexNo) || /^TEMP_\d+$/.test(complexNo);
+  };
+
   const handleCrawlComplex = async (complexNo: string) => {
+    // 임시 complexNo 체크
+    if (isTempComplexNo(complexNo)) {
+      showError('임시로 생성된 단지는 크롤링할 수 없습니다. 실제 네이버 단지 번호로 수정해주세요.');
+      return;
+    }
+
     setCrawling(complexNo);
     setCrawlProgress(null);
 
@@ -637,9 +697,24 @@ export default function ComplexesPage() {
     setCrawlAllDialog(false);
     setCrawlingAll(true);
     setCrawlProgress(null);
-    const complexNos = complexes.map(f => f.complexNo).join(',');
 
-    const loadingToast = showLoading(`${complexes.length}개 단지 크롤링 시작 중...`);
+    // 임시 단지 필터링
+    const validComplexes = complexes.filter(c => !isTempComplexNo(c.complexNo));
+    const tempComplexes = complexes.filter(c => isTempComplexNo(c.complexNo));
+
+    if (validComplexes.length === 0) {
+      showError('크롤링 가능한 단지가 없습니다. (모두 임시 단지)');
+      setCrawlingAll(false);
+      return;
+    }
+
+    if (tempComplexes.length > 0) {
+      showInfo(`${tempComplexes.length}개의 임시 단지는 건너뜁니다.`);
+    }
+
+    const complexNos = validComplexes.map(f => f.complexNo).join(',');
+
+    const loadingToast = showLoading(`${validComplexes.length}개 단지 크롤링 시작 중...`);
     try {
       // 크롤링 시작
       const response = await fetch('/api/crawl', {
@@ -1217,9 +1292,17 @@ export default function ComplexesPage() {
 
                   {/* 단지번호와 관심등록 버튼 - 같은 줄 */}
                   <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-                      <span>📍</span>
-                      <span>단지번호 {complex.complexNo}</span>
+                    <div className="flex flex-col gap-1">
+                      <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+                        <span>📍</span>
+                        <span>단지번호 {complex.complexNo}</span>
+                      </div>
+                      {isTempComplexNo(complex.complexNo) && (
+                        <div className="flex items-center gap-1 px-2 py-1 bg-orange-100 dark:bg-orange-900/30 border border-orange-300 dark:border-orange-700 rounded text-xs text-orange-700 dark:text-orange-400">
+                          <span>⚠️</span>
+                          <span>임시 단지 (크롤링 불가)</span>
+                        </div>
+                      )}
                     </div>
                     <button
                       onClick={() => handleToggleFavorite(complex.complexNo, complex.isFavorite)}
@@ -1453,17 +1536,23 @@ export default function ComplexesPage() {
                       </a>
                       <button
                         onClick={() => handleCrawlComplex(complex.complexNo)}
-                        disabled={crawling === complex.complexNo || crawlingAll}
+                        disabled={crawling === complex.complexNo || crawlingAll || isTempComplexNo(complex.complexNo)}
                         className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border-2 text-xs font-medium transition-colors whitespace-nowrap ${
-                          crawling === complex.complexNo || crawlingAll
+                          crawling === complex.complexNo || crawlingAll || isTempComplexNo(complex.complexNo)
                             ? 'border-gray-300 dark:border-gray-600 text-gray-400 dark:text-gray-500 cursor-not-allowed'
                             : 'border-green-300 dark:border-green-700 text-green-700 dark:text-green-300 hover:bg-green-50 dark:hover:bg-green-900/20'
                         }`}
+                        title={isTempComplexNo(complex.complexNo) ? '임시 단지는 크롤링할 수 없습니다' : '단지 매물 크롤링'}
                       >
                         {crawling === complex.complexNo ? (
                           <>
                             <Loader2 className="w-3.5 h-3.5 animate-spin flex-shrink-0" />
                             <span>크롤링 중...</span>
+                          </>
+                        ) : isTempComplexNo(complex.complexNo) ? (
+                          <>
+                            <RefreshCw className="w-3.5 h-3.5 flex-shrink-0 opacity-50" />
+                            <span>임시 단지</span>
                           </>
                         ) : (
                           <>
@@ -1471,6 +1560,13 @@ export default function ComplexesPage() {
                             <span>크롤링</span>
                           </>
                         )}
+                      </button>
+                      <button
+                        onClick={() => handleEditComplex(complex.complexNo, complex.complexName)}
+                        className="px-4 py-2 rounded-lg border-2 border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 text-sm font-medium transition-colors"
+                        title="단지 정보 수정"
+                      >
+                        <Edit className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => handleDeleteComplex(complex.complexNo, complex.complexName)}
@@ -1717,6 +1813,71 @@ export default function ComplexesPage() {
         cancelText="취소"
         variant="default"
       />
+
+      {/* Edit Complex Dialog */}
+      {editComplexDialog.isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
+            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
+              단지 번호 수정
+            </h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+              {editComplexDialog.complexName}
+            </p>
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                현재 단지 번호
+              </label>
+              <input
+                type="text"
+                value={editComplexDialog.complexNo || ''}
+                disabled
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400"
+              />
+              {isTempComplexNo(editComplexDialog.complexNo || '') && (
+                <p className="mt-2 text-sm text-orange-600 dark:text-orange-400">
+                  ⚠️ 임시 단지 번호입니다. 네이버 단지 번호로 변경해주세요.
+                </p>
+              )}
+            </div>
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                새 단지 번호
+              </label>
+              <input
+                type="text"
+                value={editComplexNo}
+                onChange={(e) => setEditComplexNo(e.target.value)}
+                placeholder="예: 123456"
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                autoFocus
+              />
+              <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                💡 네이버부동산에서 단지 URL의 숫자를 확인하세요<br/>
+                (예: new.land.naver.com/complexes/123456)
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setEditComplexDialog({ isOpen: false, complexNo: null, complexName: null });
+                  setEditComplexNo('');
+                }}
+                className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              >
+                취소
+              </button>
+              <button
+                onClick={confirmEditComplex}
+                disabled={!editComplexNo || editComplexNo === editComplexDialog.complexNo}
+                className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white rounded-lg transition-colors"
+              >
+                수정
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
           </div> {/* 메인 컨텐츠 닫기 */}
         </div> {/* flex 컨테이너 닫기 */}
       </main>

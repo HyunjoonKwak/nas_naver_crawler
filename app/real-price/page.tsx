@@ -77,7 +77,9 @@ export default function RealPricePage() {
       });
       const data = await response.json();
       if (!data.success) {
-        throw new Error(data.error || '즐겨찾기 추가 실패');
+        // 상세 메시지가 있으면 함께 전달
+        const errorDetail = data.message ? `\n${data.message}` : '';
+        throw new Error(data.error + errorDetail || '즐겨찾기 추가 실패');
       }
       return data.data;
     },

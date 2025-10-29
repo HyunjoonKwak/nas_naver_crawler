@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 1. 아파트명으로 Complex 검색
-    let complex = await prisma.complex.findFirst({
+    const complex = await prisma.complex.findFirst({
       where: {
         complexName: {
           contains: aptName,
@@ -40,22 +40,16 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // 2. Complex가 없으면 생성 (임시 complexNo 사용)
+    // 2. Complex가 없으면 에러 반환
     if (!complex) {
-      // complexNo 생성: lawdCd + timestamp
-      const tempComplexNo = lawdCd ? `${lawdCd}_${Date.now()}` : `TEMP_${Date.now()}`;
-
-      complex = await prisma.complex.create({
-        data: {
-          complexNo: tempComplexNo,
-          complexName: aptName,
-          lawdCd: lawdCd || null,
-          address: address || null,
-          beopjungdong: null,
-          haengjeongdong: null,
-          userId: session.user.id, // userId 추가
+      return NextResponse.json(
+        {
+          success: false,
+          error: '단지 정보를 찾을 수 없습니다',
+          message: '단지 관리 페이지에서 먼저 단지를 등록해주세요. (네이버 단지 번호 필요)'
         },
-      });
+        { status: 404 }
+      );
     }
 
     // 3. 즐겨찾기 확인

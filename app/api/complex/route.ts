@@ -188,6 +188,93 @@ export async function GET(request: NextRequest) {
   }
 }
 
+// PATCH: 단지 번호 수정
+export async function PATCH(request: NextRequest) {
+  try {
+    const currentUser = await requireAuth();
+    const body = await request.json();
+    const { oldComplexNo, newComplexNo } = body;
+
+    if (!oldComplexNo || !newComplexNo) {
+      return NextResponse.json(
+        { error: '기존 단지번호와 새 단지번호가 필요합니다.' },
+        { status: 400 }
+      );
+    }
+
+    // 기존 단지 찾기
+    const complex = await prisma.complex.findUnique({
+      where: { complexNo: oldComplexNo }
+    });
+
+    if (!complex) {
+      return NextResponse.json(
+        { error: '해당 단지를 찾을 수 없습니다.' },
+        { status: 404 }
+      );
+    }
+
+    // 권한 확인: 본인이 생성한 단지만 수정 가능
+    if (complex.userId !== currentUser.id) {
+      return NextResponse.json(
+        { error: '본인이 생성한 단지만 수정할 수 있습니다.' },
+        { status: 403 }
+      );
+    }
+
+    // 새 단지 번호가 이미 존재하는지 확인
+    const existingComplex = await prisma.complex.findUnique({
+      where: { complexNo: newComplexNo }
+    });
+
+    if (existingComplex) {
+      return NextResponse.json(
+        { error: '새 단지번호가 이미 사용 중입니다.' },
+        { status: 400 }
+      );
+    }
+
+    console.log('[API_COMPLEX] 단지 번호 수정 시작:', {
+      oldComplexNo,
+      newComplexNo,
+      complexName: complex.complexName,
+      userId: currentUser.id
+    });
+
+    // 단지 번호 업데이트
+    const updatedComplex = await prisma.complex.update({
+      where: { id: complex.id },
+      data: { complexNo: newComplexNo }
+    });
+
+    console.log('[API_COMPLEX] 단지 번호 수정 완료:', {
+      oldComplexNo,
+      newComplexNo,
+      complexName: updatedComplex.complexName
+    });
+
+    // 캐시 무효화
+    invalidateCache(`complexes:${currentUser.id}`);
+    invalidateCache(`favorites:${currentUser.id}`);
+
+    return NextResponse.json({
+      success: true,
+      message: '단지 번호가 수정되었습니다.',
+      complex: {
+        complexNo: updatedComplex.complexNo,
+        complexName: updatedComplex.complexName,
+        id: updatedComplex.id
+      }
+    });
+  } catch (error: any) {
+    console.error('[API_COMPLEX] PATCH error:', error);
+    return NextResponse.json(
+      { error: '단지 번호 수정 중 오류가 발생했습니다.', details: error.message },
+      { status: 500 }
+    );
+  }
+}
+
 // DELETE: 단지 완전 삭제 (Complex 테이블에서 삭제, Cascade로 연관 데이터 모두 삭제)
 export async function DELETE(request: NextRequest) {
   try {
