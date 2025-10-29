@@ -75,7 +75,7 @@ export default function DongCodeSelector({ onSelect, value }: DongCodeSelectorPr
         loadDongList(selected.fullCode);
       }
     }
-  }, [selectedSigungu]);
+  }, [selectedSigungu, sigunguList, sidoList, selectedSido]);
 
   // 읍/면/동 선택 시 (선택 사항, 더 구체적인 검색 가능)
   useEffect(() => {
@@ -90,7 +90,7 @@ export default function DongCodeSelector({ onSelect, value }: DongCodeSelectorPr
         }
       }
     }
-  }, [selectedDong, dongList, sigunguList, selectedSigungu, onSelect]);
+  }, [selectedDong, dongList, sigunguList, selectedSigungu]);
 
   const loadSidoList = async () => {
     setIsLoadingSido(true);
