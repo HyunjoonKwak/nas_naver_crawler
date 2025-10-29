@@ -55,32 +55,99 @@ export default function RealPricePage() {
     timestamp: number;
   }>>([]);
 
-  // 아파트별로 그룹핑
-  const groupedResults = useMemo(() => {
-    const groups = new Map<string, RealPriceItem[]>();
+  // 필터 및 정렬 상태
+  const [sortBy, setSortBy] = useState<'count' | 'avgPrice' | 'latestDate' | 'aptName'>('count');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [minPrice, setMinPrice] = useState("");
+  const [maxPrice, setMaxPrice] = useState("");
+  const [tradeTypes, setTradeTypes] = useState<string[]>(['매매']); // 기본값: 매매만
+  const [minFloor, setMinFloor] = useState("");
+  const [maxFloor, setMaxFloor] = useState("");
+  const [minBuildYear, setMinBuildYear] = useState("");
+  const [maxBuildYear, setMaxBuildYear] = useState("");
 
-    searchResults.forEach(item => {
+  // 아파트별로 그룹핑 및 필터링
+  const groupedResults = useMemo(() => {
+    // 1. 먼저 개별 거래 필터링
+    let filteredItems = searchResults;
+
+    // 가격 필터링
+    if (minPrice || maxPrice) {
+      const min = minPrice ? parseFloat(minPrice) * 10000 : 0; // 만원 → 원
+      const max = maxPrice ? parseFloat(maxPrice) * 10000 : Infinity;
+      filteredItems = filteredItems.filter(item =>
+        item.dealPrice >= min && item.dealPrice <= max
+      );
+    }
+
+    // 거래 유형 필터링
+    if (tradeTypes.length > 0) {
+      filteredItems = filteredItems.filter(item =>
+        tradeTypes.includes(item.dealType)
+      );
+    }
+
+    // 층수 필터링
+    if (minFloor || maxFloor) {
+      const min = minFloor ? parseInt(minFloor) : -Infinity;
+      const max = maxFloor ? parseInt(maxFloor) : Infinity;
+      filteredItems = filteredItems.filter(item =>
+        item.floor >= min && item.floor <= max
+      );
+    }
+
+    // 건축년도 필터링
+    if (minBuildYear || maxBuildYear) {
+      const min = minBuildYear ? parseInt(minBuildYear) : 0;
+      const max = maxBuildYear ? parseInt(maxBuildYear) : 9999;
+      filteredItems = filteredItems.filter(item =>
+        item.buildYear >= min && item.buildYear <= max
+      );
+    }
+
+    // 2. 아파트별로 그룹핑
+    const groups = new Map<string, RealPriceItem[]>();
+    filteredItems.forEach(item => {
       if (!groups.has(item.aptName)) {
         groups.set(item.aptName, []);
       }
       groups.get(item.aptName)!.push(item);
     });
 
-    // 각 그룹을 배열로 변환하고 거래 건수 기준 내림차순 정렬
-    const results = Array.from(groups.entries())
+    // 3. 그룹을 배열로 변환
+    let results = Array.from(groups.entries())
       .map(([aptName, items]) => ({
         aptName,
         items,
         count: items.length,
-        // 평균 가격 계산
         avgPrice: items.reduce((sum, item) => sum + item.dealPrice, 0) / items.length,
-        // 최근 거래일
-        latestDate: items[0].dealDate, // 이미 날짜 정렬되어 있음
-      }))
-      .sort((a, b) => b.count - a.count); // 거래 건수 내림차순
+        latestDate: items[0].dealDate,
+      }));
+
+    // 4. 정렬
+    results.sort((a, b) => {
+      let compareValue = 0;
+
+      switch (sortBy) {
+        case 'count':
+          compareValue = a.count - b.count;
+          break;
+        case 'avgPrice':
+          compareValue = a.avgPrice - b.avgPrice;
+          break;
+        case 'latestDate':
+          compareValue = a.latestDate.localeCompare(b.latestDate);
+          break;
+        case 'aptName':
+          compareValue = a.aptName.localeCompare(b.aptName);
+          break;
+      }
+
+      return sortOrder === 'asc' ? compareValue : -compareValue;
+    });
 
     return results;
-  }, [searchResults]);
+  }, [searchResults, sortBy, sortOrder, minPrice, maxPrice, tradeTypes, minFloor, maxFloor, minBuildYear, maxBuildYear]);
 
   // 검색 기록 로드
   useEffect(() => {
@@ -474,15 +541,226 @@ export default function RealPricePage() {
           {/* 검색 결과 - 아파트별 그룹핑 */}
           {searchResults.length > 0 && (
             <div className="space-y-4">
-              {/* 헤더 */}
+              {/* 헤더 및 필터 */}
               <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between mb-4">
                   <h2 className="text-xl font-bold text-gray-900 dark:text-white">
                     검색 결과
                   </h2>
                   <div className="text-sm text-gray-600 dark:text-gray-400">
                     총 <span className="font-semibold text-blue-600 dark:text-blue-400">{groupedResults.length}개</span> 아파트,{" "}
-                    <span className="font-semibold text-blue-600 dark:text-blue-400">{totalCount}건</span>의 거래
+                    <span className="font-semibold text-blue-600 dark:text-blue-400">{groupedResults.reduce((sum, g) => sum + g.count, 0)}건</span>의 거래
+                  </div>
+                </div>
+
+                {/* 필터 및 정렬 섹션 */}
+                <div className="border-t border-gray-200 dark:border-gray-700 pt-4 space-y-4">
+                  {/* 정렬 옵션 */}
+                  <div className="flex items-center gap-4">
+                    <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      정렬:
+                    </label>
+                    <select
+                      value={sortBy}
+                      onChange={(e) => setSortBy(e.target.value as any)}
+                      className="px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                    >
+                      <option value="count">거래 건수</option>
+                      <option value="avgPrice">평균 가격</option>
+                      <option value="latestDate">최근 거래일</option>
+                      <option value="aptName">아파트명</option>
+                    </select>
+                    <button
+                      onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+                      className="px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                    >
+                      {sortOrder === 'desc' ? '↓ 내림차순' : '↑ 오름차순'}
+                    </button>
+                  </div>
+
+                  {/* 필터 그리드 */}
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    {/* 가격 필터 */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        가격 (만원)
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="number"
+                          value={minPrice}
+                          onChange={(e) => setMinPrice(e.target.value)}
+                          placeholder="최소"
+                          className="w-full px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                        />
+                        <span className="text-gray-500">~</span>
+                        <input
+                          type="number"
+                          value={maxPrice}
+                          onChange={(e) => setMaxPrice(e.target.value)}
+                          placeholder="최대"
+                          className="w-full px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                        />
+                      </div>
+                      {/* 빠른 선택 버튼 */}
+                      <div className="flex gap-1 mt-2">
+                        <button
+                          onClick={() => { setMinPrice(""); setMaxPrice("30000"); }}
+                          className="px-2 py-1 text-xs bg-gray-100 dark:bg-gray-700 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
+                        >
+                          3억↓
+                        </button>
+                        <button
+                          onClick={() => { setMinPrice("30000"); setMaxPrice("50000"); }}
+                          className="px-2 py-1 text-xs bg-gray-100 dark:bg-gray-700 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
+                        >
+                          3~5억
+                        </button>
+                        <button
+                          onClick={() => { setMinPrice("50000"); setMaxPrice("100000"); }}
+                          className="px-2 py-1 text-xs bg-gray-100 dark:bg-gray-700 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
+                        >
+                          5~10억
+                        </button>
+                        <button
+                          onClick={() => { setMinPrice("100000"); setMaxPrice(""); }}
+                          className="px-2 py-1 text-xs bg-gray-100 dark:bg-gray-700 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
+                        >
+                          10억↑
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* 거래 유형 필터 */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        거래 유형
+                      </label>
+                      <div className="space-y-1">
+                        {['매매', '전세', '월세'].map(type => (
+                          <label key={type} className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={tradeTypes.includes(type)}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setTradeTypes([...tradeTypes, type]);
+                                } else {
+                                  setTradeTypes(tradeTypes.filter(t => t !== type));
+                                }
+                              }}
+                              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                            />
+                            <span className="text-sm text-gray-700 dark:text-gray-300">{type}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* 층수 필터 */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        층수
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="number"
+                          value={minFloor}
+                          onChange={(e) => setMinFloor(e.target.value)}
+                          placeholder="최소"
+                          className="w-full px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                        />
+                        <span className="text-gray-500">~</span>
+                        <input
+                          type="number"
+                          value={maxFloor}
+                          onChange={(e) => setMaxFloor(e.target.value)}
+                          placeholder="최대"
+                          className="w-full px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                        />
+                      </div>
+                      {/* 빠른 선택 */}
+                      <div className="flex gap-1 mt-2">
+                        <button
+                          onClick={() => { setMinFloor("1"); setMaxFloor("5"); }}
+                          className="px-2 py-1 text-xs bg-gray-100 dark:bg-gray-700 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
+                        >
+                          저층
+                        </button>
+                        <button
+                          onClick={() => { setMinFloor("6"); setMaxFloor("15"); }}
+                          className="px-2 py-1 text-xs bg-gray-100 dark:bg-gray-700 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
+                        >
+                          중층
+                        </button>
+                        <button
+                          onClick={() => { setMinFloor("16"); setMaxFloor(""); }}
+                          className="px-2 py-1 text-xs bg-gray-100 dark:bg-gray-700 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
+                        >
+                          고층
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* 건축년도 필터 */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        건축년도
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="number"
+                          value={minBuildYear}
+                          onChange={(e) => setMinBuildYear(e.target.value)}
+                          placeholder="최소"
+                          className="w-full px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                        />
+                        <span className="text-gray-500">~</span>
+                        <input
+                          type="number"
+                          value={maxBuildYear}
+                          onChange={(e) => setMaxBuildYear(e.target.value)}
+                          placeholder="최대"
+                          className="w-full px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                        />
+                      </div>
+                      {/* 빠른 선택 */}
+                      <div className="flex gap-1 mt-2">
+                        <button
+                          onClick={() => { setMinBuildYear(String(new Date().getFullYear() - 5)); setMaxBuildYear(""); }}
+                          className="px-2 py-1 text-xs bg-gray-100 dark:bg-gray-700 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
+                        >
+                          5년↓
+                        </button>
+                        <button
+                          onClick={() => { setMinBuildYear(String(new Date().getFullYear() - 10)); setMaxBuildYear(""); }}
+                          className="px-2 py-1 text-xs bg-gray-100 dark:bg-gray-700 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
+                        >
+                          10년↓
+                        </button>
+                        <button
+                          onClick={() => { setMinBuildYear(String(new Date().getFullYear() - 15)); setMaxBuildYear(""); }}
+                          className="px-2 py-1 text-xs bg-gray-100 dark:bg-gray-700 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
+                        >
+                          15년↓
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 필터 초기화 버튼 */}
+                  <div className="flex justify-end">
+                    <button
+                      onClick={() => {
+                        setMinPrice(""); setMaxPrice("");
+                        setTradeTypes(['매매']);
+                        setMinFloor(""); setMaxFloor("");
+                        setMinBuildYear(""); setMaxBuildYear("");
+                      }}
+                      className="px-4 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                    >
+                      필터 초기화
+                    </button>
                   </div>
                 </div>
               </div>
