@@ -70,6 +70,9 @@ async function getAccessToken(serviceId: string, securityKey: string): Promise<s
 
   const data: SGISAuthResponse = await response.json();
 
+  // 디버깅: SGIS API 응답 전체 출력
+  console.log('[SGIS Auth] 📋 API 응답:', JSON.stringify(data, null, 2));
+
   if (data.errCd !== 0) {
     throw new Error(`SGIS 인증 오류: ${data.errMsg} (코드: ${data.errCd})`);
   }
@@ -80,6 +83,9 @@ async function getAccessToken(serviceId: string, securityKey: string): Promise<s
   tokenExpiryTime = parseInt(data.result.accessTimeout);
 
   console.log('[SGIS Auth] ✅ AccessToken 발급 완료');
+  console.log('[SGIS Auth]   원본 accessTimeout:', data.result.accessTimeout);
+  console.log('[SGIS Auth]   파싱된 tokenExpiryTime:', tokenExpiryTime);
+  console.log('[SGIS Auth]   현재 시간 (now):', now);
   console.log('[SGIS Auth]   만료시간:', new Date(tokenExpiryTime).toLocaleString('ko-KR'));
   console.log('[SGIS Auth]   유효시간:', Math.floor((tokenExpiryTime - now) / 1000 / 60), '분');
 
