@@ -445,9 +445,24 @@ class NASNaverRealEstateCrawler:
                     # 현재 URL 확인 (404 리다이렉트 감지)
                     current_url = self.page.url
                     print(f"현재 URL: {current_url}")
-                    if '/404' in current_url or current_url != url:
-                        print(f"⚠️ 404 리다이렉트 감지! {url} → {current_url}")
-                        print(f"   이것은 봇 탐지일 가능성이 높습니다.")
+
+                    # 봇 탐지 패턴 분석
+                    if '/404' in current_url:
+                        print(f"⚠️ 404 페이지로 리다이렉트 감지! {url} → {current_url}")
+                        print(f"   이것은 봇 탐지입니다.")
+                    elif f'/complexes/{complex_no}' not in current_url:
+                        # 단지 ID가 URL에서 제거됨 (예: /complexes/22065 → /complexes?ms=0,0,0)
+                        print(f"⚠️ 봇 탐지로 인한 리다이렉트 감지! {url} → {current_url}")
+                        print(f"   단지 ID가 URL에서 제거되었습니다. 이것은 봇 탐지입니다.")
+                    elif current_url.startswith(f'https://new.land.naver.com/complexes/{complex_no}'):
+                        # 단지 ID가 유지되고 쿼리스트링만 추가됨 (정상)
+                        if '?' in current_url:
+                            print(f"✅ 정상 접속 확인 (쿼리스트링 자동 추가됨): {current_url}")
+                        else:
+                            print(f"✅ 정상 접속 확인: {current_url}")
+                    else:
+                        # 예상치 못한 리다이렉트
+                        print(f"⚠️ 예상치 못한 리다이렉트: {url} → {current_url}")
 
                 except Exception as goto_error:
                     # 타임아웃 발생 시 스크린샷 저장 (별도 타임아웃 5초)
@@ -469,6 +484,26 @@ class NASNaverRealEstateCrawler:
                     # reload() 대신 goto() 사용 (CDP 리소스 정리 문제 회피)
                     try:
                         await self.page.goto(url, wait_until='commit', timeout=self.timeout)
+
+                        # ✅ 재접속 후에도 URL 확인
+                        retry_url = self.page.url
+                        print(f"재접속 후 URL: {retry_url}")
+
+                        # 봇 탐지 패턴 분석
+                        if '/404' in retry_url:
+                            print(f"⚠️ [재시도] 404 페이지로 리다이렉트 감지! {url} → {retry_url}")
+                            print(f"   이것은 봇 탐지입니다.")
+                        elif f'/complexes/{complex_no}' not in retry_url:
+                            print(f"⚠️ [재시도] 봇 탐지로 인한 리다이렉트 감지! {url} → {retry_url}")
+                            print(f"   단지 ID가 URL에서 제거되었습니다.")
+                        elif retry_url.startswith(f'https://new.land.naver.com/complexes/{complex_no}'):
+                            if '?' in retry_url:
+                                print(f"✅ [재시도] 정상 접속 확인 (쿼리스트링 자동 추가됨): {retry_url}")
+                            else:
+                                print(f"✅ [재시도] 정상 접속 확인: {retry_url}")
+                        else:
+                            print(f"⚠️ [재시도] 예상치 못한 리다이렉트: {url} → {retry_url}")
+
                     except Exception as goto_error2:
                         # 재시도 타임아웃 시에도 스크린샷 (별도 타임아웃 5초)
                         screenshot_path = self.output_dir / f"timeout_retry_screenshot_{complex_no}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
