@@ -29,9 +29,16 @@ export async function GET(request: NextRequest) {
       .forEach(entry => {
         if (!sigunguSet.has(entry.sggCode)) {
           sigunguSet.add(entry.sggCode);
+
+          // dongName에서 시/도를 제외한 나머지 부분 추출
+          // 예: "경기도 수원시 장안구" → "수원시 장안구"
+          // 예: "경기도 화성시" → "화성시"
+          const parts = entry.dongName.split(' ');
+          const nameWithoutSido = parts.slice(1).join(' ');
+
           sigunguList.push({
             code: entry.sggCode.substring(2, 5), // 3자리 시군구 코드 (2~5번째)
-            name: entry.sigungu,
+            name: nameWithoutSido,
             fullCode: entry.sggCode, // 5자리 전체 코드
           });
         }

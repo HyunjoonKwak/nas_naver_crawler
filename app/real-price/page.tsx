@@ -203,10 +203,12 @@ export default function RealPricePage() {
         timestamp: Date.now(),
       };
 
-      // 중복 제거 (같은 lawdCd가 있으면 제거)
+      // 중복 제거 (같은 lawdCd + dongName 조합이 있으면 제거)
       const updatedHistory = [
         newEntry,
-        ...searchHistory.filter(item => item.lawdCd !== lawdCd)
+        ...searchHistory.filter(item =>
+          !(item.lawdCd === lawdCd && (item.dongName || '') === (dongName || ''))
+        )
       ].slice(0, 5); // 최대 5개
 
       setSearchHistory(updatedHistory);
