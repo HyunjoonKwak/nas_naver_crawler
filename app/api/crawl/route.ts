@@ -323,16 +323,17 @@ async function saveCrawlResultsToDB(crawlId: string, complexNos: string[], userI
     for (let i = 0; i < dataArray.length; i++) {
       const data = dataArray[i];
 
-      if (!data.overview || !data.articles) {
-        console.log('Skipping item without overview or articles');
+      // Overview와 Articles 중 최소 하나는 있어야 함
+      if (!data.overview && !data.articles) {
+        console.log('Skipping item without overview and articles');
         continue;
       }
 
       const overview = data.overview;
-      const articleList = data.articles.articleList || [];
+      const articleList = data.articles?.articleList || [];
 
-      // complexNo가 없으면 crawling_info에서 가져오기
-      const complexNo = overview.complexNo || data.crawling_info?.complex_no;
+      // complexNo 우선순위: overview > crawling_info
+      const complexNo = overview?.complexNo || data.crawling_info?.complex_no;
 
       if (!complexNo) {
         console.log(`⚠️  Skipping item ${i}: complexNo not found in overview or crawling_info`);
@@ -340,27 +341,27 @@ async function saveCrawlResultsToDB(crawlId: string, complexNos: string[], userI
         continue;
       }
 
-      // 위치 정보가 overview에 없으면 첫 번째 매물에서 가져오기
+      // 위치 정보: overview 또는 첫 번째 매물에서 가져오기
       const firstArticle = articleList[0];
-      const latitude = overview.location?.latitude || overview.latitude ||
+      const latitude = overview?.location?.latitude || overview?.latitude ||
                       (firstArticle?.latitude ? parseFloat(firstArticle.latitude) : null);
-      const longitude = overview.location?.longitude || overview.longitude ||
+      const longitude = overview?.location?.longitude || overview?.longitude ||
                        (firstArticle?.longitude ? parseFloat(firstArticle.longitude) : null);
 
-      // 단지 정보 준비
+      // 단지 정보 준비 (Overview 없어도 기본값으로 저장)
       complexesToUpsert.push({
         complexNo: complexNo,
-        complexName: overview.complexName || `단지 ${complexNo}`,
-        totalHousehold: overview.totalHouseHoldCount || overview.totalHousehold,
-        totalDong: overview.totalDongCount || overview.totalDong,
+        complexName: overview?.complexName || `단지 ${complexNo}`,
+        totalHousehold: overview?.totalHouseHoldCount || overview?.totalHousehold || null,
+        totalDong: overview?.totalDongCount || overview?.totalDong || null,
         latitude: latitude,
         longitude: longitude,
-        address: overview.address || null,
-        roadAddress: overview.roadAddress || null,
-        jibunAddress: overview.jibunAddress || null,
-        beopjungdong: overview.beopjungdong || null,
-        haengjeongdong: overview.haengjeongdong || null,
-        pyeongs: overview.pyeongs || [],
+        address: overview?.address || null,
+        roadAddress: overview?.roadAddress || null,
+        jibunAddress: overview?.jibunAddress || null,
+        beopjungdong: overview?.beopjungdong || null,
+        haengjeongdong: overview?.haengjeongdong || null,
+        pyeongs: overview?.pyeongs || [],
         userId: userId, // 크롤링 실행한 사용자 ID
       });
 
