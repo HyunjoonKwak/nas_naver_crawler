@@ -420,7 +420,18 @@ class NASNaverRealEstateCrawler:
 
             # 네이버 부동산 단지 페이지 접속
             url = f"https://new.land.naver.com/complexes/{complex_no}"
-            await self.page.goto(url, wait_until='domcontentloaded', timeout=self.timeout)
+            try:
+                await self.page.goto(url, wait_until='domcontentloaded', timeout=self.timeout)
+            except Exception as goto_error:
+                # 타임아웃 발생 시 스크린샷 저장
+                screenshot_path = self.output_dir / f"timeout_screenshot_{complex_no}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
+                try:
+                    await self.page.screenshot(path=str(screenshot_path), full_page=True)
+                    print(f"🖼️  타임아웃 스크린샷 저장: {screenshot_path}")
+                except Exception as ss_error:
+                    print(f"[WARNING] 스크린샷 저장 실패: {ss_error}")
+                # 원래 에러 다시 발생
+                raise goto_error
 
             # API 응답 대기
             await asyncio.sleep(3)
@@ -429,7 +440,17 @@ class NASNaverRealEstateCrawler:
             if not overview_data:
                 print("Overview 데이터 없음, 페이지 재접속 (goto)...")
                 # reload() 대신 goto() 사용 (CDP 리소스 정리 문제 회피)
-                await self.page.goto(url, wait_until='domcontentloaded', timeout=self.timeout)
+                try:
+                    await self.page.goto(url, wait_until='domcontentloaded', timeout=self.timeout)
+                except Exception as goto_error2:
+                    # 재시도 타임아웃 시에도 스크린샷
+                    screenshot_path = self.output_dir / f"timeout_retry_screenshot_{complex_no}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
+                    try:
+                        await self.page.screenshot(path=str(screenshot_path), full_page=True)
+                        print(f"🖼️  재시도 타임아웃 스크린샷 저장: {screenshot_path}")
+                    except Exception as ss_error:
+                        print(f"[WARNING] 스크린샷 저장 실패: {ss_error}")
+                    raise goto_error2
                 await asyncio.sleep(3)
 
             # 응답 핸들러 제거
@@ -819,6 +840,14 @@ class NASNaverRealEstateCrawler:
             except Exception as e:
                 error_msg = str(e)
                 print(f"스크롤 크롤링 중 오류: {e}")
+
+                # 에러 발생 시 스크린샷 저장
+                screenshot_path = self.output_dir / f"scroll_error_screenshot_{complex_no}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
+                try:
+                    await self.page.screenshot(path=str(screenshot_path), full_page=True)
+                    print(f"🖼️  에러 스크린샷 저장: {screenshot_path}")
+                except Exception as ss_error:
+                    print(f"[WARNING] 스크린샷 저장 실패: {ss_error}")
 
                 # 컨텍스트 파괴 에러인 경우 페이지 재생성
                 if "Execution context was destroyed" in error_msg or "Target page" in error_msg:

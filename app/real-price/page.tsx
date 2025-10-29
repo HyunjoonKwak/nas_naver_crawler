@@ -10,9 +10,10 @@ import { MobileNavigation } from "@/components/MobileNavigation";
 import { Breadcrumb } from "@/components/Breadcrumb";
 import { showSuccess, showError, showLoading, dismissToast } from "@/lib/toast";
 import { AuthGuard } from "@/components/AuthGuard";
-import { Search, Loader2, TrendingUp, Home, Calendar, MapPin, ChevronDown, ChevronUp, Building2, X } from "lucide-react";
+import { Search, Loader2, TrendingUp, Home, Calendar, MapPin, ChevronDown, ChevronUp, Building2, X, Download } from "lucide-react";
 import { formatPrice } from "@/lib/price-format";
 import DongCodeSelector from "@/components/DongCodeSelector";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 interface RealPriceItem {
   aptName: string;
@@ -65,6 +66,31 @@ export default function RealPricePage() {
   const [maxFloor, setMaxFloor] = useState("");
   const [minBuildYear, setMinBuildYear] = useState("");
   const [maxBuildYear, setMaxBuildYear] = useState("");
+
+  // 비교 기능
+  const [selectedForComparison, setSelectedForComparison] = useState<Set<string>>(new Set());
+  const [showComparisonModal, setShowComparisonModal] = useState(false);
+
+  // 검색 결과 통계 계산
+  const resultStats = useMemo(() => {
+    if (searchResults.length === 0) return null;
+
+    const prices = searchResults.map(item => item.dealPrice);
+    const avgPrice = prices.reduce((sum, p) => sum + p, 0) / prices.length;
+    const maxPrice = Math.max(...prices);
+    const minPrice = Math.min(...prices);
+    const avgPricePerPyeong = searchResults.reduce((sum, item) => sum + item.pricePerPyeong, 0) / searchResults.length;
+    const avgBuildYear = Math.round(searchResults.reduce((sum, item) => sum + item.buildYear, 0) / searchResults.length);
+
+    return {
+      totalCount: searchResults.length,
+      avgPrice,
+      maxPrice,
+      minPrice,
+      avgPricePerPyeong,
+      avgBuildYear,
+    };
+  }, [searchResults]);
 
   // 아파트별로 그룹핑 및 필터링
   const groupedResults = useMemo(() => {
@@ -226,6 +252,29 @@ export default function RealPricePage() {
     });
   };
 
+  // 비교 선택 토글
+  const toggleComparison = (aptName: string) => {
+    setSelectedForComparison(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(aptName)) {
+        newSet.delete(aptName);
+      } else {
+        if (newSet.size >= 3) {
+          showError('최대 3개까지 선택할 수 있습니다');
+          return prev;
+        }
+        newSet.add(aptName);
+      }
+      return newSet;
+    });
+  };
+
+  // 비교 초기화
+  const resetComparison = () => {
+    setSelectedForComparison(new Set());
+    setShowComparisonModal(false);
+  };
+
   // 기간에 따른 조회 월 목록 생성
   const getMonthsToSearch = () => {
     const now = new Date();
@@ -349,6 +398,75 @@ export default function RealPricePage() {
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") {
       handleSearch();
+    }
+  };
+
+  // CSV 다운로드 함수
+  const handleDownloadCSV = () => {
+    try {
+      // 헤더 행
+      const headers = [
+        '아파트명',
+        '거래유형',
+        '거래가격',
+        '평당가격',
+        '거래일',
+        '전용면적(㎡)',
+        '전용면적(평)',
+        '층',
+        '건축년도',
+        '동',
+        '주소',
+        '등록일'
+      ];
+
+      // 데이터 행 (필터링된 결과 사용)
+      const rows = groupedResults.flatMap(group =>
+        group.items.map(item => [
+          item.aptName,
+          item.dealType,
+          item.dealPriceFormatted,
+          `${(item.pricePerPyeong / 10000).toFixed(0)}만원`,
+          item.dealDate,
+          item.area.toFixed(2),
+          item.areaPyeong.toFixed(1),
+          item.floor.toString(),
+          item.buildYear.toString(),
+          item.dong || '-',
+          `${item.address} ${item.jibun}`,
+          item.rgstDate
+        ])
+      );
+
+      // CSV 문자열 생성
+      const csvContent = [
+        headers.join(','),
+        ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+      ].join('\n');
+
+      // BOM 추가 (한글 깨짐 방지)
+      const BOM = '\uFEFF';
+      const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
+
+      // 다운로드 링크 생성 및 클릭
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+
+      // 파일명: "실거래가_{지역명}_{날짜}.csv"
+      const today = new Date().toISOString().split('T')[0];
+      const areaName = selectedDong || selectedArea || '전체';
+      link.setAttribute('download', `실거래가_${areaName}_${today}.csv`);
+
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      showSuccess(`${rows.length}건의 데이터를 다운로드했습니다`);
+    } catch (error) {
+      console.error('CSV 다운로드 오류:', error);
+      showError('CSV 다운로드 중 오류가 발생했습니다');
     }
   };
 
@@ -541,15 +659,52 @@ export default function RealPricePage() {
           {/* 검색 결과 - 아파트별 그룹핑 */}
           {searchResults.length > 0 && (
             <div className="space-y-4">
+              {/* 검색 결과 요약 카드 */}
+              {resultStats && (
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                  <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/30 rounded-lg p-4 border border-blue-200 dark:border-blue-700">
+                    <div className="text-sm text-blue-600 dark:text-blue-400 font-medium mb-1">총 거래 건수</div>
+                    <div className="text-2xl font-bold text-blue-900 dark:text-blue-100">{resultStats.totalCount}건</div>
+                  </div>
+                  <div className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/30 dark:to-green-800/30 rounded-lg p-4 border border-green-200 dark:border-green-700">
+                    <div className="text-sm text-green-600 dark:text-green-400 font-medium mb-1">평균 거래가</div>
+                    <div className="text-2xl font-bold text-green-900 dark:text-green-100">{formatPrice(resultStats.avgPrice)}</div>
+                  </div>
+                  <div className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/30 dark:to-purple-800/30 rounded-lg p-4 border border-purple-200 dark:border-purple-700">
+                    <div className="text-sm text-purple-600 dark:text-purple-400 font-medium mb-1">최고가</div>
+                    <div className="text-2xl font-bold text-purple-900 dark:text-purple-100">{formatPrice(resultStats.maxPrice)}</div>
+                  </div>
+                  <div className="bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-900/30 dark:to-orange-800/30 rounded-lg p-4 border border-orange-200 dark:border-orange-700">
+                    <div className="text-sm text-orange-600 dark:text-orange-400 font-medium mb-1">최저가</div>
+                    <div className="text-2xl font-bold text-orange-900 dark:text-orange-100">{formatPrice(resultStats.minPrice)}</div>
+                  </div>
+                  <div className="bg-gradient-to-br from-pink-50 to-pink-100 dark:from-pink-900/30 dark:to-pink-800/30 rounded-lg p-4 border border-pink-200 dark:border-pink-700">
+                    <div className="text-sm text-pink-600 dark:text-pink-400 font-medium mb-1">평균 평당가</div>
+                    <div className="text-xl font-bold text-pink-900 dark:text-pink-100">{(resultStats.avgPricePerPyeong / 10000).toFixed(0)}만원</div>
+                  </div>
+                </div>
+              )}
+
               {/* 헤더 및 필터 */}
               <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-xl font-bold text-gray-900 dark:text-white">
                     검색 결과
                   </h2>
-                  <div className="text-sm text-gray-600 dark:text-gray-400">
-                    총 <span className="font-semibold text-blue-600 dark:text-blue-400">{groupedResults.length}개</span> 아파트,{" "}
-                    <span className="font-semibold text-blue-600 dark:text-blue-400">{groupedResults.reduce((sum, g) => sum + g.count, 0)}건</span>의 거래
+                  <div className="flex items-center gap-4">
+                    <div className="text-sm text-gray-600 dark:text-gray-400">
+                      총 <span className="font-semibold text-blue-600 dark:text-blue-400">{groupedResults.length}개</span> 아파트,{" "}
+                      <span className="font-semibold text-blue-600 dark:text-blue-400">{groupedResults.reduce((sum, g) => sum + g.count, 0)}건</span>의 거래
+                    </div>
+                    <button
+                      onClick={handleDownloadCSV}
+                      disabled={groupedResults.length === 0}
+                      className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg transition-colors text-sm font-medium"
+                      title="현재 필터링된 결과를 CSV 파일로 다운로드합니다"
+                    >
+                      <Download className="w-4 h-4" />
+                      CSV 다운로드
+                    </button>
                   </div>
                 </div>
 
@@ -772,12 +927,25 @@ export default function RealPricePage() {
                   className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden"
                 >
                   {/* 아파트 헤더 */}
-                  <div className="px-6 py-4 flex items-center justify-between">
-                    <button
-                      onClick={() => toggleApartment(group.aptName)}
-                      className="flex-1 flex items-center gap-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors py-2 -my-2 px-2 -mx-2 rounded"
-                    >
-                      <Building2 className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                  <div className="px-6 py-4">
+                    <div className="flex items-start gap-4">
+                      {/* 비교 체크박스 */}
+                      <input
+                        type="checkbox"
+                        checked={selectedForComparison.has(group.aptName)}
+                        onChange={(e) => {
+                          e.stopPropagation();
+                          toggleComparison(group.aptName);
+                        }}
+                        className="mt-1 w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cursor-pointer"
+                        title="비교하려면 체크하세요 (최대 3개)"
+                      />
+
+                      <button
+                        onClick={() => toggleApartment(group.aptName)}
+                        className="flex-1 flex items-center gap-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors py-2 -my-2 px-2 -mx-2 rounded"
+                      >
+                        <Building2 className="w-6 h-6 text-blue-600 dark:text-blue-400" />
                       <div className="text-left flex-1">
                         <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
                           {group.aptName}
@@ -801,6 +969,58 @@ export default function RealPricePage() {
                         )}
                       </div>
                     </button>
+                    </div>
+
+                    {/* 평형별 가격 정보 */}
+                    <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-3">
+                      {(() => {
+                        // 평형대별 그룹핑 (20평대, 30평대, 40평대 등)
+                        const areaGroups = new Map<string, { items: RealPriceItem[], totalPrice: number }>();
+
+                        group.items.forEach(item => {
+                          const pyeong = Math.floor(item.areaPyeong / 10) * 10; // 20, 30, 40평대로 그룹화
+                          const key = `${pyeong}평대`;
+
+                          if (!areaGroups.has(key)) {
+                            areaGroups.set(key, { items: [], totalPrice: 0 });
+                          }
+
+                          const groupData = areaGroups.get(key)!;
+                          groupData.items.push(item);
+                          groupData.totalPrice += item.dealPrice;
+                        });
+
+                        // 평수 순으로 정렬
+                        const sortedGroups = Array.from(areaGroups.entries())
+                          .sort((a, b) => parseInt(a[0]) - parseInt(b[0]));
+
+                        return sortedGroups.map(([pyeongRange, data]) => {
+                          const avgPrice = data.totalPrice / data.items.length;
+                          const avgPricePerPyeong = data.items.reduce((sum, item) => sum + item.pricePerPyeong, 0) / data.items.length;
+                          const avgArea = data.items.reduce((sum, item) => sum + item.areaPyeong, 0) / data.items.length;
+
+                          return (
+                            <div
+                              key={pyeongRange}
+                              className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 rounded-lg p-3 border border-blue-200 dark:border-blue-700"
+                            >
+                              <div className="text-xs text-blue-600 dark:text-blue-400 font-medium mb-1">
+                                {pyeongRange} ({avgArea.toFixed(1)}평)
+                              </div>
+                              <div className="text-sm font-bold text-blue-900 dark:text-blue-100">
+                                {(avgPrice / 100000000).toFixed(2)}억
+                              </div>
+                              <div className="text-xs text-blue-700 dark:text-blue-300 mt-1">
+                                평당 {(avgPricePerPyeong / 10000).toFixed(0)}만원
+                              </div>
+                              <div className="text-xs text-blue-600 dark:text-blue-400 mt-0.5">
+                                {data.items.length}건
+                              </div>
+                            </div>
+                          );
+                        });
+                      })()}
+                    </div>
                   </div>
 
                   {/* 거래 목록 (확장 시) */}
@@ -891,6 +1111,83 @@ export default function RealPricePage() {
                           </tbody>
                         </table>
                       </div>
+
+                      {/* 가격 추세 차트 */}
+                      {group.items.length > 1 && (
+                        <div className="px-6 py-4 bg-gray-50 dark:bg-gray-900/30 border-t border-gray-200 dark:border-gray-700">
+                          <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                            <TrendingUp className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                            가격 추세
+                          </h4>
+                          <ResponsiveContainer width="100%" height={250}>
+                            <LineChart
+                              data={group.items
+                                .sort((a, b) => a.dealDate.localeCompare(b.dealDate))
+                                .map(item => ({
+                                  date: item.dealDate,
+                                  price: item.dealPrice / 10000, // 만원 단위
+                                  pricePerPyeong: item.pricePerPyeong / 10000,
+                                  area: item.areaPyeong,
+                                  floor: item.floor,
+                                }))}
+                              margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                            >
+                              <CartesianGrid strokeDasharray="3 3" className="stroke-gray-300 dark:stroke-gray-600" />
+                              <XAxis
+                                dataKey="date"
+                                className="text-xs fill-gray-600 dark:fill-gray-400"
+                                tick={{ fontSize: 12 }}
+                              />
+                              <YAxis
+                                className="text-xs fill-gray-600 dark:fill-gray-400"
+                                tick={{ fontSize: 12 }}
+                                label={{ value: '만원', angle: -90, position: 'insideLeft' }}
+                              />
+                              <Tooltip
+                                contentStyle={{
+                                  backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                                  border: '1px solid #e5e7eb',
+                                  borderRadius: '8px',
+                                  padding: '8px 12px'
+                                }}
+                                formatter={(value: any, name: string) => {
+                                  if (name === 'price') return [`${value.toLocaleString()}만원`, '거래가'];
+                                  if (name === 'pricePerPyeong') return [`${value.toLocaleString()}만원`, '평당가'];
+                                  return [value, name];
+                                }}
+                                labelFormatter={(label) => `거래일: ${label}`}
+                              />
+                              <Legend
+                                wrapperStyle={{ fontSize: '12px' }}
+                                formatter={(value) => {
+                                  if (value === 'price') return '거래가';
+                                  if (value === 'pricePerPyeong') return '평당가';
+                                  return value;
+                                }}
+                              />
+                              <Line
+                                type="monotone"
+                                dataKey="price"
+                                stroke="#3b82f6"
+                                strokeWidth={2}
+                                dot={{ r: 4 }}
+                                activeDot={{ r: 6 }}
+                              />
+                              <Line
+                                type="monotone"
+                                dataKey="pricePerPyeong"
+                                stroke="#10b981"
+                                strokeWidth={2}
+                                dot={{ r: 4 }}
+                                activeDot={{ r: 6 }}
+                              />
+                            </LineChart>
+                          </ResponsiveContainer>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 text-center">
+                            💡 차트는 거래일 순으로 정렬되어 있습니다. 각 점을 마우스로 가리키면 상세 정보를 확인할 수 있습니다.
+                          </p>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -908,6 +1205,217 @@ export default function RealPricePage() {
               <p className="text-sm text-gray-600 dark:text-gray-400">
                 법정동코드와 거래년월을 입력하고 검색 버튼을 눌러주세요
               </p>
+            </div>
+          )}
+
+          {/* 비교 플로팅 바 */}
+          {selectedForComparison.size > 0 && (
+            <div className="fixed bottom-8 left-1/2 transform -translate-x-1/2 bg-blue-600 text-white rounded-full shadow-2xl px-6 py-4 flex items-center gap-4 z-50">
+              <span className="font-medium">
+                {selectedForComparison.size}개 선택됨
+              </span>
+              <button
+                onClick={() => setShowComparisonModal(true)}
+                disabled={selectedForComparison.size < 2}
+                className="bg-white text-blue-600 px-4 py-2 rounded-full font-medium hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                비교하기
+              </button>
+              <button
+                onClick={resetComparison}
+                className="text-white hover:text-blue-100 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+          )}
+
+          {/* 비교 모달 */}
+          {showComparisonModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-y-auto">
+                <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center justify-between">
+                  <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+                    아파트 비교
+                  </h2>
+                  <button
+                    onClick={() => setShowComparisonModal(false)}
+                    className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                  >
+                    <X className="w-6 h-6" />
+                  </button>
+                </div>
+
+                <div className="p-6">
+                  {/* 비교 테이블 */}
+                  <div className="overflow-x-auto">
+                    <table className="w-full border-collapse">
+                      <thead>
+                        <tr className="bg-gray-50 dark:bg-gray-700">
+                          <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-600">
+                            항목
+                          </th>
+                          {Array.from(selectedForComparison).map(aptName => {
+                            const group = groupedResults.find(g => g.aptName === aptName);
+                            return (
+                              <th key={aptName} className="px-4 py-3 text-left text-sm font-semibold text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-600">
+                                {aptName}
+                              </th>
+                            );
+                          })}
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                        {/* 거래 건수 */}
+                        <tr>
+                          <td className="px-4 py-3 text-sm font-medium text-gray-700 dark:text-gray-300">
+                            거래 건수
+                          </td>
+                          {Array.from(selectedForComparison).map(aptName => {
+                            const group = groupedResults.find(g => g.aptName === aptName);
+                            return (
+                              <td key={aptName} className="px-4 py-3 text-sm text-gray-900 dark:text-white">
+                                {group?.count}건
+                              </td>
+                            );
+                          })}
+                        </tr>
+
+                        {/* 평균 가격 */}
+                        <tr>
+                          <td className="px-4 py-3 text-sm font-medium text-gray-700 dark:text-gray-300">
+                            평균 거래가
+                          </td>
+                          {Array.from(selectedForComparison).map(aptName => {
+                            const group = groupedResults.find(g => g.aptName === aptName);
+                            return (
+                              <td key={aptName} className="px-4 py-3 text-sm font-semibold text-blue-600 dark:text-blue-400">
+                                {group && formatPrice(group.avgPrice)}
+                              </td>
+                            );
+                          })}
+                        </tr>
+
+                        {/* 최고가 */}
+                        <tr>
+                          <td className="px-4 py-3 text-sm font-medium text-gray-700 dark:text-gray-300">
+                            최고가
+                          </td>
+                          {Array.from(selectedForComparison).map(aptName => {
+                            const group = groupedResults.find(g => g.aptName === aptName);
+                            const maxPrice = group ? Math.max(...group.items.map(i => i.dealPrice)) : 0;
+                            return (
+                              <td key={aptName} className="px-4 py-3 text-sm text-purple-600 dark:text-purple-400">
+                                {formatPrice(maxPrice)}
+                              </td>
+                            );
+                          })}
+                        </tr>
+
+                        {/* 최저가 */}
+                        <tr>
+                          <td className="px-4 py-3 text-sm font-medium text-gray-700 dark:text-gray-300">
+                            최저가
+                          </td>
+                          {Array.from(selectedForComparison).map(aptName => {
+                            const group = groupedResults.find(g => g.aptName === aptName);
+                            const minPrice = group ? Math.min(...group.items.map(i => i.dealPrice)) : 0;
+                            return (
+                              <td key={aptName} className="px-4 py-3 text-sm text-orange-600 dark:text-orange-400">
+                                {formatPrice(minPrice)}
+                              </td>
+                            );
+                          })}
+                        </tr>
+
+                        {/* 평균 평당가 */}
+                        <tr>
+                          <td className="px-4 py-3 text-sm font-medium text-gray-700 dark:text-gray-300">
+                            평균 평당가
+                          </td>
+                          {Array.from(selectedForComparison).map(aptName => {
+                            const group = groupedResults.find(g => g.aptName === aptName);
+                            const avgPricePerPyeong = group
+                              ? group.items.reduce((sum, item) => sum + item.pricePerPyeong, 0) / group.items.length
+                              : 0;
+                            return (
+                              <td key={aptName} className="px-4 py-3 text-sm text-green-600 dark:text-green-400">
+                                {(avgPricePerPyeong / 10000).toFixed(0)}만원
+                              </td>
+                            );
+                          })}
+                        </tr>
+
+                        {/* 평균 건축년도 */}
+                        <tr>
+                          <td className="px-4 py-3 text-sm font-medium text-gray-700 dark:text-gray-300">
+                            평균 건축년도
+                          </td>
+                          {Array.from(selectedForComparison).map(aptName => {
+                            const group = groupedResults.find(g => g.aptName === aptName);
+                            const avgBuildYear = group
+                              ? Math.round(group.items.reduce((sum, item) => sum + item.buildYear, 0) / group.items.length)
+                              : 0;
+                            return (
+                              <td key={aptName} className="px-4 py-3 text-sm text-gray-900 dark:text-white">
+                                {avgBuildYear}년 ({new Date().getFullYear() - avgBuildYear}년차)
+                              </td>
+                            );
+                          })}
+                        </tr>
+
+                        {/* 최근 거래일 */}
+                        <tr>
+                          <td className="px-4 py-3 text-sm font-medium text-gray-700 dark:text-gray-300">
+                            최근 거래일
+                          </td>
+                          {Array.from(selectedForComparison).map(aptName => {
+                            const group = groupedResults.find(g => g.aptName === aptName);
+                            return (
+                              <td key={aptName} className="px-4 py-3 text-sm text-gray-900 dark:text-white">
+                                {group?.latestDate}
+                              </td>
+                            );
+                          })}
+                        </tr>
+
+                        {/* 면적 범위 */}
+                        <tr>
+                          <td className="px-4 py-3 text-sm font-medium text-gray-700 dark:text-gray-300">
+                            면적 범위
+                          </td>
+                          {Array.from(selectedForComparison).map(aptName => {
+                            const group = groupedResults.find(g => g.aptName === aptName);
+                            const areas = group?.items.map(i => i.areaPyeong) || [];
+                            const minArea = areas.length > 0 ? Math.min(...areas) : 0;
+                            const maxArea = areas.length > 0 ? Math.max(...areas) : 0;
+                            return (
+                              <td key={aptName} className="px-4 py-3 text-sm text-gray-900 dark:text-white">
+                                {minArea.toFixed(1)}평 ~ {maxArea.toFixed(1)}평
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div className="mt-6 flex justify-end gap-3">
+                    <button
+                      onClick={resetComparison}
+                      className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                    >
+                      선택 초기화
+                    </button>
+                    <button
+                      onClick={() => setShowComparisonModal(false)}
+                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
+                    >
+                      닫기
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
         </div>
