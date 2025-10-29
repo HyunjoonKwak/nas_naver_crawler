@@ -959,29 +959,44 @@ class NASNaverRealEstateCrawler:
 
                 # 0.5. DB에서 기존 단지 확인 (Overview 스킵 판단)
                 skip_overview = False
-                if self.prisma:
+                if self.db_enabled and self.db_conn:
                     try:
-                        existing_complex = await self.prisma.complex.find_unique(
-                            where={'complexNo': complex_no}
-                        )
+                        cursor = self.db_conn.cursor()
+                        cursor.execute("""
+                            SELECT "complexNo", "complexName", "totalHousehold", "totalDong",
+                                   latitude, longitude
+                            FROM complexes
+                            WHERE "complexNo" = %s
+                            LIMIT 1
+                        """, (complex_no,))
+
+                        existing_complex = cursor.fetchone()
+                        cursor.close()
+
                         if existing_complex:
+                            complexNo, complexName, totalHousehold, totalDong, latitude, longitude = existing_complex
                             print(f"💾 단지 {complex_no} 이미 DB에 존재")
-                            print(f"   단지명: {existing_complex.complexName}")
+                            print(f"   단지명: {complexName}")
                             print(f"   → Overview 크롤링 스킵 (기존 데이터 사용)")
                             skip_overview = True
                             # 기존 데이터를 overview로 사용
                             complex_data['overview'] = {
-                                'complexNo': existing_complex.complexNo,
-                                'complexName': existing_complex.complexName,
-                                'totalHousehold': existing_complex.totalHousehold,
-                                'totalDong': existing_complex.totalDong,
-                                'latitude': float(existing_complex.latitude) if existing_complex.latitude else None,
-                                'longitude': float(existing_complex.longitude) if existing_complex.longitude else None,
+                                'complexNo': complexNo,
+                                'complexName': complexName,
+                                'totalHousehold': totalHousehold,
+                                'totalDong': totalDong,
+                                'latitude': float(latitude) if latitude else None,
+                                'longitude': float(longitude) if longitude else None,
                             }
                         else:
                             print(f"🆕 신규 단지 {complex_no} → Overview 수집 필요")
                     except Exception as e:
                         print(f"[WARNING] DB 체크 실패, Overview 수집 진행: {e}")
+                        # 에러 발생 시에도 커서 닫기 시도
+                        try:
+                            cursor.close()
+                        except:
+                            pass
 
                 # 1. 단지 개요 정보 (재시도 로직 포함) - 신규 단지만
                 if not skip_overview:
