@@ -322,6 +322,13 @@ export default function RealPricePage() {
 
       // 읍면동 필터링
       if (searchDong) {
+        // 디버그: 첫 5개 항목의 dong 값 출력
+        if (allResults.length > 0) {
+          console.log('[Real Price Debug] searchDong:', searchDong);
+          console.log('[Real Price Debug] Sample dong values:',
+            allResults.slice(0, 5).map(item => item.dong));
+        }
+
         filteredResults = filteredResults.filter(item => {
           return item.dong && item.dong.includes(searchDong);
         });
