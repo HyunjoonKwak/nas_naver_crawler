@@ -106,8 +106,14 @@ services:
       redis:
         condition: service_healthy
 
-    mem_limit: 2g
-    memswap_limit: 2g
+    mem_limit: 4g
+    memswap_limit: 4g
+    # Chromium은 메모리를 많이 사용 (1.5-2GB)
+    # 2GB 제한 시 스왑 발생 → 초기화 120초 (디스크 I/O 병목)
+
+    shm_size: 2gb
+    # Chromium 공유 메모리 증설 (기본 64MB는 부족)
+    # --disable-dev-shm-usage 옵션과 함께 사용하면 속도 개선
 
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3000/api/status"]
