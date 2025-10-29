@@ -1,8 +1,66 @@
 # 📋 프로젝트 TODO 리스트
 
-> **마지막 업데이트**: 2025-10-25 (토요일)
-> **현재 버전**: v2.12.0 - ✅ 실거래가 검색 기능 Phase 1~3 완료!
+> **마지막 업데이트**: 2025-10-29 (화요일)
+> **현재 버전**: v2.13.0 - ✅ 단지 번호 수정 기능 추가, 임시 단지 문제 해결
 > **다음 작업**: 실거래가 기능 고도화 및 단지 상세 페이지 통합
+
+---
+
+## 💡 향후 구현 고려사항 (보류)
+
+### 실거래가 페이지 로컬 즐겨찾기 기능 (2025-10-29 논의)
+
+**요구사항:**
+- 실거래가 검색 결과에서 특정 아파트를 즐겨찾기
+- "내 관심 단지만 보기" 토글로 필터링
+- 실거래가 페이지 내에서만 동작 (단지 관리와 별개)
+- 최대 10~20개 제한
+
+**구현 방안:**
+
+#### 옵션 1: localStorage (간단, 빠름)
+```typescript
+// 저장 구조
+interface RealPriceFavorite {
+  aptName: string;
+  address: string;
+  lawdCd: string;
+  dong?: string;
+  addedAt: string;
+}
+
+localStorage.setItem('realPriceFavorites', JSON.stringify(favorites));
+```
+
+**장점:**
+- 구현 간단 (API 불필요)
+- 즉시 동작
+- 단지 관리와 완전 분리
+
+**단점:**
+- ❌ 브라우저/디바이스 간 동기화 안 됨
+- ❌ 브라우저 데이터 삭제 시 소실
+
+#### 옵션 2: Database (UserPreference 테이블)
+```typescript
+// DB 구조
+UserPreference {
+  userId: string
+  realPriceFavorites: Json
+}
+```
+
+**장점:**
+- 디바이스 간 동기화
+- 영구 저장
+
+**단점:**
+- API 구현 필요
+- 약간의 지연
+
+**결론:** 브라우저 간 호환성 문제로 localStorage는 부적합. DB 방식이 필요하면 향후 구현.
+
+**예상 작업량:** 약 2~3시간
 
 ---
 

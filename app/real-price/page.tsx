@@ -10,7 +10,7 @@ import { MobileNavigation } from "@/components/MobileNavigation";
 import { Breadcrumb } from "@/components/Breadcrumb";
 import { showSuccess, showError, showLoading, dismissToast } from "@/lib/toast";
 import { AuthGuard } from "@/components/AuthGuard";
-import { Search, Loader2, TrendingUp, Home, Calendar, MapPin, ChevronDown, ChevronUp, Building2, Star, X } from "lucide-react";
+import { Search, Loader2, TrendingUp, Home, Calendar, MapPin, ChevronDown, ChevronUp, Building2, X } from "lucide-react";
 import { formatPrice } from "@/lib/price-format";
 import DongCodeSelector from "@/components/DongCodeSelector";
 
@@ -48,104 +48,12 @@ export default function RealPricePage() {
   const [isLoading, setIsLoading] = useState(false);
   const [expandedApts, setExpandedApts] = useState<Set<string>>(new Set());
   const [autoSearchTriggered, setAutoSearchTriggered] = useState(false);
-  const [showOnlyFavorites, setShowOnlyFavorites] = useState(false);
   const [searchHistory, setSearchHistory] = useState<Array<{
     lawdCd: string;
     areaName: string;
     dongName?: string;
     timestamp: number;
   }>>([]);
-
-  // 즐겨찾기 목록 조회
-  const { data: favoritesData } = useQuery({
-    queryKey: ['favorites'],
-    queryFn: async () => {
-      const response = await fetch('/api/favorites');
-      const data = await response.json();
-      return data.success ? data.favorites : [];
-    },
-    enabled: !!session,
-  });
-
-  // 즐겨찾기 추가 mutation
-  const addFavoriteMutation = useMutation({
-    mutationFn: async ({ aptName, lawdCd, address }: { aptName: string; lawdCd: string; address: string }) => {
-      const response = await fetch('/api/favorites/quick-add', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ aptName, lawdCd, address }),
-      });
-      const data = await response.json();
-      if (!data.success) {
-        // 상세 메시지가 있으면 함께 전달
-        const errorDetail = data.message ? `\n${data.message}` : '';
-        throw new Error(data.error + errorDetail || '즐겨찾기 추가 실패');
-      }
-      return data.data;
-    },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['favorites'] });
-      showSuccess(data.alreadyFavorite ? '이미 즐겨찾기에 추가되어 있습니다' : '즐겨찾기에 추가되었습니다');
-    },
-    onError: (error: any) => {
-      showError(error.message || '즐겨찾기 추가 중 오류가 발생했습니다');
-    },
-  });
-
-  // 즐겨찾기 삭제 mutation
-  const removeFavoriteMutation = useMutation({
-    mutationFn: async (complexId: string) => {
-      const response = await fetch('/api/favorites', {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ complexId }),
-      });
-      const data = await response.json();
-      if (!data.success) {
-        throw new Error(data.error || '즐겨찾기 삭제 실패');
-      }
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['favorites'] });
-      showSuccess('즐겨찾기에서 제거되었습니다');
-    },
-    onError: (error: any) => {
-      showError(error.message || '즐겨찾기 삭제 중 오류가 발생했습니다');
-    },
-  });
-
-  // 즐겨찾기 여부 확인 함수
-  const isFavorite = (aptName: string) => {
-    if (!favoritesData) return false;
-    return favoritesData.some((fav: any) => fav.complex?.complexName === aptName);
-  };
-
-  // 즐겨찾기된 아파트의 complexNo 찾기
-  const getComplexNo = (aptName: string) => {
-    if (!favoritesData) return null;
-    const fav = favoritesData.find((f: any) => f.complex?.complexName === aptName);
-    return fav?.complex?.complexNo || null;
-  };
-
-  // 즐겨찾기된 아파트의 complexId 찾기
-  const getComplexId = (aptName: string) => {
-    if (!favoritesData) return null;
-    const fav = favoritesData.find((f: any) => f.complex?.complexName === aptName);
-    return fav?.complexId || null;
-  };
-
-  // 즐겨찾기 토글 함수
-  const handleToggleFavorite = (aptName: string, address: string) => {
-    if (isFavorite(aptName)) {
-      const complexId = getComplexId(aptName);
-      if (complexId) {
-        removeFavoriteMutation.mutate(complexId);
-      }
-    } else {
-      addFavoriteMutation.mutate({ aptName, lawdCd, address });
-    }
-  };
 
   // 아파트별로 그룹핑
   const groupedResults = useMemo(() => {
@@ -159,7 +67,7 @@ export default function RealPricePage() {
     });
 
     // 각 그룹을 배열로 변환하고 거래 건수 기준 내림차순 정렬
-    let results = Array.from(groups.entries())
+    const results = Array.from(groups.entries())
       .map(([aptName, items]) => ({
         aptName,
         items,
@@ -171,13 +79,8 @@ export default function RealPricePage() {
       }))
       .sort((a, b) => b.count - a.count); // 거래 건수 내림차순
 
-    // 내 관심 단지만 보기 필터 적용
-    if (showOnlyFavorites && favoritesData) {
-      results = results.filter(group => isFavorite(group.aptName));
-    }
-
     return results;
-  }, [searchResults, showOnlyFavorites, favoritesData]);
+  }, [searchResults]);
 
   // 검색 기록 로드
   useEffect(() => {
@@ -573,35 +476,13 @@ export default function RealPricePage() {
             <div className="space-y-4">
               {/* 헤더 */}
               <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
-                <div className="flex flex-col gap-4">
-                  <div className="flex items-center justify-between">
-                    <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-                      검색 결과
-                    </h2>
-                    <div className="text-sm text-gray-600 dark:text-gray-400">
-                      총 <span className="font-semibold text-blue-600 dark:text-blue-400">{groupedResults.length}개</span> 아파트,{" "}
-                      <span className="font-semibold text-blue-600 dark:text-blue-400">{totalCount}건</span>의 거래
-                    </div>
-                  </div>
-
-                  {/* 즐겨찾기 필터 토글 */}
-                  <div className="flex items-center gap-2 pt-2 border-t border-gray-200 dark:border-gray-700">
-                    <button
-                      onClick={() => setShowOnlyFavorites(!showOnlyFavorites)}
-                      className={`flex items-center gap-2 px-4 py-2 text-sm rounded-lg border-2 transition-colors ${
-                        showOnlyFavorites
-                          ? 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-500 text-yellow-700 dark:text-yellow-400'
-                          : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
-                      }`}
-                    >
-                      <Star className={`w-4 h-4 ${showOnlyFavorites ? 'fill-yellow-500' : ''}`} />
-                      <span>내 관심 단지만 보기</span>
-                    </button>
-                    {showOnlyFavorites && (
-                      <span className="text-xs text-gray-500 dark:text-gray-400">
-                        즐겨찾기된 아파트만 표시됩니다
-                      </span>
-                    )}
+                <div className="flex items-center justify-between">
+                  <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+                    검색 결과
+                  </h2>
+                  <div className="text-sm text-gray-600 dark:text-gray-400">
+                    총 <span className="font-semibold text-blue-600 dark:text-blue-400">{groupedResults.length}개</span> 아파트,{" "}
+                    <span className="font-semibold text-blue-600 dark:text-blue-400">{totalCount}건</span>의 거래
                   </div>
                 </div>
               </div>
@@ -642,40 +523,6 @@ export default function RealPricePage() {
                         )}
                       </div>
                     </button>
-
-                    {/* 즐겨찾기 및 상세 분석 버튼 */}
-                    <div className="flex items-center gap-2 ml-4">
-                      {/* 즐겨찾기 버튼 */}
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleToggleFavorite(group.aptName, group.items[0]?.address || '');
-                        }}
-                        className={`flex items-center gap-2 px-3 py-1.5 text-sm border rounded-lg transition-colors ${
-                          isFavorite(group.aptName)
-                            ? 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-500 text-yellow-700 dark:text-yellow-400'
-                            : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
-                        }`}
-                        disabled={addFavoriteMutation.isPending || removeFavoriteMutation.isPending}
-                      >
-                        <Star
-                          className={`w-4 h-4 ${isFavorite(group.aptName) ? 'fill-yellow-500' : ''}`}
-                        />
-                        {isFavorite(group.aptName) ? '즐겨찾기됨' : '즐겨찾기'}
-                      </button>
-
-                      {/* 상세 분석 바로가기 (즐겨찾기된 경우만 표시) */}
-                      {isFavorite(group.aptName) && getComplexNo(group.aptName) && (
-                        <Link
-                          href={`/complex/${getComplexNo(group.aptName)}`}
-                          onClick={(e) => e.stopPropagation()}
-                          className="flex items-center gap-2 px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
-                        >
-                          <TrendingUp className="w-4 h-4" />
-                          상세 분석
-                        </Link>
-                      )}
-                    </div>
                   </div>
 
                   {/* 거래 목록 (확장 시) */}
