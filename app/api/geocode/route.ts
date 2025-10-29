@@ -60,15 +60,14 @@ async function getAccessToken(serviceId: string, securityKey: string): Promise<s
 
   // 새 AccessToken 발급
   console.log('[SGIS Auth] 🔑 새 AccessToken 발급 시작');
-  // 캐싱 방지를 위해 타임스탬프 추가
-  const timestamp = Date.now();
-  const authUrl = `https://sgisapi.kostat.go.kr/OpenAPI3/auth/authentication.json?consumer_key=${serviceId}&consumer_secret=${securityKey}&_t=${timestamp}`;
+  const authUrl = `https://sgisapi.kostat.go.kr/OpenAPI3/auth/authentication.json?consumer_key=${serviceId}&consumer_secret=${securityKey}`;
 
   const response = await fetch(authUrl, {
     cache: 'no-store', // 브라우저/fetch 캐싱 방지
     headers: {
-      'Cache-Control': 'no-cache',
-      'Pragma': 'no-cache'
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0'
     }
   });
 
@@ -86,16 +85,30 @@ async function getAccessToken(serviceId: string, securityKey: string): Promise<s
   }
 
   // 토큰 캐시 저장 (API에서 제공하는 만료시간 사용)
-  cachedAccessToken = data.result.accessToken;
+  const newAccessToken = data.result.accessToken;
   // accessTimeout이 Unix timestamp(밀리초)로 제공됨
-  tokenExpiryTime = parseInt(data.result.accessTimeout);
+  const newTokenExpiryTime = parseInt(data.result.accessTimeout);
 
   console.log('[SGIS Auth] ✅ AccessToken 발급 완료');
   console.log('[SGIS Auth]   원본 accessTimeout:', data.result.accessTimeout);
-  console.log('[SGIS Auth]   파싱된 tokenExpiryTime:', tokenExpiryTime);
+  console.log('[SGIS Auth]   파싱된 tokenExpiryTime:', newTokenExpiryTime);
   console.log('[SGIS Auth]   현재 시간 (now):', now);
-  console.log('[SGIS Auth]   만료시간:', new Date(tokenExpiryTime).toLocaleString('ko-KR'));
-  console.log('[SGIS Auth]   유효시간:', Math.floor((tokenExpiryTime - now) / 1000 / 60), '분');
+  console.log('[SGIS Auth]   만료시간:', new Date(newTokenExpiryTime).toLocaleString('ko-KR'));
+  console.log('[SGIS Auth]   유효시간:', Math.floor((newTokenExpiryTime - now) / 1000 / 60), '분');
+
+  // ⚠️ 중요: 만료된 토큰인지 확인 (SGIS API 캐싱 이슈 대응)
+  if (newTokenExpiryTime <= now) {
+    console.error('[SGIS Auth] ❌ 발급받은 토큰이 이미 만료됨! (SGIS API 서버 캐싱 문제)');
+    console.error('[SGIS Auth]   이 문제는 SGIS API 서버 측 문제로, 클라이언트에서 해결 불가');
+    console.error('[SGIS Auth]   실거래가 기능을 사용하려면 SGIS 고객센터에 문의 필요');
+
+    // 만료된 토큰은 캐시하지 않음
+    throw new Error(`SGIS API가 이미 만료된 토큰을 반환했습니다. 만료시간: ${new Date(newTokenExpiryTime).toLocaleString('ko-KR')}, 현재시간: ${new Date(now).toLocaleString('ko-KR')}`);
+  }
+
+  // 유효한 토큰만 캐시에 저장
+  cachedAccessToken = newAccessToken;
+  tokenExpiryTime = newTokenExpiryTime;
 
   return cachedAccessToken;
 }
@@ -145,9 +158,7 @@ export async function GET(request: NextRequest) {
     }
 
     // SGIS Reverse Geocoding API 호출 (WGS84 좌표계)
-    // 캐싱 방지를 위해 타임스탬프 추가
-    const timestamp = Date.now();
-    const apiUrl = `https://sgisapi.kostat.go.kr/OpenAPI3/addr/rgeocodewgs84.json?accessToken=${accessToken}&x_coor=${longitude}&y_coor=${latitude}&addr_type=20&_t=${timestamp}`;
+    const apiUrl = `https://sgisapi.kostat.go.kr/OpenAPI3/addr/rgeocodewgs84.json?accessToken=${accessToken}&x_coor=${longitude}&y_coor=${latitude}&addr_type=20`;
 
     console.log(`[SGIS Geocoding] 🗺️  Reverse Geocoding 호출 시작`);
     console.log(`[SGIS Geocoding]   좌표: ${latitude}, ${longitude}`);
@@ -156,8 +167,9 @@ export async function GET(request: NextRequest) {
     const response = await fetch(apiUrl, {
       cache: 'no-store',
       headers: {
-        'Cache-Control': 'no-cache',
-        'Pragma': 'no-cache'
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
       }
     });
 
