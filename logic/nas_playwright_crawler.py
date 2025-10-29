@@ -503,8 +503,11 @@ class NASNaverRealEstateCrawler:
                         lambda response: f'/api/complexes/overview/{complex_no}' in response.url,
                         timeout=self.timeout
                     ) as response_info:
-                        # 페이지 접속과 동시에 API 응답 대기
-                        await self.page.goto(url, wait_until='commit', timeout=self.timeout)
+                        # 페이지 접속: domcontentloaded로 변경 (React 앱 초기화 시간 확보)
+                        # commit: HTML만 로드 (너무 빠름, API 호출 안 됨)
+                        # domcontentloaded: DOM 파싱 완료 + 초기 JS 실행 (적절)
+                        # networkidle: 모든 네트워크 요청 완료 (느림)
+                        await self.page.goto(url, wait_until='domcontentloaded', timeout=self.timeout)
 
                     # API 응답 받기
                     response = await response_info.value
