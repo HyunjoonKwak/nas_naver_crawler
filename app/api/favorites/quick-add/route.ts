@@ -61,9 +61,9 @@ export async function POST(request: NextRequest) {
     // 3. 즐겨찾기 확인
     const existingFavorite = await prisma.favorite.findUnique({
       where: {
-        userId_complexId: {
-          userId: session.user.id,
+        complexId_userId: {
           complexId: complex.id,
+          userId: session.user.id,
         },
       },
     });
@@ -81,20 +81,10 @@ export async function POST(request: NextRequest) {
     }
 
     // 4. 즐겨찾기 추가
-    // 현재 최대 order 조회
-    const maxOrder = await prisma.favorite.findFirst({
-      where: { userId: session.user.id },
-      orderBy: { order: 'desc' },
-      select: { order: true },
-    });
-
-    const newOrder = (maxOrder?.order ?? 0) + 1;
-
     await prisma.favorite.create({
       data: {
         userId: session.user.id,
         complexId: complex.id,
-        order: newOrder,
       },
     });
 
