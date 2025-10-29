@@ -172,8 +172,10 @@ export function processRealPriceItem(item: RealPriceItem, debug = false): Proces
     floor: parseInt(item.floor, 10),
     buildYear: parseInt(item.buildYear, 10),
 
-    tradeType: item.dealingGbn || '매매', // 거래유형: 매매/전세/월세 (기본값: 매매)
-    dealMethod: item.cdealType || '중개거래', // 거래방법: 직거래/중개거래 (기본값: 중개거래)
+    // 거래유형: 아파트 매매 API는 매매만 제공하므로 '매매'로 고정
+    tradeType: '매매',
+    // 거래방법: API 응답의 cdealType 사용 (없으면 중개거래로 추정)
+    dealMethod: item.cdealType && item.cdealType.trim() !== '' ? item.cdealType : '중개거래',
     pricePerPyeong: Math.round(dealPrice / areaPyeong),
     rgstDate: (item.rgstDate || '').trim(), // 등록일자
   };
@@ -254,6 +256,13 @@ export class RealPriceApiClient {
         .map((item: RealPriceItem, index: number) => {
           // 첫 5개 항목만 디버그 로그 출력
           const debug = index < 5;
+
+          // 디버그: 거래유형과 거래방법 필드 확인
+          if (debug) {
+            console.log('[Real Price API Debug] dealingGbn:', item.dealingGbn || '(empty)');
+            console.log('[Real Price API Debug] cdealType:', item.cdealType || '(empty)');
+          }
+
           return processRealPriceItem(item, debug);
         });
 
