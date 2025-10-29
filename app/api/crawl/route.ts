@@ -377,6 +377,47 @@ async function saveCrawlResultsToDB(crawlId: string, complexNos: string[], userI
       },
     });
 
+    // 📌 최적화: DB에서 기존 단지의 법정동 정보 가져오기
+    const complexNos = complexesToUpsert.map(c => c.complexNo);
+    const existingComplexes = await prisma.complex.findMany({
+      where: { complexNo: { in: complexNos } },
+      select: {
+        complexNo: true,
+        beopjungdong: true,
+        haengjeongdong: true,
+        sidoCode: true,
+        sigunguCode: true,
+        dongCode: true,
+        lawdCd: true,
+      },
+    });
+
+    // Map으로 빠른 조회
+    const existingDataMap = new Map(
+      existingComplexes.map(c => [c.complexNo, c])
+    );
+
+    // 기존 단지의 법정동 정보 병합
+    let skippedGeocoding = 0;
+    for (const complex of complexesToUpsert) {
+      const existing = existingDataMap.get(complex.complexNo);
+      if (existing && existing.beopjungdong) {
+        // DB에 법정동 정보가 있으면 사용
+        complex.beopjungdong = complex.beopjungdong || existing.beopjungdong;
+        complex.haengjeongdong = complex.haengjeongdong || existing.haengjeongdong;
+        complex.sidoCode = complex.sidoCode || existing.sidoCode;
+        complex.sigunguCode = complex.sigunguCode || existing.sigunguCode;
+        complex.dongCode = complex.dongCode || existing.dongCode;
+        complex.lawdCd = complex.lawdCd || existing.lawdCd;
+        skippedGeocoding++;
+        console.log(`💾 ${complex.complexName} (${complex.complexNo}): 기존 법정동 정보 재사용 → 지오코딩 스킵`);
+      }
+    }
+
+    if (skippedGeocoding > 0) {
+      console.log(`✅ 총 ${skippedGeocoding}개 단지의 지오코딩 스킵 (기존 DB 데이터 사용)`);
+    }
+
     for (const complex of complexesToUpsert) {
       if (complex.latitude && complex.longitude && !complex.beopjungdong) {
         try {
