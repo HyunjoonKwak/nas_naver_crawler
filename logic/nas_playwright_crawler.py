@@ -433,6 +433,22 @@ class NASNaverRealEstateCrawler:
                 try:
                     # wait_until='commit'로 변경 (네트워크 요청만 성공하면 OK, DOM 로딩 기다리지 않음)
                     await self.page.goto(url, wait_until='commit', timeout=self.timeout)
+
+                    # ✅ 접속 직후 스크린샷 저장 (봇 탐지 확인용)
+                    initial_screenshot_path = self.output_dir / f"initial_page_{complex_no}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
+                    try:
+                        await self.page.screenshot(path=str(initial_screenshot_path), full_page=True, timeout=5000)
+                        print(f"📸 접속 직후 스크린샷 저장: {initial_screenshot_path}")
+                    except Exception as ss_error:
+                        print(f"[WARNING] 초기 스크린샷 저장 실패: {ss_error}")
+
+                    # 현재 URL 확인 (404 리다이렉트 감지)
+                    current_url = self.page.url
+                    print(f"현재 URL: {current_url}")
+                    if '/404' in current_url or current_url != url:
+                        print(f"⚠️ 404 리다이렉트 감지! {url} → {current_url}")
+                        print(f"   이것은 봇 탐지일 가능성이 높습니다.")
+
                 except Exception as goto_error:
                     # 타임아웃 발생 시 스크린샷 저장 (별도 타임아웃 5초)
                     screenshot_path = self.output_dir / f"timeout_screenshot_{complex_no}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
