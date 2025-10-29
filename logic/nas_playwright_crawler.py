@@ -195,12 +195,21 @@ class NASNaverRealEstateCrawler:
                 'args': [
                     '--no-sandbox',
                     '--disable-setuid-sandbox',
-                    '--disable-dev-shm-usage',
+                    '--disable-dev-shm-usage',  # /dev/shm 사용 안 함 (NAS 메모리 절약)
                     '--disable-gpu',
                     '--disable-web-security',
                     '--disable-features=VizDisplayCompositor',
+                    '--disable-software-rasterizer',  # GPU 소프트웨어 렌더링 비활성화
+                    '--disable-extensions',  # 확장 프로그램 비활성화
+                    '--disable-background-networking',  # 백그라운드 네트워킹 비활성화
+                    '--disable-background-timer-throttling',
+                    '--disable-backgrounding-occluded-windows',
+                    '--disable-breakpad',  # 크래시 리포트 비활성화
+                    '--disable-component-extensions-with-background-pages',
+                    '--disable-ipc-flooding-protection',
+                    '--disable-renderer-backgrounding',
                     '--memory-pressure-off',
-                    '--max_old_space_size=4096'
+                    '--js-flags=--max-old-space-size=512'  # V8 힙 크기 512MB로 제한 (메모리 절약)
                 ]
             }
             
@@ -421,44 +430,46 @@ class NASNaverRealEstateCrawler:
             # 네이버 부동산 단지 페이지 접속
             url = f"https://new.land.naver.com/complexes/{complex_no}"
             try:
-                # wait_until='commit'로 변경 (네트워크 요청만 성공하면 OK, DOM 로딩 기다리지 않음)
-                await self.page.goto(url, wait_until='commit', timeout=self.timeout)
-            except Exception as goto_error:
-                # 타임아웃 발생 시 스크린샷 저장 (별도 타임아웃 5초)
-                screenshot_path = self.output_dir / f"timeout_screenshot_{complex_no}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
                 try:
-                    await self.page.screenshot(path=str(screenshot_path), full_page=True, timeout=5000)
-                    print(f"🖼️  타임아웃 스크린샷 저장: {screenshot_path}")
-                except Exception as ss_error:
-                    print(f"[WARNING] 스크린샷 저장 실패: {ss_error}")
-                # 원래 에러 다시 발생
-                raise goto_error
-
-            # API 응답 대기
-            await asyncio.sleep(3)
-
-            # 응답이 없으면 reload 대신 goto 재시도
-            if not overview_data:
-                print("Overview 데이터 없음, 페이지 재접속 (goto)...")
-                # reload() 대신 goto() 사용 (CDP 리소스 정리 문제 회피)
-                try:
+                    # wait_until='commit'로 변경 (네트워크 요청만 성공하면 OK, DOM 로딩 기다리지 않음)
                     await self.page.goto(url, wait_until='commit', timeout=self.timeout)
-                except Exception as goto_error2:
-                    # 재시도 타임아웃 시에도 스크린샷 (별도 타임아웃 5초)
-                    screenshot_path = self.output_dir / f"timeout_retry_screenshot_{complex_no}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
+                except Exception as goto_error:
+                    # 타임아웃 발생 시 스크린샷 저장 (별도 타임아웃 5초)
+                    screenshot_path = self.output_dir / f"timeout_screenshot_{complex_no}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
                     try:
                         await self.page.screenshot(path=str(screenshot_path), full_page=True, timeout=5000)
-                        print(f"🖼️  재시도 타임아웃 스크린샷 저장: {screenshot_path}")
+                        print(f"🖼️  타임아웃 스크린샷 저장: {screenshot_path}")
                     except Exception as ss_error:
                         print(f"[WARNING] 스크린샷 저장 실패: {ss_error}")
-                    raise goto_error2
+                    # 원래 에러 다시 발생
+                    raise goto_error
+
+                # API 응답 대기
                 await asyncio.sleep(3)
 
-            # 응답 핸들러 제거
-            try:
-                self.page.remove_listener('response', handle_response)
-            except Exception as e:
-                print(f"[WARNING] 핸들러 제거 실패: 'response' - {e}")
+                # 응답이 없으면 reload 대신 goto 재시도
+                if not overview_data:
+                    print("Overview 데이터 없음, 페이지 재접속 (goto)...")
+                    # reload() 대신 goto() 사용 (CDP 리소스 정리 문제 회피)
+                    try:
+                        await self.page.goto(url, wait_until='commit', timeout=self.timeout)
+                    except Exception as goto_error2:
+                        # 재시도 타임아웃 시에도 스크린샷 (별도 타임아웃 5초)
+                        screenshot_path = self.output_dir / f"timeout_retry_screenshot_{complex_no}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
+                        try:
+                            await self.page.screenshot(path=str(screenshot_path), full_page=True, timeout=5000)
+                            print(f"🖼️  재시도 타임아웃 스크린샷 저장: {screenshot_path}")
+                        except Exception as ss_error:
+                            print(f"[WARNING] 스크린샷 저장 실패: {ss_error}")
+                        raise goto_error2
+                    await asyncio.sleep(3)
+            finally:
+                # 응답 핸들러 제거 (에러 발생해도 반드시 실행)
+                try:
+                    self.page.remove_listener('response', handle_response)
+                    print(f"[DEBUG] Response 핸들러 제거 완료")
+                except Exception as e:
+                    print(f"[WARNING] 핸들러 제거 실패: 'response' - {e}")
 
             if overview_data:
                 print(f"✅ Overview 수집 성공: {overview_data.get('complexName', 'Unknown')}")
@@ -534,7 +545,7 @@ class NASNaverRealEstateCrawler:
             
             # 응답 핸들러 등록
             self.page.on('response', handle_articles_response)
-            
+
             try:
                 # 1. 메인 페이지에서 localStorage 설정 (중요!)
                 print("🔧 동일매물 묶기 설정 준비 중...")
@@ -858,12 +869,13 @@ class NASNaverRealEstateCrawler:
                 # 에러가 발생해도 이미 수집한 데이터가 있으면 반환
                 if all_articles:
                     print(f"⚠️  에러 발생했지만 {len(all_articles)}개 매물은 수집 완료")
-
-            # 응답 핸들러 제거
-            try:
-                self.page.remove_listener('response', handle_articles_response)
-            except Exception as e:
-                print(f"[WARNING] 핸들러 제거 실패: {e}")
+            finally:
+                # 응답 핸들러 제거 (에러 발생해도 반드시 실행)
+                try:
+                    self.page.remove_listener('response', handle_articles_response)
+                    print(f"[DEBUG] Articles 핸들러 제거 완료")
+                except Exception as e:
+                    print(f"[WARNING] 핸들러 제거 실패: {e}")
 
             if all_articles:
                 return {
