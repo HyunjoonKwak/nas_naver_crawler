@@ -485,7 +485,8 @@ class NASNaverRealEstateCrawler:
             # 첫 요청 시 워밍업 (메인 페이지 방문 → 쿠키/세션 생성)
             if self.first_request:
                 print("🌡️  워밍업: 메인 페이지 방문 중... (봇 감지 회피)")
-                await self.page.goto('https://new.land.naver.com', wait_until='domcontentloaded')
+                # 워밍업은 commit으로 빠르게 (HTML만 로드해도 충분)
+                await self.page.goto('https://new.land.naver.com', wait_until='commit')
                 print(f"   메인 페이지에서 2-4초 랜덤 대기 (인간처럼 행동)")
                 await random_sleep(2, 4)
                 self.first_request = False
