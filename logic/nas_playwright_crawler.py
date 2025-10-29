@@ -524,11 +524,42 @@ class NASNaverRealEstateCrawler:
 
             if overview_data:
                 print(f"✅ Overview 수집 성공: {overview_data.get('complexName', 'Unknown')}")
-                # 필수 정보 추출
+                # 상세 정보 추출
                 result = {
+                    # 기본 정보
                     'complexName': overview_data.get('complexName', ''),
+                    'complexType': overview_data.get('complexTypeName', ''),
+                    'complexNo': overview_data.get('complexNo', ''),
                     'totalHousehold': overview_data.get('totalHouseHoldCount'),
                     'totalDong': overview_data.get('totalDongCount'),
+                    'useApproveYmd': overview_data.get('useApproveYmd', ''),
+
+                    # 좌표 정보
+                    'latitude': overview_data.get('latitude'),
+                    'longitude': overview_data.get('longitude'),
+
+                    # 면적 정보
+                    'minArea': overview_data.get('minArea'),
+                    'maxArea': overview_data.get('maxArea'),
+
+                    # 가격 정보
+                    'minPrice': overview_data.get('minPrice'),
+                    'maxPrice': overview_data.get('maxPrice'),
+                    'minPriceByLetter': overview_data.get('minPriceByLetter', ''),
+                    'maxPriceByLetter': overview_data.get('maxPriceByLetter', ''),
+                    'minLeasePrice': overview_data.get('minLeasePrice'),
+                    'maxLeasePrice': overview_data.get('maxLeasePrice'),
+                    'minLeasePriceByLetter': overview_data.get('minLeasePriceByLetter', ''),
+                    'maxLeasePriceByLetter': overview_data.get('maxLeasePriceByLetter', ''),
+
+                    # 최근 실거래가
+                    'realPrice': overview_data.get('realPrice'),
+
+                    # 평형 정보
+                    'pyeongs': overview_data.get('pyeongs', []),
+
+                    # 동 정보
+                    'dongs': overview_data.get('dongs', []),
                 }
                 return result
             else:
@@ -985,10 +1016,78 @@ class NASNaverRealEstateCrawler:
                 overview = await self.crawl_complex_overview_with_retry(complex_no)
                 if overview:
                     complex_data['overview'] = overview
+
+                    # 기본 정보
                     complex_name = overview.get('complexName', 'Unknown')
-                    print(f"단지명: {complex_name}")
-                    print(f"세대수: {overview.get('totalHouseHoldCount', 'Unknown')}")
-                    print(f"동수: {overview.get('totalDongCount', 'Unknown')}")
+                    complex_type = overview.get('complexType', 'Unknown')
+                    total_household = overview.get('totalHousehold', 'Unknown')
+                    total_dong = overview.get('totalDong', 'Unknown')
+                    use_approve_ymd = overview.get('useApproveYmd', '')
+
+                    print(f"\n📋 단지 기본 정보")
+                    print(f"  단지명: {complex_name}")
+                    print(f"  유형: {complex_type}")
+                    print(f"  세대수: {total_household}세대")
+                    print(f"  동수: {total_dong}개동")
+                    if use_approve_ymd:
+                        formatted_date = f"{use_approve_ymd[:4]}.{use_approve_ymd[4:6]}.{use_approve_ymd[6:]}"
+                        print(f"  사용승인일: {formatted_date}")
+
+                    # 좌표 정보
+                    latitude = overview.get('latitude')
+                    longitude = overview.get('longitude')
+                    if latitude and longitude:
+                        print(f"\n📍 위치 정보")
+                        print(f"  좌표: {latitude}, {longitude}")
+
+                    # 면적 정보
+                    min_area = overview.get('minArea')
+                    max_area = overview.get('maxArea')
+                    if min_area and max_area:
+                        print(f"\n📐 면적 범위")
+                        print(f"  {min_area}㎡ ~ {max_area}㎡")
+
+                    # 가격 정보
+                    min_price_letter = overview.get('minPriceByLetter')
+                    max_price_letter = overview.get('maxPriceByLetter')
+                    if min_price_letter and max_price_letter:
+                        print(f"\n💰 매매가 범위")
+                        print(f"  {min_price_letter} ~ {max_price_letter}")
+
+                    min_lease_letter = overview.get('minLeasePriceByLetter')
+                    max_lease_letter = overview.get('maxLeasePriceByLetter')
+                    if min_lease_letter and max_lease_letter:
+                        print(f"  전세: {min_lease_letter} ~ {max_lease_letter}")
+
+                    # 최근 실거래가
+                    real_price = overview.get('realPrice')
+                    if real_price:
+                        trade_date = f"{real_price.get('tradeYear')}.{real_price.get('tradeMonth'):02d}.{real_price.get('tradeDate'):02d}"
+                        price = real_price.get('formattedPrice', '')
+                        floor = real_price.get('floor', '')
+                        area = real_price.get('representativeArea', '')
+                        print(f"\n🏷️  최근 실거래가")
+                        print(f"  {trade_date} | {price} | {floor}층 | {area}㎡")
+
+                    # 평형 정보
+                    pyeongs = overview.get('pyeongs', [])
+                    if pyeongs:
+                        print(f"\n🏠 평형 종류 ({len(pyeongs)}개)")
+                        for pyeong in pyeongs:
+                            supply_area = pyeong.get('supplyArea', '')
+                            exclusive_area = pyeong.get('exclusiveArea', '')
+                            pyeong_name = pyeong.get('pyeongName', '')
+                            print(f"  {pyeong_name}㎡ (공급 {supply_area}㎡ / 전용 {exclusive_area}㎡)")
+
+                    # 동 정보
+                    dongs = overview.get('dongs', [])
+                    if dongs:
+                        dong_names = [d.get('bildName', '') for d in dongs[:10]]  # 최대 10개만
+                        dong_display = ', '.join(dong_names)
+                        if len(dongs) > 10:
+                            dong_display += f" 외 {len(dongs) - 10}개동"
+                        print(f"\n🏢 동 정보")
+                        print(f"  {dong_display}")
                 else:
                     print(f"⚠️ 단지 개요 정보를 가져오지 못했습니다.")
                     # 개요 없이도 매물은 시도
