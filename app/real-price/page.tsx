@@ -477,7 +477,8 @@ export default function RealPricePage() {
           item.areaPyeong.toFixed(1),
           item.floor.toString(),
           item.buildYear.toString(),
-          item.dong || '-',
+          item.aptDong || '-',
+          item.dong,
           `${item.address} ${item.jibun}`,
           item.rgstDate
         ])
@@ -1014,57 +1015,6 @@ export default function RealPricePage() {
                         )}
                       </div>
                     </button>
-                    </div>
-
-                    {/* 평형별 가격 정보 */}
-                    <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-3">
-                      {(() => {
-                        // 평형대별 그룹핑 (20평대, 30평대, 40평대 등)
-                        const areaGroups = new Map<string, { items: RealPriceItem[], totalPrice: number }>();
-
-                        group.items.forEach(item => {
-                          const pyeong = Math.floor(item.areaPyeong / 10) * 10; // 20, 30, 40평대로 그룹화
-                          const key = `${pyeong}평대`;
-
-                          if (!areaGroups.has(key)) {
-                            areaGroups.set(key, { items: [], totalPrice: 0 });
-                          }
-
-                          const groupData = areaGroups.get(key)!;
-                          groupData.items.push(item);
-                          groupData.totalPrice += item.dealPrice;
-                        });
-
-                        // 평수 순으로 정렬
-                        const sortedGroups = Array.from(areaGroups.entries())
-                          .sort((a, b) => parseInt(a[0]) - parseInt(b[0]));
-
-                        return sortedGroups.map(([pyeongRange, data]) => {
-                          const avgPrice = data.totalPrice / data.items.length;
-                          const avgPricePerPyeong = data.items.reduce((sum, item) => sum + item.pricePerPyeong, 0) / data.items.length;
-                          const avgArea = data.items.reduce((sum, item) => sum + item.areaPyeong, 0) / data.items.length;
-
-                          return (
-                            <div
-                              key={pyeongRange}
-                              className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 rounded-lg p-3 border border-blue-200 dark:border-blue-700"
-                            >
-                              <div className="text-xs text-blue-600 dark:text-blue-400 font-medium mb-1">
-                                {pyeongRange} ({avgArea.toFixed(1)}평)
-                              </div>
-                              <div className="text-sm font-bold text-blue-900 dark:text-blue-100">
-                                {(avgPrice / 100000000).toFixed(2)}억
-                              </div>
-                              <div className="text-xs text-blue-700 dark:text-blue-300 mt-1">
-                                평당 {(avgPricePerPyeong / 10000).toFixed(0)}만원
-                              </div>
-                              <div className="text-xs text-blue-600 dark:text-blue-400 mt-0.5">
-                                {data.items.length}건
-                              </div>
-                            </div>
-                          );
-                        });
-                      })()}
                     </div>
                   </div>
 
