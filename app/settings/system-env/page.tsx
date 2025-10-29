@@ -83,13 +83,13 @@ export default function SystemEnvPage() {
   if (session?.user?.role !== "ADMIN") {
     return (
       <AuthGuard>
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+        <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
           <Navigation />
           <div className="container mx-auto px-4 py-8 max-w-7xl">
             <div className="text-center py-12">
-              <Lock className="w-16 h-16 mx-auto text-red-500" />
-              <h1 className="text-2xl font-bold mt-4">접근 권한 없음</h1>
-              <p className="text-gray-600 mt-2">관리자만 접근할 수 있습니다.</p>
+              <Lock className="w-16 h-16 mx-auto text-red-500 dark:text-red-400" />
+              <h1 className="text-2xl font-bold mt-4 text-gray-900 dark:text-white">접근 권한 없음</h1>
+              <p className="text-gray-600 dark:text-gray-400 mt-2">관리자만 접근할 수 있습니다.</p>
             </div>
           </div>
           <MobileNavigation />
@@ -109,7 +109,7 @@ export default function SystemEnvPage() {
 
   return (
     <AuthGuard>
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
         <Navigation />
 
         <div className="container mx-auto px-4 py-8 max-w-7xl">
@@ -122,20 +122,20 @@ export default function SystemEnvPage() {
               ]}
             />
             <div className="mt-4">
-              <h1 className="text-3xl font-bold text-gray-900">시스템 환경 변수</h1>
-              <p className="text-gray-600 mt-2">
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">시스템 환경 변수</h1>
+              <p className="text-gray-600 dark:text-gray-400 mt-2">
                 config.env 파일의 시스템 설정을 조회합니다 (관리자 전용)
               </p>
             </div>
           </div>
 
           {/* 주의사항 */}
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+          <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4 mb-6">
             <div className="flex items-start gap-3">
-              <AlertTriangle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+              <AlertTriangle className="w-5 h-5 text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" />
               <div>
-                <h3 className="font-bold text-yellow-900">주의</h3>
-                <p className="text-sm text-yellow-800 mt-1">
+                <h3 className="font-bold text-yellow-900 dark:text-yellow-200">주의</h3>
+                <p className="text-sm text-yellow-800 dark:text-yellow-300 mt-1">
                   시스템 환경 변수는 웹 UI에서 편집할 수 없습니다.
                   SSH를 통해 config.env 파일을 직접 수정해야 하며,
                   변경 후에는 반드시 컨테이너를 재시작해야 합니다.
@@ -148,10 +148,10 @@ export default function SystemEnvPage() {
           <div className="flex gap-2 mb-6 overflow-x-auto">
             <button
               onClick={() => setSelectedCategory("all")}
-              className={`px-4 py-2 rounded-lg whitespace-nowrap ${
+              className={`px-4 py-2 rounded-lg whitespace-nowrap transition-colors ${
                 selectedCategory === "all"
                   ? "bg-blue-600 text-white"
-                  : "bg-white border border-gray-300"
+                  : "bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
               }`}
             >
               전체
@@ -160,10 +160,10 @@ export default function SystemEnvPage() {
               <button
                 key={key}
                 onClick={() => setSelectedCategory(key)}
-                className={`px-4 py-2 rounded-lg whitespace-nowrap ${
+                className={`px-4 py-2 rounded-lg whitespace-nowrap transition-colors ${
                   selectedCategory === key
                     ? "bg-blue-600 text-white"
-                    : "bg-white border border-gray-300"
+                    : "bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
                 }`}
               >
                 {info.label}
@@ -175,7 +175,7 @@ export default function SystemEnvPage() {
           {loading ? (
             <div className="text-center py-12">
               <Loader className="w-8 h-8 animate-spin mx-auto text-blue-600" />
-              <p className="mt-4 text-gray-600">로딩 중...</p>
+              <p className="mt-4 text-gray-600 dark:text-gray-400">로딩 중...</p>
             </div>
           ) : (
             <div className="space-y-6">
@@ -187,8 +187,8 @@ export default function SystemEnvPage() {
 
                 return (
                   <section key={category}>
-                    <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-                      <Icon className="w-5 h-5" />
+                    <h2 className="text-xl font-bold mb-4 flex items-center gap-2 text-gray-900 dark:text-white">
+                      <Icon className="w-5 h-5 text-gray-600 dark:text-gray-400" />
                       {categoryInfo.label}
                     </h2>
 
@@ -199,28 +199,28 @@ export default function SystemEnvPage() {
                         return (
                           <div
                             key={config.key}
-                            className="bg-white rounded-lg border border-gray-200 overflow-hidden"
+                            className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden"
                           >
                             <div className="p-4">
                               <div className="flex justify-between items-start">
                                 <div className="flex-1">
                                   <div className="flex items-center gap-2">
-                                    <code className="text-sm font-mono font-bold text-gray-800">
+                                    <code className="text-sm font-mono font-bold text-gray-800 dark:text-gray-200">
                                       {config.key}
                                     </code>
                                     {!config.canView && (
-                                      <span className="px-2 py-1 bg-red-100 text-red-700 text-xs rounded">
+                                      <span className="px-2 py-1 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 text-xs rounded">
                                         조회 불가
                                       </span>
                                     )}
                                   </div>
-                                  <p className="text-sm text-gray-600 mt-1">
+                                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                                     {config.description}
                                   </p>
                                   {config.canView && (
                                     <div className="mt-2">
-                                      <span className="text-xs text-gray-500">현재 값:</span>
-                                      <code className="ml-2 px-3 py-1 bg-gray-100 rounded text-sm font-mono">
+                                      <span className="text-xs text-gray-500 dark:text-gray-400">현재 값:</span>
+                                      <code className="ml-2 px-3 py-1 bg-gray-100 dark:bg-gray-700 rounded text-sm font-mono text-gray-800 dark:text-gray-200">
                                         {config.value}
                                       </code>
                                     </div>
@@ -230,7 +230,7 @@ export default function SystemEnvPage() {
                                 {config.canView && (
                                   <button
                                     onClick={() => toggleGuide(config.key)}
-                                    className="flex items-center gap-1 px-3 py-1 text-blue-600 hover:bg-blue-50 rounded text-sm"
+                                    className="flex items-center gap-1 px-3 py-1 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded text-sm transition-colors"
                                   >
                                     편집 방법 보기
                                     {isExpanded ? (
@@ -245,9 +245,9 @@ export default function SystemEnvPage() {
 
                             {/* 편집 가이드 */}
                             {isExpanded && config.editGuide && (
-                              <div className="border-t border-gray-200 bg-gray-50 p-4">
-                                <div className="prose prose-sm max-w-none">
-                                  <div className="whitespace-pre-wrap text-sm text-gray-700">
+                              <div className="border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 p-4">
+                                <div className="prose prose-sm max-w-none dark:prose-invert">
+                                  <div className="whitespace-pre-wrap text-sm text-gray-700 dark:text-gray-300">
                                     {config.editGuide}
                                   </div>
                                 </div>

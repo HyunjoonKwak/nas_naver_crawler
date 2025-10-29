@@ -263,7 +263,7 @@ export default function MyEnvConfigPage() {
 
   return (
     <AuthGuard>
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
         <Navigation />
 
         <div className="container mx-auto px-4 py-8 max-w-7xl">
@@ -276,8 +276,8 @@ export default function MyEnvConfigPage() {
               ]}
             />
             <div className="mt-4">
-              <h1 className="text-3xl font-bold text-gray-900">내 환경 변수</h1>
-              <p className="text-gray-600 mt-2">
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">내 환경 변수</h1>
+              <p className="text-gray-600 dark:text-gray-400 mt-2">
                 웹훅, 이메일 알림 등 개인 설정을 관리합니다
               </p>
             </div>
@@ -291,10 +291,10 @@ export default function MyEnvConfigPage() {
                 <div className="flex gap-2">
                   <button
                     onClick={() => setSelectedCategory("all")}
-                    className={`px-4 py-2 rounded-lg ${
+                    className={`px-4 py-2 rounded-lg transition-colors ${
                       selectedCategory === "all"
                         ? "bg-blue-600 text-white"
-                        : "bg-white border border-gray-300"
+                        : "bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
                     }`}
                   >
                     전체
@@ -303,10 +303,10 @@ export default function MyEnvConfigPage() {
                     <button
                       key={cat.value}
                       onClick={() => setSelectedCategory(cat.value)}
-                      className={`px-4 py-2 rounded-lg ${
+                      className={`px-4 py-2 rounded-lg transition-colors ${
                         selectedCategory === cat.value
                           ? "bg-blue-600 text-white"
-                          : "bg-white border border-gray-300"
+                          : "bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
                       }`}
                     >
                       {cat.label}
@@ -327,12 +327,12 @@ export default function MyEnvConfigPage() {
               {loading ? (
                 <div className="text-center py-12">
                   <Loader className="w-8 h-8 animate-spin mx-auto text-blue-600" />
-                  <p className="mt-4 text-gray-600">로딩 중...</p>
+                  <p className="mt-4 text-gray-600 dark:text-gray-400">로딩 중...</p>
                 </div>
               ) : configs.length === 0 ? (
-                <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
-                  <Settings className="w-12 h-12 mx-auto text-gray-400" />
-                  <p className="mt-4 text-gray-600">설정이 없습니다</p>
+                <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                  <Settings className="w-12 h-12 mx-auto text-gray-400 dark:text-gray-600" />
+                  <p className="mt-4 text-gray-600 dark:text-gray-400">설정이 없습니다</p>
                   <button
                     onClick={() => setView("template")}
                     className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
@@ -349,22 +349,22 @@ export default function MyEnvConfigPage() {
                     return (
                       <div
                         key={config.id}
-                        className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow"
+                        className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6 hover:shadow-md transition-shadow"
                       >
                         <div className="flex justify-between items-start">
                           <div className="flex-1">
                             <div className="flex items-center gap-3">
-                              <Icon className="w-5 h-5 text-blue-600" />
-                              <h3 className="font-bold text-lg">{config.displayName}</h3>
-                              <span className="px-2 py-1 bg-gray-100 rounded text-xs text-gray-600">
+                              <Icon className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                              <h3 className="font-bold text-lg text-gray-900 dark:text-white">{config.displayName}</h3>
+                              <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded text-xs text-gray-600 dark:text-gray-400">
                                 {config.category}
                               </span>
                             </div>
                             {config.description && (
-                              <p className="text-sm text-gray-600 mt-2">{config.description}</p>
+                              <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">{config.description}</p>
                             )}
                             <div className="mt-3 flex items-center gap-2">
-                              <code className="px-3 py-1 bg-gray-100 rounded text-sm font-mono">
+                              <code className="px-3 py-1 bg-gray-100 dark:bg-gray-700 rounded text-sm font-mono text-gray-800 dark:text-gray-200">
                                 {config.value}
                               </code>
                               {config.isSecret && !isRevealed && (
@@ -399,7 +399,7 @@ export default function MyEnvConfigPage() {
           {view === "template" && (
             <div>
               <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold">설정 템플릿 선택</h2>
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">설정 템플릿 선택</h2>
                 <button
                   onClick={() => setView("list")}
                   className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
@@ -415,13 +415,13 @@ export default function MyEnvConfigPage() {
                     <button
                       key={tmpl.key}
                       onClick={() => handleSelectTemplate(tmpl.key)}
-                      className="p-6 border-2 border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 text-left transition-all"
+                      className="p-6 bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 rounded-lg hover:border-blue-500 dark:hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 text-left transition-all"
                     >
                       <div className="flex items-start gap-4">
-                        <Icon className="w-8 h-8 text-blue-600 flex-shrink-0" />
+                        <Icon className="w-8 h-8 text-blue-600 dark:text-blue-400 flex-shrink-0" />
                         <div>
-                          <h3 className="font-bold text-lg">{tmpl.displayName}</h3>
-                          <p className="text-sm text-gray-600 mt-1">{tmpl.description}</p>
+                          <h3 className="font-bold text-lg text-gray-900 dark:text-white">{tmpl.displayName}</h3>
+                          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{tmpl.description}</p>
                           {tmpl.testable && (
                             <span className="inline-block mt-2 px-2 py-1 bg-green-100 text-green-700 text-xs rounded">
                               연결 테스트 가능
@@ -440,7 +440,7 @@ export default function MyEnvConfigPage() {
           {view === "form" && template && (
             <div className="max-w-4xl mx-auto">
               <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold">{template.displayName} 설정</h2>
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{template.displayName} 설정</h2>
                 <button
                   onClick={() => {
                     setView("list");
@@ -465,13 +465,13 @@ export default function MyEnvConfigPage() {
               </div>
 
               {/* 가이드 섹션 */}
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-6">
-                <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
-                  <AlertCircle className="w-5 h-5" />
+              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-6 mb-6">
+                <h3 className="text-lg font-bold mb-4 flex items-center gap-2 text-gray-900 dark:text-white">
+                  <AlertCircle className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                   입력 가이드
                 </h3>
-                <div className="prose prose-sm max-w-none">
-                  <div className="whitespace-pre-wrap text-sm">{template.inputGuide}</div>
+                <div className="prose prose-sm max-w-none dark:prose-invert">
+                  <div className="whitespace-pre-wrap text-sm text-gray-700 dark:text-gray-300">{template.inputGuide}</div>
                 </div>
                 {template.helpUrl && (
                   <a
@@ -486,8 +486,8 @@ export default function MyEnvConfigPage() {
               </div>
 
               {/* 입력 폼 */}
-              <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6">
-                <label className="block mb-2 font-medium text-gray-700">
+              <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6 mb-6">
+                <label className="block mb-2 font-medium text-gray-700 dark:text-gray-300">
                   {template.displayName}
                 </label>
                 <input
@@ -495,8 +495,8 @@ export default function MyEnvConfigPage() {
                   value={formData.value}
                   onChange={(e) => handleValueChange(e.target.value)}
                   placeholder={template.placeholder}
-                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                    validationError ? "border-red-500" : "border-gray-300"
+                  className={`w-full px-4 py-3 border rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                    validationError ? "border-red-500 dark:border-red-400" : "border-gray-300 dark:border-gray-600"
                   }`}
                 />
                 {validationError && (
