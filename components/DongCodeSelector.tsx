@@ -89,8 +89,15 @@ export default function DongCodeSelector({ onSelect, value }: DongCodeSelectorPr
           onSelect(sigungu.fullCode, selected.fullName, selected.name);
         }
       }
+    } else if (selectedDong === "" && selectedSigungu) {
+      // 읍/면/동 선택 해제 시: 시/군/구 정보만 다시 전달 (dongName은 undefined)
+      const sigungu = sigunguList.find(s => s.code === selectedSigungu);
+      if (sigungu) {
+        const sidoName = sidoList.find(s => s.code === selectedSido)?.name || "";
+        onSelect(sigungu.fullCode, `${sidoName} ${sigungu.name}`, undefined);
+      }
     }
-  }, [selectedDong, dongList, sigunguList, selectedSigungu]);
+  }, [selectedDong, dongList, sigunguList, selectedSigungu, sidoList, selectedSido]);
 
   const loadSidoList = async () => {
     setIsLoadingSido(true);
