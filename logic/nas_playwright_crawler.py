@@ -9,6 +9,7 @@ import asyncio
 import json
 import os
 import time
+import random
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from typing import Dict, List, Optional, Any
@@ -28,6 +29,14 @@ KST = timezone(timedelta(hours=9))
 def get_kst_now():
     """한국 시간으로 현재 시각 반환"""
     return datetime.now(KST)
+
+async def random_sleep(min_sec: float = 1.5, max_sec: float = 4.0):
+    """
+    랜덤 대기 시간 (봇 감지 회피)
+    인간처럼 불규칙한 패턴으로 대기
+    """
+    delay = random.uniform(min_sec, max_sec)
+    await asyncio.sleep(delay)
 
 
 class NASNaverRealEstateCrawler:
@@ -51,6 +60,9 @@ class NASNaverRealEstateCrawler:
         # Retry 설정
         self.max_retries = int(os.getenv('MAX_RETRIES', '3'))  # 최대 재시도 횟수
         self.retry_delay = float(os.getenv('RETRY_DELAY', '5.0'))  # 재시도 간격 (초)
+
+        # 봇 감지 회피 설정
+        self.first_request = True  # 첫 요청 플래그 (워밍업용)
 
         # DB 연결 설정
         self.crawl_id = crawl_id  # API에서 전달받은 crawl ID
@@ -240,8 +252,18 @@ class NASNaverRealEstateCrawler:
                 viewport={'width': 1920, 'height': 1080},
                 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
                 extra_http_headers={
-                    'Accept-Language': 'ko-KR,ko;q=0.9,en;q=0.8',
+                    # 실제 브라우저처럼 전체 헤더 전송 (봇 감지 회피)
+                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+                    'Accept-Language': 'ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7',
                     'Accept-Encoding': 'gzip, deflate, br',
+                    'DNT': '1',
+                    'Connection': 'keep-alive',
+                    'Upgrade-Insecure-Requests': '1',
+                    'Sec-Fetch-Dest': 'document',
+                    'Sec-Fetch-Mode': 'navigate',
+                    'Sec-Fetch-Site': 'none',
+                    'Sec-Fetch-User': '?1',
+                    'Cache-Control': 'max-age=0',
                 }
             )
             print(f"⏱️  컨텍스트 생성: {time.time() - start:.2f}초")
@@ -250,6 +272,25 @@ class NASNaverRealEstateCrawler:
             start = time.time()
             self.page = await self.context.new_page()
             print(f"⏱️  페이지 생성: {time.time() - start:.2f}초")
+
+            # 4-1. WebDriver 흔적 제거 (봇 감지 회피)
+            await self.page.add_init_script("""
+                // navigator.webdriver를 false로 설정 (가장 확실한 봇 감지 신호 제거)
+                Object.defineProperty(navigator, 'webdriver', {
+                    get: () => false
+                });
+
+                // Chrome 자동화 플래그 제거
+                Object.defineProperty(navigator, 'plugins', {
+                    get: () => [1, 2, 3, 4, 5]
+                });
+
+                // 언어 설정
+                Object.defineProperty(navigator, 'languages', {
+                    get: () => ['ko-KR', 'ko', 'en-US', 'en']
+                });
+            """)
+            print("✅ 봇 감지 회피 스크립트 적용 완료")
 
             # 5. 불필요한 리소스 차단 (속도 개선)
             # ⚠️ 최소한의 차단만 적용 (페이지 기능 보존)
@@ -440,6 +481,15 @@ class NASNaverRealEstateCrawler:
         """단지 개요 정보 크롤링 (명시적 API 대기 방식)"""
         try:
             print(f"단지 개요 정보 크롤링 시작: {complex_no}")
+
+            # 첫 요청 시 워밍업 (메인 페이지 방문 → 쿠키/세션 생성)
+            if self.first_request:
+                print("🌡️  워밍업: 메인 페이지 방문 중... (봇 감지 회피)")
+                await self.page.goto('https://new.land.naver.com', wait_until='domcontentloaded')
+                print(f"   메인 페이지에서 2-4초 랜덤 대기 (인간처럼 행동)")
+                await random_sleep(2, 4)
+                self.first_request = False
+                print("✅ 워밍업 완료")
 
             # 네이버 부동산 단지 페이지 접속
             url = f"https://new.land.naver.com/complexes/{complex_no}"
