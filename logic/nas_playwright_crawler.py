@@ -252,12 +252,20 @@ class NASNaverRealEstateCrawler:
             print(f"⏱️  페이지 생성: {time.time() - start:.2f}초")
 
             # 5. 불필요한 리소스 차단 (속도 개선)
+            # ⚠️ 최소한의 차단만 적용 (페이지 기능 보존)
             start = time.time()
-            await self.page.route("**/*.{png,jpg,jpeg,gif,svg,webp,ico}", lambda route: route.abort())
-            await self.page.route("**/*.{woff,woff2,ttf,eot}", lambda route: route.abort())
-            await self.page.route("**/gtm.js", lambda route: route.abort())
-            await self.page.route("**/analytics.js", lambda route: route.abort())
-            await self.page.route("**/ga.js", lambda route: route.abort())
+
+            async def route_handler(route):
+                request = route.request
+                resource_type = request.resource_type
+
+                # 이미지만 차단 (다른 리소스는 허용)
+                if resource_type == "image":
+                    await route.abort()
+                else:
+                    await route.continue_()
+
+            await self.page.route("**/*", route_handler)
             print(f"⏱️  리소스 차단 설정: {time.time() - start:.2f}초")
 
             # 6. 타임아웃 설정
@@ -622,7 +630,8 @@ class NASNaverRealEstateCrawler:
                 # 2. 단지 페이지로 이동 (localStorage 값이 자동 적용됨)
                 url = f"https://new.land.naver.com/complexes/{complex_no}"
                 print(f"URL 접속: {url}")
-                await self.page.goto(url, wait_until='domcontentloaded', timeout=30000)  # Increased to 30s
+                await self.page.goto(url, wait_until='domcontentloaded', timeout=60000)  # 60초로 증가
+                print("✅ 단지 페이지 로딩 완료")
                 await asyncio.sleep(2)
                 
                 # 2. 매물 탭 클릭
