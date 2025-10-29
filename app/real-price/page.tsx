@@ -10,7 +10,7 @@ import { MobileNavigation } from "@/components/MobileNavigation";
 import { Breadcrumb } from "@/components/Breadcrumb";
 import { showSuccess, showError, showLoading, dismissToast } from "@/lib/toast";
 import { AuthGuard } from "@/components/AuthGuard";
-import { Search, Loader2, TrendingUp, Home, Calendar, MapPin, ChevronDown, ChevronUp, Building2, Star } from "lucide-react";
+import { Search, Loader2, TrendingUp, Home, Calendar, MapPin, ChevronDown, ChevronUp, Building2, Star, X } from "lucide-react";
 import { formatPrice } from "@/lib/price-format";
 import DongCodeSelector from "@/components/DongCodeSelector";
 
@@ -228,6 +228,19 @@ export default function RealPricePage() {
     });
   };
 
+  // 검색 기록에서 특정 항목 제거
+  const removeFromHistory = (index: number) => {
+    try {
+      const updatedHistory = searchHistory.filter((_, i) => i !== index);
+      setSearchHistory(updatedHistory);
+      localStorage.setItem('realPriceSearchHistory', JSON.stringify(updatedHistory));
+      showSuccess('검색 기록이 제거되었습니다');
+    } catch (error) {
+      console.error('Failed to remove search history:', error);
+      showError('검색 기록 제거 중 오류가 발생했습니다');
+    }
+  };
+
   // 아파트 확장/축소 토글
   const toggleApartment = (aptName: string) => {
     setExpandedApts(prev => {
@@ -416,15 +429,29 @@ export default function RealPricePage() {
               </h3>
               <div className="flex flex-wrap gap-2">
                 {searchHistory.map((item, index) => (
-                  <button
+                  <div
                     key={index}
-                    onClick={() => searchFromHistory(item)}
-                    className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-gray-800 rounded-full text-sm border border-purple-300 dark:border-purple-700 text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors"
+                    className="flex items-center gap-1 px-3 py-1.5 bg-white dark:bg-gray-800 rounded-full text-sm border border-purple-300 dark:border-purple-700 text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors group"
                   >
-                    <MapPin className="w-3 h-3" />
-                    <span className="font-medium">{item.areaName}</span>
-                    {item.dongName && <span className="text-xs">· {item.dongName}</span>}
-                  </button>
+                    <button
+                      onClick={() => searchFromHistory(item)}
+                      className="flex items-center gap-2"
+                    >
+                      <MapPin className="w-3 h-3" />
+                      <span className="font-medium">{item.areaName}</span>
+                      {item.dongName && <span className="text-xs">· {item.dongName}</span>}
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        removeFromHistory(index);
+                      }}
+                      className="ml-1 p-0.5 rounded-full hover:bg-purple-200 dark:hover:bg-purple-800 transition-colors opacity-0 group-hover:opacity-100"
+                      title="삭제"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
                 ))}
               </div>
             </div>
@@ -512,7 +539,7 @@ export default function RealPricePage() {
               {/* 검색 버튼 */}
               <div className="flex items-end">
                 <button
-                  onClick={handleSearch}
+                  onClick={() => handleSearch()}
                   disabled={isLoading || !lawdCd}
                   className="w-full px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
                 >
