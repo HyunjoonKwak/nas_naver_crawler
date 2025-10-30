@@ -24,9 +24,9 @@ export interface RentPriceItem {
   contractType: string;             // 계약구분 (신규/갱신)
 
   // 거래일자
-  year: string;                     // 년도
-  month: string;                    // 월
-  day: string;                      // 일
+  dealYear: string;                 // 년도
+  dealMonth: string;                // 월
+  dealDay: string;                  // 일
 
   // 위치 정보
   sggCd: string;                    // 시군구코드
@@ -161,15 +161,10 @@ export function processRentPriceItem(item: RentPriceItem): ProcessedRentPrice {
     ? item.dealingGbn.trim()
     : '중개거래';
 
-  // 날짜 필드 안전하게 처리
-  const year = item.year || '';
-  const month = item.month ? String(item.month).trim().padStart(2, '0') : '01';
-  const day = item.day ? String(item.day).trim().padStart(2, '0') : '01';
-
-  // 디버깅: 날짜 필드가 이상한 경우 로그 출력
-  if (!year || year === '') {
-    console.warn('[Rent Price API] Missing year field:', { aptName: item.aptNm, year: item.year, month: item.month, day: item.day });
-  }
+  // 날짜 필드 안전하게 처리 (API는 dealYear, dealMonth, dealDay 사용)
+  const year = item.dealYear || '';
+  const month = item.dealMonth ? String(item.dealMonth).trim().padStart(2, '0') : '01';
+  const day = item.dealDay ? String(item.dealDay).trim().padStart(2, '0') : '01';
 
   return {
     aptName: item.aptNm,
@@ -256,16 +251,6 @@ export class RentPriceApiClient {
 
       const body = parsed.response.body;
       const rawItems = body.items?.item;
-
-      // 원본 데이터 구조 확인용 로그 (첫 번째 항목 전체)
-      if (rawItems) {
-        const firstItem = Array.isArray(rawItems) ? rawItems[0] : rawItems;
-        console.log('=== [Rent Price API] 원본 응답 데이터 전체 ===');
-        console.log(JSON.stringify(firstItem, null, 2));
-        console.log('=== 필드명 목록 ===');
-        console.log('Available fields:', Object.keys(firstItem));
-        console.log('=====================================');
-      }
 
       let items: ProcessedRentPrice[] = [];
       if (rawItems) {
