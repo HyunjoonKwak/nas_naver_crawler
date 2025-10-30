@@ -1124,6 +1124,29 @@ export default function RealPricePage() {
                               });
                             };
 
+                            // 선형 회귀 함수 (추세선 계산)
+                            const calculateTrendline = (dataPoints: { x: number; y: number }[]) => {
+                              const n = dataPoints.length;
+                              if (n === 0) return null;
+
+                              let sumX = 0;
+                              let sumY = 0;
+                              let sumXY = 0;
+                              let sumXX = 0;
+
+                              dataPoints.forEach(point => {
+                                sumX += point.x;
+                                sumY += point.y;
+                                sumXY += point.x * point.y;
+                                sumXX += point.x * point.x;
+                              });
+
+                              const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
+                              const intercept = (sumY - slope * sumX) / n;
+
+                              return { slope, intercept };
+                            };
+
                             // 날짜별로 데이터 정리 (각 면적별로)
                             const chartData: any[] = [];
                             const allDates = [...new Set(group.items.map(item => item.dealDate))].sort();
@@ -1149,6 +1172,33 @@ export default function RealPricePage() {
                               });
 
                               chartData.push(dataPoint);
+                            });
+
+                            // 면적별 추세선 계산
+                            const trendlines = new Map<string, { slope: number; intercept: number }>();
+                            Array.from(areaGroups.entries()).forEach(([areaKey, items]) => {
+                              const dataPoints: { x: number; y: number }[] = [];
+
+                              chartData.forEach((point, index) => {
+                                if (point[`${areaKey}_avg`] !== undefined) {
+                                  dataPoints.push({
+                                    x: index,
+                                    y: point[`${areaKey}_avg`]
+                                  });
+                                }
+                              });
+
+                              const trendline = calculateTrendline(dataPoints);
+                              if (trendline) {
+                                trendlines.set(areaKey, trendline);
+                              }
+                            });
+
+                            // 차트 데이터에 추세선 값 추가
+                            chartData.forEach((point, index) => {
+                              Array.from(trendlines.entries()).forEach(([areaKey, trendline]) => {
+                                point[`${areaKey}_trend`] = trendline.slope * index + trendline.intercept;
+                              });
                             });
 
                             // Y축 범위 계산: 선택된 면적만의 가격 범위 (여유 15% 추가)
@@ -1364,6 +1414,18 @@ export default function RealPricePage() {
                                               activeDot={{ r: 6 }}
                                               name={`${areaKey} 평균`}
                                             />
+
+                                            {/* 추세선 */}
+                                            <Line
+                                              type="monotone"
+                                              dataKey={`${areaKey}_trend`}
+                                              stroke={color}
+                                              strokeWidth={2}
+                                              strokeDasharray="3 3"
+                                              dot={false}
+                                              name={`${areaKey} 추세`}
+                                              strokeOpacity={0.6}
+                                            />
                                           </React.Fragment>
                                         );
                                       })}
@@ -1372,7 +1434,9 @@ export default function RealPricePage() {
                                 <div className="mt-3 p-3 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
                                   <p className="text-xs text-gray-700 dark:text-gray-300">
                                     💡 <strong>차트 사용법:</strong><br />
-                                    • 각 면적별로 색상이 다릅니다 (<span className="font-semibold">굵은 실선</span>: 평균 가격, <span className="font-semibold">점선</span>: 최대/최소, <span className="font-semibold">영역</span>: 가격 범위)<br />
+                                    • 각 면적별로 색상이 다릅니다<br />
+                                    • <span className="font-semibold">굵은 실선</span>: 평균 가격 | <span className="font-semibold">가는 점선</span>: 최대/최소 | <span className="font-semibold">영역</span>: 가격 범위 | <span className="font-semibold">중간 점선</span>: 추세선<br />
+                                    • <strong>추세선</strong>은 선형 회귀를 통해 전체적인 가격 상승/하락 추세를 보여줍니다<br />
                                     • 체크박스로 원하는 면적만 필터링 가능 (차트와 매물 목록 모두 적용)<br />
                                     • <strong>차트의 데이터 포인트(날짜)를 클릭</strong>하면 해당 날짜의 거래 목록으로 자동 이동
                                   </p>
