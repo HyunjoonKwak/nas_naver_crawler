@@ -455,7 +455,7 @@ export default function RealPricePage() {
 
     try {
       // 현재 검색 기간의 모든 월에 대해 캐시 무효화
-      const monthsToInvalidate = getMonthsToSearch(period);
+      const monthsToInvalidate = getMonthsToSearch();
 
       for (const dealYmd of monthsToInvalidate) {
         const response = await fetch('/api/real-price/invalidate-cache', {
@@ -1080,19 +1080,36 @@ export default function RealPricePage() {
                           </h4>
 
                           {(() => {
-                            // 전용면적별 그룹핑 (±2평 범위로 묶기)
+                            // 전용면적별 그룹핑 (제곱미터 단위로)
                             const areaGroups = new Map<string, RealPriceItem[]>();
                             const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
 
                             group.items.forEach(item => {
-                              const pyeong = Math.round(item.areaPyeong); // 반올림
-                              const groupKey = `${pyeong}평형`;
+                              const sqm = Math.round(item.area); // 제곱미터 반올림
+                              const groupKey = `${sqm}㎡`;
 
                               if (!areaGroups.has(groupKey)) {
                                 areaGroups.set(groupKey, []);
                               }
                               areaGroups.get(groupKey)!.push(item);
                             });
+
+                            // 면적별 필터 상태 (초기값: 모두 선택)
+                            const [selectedAreas, setSelectedAreas] = React.useState<Set<string>>(
+                              new Set(Array.from(areaGroups.keys()))
+                            );
+
+                            const toggleArea = (areaKey: string) => {
+                              setSelectedAreas(prev => {
+                                const newSet = new Set(prev);
+                                if (newSet.has(areaKey)) {
+                                  newSet.delete(areaKey);
+                                } else {
+                                  newSet.add(areaKey);
+                                }
+                                return newSet;
+                              });
+                            };
 
                             // 날짜별로 데이터 정리 (각 면적별로)
                             const chartData: any[] = [];
@@ -1118,6 +1135,39 @@ export default function RealPricePage() {
 
                             return (
                               <>
+                                {/* 면적 필터 체크박스 */}
+                                <div className="mb-4 p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                                  <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                                    표시할 면적 선택:
+                                  </p>
+                                  <div className="flex flex-wrap gap-3">
+                                    {Array.from(areaGroups.entries()).map(([areaKey, items], index) => {
+                                      const color = colors[index % colors.length];
+                                      const isSelected = selectedAreas.has(areaKey);
+
+                                      return (
+                                        <label
+                                          key={areaKey}
+                                          className="flex items-center gap-2 cursor-pointer text-sm"
+                                        >
+                                          <input
+                                            type="checkbox"
+                                            checked={isSelected}
+                                            onChange={() => toggleArea(areaKey)}
+                                            className="w-4 h-4 rounded"
+                                          />
+                                          <span
+                                            className="font-medium"
+                                            style={{ color: isSelected ? color : '#9ca3af' }}
+                                          >
+                                            {areaKey} ({items.length}건)
+                                          </span>
+                                        </label>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+
                                 <ResponsiveContainer width="100%" height={400}>
                                   <ComposedChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
                                     <CartesianGrid strokeDasharray="3 3" className="stroke-gray-300 dark:stroke-gray-600" />
@@ -1142,20 +1192,22 @@ export default function RealPricePage() {
                                         return (
                                           <div className="bg-white dark:bg-gray-800 p-3 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
                                             <p className="font-semibold text-sm mb-2">{data.date}</p>
-                                            {Array.from(areaGroups.keys()).map((areaKey, index) => {
-                                              const points = data[`${areaKey}_points`];
-                                              if (!points || points.length === 0) return null;
+                                            {Array.from(areaGroups.keys())
+                                              .filter(areaKey => selectedAreas.has(areaKey))
+                                              .map((areaKey, index) => {
+                                                const points = data[`${areaKey}_points`];
+                                                if (!points || points.length === 0) return null;
 
-                                              return (
-                                                <div key={areaKey} className="text-xs mb-1" style={{ color: colors[index % colors.length] }}>
-                                                  <strong>{areaKey}</strong>: {points.length}건
-                                                  <br />
-                                                  <span className="text-gray-600 dark:text-gray-400">
-                                                    {Math.min(...points).toLocaleString()}만원 ~ {Math.max(...points).toLocaleString()}만원
-                                                  </span>
-                                                </div>
-                                              );
-                                            })}
+                                                return (
+                                                  <div key={areaKey} className="text-xs mb-1" style={{ color: colors[index % colors.length] }}>
+                                                    <strong>{areaKey}</strong>: {points.length}건
+                                                    <br />
+                                                    <span className="text-gray-600 dark:text-gray-400">
+                                                      {Math.min(...points).toLocaleString()}만원 ~ {Math.max(...points).toLocaleString()}만원
+                                                    </span>
+                                                  </div>
+                                                );
+                                              })}
                                           </div>
                                         );
                                       }}
@@ -1165,49 +1217,77 @@ export default function RealPricePage() {
                                       formatter={(value) => value}
                                     />
 
-                                    {/* 각 면적별로 영역(Area) + 평균선(Line) 그리기 */}
-                                    {Array.from(areaGroups.entries()).map(([areaKey, items], index) => {
-                                      const color = colors[index % colors.length];
+                                    {/* 각 면적별로 영역(Area) + 선(Line) 그리기 */}
+                                    {Array.from(areaGroups.entries())
+                                      .filter(([areaKey]) => selectedAreas.has(areaKey))
+                                      .map(([areaKey, items], index) => {
+                                        const color = colors[index % colors.length];
 
-                                      return (
-                                        <React.Fragment key={areaKey}>
-                                          {/* 최소~최대 범위 영역 */}
-                                          <Area
-                                            type="monotone"
-                                            dataKey={`${areaKey}_max`}
-                                            stroke="none"
-                                            fill={color}
-                                            fillOpacity={0.1}
-                                            name={areaKey}
-                                          />
-                                          <Area
-                                            type="monotone"
-                                            dataKey={`${areaKey}_min`}
-                                            stroke="none"
-                                            fill="white"
-                                            fillOpacity={1}
-                                          />
-                                          {/* 평균 라인 */}
-                                          <Line
-                                            type="monotone"
-                                            dataKey={`${areaKey}_avg`}
-                                            stroke={color}
-                                            strokeWidth={2}
-                                            dot={{ r: 3, fill: color }}
-                                            activeDot={{ r: 5 }}
-                                            name={`${areaKey} (평균)`}
-                                          />
-                                        </React.Fragment>
-                                      );
-                                    })}
+                                        return (
+                                          <React.Fragment key={areaKey}>
+                                            {/* 최대~최소 범위 영역 (stackId로 영역 생성) */}
+                                            <Area
+                                              type="monotone"
+                                              dataKey={`${areaKey}_min`}
+                                              stackId={areaKey}
+                                              stroke="none"
+                                              fill="transparent"
+                                              name={`${areaKey} 최소`}
+                                            />
+                                            <Area
+                                              type="monotone"
+                                              dataKey={`${areaKey}_max`}
+                                              stackId={areaKey}
+                                              stroke="none"
+                                              fill={color}
+                                              fillOpacity={0.15}
+                                              name={`${areaKey} 범위`}
+                                            />
+
+                                            {/* 최대값 점선 */}
+                                            <Line
+                                              type="monotone"
+                                              dataKey={`${areaKey}_max`}
+                                              stroke={color}
+                                              strokeWidth={1}
+                                              strokeDasharray="5 5"
+                                              dot={false}
+                                              name={`${areaKey} 최대`}
+                                            />
+
+                                            {/* 최소값 점선 */}
+                                            <Line
+                                              type="monotone"
+                                              dataKey={`${areaKey}_min`}
+                                              stroke={color}
+                                              strokeWidth={1}
+                                              strokeDasharray="5 5"
+                                              dot={false}
+                                              name={`${areaKey} 최소`}
+                                            />
+
+                                            {/* 평균 실선 */}
+                                            <Line
+                                              type="monotone"
+                                              dataKey={`${areaKey}_avg`}
+                                              stroke={color}
+                                              strokeWidth={2.5}
+                                              dot={{ r: 4, fill: color, strokeWidth: 2, stroke: 'white' }}
+                                              activeDot={{ r: 6 }}
+                                              name={`${areaKey} 평균`}
+                                            />
+                                          </React.Fragment>
+                                        );
+                                      })}
                                   </ComposedChart>
                                 </ResponsiveContainer>
                                 <div className="mt-3 p-3 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
                                   <p className="text-xs text-gray-700 dark:text-gray-300">
                                     💡 <strong>차트 설명:</strong> 각 면적별로 색상이 다릅니다.
-                                    <span className="font-semibold"> 실선</span>은 평균 가격,
-                                    <span className="font-semibold"> 색칠된 영역</span>은 최저~최고 가격 범위를 나타냅니다.
-                                    같은 날짜에 여러 거래가 있으면 모두 범위에 포함됩니다.
+                                    <span className="font-semibold"> 굵은 실선</span>은 평균 가격,
+                                    <span className="font-semibold"> 점선</span>은 최대/최소 가격,
+                                    <span className="font-semibold"> 색칠된 영역</span>은 가격 범위를 나타냅니다.
+                                    체크박스로 원하는 면적만 필터링할 수 있습니다.
                                   </p>
                                 </div>
                               </>
