@@ -18,7 +18,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsi
 interface RealPriceItem {
   aptName: string;
   aptDong: string;
-  dealPrice: number;
+  dealPrice: number; // 매매가 (원) - 매매만
   dealPriceFormatted: string;
   dealDate: string;
   address: string;
@@ -32,6 +32,13 @@ interface RealPriceItem {
   dealMethod: string; // 거래방법 (직거래/중개거래)
   pricePerPyeong: number;
   rgstDate: string;
+
+  // 전월세 전용 필드
+  deposit?: number; // 보증금 (원)
+  monthlyRent?: number; // 월세 (원)
+  depositFormatted?: string;
+  monthlyRentFormatted?: string;
+  contractType?: string; // 신규/갱신
 }
 
 export default function RealPricePage() {
@@ -62,7 +69,7 @@ export default function RealPricePage() {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [minPrice, setMinPrice] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
-  const [tradeTypes, setTradeTypes] = useState<string[]>(['매매']); // 기본값: 매매만
+  const [tradeTypes, setTradeTypes] = useState<string[]>(['매매', '전세', '월세']); // 기본값: 전체
   const [minFloor, setMinFloor] = useState("");
   const [maxFloor, setMaxFloor] = useState("");
   const [minBuildYear, setMinBuildYear] = useState("");
@@ -371,7 +378,7 @@ export default function RealPricePage() {
       const monthsToSearch = getMonthsToSearch();
       const allResults: RealPriceItem[] = [];
 
-      // 각 월별로 API 호출
+      // 각 월별로 매매 + 전월세 API 동시 호출
       for (const dealYmd of monthsToSearch) {
         const params = new URLSearchParams({
           lawdCd: searchLawdCd,
@@ -379,16 +386,29 @@ export default function RealPricePage() {
           ...(aptName && { aptName }),
         });
 
-        const response = await fetch(`/api/real-price/search?${params.toString()}`);
-        const data = await response.json();
+        // 매매 + 전월세 동시 조회
+        const [saleResponse, rentResponse] = await Promise.all([
+          fetch(`/api/real-price/search?${params.toString()}`),
+          fetch(`/api/rent-price/search?${params.toString()}`)
+        ]);
 
-        if (!response.ok) {
-          console.error(`${dealYmd} 조회 실패:`, data.error);
-          continue;
+        const [saleData, rentData] = await Promise.all([
+          saleResponse.json(),
+          rentResponse.json()
+        ]);
+
+        // 매매 데이터 추가
+        if (saleResponse.ok && saleData.data.items && saleData.data.items.length > 0) {
+          allResults.push(...saleData.data.items);
+        } else if (!saleResponse.ok) {
+          console.error(`${dealYmd} 매매 조회 실패:`, saleData.error);
         }
 
-        if (data.data.items && data.data.items.length > 0) {
-          allResults.push(...data.data.items);
+        // 전월세 데이터 추가
+        if (rentResponse.ok && rentData.data.items && rentData.data.items.length > 0) {
+          allResults.push(...rentData.data.items);
+        } else if (!rentResponse.ok) {
+          console.error(`${dealYmd} 전월세 조회 실패:`, rentData.error);
         }
       }
 
