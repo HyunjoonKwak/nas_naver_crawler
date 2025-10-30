@@ -244,23 +244,66 @@ export async function GET(request: NextRequest) {
             console.log(`[Real Price Complex] 🔍 매칭 테스트:`);
             console.log(`  - 검색어: "${normalizedComplexName}" (길이: ${normalizedComplexName.length})`);
             console.log(`  - 첫번째 항목: "${normalizedItemName}" (길이: ${normalizedItemName.length})`);
-            console.log(`  - 정확 매칭: ${normalizedItemName === normalizedComplexName}`);
-            console.log(`  - includes (API→검색): ${normalizedItemName.includes(normalizedComplexName)}`);
-            console.log(`  - includes (검색→API): ${normalizedComplexName.includes(normalizedItemName)}`);
           }
 
           // 1. 정확 매칭
           if (normalizedItemName === normalizedComplexName) {
+            console.log(`[Real Price Complex] ✅ 정확 매칭: "${item.aptName}"`);
             return true;
           }
 
-          // 2. 부분 매칭 (양방향)
-          // "향촌현대5차" ⊂ "향촌마을현대5차" 또는 그 반대
+          // 2. 노이즈 단어 제거 후 정규화 (단지명 변형 처리)
+          const noiseWords = ['마을', '단지', '아파트', 'apt', '블록', '동', '차'];
+          let cleanedItemName = normalizedItemName;
+          let cleanedSearchName = normalizedComplexName;
+
+          noiseWords.forEach(word => {
+            cleanedItemName = cleanedItemName.replace(new RegExp(word, 'g'), '');
+            cleanedSearchName = cleanedSearchName.replace(new RegExp(word, 'g'), '');
+          });
+
+          // 2-1. 노이즈 제거 후 정확 매칭
+          if (cleanedItemName === cleanedSearchName && cleanedSearchName.length >= 4) {
+            console.log(`[Real Price Complex] ✅ 노이즈 제거 후 정확 매칭: "${item.aptName}" (${normalizedItemName} → ${cleanedItemName})`);
+            return true;
+          }
+
+          // 3. 토큰 기반 매칭 (순서 무관)
+          // "향촌현대5차" vs "향촌마을현대5차" → 공통 토큰: 향촌, 현대, 5차
+          const extractTokens = (str: string) => {
+            // 한글, 숫자, 영문을 토큰으로 분리
+            const tokens: string[] = [];
+            const koreanMatch = str.match(/[가-힣]+/g);
+            const numberMatch = str.match(/\d+/g);
+            const englishMatch = str.match(/[a-z]+/gi);
+
+            if (koreanMatch) tokens.push(...koreanMatch);
+            if (numberMatch) tokens.push(...numberMatch);
+            if (englishMatch) tokens.push(...englishMatch.map(t => t.toLowerCase()));
+
+            return tokens.filter(t => t.length >= 2 && !noiseWords.includes(t)); // 2글자 이상, 노이즈 제외
+          };
+
+          const itemTokens = extractTokens(normalizedItemName);
+          const searchTokens = extractTokens(normalizedComplexName);
+
+          // 검색어 토큰이 모두 API 데이터에 포함되어 있는지 확인
+          const allSearchTokensFound = searchTokens.every(searchToken =>
+            itemTokens.some(itemToken =>
+              itemToken.includes(searchToken) || searchToken.includes(itemToken)
+            )
+          );
+
+          if (allSearchTokensFound && searchTokens.length >= 2) {
+            console.log(`[Real Price Complex] ✅ 토큰 매칭: "${item.aptName}" (검색: [${searchTokens.join(', ')}], API: [${itemTokens.join(', ')}])`);
+            return true;
+          }
+
+          // 4. 부분 문자열 매칭 (최후의 수단)
           if (normalizedItemName.includes(normalizedComplexName) ||
               normalizedComplexName.includes(normalizedItemName)) {
-            // 하지만 너무 짧은 이름은 제외 (오매칭 방지)
-            if (normalizedComplexName.length >= 4 && normalizedItemName.length >= 4) {
-              console.log(`[Real Price Complex] ✅ 부분 매칭 성공: "${item.aptName}"`);
+            if (normalizedComplexName.length >= 5) { // 5글자 이상만 (오매칭 방지)
+              console.log(`[Real Price Complex] ✅ 부분 문자열 매칭: "${item.aptName}"`);
               return true;
             }
           }
