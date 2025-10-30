@@ -444,6 +444,43 @@ export default function RealPricePage() {
     }
   };
 
+  // 캐시 새로고침 함수
+  const handleRefreshCache = async () => {
+    if (!lawdCd) {
+      showError("지역을 먼저 선택해주세요");
+      return;
+    }
+
+    const loadingToast = showLoading("캐시 삭제 중...");
+
+    try {
+      // 현재 검색 기간의 모든 월에 대해 캐시 무효화
+      const monthsToInvalidate = getMonthsToSearch(period);
+
+      for (const dealYmd of monthsToInvalidate) {
+        const response = await fetch('/api/real-price/invalidate-cache', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ lawdCd, dealYmd }),
+        });
+
+        if (!response.ok) {
+          console.error(`${dealYmd} 캐시 삭제 실패`);
+        }
+      }
+
+      dismissToast(loadingToast);
+      showSuccess(`${monthsToInvalidate.length}개월 캐시가 삭제되었습니다. 다시 검색하면 최신 데이터를 가져옵니다.`);
+
+      // 캐시 삭제 후 자동으로 재검색
+      handleSearch();
+    } catch (error) {
+      dismissToast(loadingToast);
+      showError("캐시 삭제 중 오류가 발생했습니다");
+      console.error(error);
+    }
+  };
+
   // CSV 다운로드 함수
   const handleDownloadCSV = () => {
     try {
@@ -672,12 +709,12 @@ export default function RealPricePage() {
                 />
               </div>
 
-              {/* 검색 버튼 */}
-              <div className="flex items-end">
+              {/* 검색 버튼 및 캐시 새로고침 */}
+              <div className="flex items-end gap-2">
                 <button
                   onClick={() => handleSearch()}
                   disabled={isLoading || !lawdCd}
-                  className="w-full px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+                  className="flex-1 px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
                 >
                   {isLoading ? (
                     <>
@@ -690,6 +727,19 @@ export default function RealPricePage() {
                       검색
                     </>
                   )}
+                </button>
+                <button
+                  onClick={handleRefreshCache}
+                  disabled={isLoading || !lawdCd}
+                  className="px-4 py-2 bg-gray-600 hover:bg-gray-700 disabled:bg-gray-400 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+                  title="캐시를 삭제하고 최신 데이터를 가져옵니다"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
+                    <path d="M21 3v5h-5" />
+                    <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
+                    <path d="M3 21v-5h5" />
+                  </svg>
                 </button>
               </div>
             </div>
