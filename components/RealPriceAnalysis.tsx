@@ -346,23 +346,23 @@ export default function RealPriceAnalysis({ complexNo }: RealPriceAnalysisProps)
   if (loading) {
     return (
       <div className="flex justify-center items-center py-20">
-        <div className="text-gray-500">실거래가 로딩 중...</div>
+        <div className="text-gray-500 dark:text-gray-400">실거래가 로딩 중...</div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="bg-red-50 border border-red-200 rounded-lg p-6">
-        <p className="text-red-600">{error}</p>
+      <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-6">
+        <p className="text-red-600 dark:text-red-400">{error}</p>
       </div>
     );
   }
 
   if (tradeItems.length === 0) {
     return (
-      <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 text-center">
-        <p className="text-gray-600">최근 {months}개월 간 실거래가 데이터가 없습니다.</p>
+      <div className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6 text-center">
+        <p className="text-gray-600 dark:text-gray-400">최근 {months}개월 간 실거래가 데이터가 없습니다.</p>
       </div>
     );
   }
@@ -370,13 +370,13 @@ export default function RealPriceAnalysis({ complexNo }: RealPriceAnalysisProps)
   return (
     <div className="space-y-6">
       {/* 컨트롤 패널 */}
-      <div className="flex items-center justify-between bg-white p-4 rounded-lg border border-gray-200">
+      <div className="flex items-center justify-between bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
         <div className="flex items-center gap-4">
-          <label className="text-sm font-medium text-gray-700">조회 기간:</label>
+          <label className="text-sm font-medium text-gray-700 dark:text-gray-300">조회 기간:</label>
           <select
             value={months}
             onChange={(e) => setMonths(parseInt(e.target.value))}
-            className="px-3 py-1.5 border border-gray-300 rounded-md text-sm"
+            className="px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
           >
             <option value={3}>3개월</option>
             <option value={6}>6개월</option>
@@ -385,14 +385,14 @@ export default function RealPriceAnalysis({ complexNo }: RealPriceAnalysisProps)
             <option value={36}>36개월</option>
           </select>
 
-          <label className="text-sm font-medium text-gray-700 ml-4">거래유형:</label>
+          <label className="text-sm font-medium text-gray-700 dark:text-gray-300 ml-4">거래유형:</label>
           <select
             value={tradeTypeFilter}
             onChange={(e) => {
               setTradeTypeFilter(e.target.value as any);
               setCurrentPage(1);
             }}
-            className="px-3 py-1.5 border border-gray-300 rounded-md text-sm"
+            className="px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
           >
             <option value="all">전체</option>
             <option value="매매">매매</option>
@@ -401,7 +401,7 @@ export default function RealPriceAnalysis({ complexNo }: RealPriceAnalysisProps)
           </select>
 
           {tradeTypeFilter === 'all' || tradeTypeFilter === '매매' ? (
-            <label className="flex items-center gap-2 text-sm text-gray-700 ml-4">
+            <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 ml-4">
               <input
                 type="checkbox"
                 checked={showCancelledDeals}
@@ -413,14 +413,14 @@ export default function RealPriceAnalysis({ complexNo }: RealPriceAnalysisProps)
           ) : null}
         </div>
 
-        <div className="text-sm text-gray-600">
+        <div className="text-sm text-gray-600 dark:text-gray-400">
           총 {tradeItems.length}건
         </div>
       </div>
 
       {/* 평형별 필터 */}
-      <div className="bg-white p-4 rounded-lg border border-gray-200">
-        <div className="text-sm font-medium text-gray-700 mb-2">평형별 선택 (차트 필터):</div>
+      <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
+        <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">평형별 선택 (차트 필터):</div>
         <div className="flex flex-wrap gap-2">
           {Array.from(areaGroups.keys()).map((areaKey, index) => {
             const pyeongNum = areaKey.replace('평', '');
@@ -431,10 +431,10 @@ export default function RealPriceAnalysis({ complexNo }: RealPriceAnalysisProps)
               <label
                 key={areaKey}
                 className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-md cursor-pointer transition-colors ${
-                  isSelected ? 'bg-blue-50 border-2' : 'bg-gray-50 border'
+                  isSelected ? 'bg-blue-50 dark:bg-blue-900/30 border-2' : 'bg-gray-50 dark:bg-gray-700 border'
                 }`}
                 style={{
-                  borderColor: isSelected ? color : '#e5e7eb'
+                  borderColor: isSelected ? color : undefined
                 }}
               >
                 <input
@@ -451,8 +451,8 @@ export default function RealPriceAnalysis({ complexNo }: RealPriceAnalysisProps)
                   }}
                   className="rounded"
                 />
-                <span className="text-sm font-medium">{areaKey}</span>
-                <span className="text-xs text-gray-500">({areaGroups.get(areaKey)!.length}건)</span>
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{areaKey}</span>
+                <span className="text-xs text-gray-500 dark:text-gray-400">({areaGroups.get(areaKey)!.length}건)</span>
               </label>
             );
           })}
@@ -460,8 +460,8 @@ export default function RealPriceAnalysis({ complexNo }: RealPriceAnalysisProps)
       </div>
 
       {/* 차트 */}
-      <div className="bg-white p-6 rounded-lg border border-gray-200">
-        <h3 className="text-lg font-semibold mb-4">
+      <div className="bg-white dark:bg-gray-800 p-6 rounded-lg border border-gray-200 dark:border-gray-700">
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
           매매 실거래가 추이 (평형별)
         </h3>
         <ResponsiveContainer width="100%" height={400}>
@@ -525,10 +525,10 @@ export default function RealPriceAnalysis({ complexNo }: RealPriceAnalysisProps)
       </div>
 
       {/* 거래 목록 */}
-      <div className="bg-white rounded-lg border border-gray-200">
-        <div className="p-4 border-b border-gray-200 flex justify-between items-center">
-          <h3 className="text-lg font-semibold">거래 목록</h3>
-          <div className="flex items-center gap-2 text-sm">
+      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+        <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">거래 목록</h3>
+          <div className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
             <label>페이지당:</label>
             <select
               value={itemsPerPage}
@@ -536,7 +536,7 @@ export default function RealPriceAnalysis({ complexNo }: RealPriceAnalysisProps)
                 setItemsPerPage(parseInt(e.target.value));
                 setCurrentPage(1);
               }}
-              className="px-2 py-1 border border-gray-300 rounded"
+              className="px-2 py-1 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
             >
               <option value={20}>20개</option>
               <option value={50}>50개</option>
@@ -547,10 +547,10 @@ export default function RealPriceAnalysis({ complexNo }: RealPriceAnalysisProps)
 
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-gray-50">
+            <thead className="bg-gray-50 dark:bg-gray-700">
               <tr>
                 <th
-                  className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                  className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
                   onClick={() => {
                     if (sortField === 'date') {
                       setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
@@ -562,11 +562,11 @@ export default function RealPriceAnalysis({ complexNo }: RealPriceAnalysisProps)
                 >
                   계약일자 {sortField === 'date' && (sortDirection === 'asc' ? '↑' : '↓')}
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   거래유형
                 </th>
                 <th
-                  className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                  className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
                   onClick={() => {
                     if (sortField === 'area') {
                       setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
@@ -579,7 +579,7 @@ export default function RealPriceAnalysis({ complexNo }: RealPriceAnalysisProps)
                   면적 {sortField === 'area' && (sortDirection === 'asc' ? '↑' : '↓')}
                 </th>
                 <th
-                  className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                  className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
                   onClick={() => {
                     if (sortField === 'price') {
                       setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
@@ -591,53 +591,53 @@ export default function RealPriceAnalysis({ complexNo }: RealPriceAnalysisProps)
                 >
                   가격 {sortField === 'price' && (sortDirection === 'asc' ? '↑' : '↓')}
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   층
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   비고
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
               {paginatedItems.map((item, idx) => (
-                <tr key={idx} className={`hover:bg-gray-50 ${item.cancelDealType ? 'bg-red-50' : ''}`}>
-                  <td className="px-4 py-3 whitespace-nowrap text-sm">
+                <tr key={idx} className={`hover:bg-gray-50 dark:hover:bg-gray-700 ${item.cancelDealType ? 'bg-red-50 dark:bg-red-900/20' : ''}`}>
+                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                     {item.dealDate}
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap text-sm">
                     <span className={`px-2 py-1 rounded text-xs font-medium ${
-                      item.tradeType === '매매' ? 'bg-blue-100 text-blue-800' :
-                      item.tradeType === '전세' ? 'bg-green-100 text-green-800' :
-                      'bg-yellow-100 text-yellow-800'
+                      item.tradeType === '매매' ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300' :
+                      item.tradeType === '전세' ? 'bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-300' :
+                      'bg-yellow-100 dark:bg-yellow-900/40 text-yellow-800 dark:text-yellow-300'
                     }`}>
                       {item.tradeType}
                     </span>
                   </td>
-                  <td className="px-4 py-3 whitespace-nowrap text-sm">
+                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                     {Math.floor(item.exclusiveArea / 3.3058)}평 ({item.exclusiveArea.toFixed(2)}㎡)
                   </td>
-                  <td className="px-4 py-3 whitespace-nowrap text-sm font-medium">
+                  <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">
                     {item.tradeType === '매매' ? (
                       <span>{item.dealPriceFormatted}</span>
                     ) : (
                       <div>
                         <div>보증금: {item.depositFormatted}</div>
                         {item.monthlyRent && item.monthlyRent > 0 && (
-                          <div className="text-xs text-gray-500">월세: {item.monthlyRentFormatted}</div>
+                          <div className="text-xs text-gray-500 dark:text-gray-400">월세: {item.monthlyRentFormatted}</div>
                         )}
                       </div>
                     )}
                   </td>
-                  <td className="px-4 py-3 whitespace-nowrap text-sm">
+                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                     {item.floor}층
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap text-sm">
                     {item.cancelDealType && (
-                      <span className="text-xs text-red-600 font-medium">{item.cancelDealType}</span>
+                      <span className="text-xs text-red-600 dark:text-red-400 font-medium">{item.cancelDealType}</span>
                     )}
                     {item.contractType && (
-                      <span className="text-xs text-gray-500">{item.contractType}</span>
+                      <span className="text-xs text-gray-500 dark:text-gray-400">{item.contractType}</span>
                     )}
                   </td>
                 </tr>
@@ -648,21 +648,21 @@ export default function RealPriceAnalysis({ complexNo }: RealPriceAnalysisProps)
 
         {/* 페이지네이션 */}
         {totalPages > 1 && (
-          <div className="p-4 border-t border-gray-200 flex justify-center items-center gap-2">
+          <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-center items-center gap-2">
             <button
               onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
               disabled={currentPage === 1}
-              className="px-3 py-1 border border-gray-300 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-gray-600"
             >
               이전
             </button>
-            <span className="text-sm text-gray-600">
+            <span className="text-sm text-gray-600 dark:text-gray-400">
               {currentPage} / {totalPages}
             </span>
             <button
               onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
               disabled={currentPage === totalPages}
-              className="px-3 py-1 border border-gray-300 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-gray-600"
             >
               다음
             </button>
