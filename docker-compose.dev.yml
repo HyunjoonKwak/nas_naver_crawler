@@ -66,9 +66,7 @@ services:
       - DATABASE_URL=postgresql://crawler_user:crawler_pass_2025@db:5432/naver_crawler?schema=public&connection_limit=20&pool_timeout=30&connect_timeout=10
       - REDIS_URL=redis://redis:6379
       - NODE_ENV=development
-      # ⚠️ Naver Maps API 키는 NAS에서 직접 추가하세요 (아래 주석 해제)
-      # - NAVER_MAPS_CLIENT_ID=your_client_id
-      # - NAVER_MAPS_CLIENT_SECRET=your_client_secret
+      # ⚠️ NAS 배포 시: Naver Maps API 키 추가 필요 (docs/NAVER_API_SETUP.md 참조)
 
     # 볼륨 마운트 (개발 모드 - Hot Reload)
     volumes:
