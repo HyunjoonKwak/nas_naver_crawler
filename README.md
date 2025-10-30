@@ -254,6 +254,8 @@ docker-compose restart web  # 3초 완료!
 
 ## 🚀 빠른 시작
 
+> **⚠️ NAS 사용자 주의**: Docker Compose TMPDIR 에러가 발생하는 경우 [NAS Docker Compose 에러 해결 가이드](docs/NAS_DOCKER_COMPOSE_FIX.md)를 참조하거나 `./dc.sh` 래퍼 스크립트를 사용하세요.
+
 ### 1️⃣ 관리 메뉴 (가장 쉬운 방법)
 
 ```bash
