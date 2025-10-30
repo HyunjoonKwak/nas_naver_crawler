@@ -80,6 +80,7 @@ export default function RealPriceAnalysis({ complexNo }: RealPriceAnalysisProps)
   const [months, setMonths] = useState(6);
   const [selectedArea, setSelectedArea] = useState<string>('all');
   const [chartViewMode, setChartViewMode] = useState<'overall' | 'byPyeong'>('byPyeong'); // 차트 보기 모드
+  const [chartAreaFilters, setChartAreaFilters] = useState<Set<string>>(new Set()); // 차트 평형 필터
   const [sortField, setSortField] = useState<'date' | 'price' | 'area'>('date');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [currentPage, setCurrentPage] = useState(1);
@@ -709,6 +710,25 @@ export default function RealPriceAnalysis({ complexNo }: RealPriceAnalysisProps)
               areaGroups.get(groupKey)!.push(item);
             });
 
+            // 차트 필터 초기화 (처음 로드 시)
+            if (chartAreaFilters.size === 0) {
+              setChartAreaFilters(new Set(Array.from(areaGroups.keys())));
+            }
+
+            const selectedAreas = chartAreaFilters.size > 0 ? chartAreaFilters : new Set(Array.from(areaGroups.keys()));
+
+            const toggleArea = (areaKey: string) => {
+              setChartAreaFilters(prev => {
+                const newSet = new Set(prev);
+                if (newSet.has(areaKey)) {
+                  newSet.delete(areaKey);
+                } else {
+                  newSet.add(areaKey);
+                }
+                return newSet;
+              });
+            };
+
             // 날짜별로 데이터 정리
             const allDates = [...new Set(data.items.map(item => item.dealDate))].sort();
             const chartData: any[] = [];
@@ -737,8 +757,64 @@ export default function RealPriceAnalysis({ complexNo }: RealPriceAnalysisProps)
             });
 
             return (
-              <ResponsiveContainer width="100%" height={400}>
-                <ComposedChart
+              <>
+                {/* 평형 선택 체크박스 */}
+                <div className="mb-4 p-4 bg-gray-50 dark:bg-gray-900 rounded-lg">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                      표시할 평형 선택:
+                    </span>
+                    <button
+                      onClick={() => setChartAreaFilters(new Set(Array.from(areaGroups.keys())))}
+                      className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+                    >
+                      전체 선택
+                    </button>
+                    <button
+                      onClick={() => setChartAreaFilters(new Set())}
+                      className="text-xs text-gray-600 dark:text-gray-400 hover:underline"
+                    >
+                      전체 해제
+                    </button>
+                  </div>
+                  <div className="flex flex-wrap gap-3">
+                    {Array.from(areaGroups.entries()).map(([areaKey, items], index) => {
+                      const color = colors[index % colors.length];
+                      const isSelected = selectedAreas.has(areaKey);
+
+                      return (
+                        <label
+                          key={areaKey}
+                          className={`flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-colors ${
+                            isSelected
+                              ? 'bg-white dark:bg-gray-800 border-2 shadow-sm'
+                              : 'bg-gray-100 dark:bg-gray-800 border-2 border-transparent'
+                          }`}
+                          style={{
+                            borderColor: isSelected ? color : 'transparent',
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => toggleArea(areaKey)}
+                            className="w-4 h-4 rounded"
+                            style={{ accentColor: color }}
+                          />
+                          <span
+                            className="text-sm font-medium"
+                            style={{ color: isSelected ? color : undefined }}
+                          >
+                            {areaKey} ({items.length}건)
+                          </span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <ResponsiveContainer width="100%" height={400}>
+                  <ComposedChart
                   data={chartData}
                   margin={{ top: 20, right: 30, left: 20, bottom: 80 }}
                 >
@@ -771,24 +847,26 @@ export default function RealPriceAnalysis({ complexNo }: RealPriceAnalysisProps)
                       return (
                         <div className="bg-white dark:bg-gray-800 p-3 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
                           <p className="font-semibold text-sm mb-2">{data.date}</p>
-                          {Array.from(areaGroups.keys()).map((areaKey, index) => {
-                            const points = data[`${areaKey}_points`];
-                            if (!points || points.length === 0) return null;
+                          {Array.from(areaGroups.keys())
+                            .filter(areaKey => selectedAreas.has(areaKey))
+                            .map((areaKey, index) => {
+                              const points = data[`${areaKey}_points`];
+                              if (!points || points.length === 0) return null;
 
-                            return (
-                              <div
-                                key={areaKey}
-                                className="text-xs mb-1"
-                                style={{ color: colors[index % colors.length] }}
-                              >
-                                <strong>{areaKey}</strong>: {points.length}건
-                                <br />
-                                <span className="text-gray-600 dark:text-gray-400">
-                                  {formatPrice(Math.min(...points))} ~ {formatPrice(Math.max(...points))}
-                                </span>
-                              </div>
-                            );
-                          })}
+                              return (
+                                <div
+                                  key={areaKey}
+                                  className="text-xs mb-1"
+                                  style={{ color: colors[Array.from(areaGroups.keys()).indexOf(areaKey) % colors.length] }}
+                                >
+                                  <strong>{areaKey}</strong>: {points.length}건
+                                  <br />
+                                  <span className="text-gray-600 dark:text-gray-400">
+                                    {formatPrice(Math.min(...points))} ~ {formatPrice(Math.max(...points))}
+                                  </span>
+                                </div>
+                              );
+                            })}
                         </div>
                       );
                     }}
@@ -799,11 +877,14 @@ export default function RealPriceAnalysis({ complexNo }: RealPriceAnalysisProps)
                   />
 
                   {/* 각 평형별로 영역(Area) + 선(Line) 그리기 */}
-                  {Array.from(areaGroups.entries()).map(([areaKey, items], index) => {
-                    const color = colors[index % colors.length];
+                  {Array.from(areaGroups.entries())
+                    .filter(([areaKey]) => selectedAreas.has(areaKey))
+                    .map(([areaKey, items], index) => {
+                      const originalIndex = Array.from(areaGroups.keys()).indexOf(areaKey);
+                      const color = colors[originalIndex % colors.length];
 
-                    return (
-                      <React.Fragment key={areaKey}>
+                      return (
+                        <React.Fragment key={areaKey}>
                         {/* 최소~최대 범위 영역 */}
                         <Area
                           type="monotone"
@@ -855,11 +936,12 @@ export default function RealPriceAnalysis({ complexNo }: RealPriceAnalysisProps)
                           activeDot={{ r: 6 }}
                           name={`${areaKey} 평균`}
                         />
-                      </React.Fragment>
-                    );
-                  })}
+                        </React.Fragment>
+                      );
+                    })}
                 </ComposedChart>
               </ResponsiveContainer>
+              </>
             );
           })()
         )}
@@ -869,6 +951,7 @@ export default function RealPriceAnalysis({ complexNo }: RealPriceAnalysisProps)
             <p className="text-xs text-gray-700 dark:text-gray-300">
               💡 <strong>차트 사용법:</strong><br />
               • 각 평형별로 색상이 다릅니다 (<span className="font-semibold">굵은 실선</span>: 평균 가격, <span className="font-semibold">점선</span>: 최대/최소, <span className="font-semibold">영역</span>: 가격 범위)<br />
+              • <strong>체크박스로 원하는 평형만 선택</strong>하여 차트와 데이터를 필터링할 수 있습니다<br />
               • 평형별 실거래가 통계에서 카드를 클릭하면 해당 평형만 필터링됩니다<br />
               • 거래일별로 최저가~최고가 범위와 평균 가격을 확인할 수 있습니다
             </p>
