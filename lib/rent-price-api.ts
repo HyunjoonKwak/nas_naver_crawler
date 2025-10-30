@@ -257,10 +257,14 @@ export class RentPriceApiClient {
       const body = parsed.response.body;
       const rawItems = body.items?.item;
 
-      // 원본 데이터 구조 확인용 로그 (첫 3개 항목만)
+      // 원본 데이터 구조 확인용 로그 (첫 번째 항목 전체)
       if (rawItems) {
-        const sampleItems = Array.isArray(rawItems) ? rawItems.slice(0, 3) : [rawItems];
-        console.log('[Rent Price API] Sample raw items:', JSON.stringify(sampleItems, null, 2));
+        const firstItem = Array.isArray(rawItems) ? rawItems[0] : rawItems;
+        console.log('=== [Rent Price API] 원본 응답 데이터 전체 ===');
+        console.log(JSON.stringify(firstItem, null, 2));
+        console.log('=== 필드명 목록 ===');
+        console.log('Available fields:', Object.keys(firstItem));
+        console.log('=====================================');
       }
 
       let items: ProcessedRentPrice[] = [];
