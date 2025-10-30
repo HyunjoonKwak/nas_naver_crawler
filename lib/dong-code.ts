@@ -55,15 +55,24 @@ export function loadDongCodeData(): DongCodeEntry[] {
           return null;
         }
 
-        // 주소 파싱 (예: "서울특별시 종로구 청운동", "경기도 수원시 장안구 파장동")
+        // 주소 파싱
+        // 예: "서울특별시 종로구 청운동" → sido: "서울특별시", sigungu: "종로구"
+        // 예: "경기도 수원시 장안구 파장동" → sido: "경기도", sigungu: "수원시 장안구"
+        // 예: "경기도 안양시 동안구 평촌동" → sido: "경기도", sigungu: "안양시 동안구"
         const parts = dongName.split(' ');
         const sido = parts[0] || '';
-        const sigungu = parts[1] || '';
+
+        // sigungu: parts[1]부터 마지막 동명 제외한 모든 토큰
+        // 마지막 토큰이 "동/읍/면/리/가"로 끝나면 동명으로 간주
+        const lastPart = parts[parts.length - 1] || '';
+        const isDongName = /[동읍면리가]$/.test(lastPart);
+
+        const sigungu = isDongName
+          ? parts.slice(1, -1).join(' ')  // 동명 제외
+          : parts.slice(1).join(' ');     // 동명 없으면 전부
 
         // dongOnly 추출: 마지막 토큰만 (동/읍/면 이름)
-        // 예: "경기도 수원시 장안구 파장동" → "파장동"
-        // 예: "경기도 광명시 광명동" → "광명동"
-        const dongOnly = parts[parts.length - 1] || '';
+        const dongOnly = isDongName ? lastPart : '';
 
         return {
           fullCode,
