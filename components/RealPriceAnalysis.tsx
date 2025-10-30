@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import React, { useEffect, useState } from "react";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ComposedChart, Area } from 'recharts';
 
 interface RealPriceItem {
   dealDate: string;
@@ -692,56 +692,187 @@ export default function RealPriceAnalysis({ complexNo }: RealPriceAnalysisProps)
             </LineChart>
           </ResponsiveContainer>
         ) : (
-          <ResponsiveContainer width="100%" height={400}>
-            <LineChart data={pyeongChartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-              <XAxis
-                dataKey="month"
-                tick={{ fill: '#6b7280', fontSize: 11, angle: -45 }}
-                stroke="#9ca3af"
-                height={80}
-                interval="preserveStartEnd"
-                textAnchor="end"
-              />
-              <YAxis
-                tickFormatter={formatChartPrice}
-                tick={{ fill: '#6b7280', fontSize: 12 }}
-                stroke="#9ca3af"
-                domain={[
-                  (dataMin: number) => Math.floor(dataMin * 0.9),
-                  (dataMax: number) => Math.ceil(dataMax * 1.1)
-                ]}
-              />
-              <Tooltip
-                formatter={(value: any) => formatPrice(value)}
-                contentStyle={{
-                  backgroundColor: '#fff',
-                  border: '1px solid #e5e7eb',
-                  borderRadius: '8px',
-                  padding: '12px'
-                }}
-              />
-              <Legend wrapperStyle={{ paddingTop: '20px' }} />
-              {/* 동적으로 평형별 Line 생성 */}
-              {areaStats.map((stat, index) => {
-                const colors = ['#8b5cf6', '#ef4444', '#10b981', '#f59e0b', '#3b82f6', '#ec4899'];
-                const pyeongKey = `${stat.areaType.split('평')[0]}평`;
+          (() => {
+            // 평형별 그룹핑 (공급평형 기준)
+            const areaGroups = new Map<string, RealPriceItem[]>();
+            const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
 
-                return (
-                  <Line
-                    key={pyeongKey}
-                    type="monotone"
-                    dataKey={pyeongKey}
-                    stroke={colors[index % colors.length]}
-                    strokeWidth={2}
-                    dot={{ fill: colors[index % colors.length], r: 4 }}
-                    name={stat.areaType}
-                    connectNulls={false}
+            if (!data) return null;
+
+            data.items.forEach(item => {
+              const exclusivePyeong = Math.floor(item.exclusiveArea / 3.3058);
+              const groupKey = item.supplyPyeong !== null ? `${item.supplyPyeong}평` : `${exclusivePyeong}평`;
+
+              if (!areaGroups.has(groupKey)) {
+                areaGroups.set(groupKey, []);
+              }
+              areaGroups.get(groupKey)!.push(item);
+            });
+
+            // 날짜별로 데이터 정리
+            const allDates = [...new Set(data.items.map(item => item.dealDate))].sort();
+            const chartData: any[] = [];
+
+            allDates.forEach(date => {
+              const dataPoint: any = { date };
+
+              Array.from(areaGroups.entries()).forEach(([areaKey, items]) => {
+                const itemsOnDate = items.filter(item => item.dealDate === date);
+
+                if (itemsOnDate.length > 0) {
+                  const prices = itemsOnDate.map(item => item.dealPrice);
+                  const min = Math.min(...prices);
+                  const max = Math.max(...prices);
+                  const avg = prices.reduce((a, b) => a + b, 0) / prices.length;
+
+                  dataPoint[`${areaKey}_min`] = min;
+                  dataPoint[`${areaKey}_max`] = max;
+                  dataPoint[`${areaKey}_range`] = max - min;
+                  dataPoint[`${areaKey}_avg`] = avg;
+                  dataPoint[`${areaKey}_points`] = prices;
+                }
+              });
+
+              chartData.push(dataPoint);
+            });
+
+            return (
+              <ResponsiveContainer width="100%" height={400}>
+                <ComposedChart
+                  data={chartData}
+                  margin={{ top: 20, right: 30, left: 20, bottom: 80 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                  <XAxis
+                    dataKey="date"
+                    tick={{ fill: '#6b7280', fontSize: 11 }}
+                    stroke="#9ca3af"
+                    angle={-45}
+                    textAnchor="end"
+                    height={80}
                   />
-                );
-              })}
-            </LineChart>
-          </ResponsiveContainer>
+                  <YAxis
+                    tickFormatter={formatChartPrice}
+                    tick={{ fill: '#6b7280', fontSize: 12 }}
+                    stroke="#9ca3af"
+                    label={{ value: '가격', angle: -90, position: 'insideLeft', style: { fontSize: 12 } }}
+                    domain={[
+                      (dataMin: number) => Math.floor(dataMin * 0.9),
+                      (dataMax: number) => Math.ceil(dataMax * 1.1)
+                    ]}
+                  />
+                  <Tooltip
+                    cursor={{ fill: 'rgba(200, 200, 200, 0.2)' }}
+                    content={({ active, payload }) => {
+                      if (!active || !payload || payload.length === 0) return null;
+
+                      const data = payload[0].payload;
+
+                      return (
+                        <div className="bg-white dark:bg-gray-800 p-3 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
+                          <p className="font-semibold text-sm mb-2">{data.date}</p>
+                          {Array.from(areaGroups.keys()).map((areaKey, index) => {
+                            const points = data[`${areaKey}_points`];
+                            if (!points || points.length === 0) return null;
+
+                            return (
+                              <div
+                                key={areaKey}
+                                className="text-xs mb-1"
+                                style={{ color: colors[index % colors.length] }}
+                              >
+                                <strong>{areaKey}</strong>: {points.length}건
+                                <br />
+                                <span className="text-gray-600 dark:text-gray-400">
+                                  {formatPrice(Math.min(...points))} ~ {formatPrice(Math.max(...points))}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    }}
+                  />
+                  <Legend
+                    wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }}
+                    formatter={(value) => value}
+                  />
+
+                  {/* 각 평형별로 영역(Area) + 선(Line) 그리기 */}
+                  {Array.from(areaGroups.entries()).map(([areaKey, items], index) => {
+                    const color = colors[index % colors.length];
+
+                    return (
+                      <React.Fragment key={areaKey}>
+                        {/* 최소~최대 범위 영역 */}
+                        <Area
+                          type="monotone"
+                          dataKey={`${areaKey}_min`}
+                          stackId={areaKey}
+                          stroke="none"
+                          fill="transparent"
+                          name={`${areaKey} 최소`}
+                        />
+                        <Area
+                          type="monotone"
+                          dataKey={`${areaKey}_range`}
+                          stackId={areaKey}
+                          stroke="none"
+                          fill={color}
+                          fillOpacity={0.15}
+                          name={`${areaKey} 범위`}
+                        />
+
+                        {/* 최대값 점선 */}
+                        <Line
+                          type="monotone"
+                          dataKey={`${areaKey}_max`}
+                          stroke={color}
+                          strokeWidth={1}
+                          strokeDasharray="5 5"
+                          dot={false}
+                          name={`${areaKey} 최대`}
+                        />
+
+                        {/* 최소값 점선 */}
+                        <Line
+                          type="monotone"
+                          dataKey={`${areaKey}_min`}
+                          stroke={color}
+                          strokeWidth={1}
+                          strokeDasharray="5 5"
+                          dot={false}
+                          name={`${areaKey} 최소`}
+                        />
+
+                        {/* 평균 실선 */}
+                        <Line
+                          type="monotone"
+                          dataKey={`${areaKey}_avg`}
+                          stroke={color}
+                          strokeWidth={2.5}
+                          dot={{ r: 4, fill: color, strokeWidth: 2, stroke: 'white' }}
+                          activeDot={{ r: 6 }}
+                          name={`${areaKey} 평균`}
+                        />
+                      </React.Fragment>
+                    );
+                  })}
+                </ComposedChart>
+              </ResponsiveContainer>
+            );
+          })()
+        )}
+
+        {chartViewMode === 'byPyeong' && (
+          <div className="mt-4 p-3 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+            <p className="text-xs text-gray-700 dark:text-gray-300">
+              💡 <strong>차트 사용법:</strong><br />
+              • 각 평형별로 색상이 다릅니다 (<span className="font-semibold">굵은 실선</span>: 평균 가격, <span className="font-semibold">점선</span>: 최대/최소, <span className="font-semibold">영역</span>: 가격 범위)<br />
+              • 평형별 실거래가 통계에서 카드를 클릭하면 해당 평형만 필터링됩니다<br />
+              • 거래일별로 최저가~최고가 범위와 평균 가격을 확인할 수 있습니다
+            </p>
+          </div>
         )}
       </div>
 
