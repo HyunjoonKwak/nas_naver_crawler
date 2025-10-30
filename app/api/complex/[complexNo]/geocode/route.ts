@@ -38,8 +38,12 @@ export async function POST(
       );
     }
 
-    // 2. 이미 법정동 정보와 lawdCd가 있으면 스킵
-    if (complex.beopjungdong && complex.lawdCd) {
+    // 2. force 파라미터 확인 (이미 있어도 재실행)
+    const body = await request.json().catch(() => ({}));
+    const force = body.force === true;
+
+    // 이미 법정동 정보와 lawdCd가 있으면 스킵 (force가 아닐 때만)
+    if (!force && complex.beopjungdong && complex.lawdCd) {
       return NextResponse.json({
         success: true,
         message: 'Complex already has complete geocoding data',
@@ -49,6 +53,10 @@ export async function POST(
           lawdCd: complex.lawdCd,
         },
       });
+    }
+
+    if (force) {
+      console.log(`[Geocode] 🔄 Force re-geocoding for ${complex.complexName} (${complexNo})`);
     }
 
     // 3. 좌표 정보 확인

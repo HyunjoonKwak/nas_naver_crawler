@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { extractSggCodeFromAddress } from '@/lib/dong-code';
 
 // SGIS API 인증 응답
 interface SGISAuthResponse {
@@ -221,8 +222,18 @@ export async function GET(request: NextRequest) {
       addressInfo.sigunguCode = addr.sgg_cd;
       addressInfo.dongCode = addr.emdong_cd;
 
-      // 법정동코드 생성 (시도 2자리 + 시군구 3자리 = 5자리)
-      addressInfo.lawdCd = addr.sido_cd + addr.sgg_cd;
+      // 법정동코드: 주소 문자열에서 정확한 법정동코드 추출
+      // SGIS의 행정구역 코드는 법정동코드와 다를 수 있음!
+      const extractedLawdCd = extractSggCodeFromAddress(addr.full_addr);
+
+      if (extractedLawdCd) {
+        addressInfo.lawdCd = extractedLawdCd;
+        console.log(`[SGIS Geocoding] ✅ 법정동코드 추출 성공: ${extractedLawdCd} (from: ${addr.full_addr})`);
+      } else {
+        // 추출 실패 시 SGIS 코드 사용 (호환성)
+        addressInfo.lawdCd = addr.sido_cd + addr.sgg_cd;
+        console.warn(`[SGIS Geocoding] ⚠️  법정동코드 추출 실패, SGIS 코드 사용: ${addressInfo.lawdCd}`);
+      }
 
       // 법정동/행정동 (SGIS는 행정동 기준)
       addressInfo.beopjungdong = addr.emdong_nm;
