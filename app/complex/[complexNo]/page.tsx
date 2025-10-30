@@ -56,6 +56,9 @@ export default function ComplexDetailPage() {
   // Dialog 상태
   const [deleteDialog, setDeleteDialog] = useState(false);
 
+  // 지오코딩 재실행 상태
+  const [isRegeocoding, setIsRegeocoding] = useState(false);
+
   // 필터 변경 시 페이지 초기화 (Hooks는 항상 같은 순서로 호출되어야 함)
   useEffect(() => {
     setCurrentPage(1);
@@ -128,6 +131,49 @@ export default function ComplexDetailPage() {
     } catch (error: any) {
       console.error('[Auto-Geocoding] Error:', error);
       // 에러가 발생해도 페이지는 정상적으로 표시되어야 하므로 무시
+    }
+  };
+
+  // 수동 지오코딩 재실행 (force=true)
+  const handleRegeocode = async () => {
+    const loadingToast = showLoading("지오코딩 재실행 중...");
+    setIsRegeocoding(true);
+
+    try {
+      const response = await fetch(`/api/complex/${complexNo}/geocode`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ force: true }),
+      });
+
+      const result = await response.json();
+      dismissToast(loadingToast);
+
+      if (result.success) {
+        showSuccess(`법정동 정보가 업데이트되었습니다: ${result.data.beopjungdong}`);
+
+        // UI 업데이트
+        setData(prev => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            overview: {
+              ...prev.overview,
+              beopjungdong: result.data.beopjungdong,
+              haengjeongdong: result.data.haengjeongdong,
+              address: result.data.address || prev.overview.address,
+            }
+          };
+        });
+      } else {
+        showError(result.message || result.error || '지오코딩 실패');
+      }
+    } catch (error: any) {
+      dismissToast(loadingToast);
+      showError(error.message || '지오코딩 중 오류가 발생했습니다.');
+      console.error('[Manual Geocoding] Error:', error);
+    } finally {
+      setIsRegeocoding(false);
     }
   };
 
@@ -906,7 +952,45 @@ export default function ComplexDetailPage() {
 
           {/* 실거래가 분석 탭 */}
           {activeTab === 'realPrice' && (
-            <RealPriceAnalysis complexNo={complexNo} />
+            <div>
+              {/* 지오코딩 재실행 버튼 */}
+              <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-1">
+                      실거래가 데이터가 표시되지 않나요?
+                    </h3>
+                    <p className="text-xs text-gray-600 dark:text-gray-400">
+                      법정동 정보가 잘못되었을 수 있습니다. 지오코딩을 재실행하면 좌표 기반으로 정확한 법정동코드를 다시 설정합니다.
+                      {data?.overview?.lawdCd && (
+                        <span className="ml-2 font-mono text-blue-600 dark:text-blue-400">
+                          현재: {data.overview.lawdCd}
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                  <button
+                    onClick={handleRegeocode}
+                    disabled={isRegeocoding}
+                    className="ml-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+                  >
+                    {isRegeocoding ? (
+                      <>
+                        <span className="animate-spin">🔄</span>
+                        <span>재실행 중...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>🗺️</span>
+                        <span>지오코딩 재실행</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              <RealPriceAnalysis complexNo={complexNo} />
+            </div>
           )}
         </div>
       </div>
