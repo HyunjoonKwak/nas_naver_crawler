@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { invalidateRealPriceCache } from '@/lib/real-price-cache';
+import { invalidateRentPriceCache } from '@/lib/rent-price-cache';
 
 /**
  * 실거래가 캐시 무효화 API
@@ -31,14 +32,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 캐시 무효화
-    await invalidateRealPriceCache(lawdCd, dealYmd);
+    // 캐시 무효화 (매매 + 전월세 모두)
+    await Promise.all([
+      invalidateRealPriceCache(lawdCd, dealYmd),
+      invalidateRentPriceCache(lawdCd, dealYmd),
+    ]);
 
-    console.log(`[Real Price Cache] Invalidated by user ${session.user.email}: ${lawdCd}-${dealYmd}`);
+    console.log(`[Cache Invalidate] Deleted sale & rent cache by ${session.user.email}: ${lawdCd}-${dealYmd}`);
 
     return NextResponse.json({
       success: true,
-      message: `캐시가 삭제되었습니다 (${lawdCd}-${dealYmd})`,
+      message: `캐시가 삭제되었습니다 (매매 + 전월세: ${lawdCd}-${dealYmd})`,
     });
   } catch (error) {
     console.error('[Real Price Cache Invalidate API] Error:', error);
