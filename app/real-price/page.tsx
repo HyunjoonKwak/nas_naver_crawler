@@ -1151,7 +1151,7 @@ export default function RealPricePage() {
                               chartData.push(dataPoint);
                             });
 
-                            // Y축 범위 계산: 선택된 면적만의 가격 범위 (여유 10% 추가)
+                            // Y축 범위 계산: 선택된 면적만의 가격 범위 (여유 15% 추가)
                             const selectedPrices: number[] = [];
                             Array.from(areaGroups.entries())
                               .filter(([areaKey]) => selectedAreas.has(areaKey))
@@ -1161,19 +1161,25 @@ export default function RealPricePage() {
                                 });
                               });
 
-                            let yAxisDomain: [number, number] | undefined = undefined;
-
-                            if (selectedPrices.length > 0) {
-                              const minPrice = Math.min(...selectedPrices);
-                              const maxPrice = Math.max(...selectedPrices);
-                              const priceRange = maxPrice - minPrice;
-                              const priceMargin = Math.max(priceRange * 0.15, 100); // 최소 100만원 또는 15% 여유
-
-                              yAxisDomain = [
-                                Math.floor(minPrice - priceMargin),
-                                Math.ceil(maxPrice + priceMargin)
-                              ];
-                            }
+                            // domain을 함수로 정의하여 recharts의 자동 계산 우회
+                            const yAxisDomain: [(dataMin: number) => number, (dataMax: number) => number] = [
+                              (dataMin: number) => {
+                                if (selectedPrices.length === 0) return dataMin;
+                                const minPrice = Math.min(...selectedPrices);
+                                const maxPrice = Math.max(...selectedPrices);
+                                const priceRange = maxPrice - minPrice;
+                                const priceMargin = Math.max(priceRange * 0.15, 500); // 최소 500만원 여유
+                                return Math.floor(minPrice - priceMargin);
+                              },
+                              (dataMax: number) => {
+                                if (selectedPrices.length === 0) return dataMax;
+                                const minPrice = Math.min(...selectedPrices);
+                                const maxPrice = Math.max(...selectedPrices);
+                                const priceRange = maxPrice - minPrice;
+                                const priceMargin = Math.max(priceRange * 0.15, 500); // 최소 500만원 여유
+                                return Math.ceil(maxPrice + priceMargin);
+                              }
+                            ];
 
                             return (
                               <>
@@ -1225,7 +1231,8 @@ export default function RealPricePage() {
                                       className="text-xs fill-gray-600 dark:fill-gray-400"
                                       tick={{ fontSize: 11 }}
                                       label={{ value: '만원', angle: -90, position: 'insideLeft', style: { fontSize: 12 } }}
-                                      domain={yAxisDomain || ['auto', 'auto']}
+                                      domain={yAxisDomain}
+                                      allowDataOverflow={false}
                                     />
                                     <Tooltip
                                       content={({ active, payload }) => {
