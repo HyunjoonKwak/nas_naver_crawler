@@ -207,21 +207,44 @@ export interface GeocodeAddressComponents {
 export function extractSggCodeFromGeocode(
   components: GeocodeAddressComponents
 ): string | null {
-  // 전체 주소가 있으면 우선 사용
+  const data = loadDongCodeData();
+
+  // Kakao API는 region_2depth_name에 "안양시 동안구"처럼 시군구를 통합해서 반환
+  // 따라서 정확한 매칭을 위해 전체 문자열로 검색
+  if (components.sido && components.sigungu) {
+    const normalized = `${components.sido}${components.sigungu}`.replace(/\s+/g, '').toLowerCase();
+
+    // 정확히 일치하는 항목 찾기 (시도 + 시군구 전체)
+    // 예: "경기안양시동안구" → "경기도 안양시 동안구"
+    const exact = data.find(entry => {
+      const entryNormalized = `${entry.sido}${entry.sigungu}`.replace(/\s+/g, '').toLowerCase();
+      return entryNormalized === normalized;
+    });
+
+    if (exact) {
+      console.log(`[DongCode] 정확 매칭 성공: ${exact.sido} ${exact.sigungu} -> ${exact.sggCode}`);
+      return exact.sggCode;
+    }
+
+    // 부분 매칭 (전체 dongName에서 검색)
+    const partial = data.find(entry => {
+      const entryNormalized = entry.dongName.replace(/\s+/g, '').toLowerCase();
+      return entryNormalized.includes(normalized);
+    });
+
+    if (partial) {
+      console.log(`[DongCode] 부분 매칭 성공: ${partial.dongName} -> ${partial.sggCode}`);
+      return partial.sggCode;
+    }
+  }
+
+  // 전체 주소가 있으면 fallback으로 사용
   if (components.fullAddress) {
     const code = extractSggCodeFromAddress(components.fullAddress);
     if (code) return code;
   }
 
-  // 컴포넌트 조합으로 검색
-  if (components.sido && components.sigungu) {
-    const searchQuery = components.dong
-      ? `${components.sido} ${components.sigungu} ${components.dong}`
-      : `${components.sido} ${components.sigungu}`;
-
-    return findSggCodeByName(searchQuery);
-  }
-
+  console.warn(`[DongCode] 매칭 실패:`, components);
   return null;
 }
 
