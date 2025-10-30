@@ -1217,7 +1217,34 @@ export default function RealPricePage() {
                                 </div>
 
                                 <ResponsiveContainer width="100%" height={400}>
-                                  <ComposedChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+                                  <ComposedChart
+                                    data={chartData}
+                                    margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
+                                    style={{ cursor: 'pointer' }}
+                                    onClick={(e: any) => {
+                                      if (e && e.activePayload && e.activePayload.length > 0) {
+                                        const data = e.activePayload[0].payload;
+                                        const date = data.date;
+
+                                        // 선택된 면적 중 첫 번째로 스크롤
+                                        const selectedAreaKeys = Array.from(areaGroups.keys()).filter(key => selectedAreas.has(key));
+                                        if (selectedAreaKeys.length > 0) {
+                                          const firstAreaKey = selectedAreaKeys[0];
+                                          const area = parseInt(firstAreaKey.replace('㎡', ''));
+                                          const itemId = `item-${group.aptName.replace(/\s+/g, '-')}-${date}-${area}-0`;
+                                          const element = document.getElementById(itemId);
+
+                                          if (element) {
+                                            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                            element.classList.add('bg-yellow-100', 'dark:bg-yellow-900/30');
+                                            setTimeout(() => {
+                                              element.classList.remove('bg-yellow-100', 'dark:bg-yellow-900/30');
+                                            }, 2000);
+                                          }
+                                        }
+                                      }
+                                    }}
+                                  >
                                     <CartesianGrid strokeDasharray="3 3" className="stroke-gray-300 dark:stroke-gray-600" />
                                     <XAxis
                                       dataKey="date"
@@ -1235,27 +1262,11 @@ export default function RealPricePage() {
                                       allowDataOverflow={false}
                                     />
                                     <Tooltip
+                                      cursor={{ fill: 'rgba(200, 200, 200, 0.2)' }}
                                       content={({ active, payload }) => {
                                         if (!active || !payload || payload.length === 0) return null;
 
                                         const data = payload[0].payload;
-
-                                        const handleAreaClick = (areaKey: string) => {
-                                          // 해당 날짜와 면적의 첫 번째 거래건으로 스크롤
-                                          const date = data.date;
-                                          const area = parseInt(areaKey.replace('㎡', ''));
-                                          const itemId = `item-${group.aptName.replace(/\s+/g, '-')}-${date}-${area}-0`;
-                                          const element = document.getElementById(itemId);
-
-                                          if (element) {
-                                            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                                            // 강조 효과
-                                            element.classList.add('bg-yellow-100', 'dark:bg-yellow-900/30');
-                                            setTimeout(() => {
-                                              element.classList.remove('bg-yellow-100', 'dark:bg-yellow-900/30');
-                                            }, 2000);
-                                          }
-                                        };
 
                                         return (
                                           <div className="bg-white dark:bg-gray-800 p-3 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
@@ -1269,11 +1280,10 @@ export default function RealPricePage() {
                                                 return (
                                                   <div
                                                     key={areaKey}
-                                                    className="text-xs mb-1 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 p-1 rounded transition-colors"
+                                                    className="text-xs mb-1"
                                                     style={{ color: colors[index % colors.length] }}
-                                                    onClick={() => handleAreaClick(areaKey)}
                                                   >
-                                                    <strong>{areaKey}</strong>: {points.length}건 👆
+                                                    <strong>{areaKey}</strong>: {points.length}건
                                                     <br />
                                                     <span className="text-gray-600 dark:text-gray-400">
                                                       {Math.min(...points).toLocaleString()}만원 ~ {Math.max(...points).toLocaleString()}만원
@@ -1282,7 +1292,7 @@ export default function RealPricePage() {
                                                 );
                                               })}
                                             <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-2 border-t pt-1">
-                                              💡 클릭하면 해당 거래 목록으로 이동
+                                              💡 차트를 클릭하면 해당 거래 목록으로 이동
                                             </p>
                                           </div>
                                         );
@@ -1364,7 +1374,7 @@ export default function RealPricePage() {
                                     💡 <strong>차트 사용법:</strong><br />
                                     • 각 면적별로 색상이 다릅니다 (<span className="font-semibold">굵은 실선</span>: 평균 가격, <span className="font-semibold">점선</span>: 최대/최소, <span className="font-semibold">영역</span>: 가격 범위)<br />
                                     • 체크박스로 원하는 면적만 필터링 가능 (차트와 매물 목록 모두 적용)<br />
-                                    • 차트 위에 마우스를 올려 상세 정보 확인 후 <strong>클릭하면 해당 거래 목록으로 이동</strong>
+                                    • <strong>차트의 데이터 포인트(날짜)를 클릭</strong>하면 해당 날짜의 거래 목록으로 자동 이동
                                   </p>
                                 </div>
                               </>
