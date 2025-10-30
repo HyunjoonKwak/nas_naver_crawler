@@ -94,6 +94,27 @@ class NASNaverRealEstateCrawler:
                     database_url = database_url.replace('localhost', 'db').replace('127.0.0.1', 'db')
                     print(f"[DB] Docker 환경 감지 - 호스트를 'db'로 변경")
 
+            # psycopg2는 schema 파라미터를 지원하지 않으므로 제거
+            if 'schema=' in database_url:
+                from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
+                parsed = urlparse(database_url)
+                # 쿼리 파라미터 파싱
+                query_params = parse_qs(parsed.query)
+                # schema 파라미터 제거
+                query_params.pop('schema', None)
+                # 새로운 쿼리 문자열 생성
+                new_query = urlencode(query_params, doseq=True)
+                # URL 재조립
+                database_url = urlunparse((
+                    parsed.scheme,
+                    parsed.netloc,
+                    parsed.path,
+                    parsed.params,
+                    new_query,
+                    parsed.fragment
+                ))
+                print(f"[DB] schema 파라미터 제거 (psycopg2 호환)")
+
             self.db_conn = psycopg2.connect(database_url)
             print(f"[DB] PostgreSQL 연결 성공")
             return True
