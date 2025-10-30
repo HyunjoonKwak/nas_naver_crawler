@@ -420,7 +420,7 @@ export default function RealPriceAnalysis({ complexNo }: RealPriceAnalysisProps)
 
     // 여유 공간 추가 (위아래 10%)
     const padding = (maxPrice - minPrice) * 0.1;
-    const domainMin = Math.max(0, minPrice - padding);
+    const domainMin = minPrice - padding;
     const domainMax = maxPrice + padding;
 
     yAxisDomain = [domainMin, domainMax];
