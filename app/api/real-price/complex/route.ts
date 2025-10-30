@@ -5,13 +5,9 @@
  * 쿼리 파라미터:
  * - complexNo: 네이버 단지 번호 (필수)
  * - months: 조회할 개월 수 (선택, 기본: 3, 최대: 12)
- *
- * LAST UPDATED: 2025-10-30 18:45 - Added full apartment list debug
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-
-console.log('[Real Price Complex] 🔄 API route loaded - version 2025-10-30 18:45');
 import { getRealPriceApiClient } from '@/lib/real-price-api';
 import { getRealPriceCache, setRealPriceCache } from '@/lib/real-price-cache';
 import { getServerSession } from 'next-auth';
@@ -210,48 +206,11 @@ export async function GET(request: NextRequest) {
         const searchName = complex.realPriceAptName || complex.complexName;
         const normalizedComplexName = searchName.replace(/\s+/g, '').toLowerCase();
 
-        console.log(`[Real Price Complex] Filtering for: "${searchName}" (normalized: "${normalizedComplexName}")${complex.realPriceAptName ? ' [MANUAL MAPPING]' : ''}`);
-        console.log(`[Real Price Complex] Total cached items for ${dealYmd}: ${monthData.length}`);
-
-        // 디버깅: 전체 아파트 이름 출력 (최대 100개)
-        console.log(`[Real Price Complex] 📋 전체 아파트 목록 (처음 100개):`);
-        monthData.slice(0, 100).forEach((item, idx) => {
-          console.log(`  ${idx + 1}. ${item.aptName}`);
-        });
-
-        // 디버깅: "향촌"이 포함된 모든 아파트 출력
-        const hyangchonApts = monthData.filter(item => item.aptName.includes('향촌'));
-        if (hyangchonApts.length > 0) {
-          console.log(`[Real Price Complex] 🏢 "향촌" 포함 아파트 목록 (${hyangchonApts.length}건):`);
-          hyangchonApts.forEach(apt => {
-            console.log(`  - ${apt.aptName}`);
-          });
-        } else {
-          console.log(`[Real Price Complex] ⚠️ "향촌" 포함 아파트 없음`);
-        }
-
-        // 디버깅: "현대"가 포함된 아파트 출력
-        const hyundaiApts = monthData.filter(item => item.aptName.includes('현대'));
-        if (hyundaiApts.length > 0) {
-          console.log(`[Real Price Complex] 🏢 "현대" 포함 아파트 목록 (${hyundaiApts.length}건):`);
-          hyundaiApts.forEach(apt => {
-            console.log(`  - ${apt.aptName}`);
-          });
-        }
-
         const filtered = monthData.filter(item => {
           const normalizedItemName = item.aptName.replace(/\s+/g, '').toLowerCase();
 
-          // 디버깅: 첫 번째 항목에서 매칭 로직 테스트
-          if (monthData.indexOf(item) === 0) {
-            console.log(`[Real Price Complex] 🔍 매칭 테스트:`);
-            console.log(`  - 검색어: "${normalizedComplexName}" (길이: ${normalizedComplexName.length})`);
-            console.log(`  - 첫번째 항목: "${normalizedItemName}" (길이: ${normalizedItemName.length})`);
-          }
-
           // 1. 정확 매칭
           if (normalizedItemName === normalizedComplexName) {
-            console.log(`[Real Price Complex] ✅ 정확 매칭: "${item.aptName}"`);
             return true;
           }
 
@@ -267,7 +226,6 @@ export async function GET(request: NextRequest) {
 
           // 2-1. 노이즈 제거 후 정확 매칭
           if (cleanedItemName === cleanedSearchName && cleanedSearchName.length >= 4) {
-            console.log(`[Real Price Complex] ✅ 노이즈 제거 후 정확 매칭: "${item.aptName}" (${normalizedItemName} → ${cleanedItemName})`);
             return true;
           }
 
@@ -307,14 +265,11 @@ export async function GET(request: NextRequest) {
           );
 
           if (isValidTokenMatch) {
-            console.log(`[Real Price Complex] ✅ 토큰 매칭: "${item.aptName}" (검색: [${searchTokens.join(', ')}], API: [${itemTokens.join(', ')}])`);
             return true;
           }
 
           return false;
         });
-
-        console.log(`[Real Price Complex] Filtered items for ${dealYmd}: ${filtered.length}`);
 
         allResults.push(...filtered);
       } catch (error: unknown) {
