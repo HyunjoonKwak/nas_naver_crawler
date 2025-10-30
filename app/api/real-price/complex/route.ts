@@ -220,6 +220,16 @@ export async function GET(request: NextRequest) {
             const normalized = item.aptName.replace(/\s+/g, '').toLowerCase();
             console.log(`  - "${item.aptName}" (normalized: "${normalized}")`);
           });
+
+          // 추가 디버깅: "향촌"이 포함된 아파트 찾기
+          const containing = monthData.filter(item => item.aptName.includes('향촌'));
+          if (containing.length > 0) {
+            console.log(`[Real Price Complex] Found ${containing.length} apartments with "향촌":`);
+            containing.forEach(item => {
+              const normalized = item.aptName.replace(/\s+/g, '').toLowerCase();
+              console.log(`  - "${item.aptName}" (normalized: "${normalized}")`);
+            });
+          }
         }
 
         allResults.push(...filtered);
