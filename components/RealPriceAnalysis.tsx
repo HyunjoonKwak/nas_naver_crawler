@@ -185,7 +185,7 @@ export default function RealPriceAnalysis({ complexNo }: RealPriceAnalysisProps)
     return groups;
   };
 
-  // 차트 데이터 생성
+  // 차트 데이터 생성 (매매 데이터만 사용)
   const generateChartData = () => {
     const areaGroups = getAreaGroups();
     const monthMap = new Map<string, any>();
@@ -200,15 +200,20 @@ export default function RealPriceAnalysis({ complexNo }: RealPriceAnalysisProps)
       monthMap.set(key, { month: `${year}-${month}`, count: 0 });
     }
 
-    // 평형별 데이터 집계
+    // 평형별 데이터 집계 (매매 데이터만)
     areaGroups.forEach((items, areaKey) => {
       items.forEach(item => {
+        // 매매 거래만 차트에 포함
+        if (item.tradeType !== '매매') {
+          return;
+        }
+
         const yearMonth = `${item.dealYear}${String(item.dealMonth).padStart(2, '0')}`;
         if (monthMap.has(yearMonth)) {
           const monthData = monthMap.get(yearMonth);
 
-          // 가격 데이터 수집 (매매가 또는 보증금)
-          const price = item.tradeType === '매매' ? item.dealPrice : item.deposit;
+          // 매매가 데이터 수집
+          const price = item.dealPrice;
           if (price) {
             if (!monthData[`${areaKey}_data`]) {
               monthData[`${areaKey}_data`] = [];
@@ -457,10 +462,7 @@ export default function RealPriceAnalysis({ complexNo }: RealPriceAnalysisProps)
       {/* 차트 */}
       <div className="bg-white p-6 rounded-lg border border-gray-200">
         <h3 className="text-lg font-semibold mb-4">
-          {tradeTypeFilter === 'all' && '실거래가 추이 (평형별)'}
-          {tradeTypeFilter === '매매' && '매매 실거래가 추이 (평형별)'}
-          {tradeTypeFilter === '전세' && '전세 보증금 추이 (평형별)'}
-          {tradeTypeFilter === '월세' && '월세 보증금 추이 (평형별)'}
+          매매 실거래가 추이 (평형별)
         </h3>
         <ResponsiveContainer width="100%" height={400}>
           <ComposedChart data={chartData}>
