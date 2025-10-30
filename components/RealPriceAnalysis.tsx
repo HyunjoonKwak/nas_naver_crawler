@@ -365,7 +365,7 @@ export default function RealPriceAnalysis({ complexNo }: RealPriceAnalysisProps)
     Array.from(areaGroups.keys()).filter(key => chartAreaFilters.has(key.replace('평', '')))
   );
 
-  // Y축 도메인 계산
+  // Y축 도메인 및 ticks 계산 (가독성 좋은 숫자로)
   const selectedPrices: number[] = [];
   chartData.forEach(point => {
     selectedAreas.forEach(areaKey => {
@@ -375,12 +375,57 @@ export default function RealPriceAnalysis({ complexNo }: RealPriceAnalysisProps)
     });
   });
 
-  const yAxisDomain = selectedPrices.length > 0
-    ? [
-        () => Math.floor(Math.min(...selectedPrices) * 0.85),
-        () => Math.ceil(Math.max(...selectedPrices) * 1.15)
-      ]
-    : [0, 'auto'];
+  // 가독성 좋은 tick 간격 계산
+  const calculateNiceTicks = (min: number, max: number): number[] => {
+    const range = max - min;
+
+    // 적절한 tick 간격 결정
+    let tickInterval: number;
+    if (range >= 1000000000) {
+      // 10억 이상: 1억 또는 5억 단위
+      tickInterval = range > 5000000000 ? 500000000 : 100000000;
+    } else if (range >= 500000000) {
+      // 5억 ~ 10억: 5000만원 단위
+      tickInterval = 50000000;
+    } else if (range >= 100000000) {
+      // 1억 ~ 5억: 1000만원 단위
+      tickInterval = 10000000;
+    } else if (range >= 50000000) {
+      // 5000만 ~ 1억: 500만원 단위
+      tickInterval = 5000000;
+    } else {
+      // 5000만 미만: 1000만원 또는 500만원 단위
+      tickInterval = range > 20000000 ? 5000000 : 1000000;
+    }
+
+    // tick 시작값 (간격으로 내림)
+    const tickStart = Math.floor(min / tickInterval) * tickInterval;
+    // tick 끝값 (간격으로 올림)
+    const tickEnd = Math.ceil(max / tickInterval) * tickInterval;
+
+    const ticks: number[] = [];
+    for (let tick = tickStart; tick <= tickEnd; tick += tickInterval) {
+      ticks.push(tick);
+    }
+
+    return ticks;
+  };
+
+  let yAxisDomain: [number, number] = [0, 100000000]; // 기본값: 0 ~ 1억
+  let yAxisTicks: number[] = [0, 50000000, 100000000];
+
+  if (selectedPrices.length > 0) {
+    const minPrice = Math.min(...selectedPrices);
+    const maxPrice = Math.max(...selectedPrices);
+
+    // 여유 공간 추가 (위아래 10%)
+    const padding = (maxPrice - minPrice) * 0.1;
+    const domainMin = Math.max(0, minPrice - padding);
+    const domainMax = maxPrice + padding;
+
+    yAxisDomain = [domainMin, domainMax];
+    yAxisTicks = calculateNiceTicks(domainMin, domainMax);
+  }
 
   if (loading) {
     return (
@@ -514,6 +559,7 @@ export default function RealPriceAnalysis({ complexNo }: RealPriceAnalysisProps)
               tickFormatter={formatYAxisPrice}
               style={{ fontSize: '12px' }}
               domain={yAxisDomain}
+              ticks={yAxisTicks}
             />
             <Tooltip
               formatter={(value: any) => {
