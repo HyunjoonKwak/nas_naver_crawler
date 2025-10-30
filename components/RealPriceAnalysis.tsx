@@ -756,6 +756,36 @@ export default function RealPriceAnalysis({ complexNo }: RealPriceAnalysisProps)
               chartData.push(dataPoint);
             });
 
+            // Y축 범위 계산: 선택된 평형만의 가격 범위 (여유 15% 추가)
+            const selectedPrices: number[] = [];
+            Array.from(areaGroups.entries())
+              .filter(([areaKey]) => selectedAreas.has(areaKey))
+              .forEach(([areaKey, items]) => {
+                items.forEach(item => {
+                  selectedPrices.push(item.dealPrice);
+                });
+              });
+
+            // domain을 함수로 정의하여 recharts의 자동 계산 우회
+            const yAxisDomain: [(dataMin: number) => number, (dataMax: number) => number] = [
+              (dataMin: number) => {
+                if (selectedPrices.length === 0) return dataMin;
+                const minPrice = Math.min(...selectedPrices);
+                const maxPrice = Math.max(...selectedPrices);
+                const priceRange = maxPrice - minPrice;
+                const priceMargin = Math.max(priceRange * 0.15, 5000000); // 최소 500만원 여유
+                return Math.floor(minPrice - priceMargin);
+              },
+              (dataMax: number) => {
+                if (selectedPrices.length === 0) return dataMax;
+                const minPrice = Math.min(...selectedPrices);
+                const maxPrice = Math.max(...selectedPrices);
+                const priceRange = maxPrice - minPrice;
+                const priceMargin = Math.max(priceRange * 0.15, 5000000); // 최소 500만원 여유
+                return Math.ceil(maxPrice + priceMargin);
+              }
+            ];
+
             return (
               <>
                 {/* 평형 선택 체크박스 */}
@@ -832,10 +862,8 @@ export default function RealPriceAnalysis({ complexNo }: RealPriceAnalysisProps)
                     tick={{ fill: '#6b7280', fontSize: 12 }}
                     stroke="#9ca3af"
                     label={{ value: '가격', angle: -90, position: 'insideLeft', style: { fontSize: 12 } }}
-                    domain={[
-                      (dataMin: number) => Math.floor(dataMin * 0.9),
-                      (dataMax: number) => Math.ceil(dataMax * 1.1)
-                    ]}
+                    domain={yAxisDomain}
+                    allowDataOverflow={false}
                   />
                   <Tooltip
                     cursor={{ fill: 'rgba(200, 200, 200, 0.2)' }}
