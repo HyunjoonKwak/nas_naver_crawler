@@ -202,10 +202,25 @@ export async function GET(request: NextRequest) {
 
         // 메모리에서 아파트명 필터링 (정확히 일치하는 것만)
         const normalizedComplexName = complex.complexName.replace(/\s+/g, '').toLowerCase();
+
+        console.log(`[Real Price Complex] Filtering for: "${complex.complexName}" (normalized: "${normalizedComplexName}")`);
+        console.log(`[Real Price Complex] Total cached items for ${dealYmd}: ${monthData.length}`);
+
         const filtered = monthData.filter(item => {
           const normalizedItemName = item.aptName.replace(/\s+/g, '').toLowerCase();
           return normalizedItemName === normalizedComplexName;
         });
+
+        console.log(`[Real Price Complex] Filtered items for ${dealYmd}: ${filtered.length}`);
+
+        // 디버깅: 첫 번째 몇 개의 아파트명 출력 (필터링 실패 원인 파악)
+        if (filtered.length === 0 && monthData.length > 0) {
+          console.log(`[Real Price Complex] Sample apt names in cache (first 5):`);
+          monthData.slice(0, 5).forEach(item => {
+            const normalized = item.aptName.replace(/\s+/g, '').toLowerCase();
+            console.log(`  - "${item.aptName}" (normalized: "${normalized}")`);
+          });
+        }
 
         allResults.push(...filtered);
       } catch (error: unknown) {
