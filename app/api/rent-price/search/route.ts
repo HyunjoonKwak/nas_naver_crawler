@@ -85,14 +85,14 @@ export async function GET(request: NextRequest) {
       return {
         aptName: item.aptName,
         aptDong: item.aptDong,
-        dealPrice: 0, // 전월세는 매매가 없음
+        dealPrice: item.deposit, // 전월세는 보증금을 주 가격으로 사용
         dealPriceFormatted: item.depositFormatted, // 보증금을 주 가격으로
         deposit: item.deposit,
         monthlyRent: item.monthlyRent,
         depositFormatted: item.depositFormatted,
         monthlyRentFormatted: item.monthlyRentFormatted,
         dealDate: item.dealDate,
-        address: `${item.sigungu} ${item.dong}`,
+        address: item.address, // ProcessedRentPrice의 address 사용
         dong: item.dong,
         jibun: item.jibun,
         area: item.area,
@@ -102,7 +102,7 @@ export async function GET(request: NextRequest) {
         tradeType: item.tradeType, // '전세' or '월세'
         dealMethod: item.dealMethod || '중개거래',
         pricePerPyeong: Math.round(item.deposit / (item.area / 3.3058)), // 보증금 기준 평당가
-        rgstDate: item.rgstDate,
+        rgstDate: item.dealDate, // 전월세는 dealDate를 rgstDate로 사용
         contractType: item.contractType,
       };
     });
