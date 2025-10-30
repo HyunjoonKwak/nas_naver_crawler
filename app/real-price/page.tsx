@@ -1578,7 +1578,7 @@ export default function RealPricePage() {
                                       <div className="text-sm font-semibold text-green-600 dark:text-green-400">
                                         보증금: {item.depositFormatted}
                                       </div>
-                                      {item.monthlyRent && item.monthlyRent > 0 && (
+                                      {item.monthlyRent && item.monthlyRent > 0 && item.monthlyRentFormatted && (
                                         <div className="text-xs text-purple-600 dark:text-purple-400">
                                           월세: {item.monthlyRentFormatted}
                                         </div>

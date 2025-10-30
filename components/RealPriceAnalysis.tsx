@@ -708,7 +708,7 @@ export default function RealPriceAnalysis({ complexNo }: RealPriceAnalysisProps)
                     ) : (
                       <div>
                         <div>보증금: {item.depositFormatted}</div>
-                        {item.monthlyRent && item.monthlyRent > 0 && (
+                        {item.monthlyRent && item.monthlyRent > 0 && item.monthlyRentFormatted && (
                           <div className="text-xs text-gray-500 dark:text-gray-400">월세: {item.monthlyRentFormatted}</div>
                         )}
                       </div>
