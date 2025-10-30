@@ -163,8 +163,13 @@ export function processRentPriceItem(item: RentPriceItem): ProcessedRentPrice {
 
   // 날짜 필드 안전하게 처리
   const year = item.year || '';
-  const month = item.month ? String(item.month).padStart(2, '0') : '01';
-  const day = item.day ? String(item.day).padStart(2, '0') : '01';
+  const month = item.month ? String(item.month).trim().padStart(2, '0') : '01';
+  const day = item.day ? String(item.day).trim().padStart(2, '0') : '01';
+
+  // 디버깅: 날짜 필드가 이상한 경우 로그 출력
+  if (!year || year === '') {
+    console.warn('[Rent Price API] Missing year field:', { aptName: item.aptNm, year: item.year, month: item.month, day: item.day });
+  }
 
   return {
     aptName: item.aptNm,

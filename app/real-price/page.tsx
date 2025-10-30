@@ -1564,12 +1564,27 @@ export default function RealPricePage() {
                                     data-area={Math.round(item.area)}
                                   >
                                 <td className="px-4 py-3 whitespace-nowrap">
-                                  <div className="text-sm font-semibold text-blue-600 dark:text-blue-400">
-                                    {item.dealPriceFormatted}
-                                  </div>
-                                  <div className="text-xs text-gray-500 dark:text-gray-400">
-                                    평당 {(item.pricePerPyeong / 10000).toLocaleString()}만원
-                                  </div>
+                                  {item.tradeType === '매매' ? (
+                                    <>
+                                      <div className="text-sm font-semibold text-blue-600 dark:text-blue-400">
+                                        {item.dealPriceFormatted}
+                                      </div>
+                                      <div className="text-xs text-gray-500 dark:text-gray-400">
+                                        평당 {(item.pricePerPyeong / 10000).toLocaleString()}만원
+                                      </div>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <div className="text-sm font-semibold text-green-600 dark:text-green-400">
+                                        보증금: {item.depositFormatted}
+                                      </div>
+                                      {item.monthlyRent && item.monthlyRent > 0 && (
+                                        <div className="text-xs text-purple-600 dark:text-purple-400">
+                                          월세: {item.monthlyRentFormatted}
+                                        </div>
+                                      )}
+                                    </>
+                                  )}
                                 </td>
                                 <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                                   전용 {item.area.toFixed(2)}㎡
