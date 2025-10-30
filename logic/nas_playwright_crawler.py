@@ -210,34 +210,56 @@ class NASNaverRealEstateCrawler:
             browser_options = {
                 'headless': self.headless,
                 'args': [
+                    # === 보안/권한 관련 ===
                     '--no-sandbox',
                     '--disable-setuid-sandbox',
-                    '--disable-dev-shm-usage',  # /dev/shm 사용 안 함 (NAS 메모리 절약)
-                    '--disable-gpu',
                     '--disable-web-security',
-                    '--disable-features=VizDisplayCompositor',
-                    '--disable-software-rasterizer',  # GPU 소프트웨어 렌더링 비활성화
-                    '--disable-extensions',  # 확장 프로그램 비활성화
-                    '--disable-background-networking',  # 백그라운드 네트워킹 비활성화
+
+                    # === 메모리 최적화 (NAS 환경 중요!) ===
+                    '--disable-dev-shm-usage',  # /dev/shm 사용 안 함
+                    '--disable-gpu',
+                    '--disable-software-rasterizer',
+                    '--js-flags=--max-old-space-size=512',  # V8 힙 512MB 제한
+                    '--memory-pressure-off',
+
+                    # === 불필요한 기능 비활성화 (초기화 속도 개선) ===
+                    '--disable-extensions',
+                    '--disable-background-networking',
                     '--disable-background-timer-throttling',
                     '--disable-backgrounding-occluded-windows',
-                    '--disable-breakpad',  # 크래시 리포트 비활성화
+                    '--disable-breakpad',  # 크래시 리포트
                     '--disable-component-extensions-with-background-pages',
                     '--disable-ipc-flooding-protection',
                     '--disable-renderer-backgrounding',
-                    '--memory-pressure-off',
-                    '--js-flags=--max-old-space-size=512',  # V8 힙 크기 512MB로 제한 (메모리 절약)
-                    # 🚀 추가 성능 최적화 (초기화 속도 개선)
-                    '--disable-blink-features=AutomationControlled',  # 봇 감지 회피
-                    '--disable-sync',  # 동기화 비활성화
-                    '--disable-translate',  # 번역 기능 비활성화
-                    '--disable-default-apps',  # 기본 앱 비활성화
-                    '--no-first-run',  # 첫 실행 프로세스 스킵
-                    '--no-default-browser-check',  # 기본 브라우저 체크 스킵
-                    '--disable-component-update',  # 컴포넌트 업데이트 비활성화
-                    '--disable-domain-reliability',  # 도메인 신뢰성 체크 비활성화
-                    '--metrics-recording-only',  # 메트릭 기록만 (UMA 비활성화)
-                    '--mute-audio',  # 오디오 음소거
+                    '--disable-sync',
+                    '--disable-translate',
+                    '--disable-default-apps',
+                    '--disable-component-update',
+                    '--disable-domain-reliability',
+
+                    # === 첫 실행 최적화 ===
+                    '--no-first-run',
+                    '--no-default-browser-check',
+                    '--metrics-recording-only',
+                    '--mute-audio',
+
+                    # === 추가 성능 최적화 ===
+                    '--disable-features=VizDisplayCompositor,AudioServiceOutOfProcess,IsolateOrigins,site-per-process',
+                    '--disable-blink-features=AutomationControlled',
+                    '--disable-hang-monitor',  # Hang 모니터 비활성화
+                    '--disable-prompt-on-repost',  # Repost 확인 프롬프트 비활성화
+                    '--disable-client-side-phishing-detection',  # 피싱 감지 비활성화
+                    '--disable-popup-blocking',  # 팝업 차단 비활성화 (일부 페이지 필요)
+                    '--disable-infobars',  # 정보 바 비활성화
+                    '--window-position=0,0',  # 윈도우 위치 고정 (랜더링 최적화)
+                    '--force-color-profile=srgb',  # 컬러 프로필 강제 (GPU 연산 감소)
+                    '--disable-canvas-aa',  # Canvas anti-aliasing 비활성화
+                    '--disable-2d-canvas-clip-aa',  # 2D canvas clip anti-aliasing 비활성화
+                    '--disable-gl-drawing-for-tests',  # GL drawing 비활성화
+                    '--disable-accelerated-2d-canvas',  # 2D canvas 가속 비활성화
+                    '--disable-accelerated-jpeg-decoding',  # JPEG 디코딩 가속 비활성화
+                    '--disable-accelerated-mjpeg-decode',  # MJPEG 디코딩 가속 비활성화
+                    '--disable-accelerated-video-decode',  # 비디오 디코딩 가속 비활성화
                 ]
             }
 
@@ -249,22 +271,16 @@ class NASNaverRealEstateCrawler:
             # 3. 컨텍스트 생성 (쿠키, 세션 관리)
             start = time.time()
             self.context = await self.browser.new_context(
-                viewport={'width': 1920, 'height': 1080},
+                viewport={'width': 1280, 'height': 720},  # 해상도 축소 (렌더링 부하 감소)
                 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
                 extra_http_headers={
-                    # 실제 브라우저처럼 전체 헤더 전송 (봇 감지 회피)
-                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
-                    'Accept-Language': 'ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7',
+                    # 핵심 헤더만 전송 (봇 감지 회피 유지하면서 오버헤드 감소)
+                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                    'Accept-Language': 'ko-KR,ko;q=0.9',
                     'Accept-Encoding': 'gzip, deflate, br',
-                    'DNT': '1',
-                    'Connection': 'keep-alive',
-                    'Upgrade-Insecure-Requests': '1',
-                    'Sec-Fetch-Dest': 'document',
-                    'Sec-Fetch-Mode': 'navigate',
-                    'Sec-Fetch-Site': 'none',
-                    'Sec-Fetch-User': '?1',
-                    'Cache-Control': 'max-age=0',
-                }
+                },
+                # 추가 최적화: 자바스크립트는 활성화, 이미지는 비활성화
+                java_script_enabled=True,
             )
             print(f"⏱️  컨텍스트 생성: {time.time() - start:.2f}초")
 
@@ -292,19 +308,41 @@ class NASNaverRealEstateCrawler:
             """)
             print("✅ 봇 감지 회피 스크립트 적용 완료")
 
-            # 5. 불필요한 리소스 차단 (속도 개선)
-            # ⚠️ 최소한의 차단만 적용 (페이지 기능 보존)
+            # 5. 불필요한 리소스 차단 (속도 개선, 봇 탐지 회피 고려)
             start = time.time()
 
             async def route_handler(route):
                 request = route.request
                 resource_type = request.resource_type
+                url = request.url
 
-                # 이미지만 차단 (다른 리소스는 허용)
-                if resource_type == "image":
+                # 🚫 안전하게 차단 가능한 리소스만 차단 (봇 탐지 영향 최소화)
+                blocked_types = {
+                    'image',  # 이미지 (시각적 요소만, 페이지 동작에 무관)
+                    'media',  # 비디오/오디오 (크롤링에 불필요)
+                }
+
+                # 🚫 명백히 불필요한 써드파티 도메인만 차단 (광고, 분석)
+                blocked_domains = [
+                    'googletagmanager.com',
+                    'google-analytics.com',
+                    'doubleclick.net',
+                    'facebook.com/tr',  # Facebook Pixel
+                    'connect.facebook.net/signals',  # Facebook 분석
+                ]
+
+                # 타입 기반 차단
+                if resource_type in blocked_types:
                     await route.abort()
-                else:
-                    await route.continue_()
+                    return
+
+                # 도메인 기반 차단 (정확한 매칭만)
+                if any(blocked in url for blocked in blocked_domains):
+                    await route.abort()
+                    return
+
+                # 나머지는 모두 허용 (CSS, Font, Script 등 보존)
+                await route.continue_()
 
             await self.page.route("**/*", route_handler)
             print(f"⏱️  리소스 차단 설정: {time.time() - start:.2f}초")
