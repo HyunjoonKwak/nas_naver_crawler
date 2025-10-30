@@ -257,6 +257,12 @@ export class RentPriceApiClient {
       const body = parsed.response.body;
       const rawItems = body.items?.item;
 
+      // 원본 데이터 구조 확인용 로그 (첫 3개 항목만)
+      if (rawItems) {
+        const sampleItems = Array.isArray(rawItems) ? rawItems.slice(0, 3) : [rawItems];
+        console.log('[Rent Price API] Sample raw items:', JSON.stringify(sampleItems, null, 2));
+      }
+
       let items: ProcessedRentPrice[] = [];
       if (rawItems) {
         // item이 배열인지 단일 객체인지 확인
