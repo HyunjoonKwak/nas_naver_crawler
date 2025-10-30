@@ -169,21 +169,41 @@ export function extractSggCodeFromAddress(address: string): string | null {
   // 예: SGIS 행정동 "봉명동" ≠ 법정동 "봉명1동", "봉명2동"
 
   // 1순위: 시도 + 시군구 정확히 일치 (가장 안전)
-  for (const entry of data) {
-    const sggAddr = `${entry.sido}${entry.sigungu}`.replace(/\s+/g, '').toLowerCase();
-    if (normalized.includes(sggAddr)) {
-      console.log(`[DongCode] 시군구 매칭 성공: ${entry.sido} ${entry.sigungu} -> ${entry.sggCode}`);
-      return entry.sggCode;
-    }
+  // 가장 긴 매칭부터 찾기 (예: "안양시 동안구" 우선, "안양시" 나중)
+  const matches = data
+    .map(entry => {
+      const sggAddr = `${entry.sido}${entry.sigungu}`.replace(/\s+/g, '').toLowerCase();
+      if (normalized.includes(sggAddr)) {
+        return { entry, length: sggAddr.length };
+      }
+      return null;
+    })
+    .filter((m): m is { entry: DongCodeEntry; length: number } => m !== null)
+    .sort((a, b) => b.length - a.length); // 긴 것부터
+
+  if (matches.length > 0) {
+    const best = matches[0].entry;
+    console.log(`[DongCode] 시군구 매칭 성공: ${best.sido} ${best.sigungu} -> ${best.sggCode}`);
+    return best.sggCode;
   }
 
   // 2순위: 시군구명만으로 검색 (시도명이 없을 때)
-  for (const entry of data) {
-    const sggOnly = entry.sigungu.replace(/\s+/g, '').toLowerCase();
-    if (sggOnly && normalized.includes(sggOnly)) {
-      console.log(`[DongCode] 시군구명 매칭 성공: ${entry.sigungu} -> ${entry.sggCode}`);
-      return entry.sggCode;
-    }
+  // 역시 가장 긴 매칭 우선
+  const sggMatches = data
+    .map(entry => {
+      const sggOnly = entry.sigungu.replace(/\s+/g, '').toLowerCase();
+      if (sggOnly && normalized.includes(sggOnly)) {
+        return { entry, length: sggOnly.length };
+      }
+      return null;
+    })
+    .filter((m): m is { entry: DongCodeEntry; length: number } => m !== null)
+    .sort((a, b) => b.length - a.length);
+
+  if (sggMatches.length > 0) {
+    const best = sggMatches[0].entry;
+    console.log(`[DongCode] 시군구명 매칭 성공: ${best.sigungu} -> ${best.sggCode}`);
+    return best.sggCode;
   }
 
   // 읍면동까지 포함된 검색은 제거 (행정동/법정동 불일치 문제)
