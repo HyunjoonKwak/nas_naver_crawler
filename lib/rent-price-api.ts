@@ -161,6 +161,11 @@ export function processRentPriceItem(item: RentPriceItem): ProcessedRentPrice {
     ? item.dealingGbn.trim()
     : '중개거래';
 
+  // 날짜 필드 안전하게 처리
+  const year = item.year || '';
+  const month = item.month ? String(item.month).padStart(2, '0') : '01';
+  const day = item.day ? String(item.day).padStart(2, '0') : '01';
+
   return {
     aptName: item.aptNm,
     aptDong: (item.aptDong || '').trim(),
@@ -170,7 +175,7 @@ export function processRentPriceItem(item: RentPriceItem): ProcessedRentPrice {
     monthlyRentFormatted: monthlyRent > 0 ? formatPrice(monthlyRent) : '',
     contractType: item.contractType || '',
     contractTerm: item.contractTerm,
-    dealDate: `${item.year}-${item.month.padStart(2, '0')}-${item.day.padStart(2, '0')}`,
+    dealDate: `${year}-${month}-${day}`,
 
     address: `${item.umdNm} ${item.jibun}`,
     dong: item.umdNm,
@@ -178,8 +183,8 @@ export function processRentPriceItem(item: RentPriceItem): ProcessedRentPrice {
 
     area,
     areaPyeong,
-    floor: parseInt(item.floor, 10),
-    buildYear: parseInt(item.buildYear, 10),
+    floor: parseInt(item.floor, 10) || 0,
+    buildYear: parseInt(item.buildYear, 10) || 0,
 
     tradeType,
     dealMethod,
