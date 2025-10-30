@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { extractSggCodeFromGeocode } from '@/lib/dong-code';
 
 // Kakao Reverse Geocoding 응답 구조
 interface KakaoReverseGeocodeResponse {
@@ -124,14 +125,26 @@ export async function GET(request: NextRequest) {
       // 디버깅: 응답 구조 확인
       console.log('[Kakao Geocoding] 📋 응답 데이터:', JSON.stringify(doc, null, 2));
 
-      // 법정동 코드 (10자리 → 5자리로 변환)
-      const fullLawdCd = addr.b_code || '0000000000'; // 기본값 제공
+      // Kakao API는 b_code를 제공하지 않으므로 dong-code.ts 유틸리티 사용
+      const lawdCd = extractSggCodeFromGeocode({
+        sido: addr.region_1depth_name,
+        sigungu: addr.region_2depth_name,
+        dong: addr.region_3depth_name,
+        fullAddress: addr.address_name
+      });
 
-      if (!addr.b_code) {
-        console.warn('[Kakao Geocoding] ⚠️  b_code가 없습니다. 응답 구조 확인 필요');
+      if (!lawdCd) {
+        console.warn('[Kakao Geocoding] ⚠️  법정동코드 매칭 실패:', {
+          sido: addr.region_1depth_name,
+          sigungu: addr.region_2depth_name,
+          dong: addr.region_3depth_name,
+          fullAddress: addr.address_name
+        });
+      } else {
+        console.log('[Kakao Geocoding] ✅ 법정동코드 매칭 성공:', lawdCd);
       }
 
-      const lawdCd = fullLawdCd.substring(0, 5); // 시군구 5자리: "41173"
+      const fullLawdCd = lawdCd ? `${lawdCd}00000` : '0000000000'; // 5자리 → 10자리 확장
 
       // 주소 정보
       addressInfo.sido = addr.region_1depth_name;
