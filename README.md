@@ -588,7 +588,9 @@ nas_naver_crawler/
 ├── 🐳 Dockerfile                   # 프로덕션 이미지
 ├── 🐳 docker-compose.yml          # 프로덕션 설정
 ├── 🐳 docker-compose.dev.yml      # 개발 모드 설정 ⭐
-├── ⚙️ config.env                  # 환경 변수
+├── ⚙️ .env                        # 환경 변수 (config.env 심볼릭 링크)
+├── ⚙️ config.env                  # 환경 변수 (실제 파일, Git 무시)
+├── ⚙️ config.env.example          # 환경 변수 템플릿
 ├── 📦 package.json                # Node.js 의존성
 ├── 🐍 requirements.txt            # Python 의존성
 └── 🎨 tailwind.config.js          # Tailwind CSS 설정
@@ -1079,14 +1081,16 @@ nas_naver_crawler/
 
 ### 처음 시작하시나요?
 1. **[GETTING_STARTED.md](docs/GETTING_STARTED.md)** ⭐ 필독 - 웹 UI 사용법 완벽 가이드
-2. **[README_NAS.md](docs/README_NAS.md)** - NAS 환경 설정 (Synology, QNAP)
-3. **[QUICK_DEPLOY.md](docs/QUICK_DEPLOY.md)** - 빠른 배포 (Mac → NAS, 개발 모드)
+2. **[ENV_SETUP.md](docs/ENV_SETUP.md)** - 환경 변수 관리 가이드
+3. **[NAS_SETUP.md](docs/NAS_SETUP.md)** - NAS 배포 가이드 (Docker Compose V2)
+4. **[NAVER_API_SETUP.md](docs/NAVER_API_SETUP.md)** - Naver Maps API 설정
 
 ### 개발자이신가요?
 1. **[TODO.md](TODO.md)** - 개발 로드맵 및 작업 계획
 2. **[PERFORMANCE.md](docs/PERFORMANCE.md)** - 성능 최적화 상세 가이드
-3. **[CHANGELOG.md](docs/CHANGELOG.md)** - 버전별 변경 이력
-4. **[PROJECT_SUMMARY.md](docs/PROJECT_SUMMARY.md)** - 기술 스택 및 아키텍처
+3. **[CHANGELOG.md](CHANGELOG.md)** - 버전별 변경 이력
+4. **[DEPLOYMENT.md](docs/DEPLOYMENT.md)** - 배포 가이드
+5. **[SECURITY.md](SECURITY.md)** - 보안 가이드
 
 ### 문서 읽는 순서
 ```

@@ -326,14 +326,40 @@ vitest --coverage           # Coverage report
 - **API Standards**: `lib/api-response.ts`, `lib/api-error.ts`
 - **Caching Logic**: `lib/redis-cache.ts`
 - **Scheduler**: `lib/scheduler.ts`
+- **Environment Variables**: `config.env` (실제 값, Git 무시), `config.env.example` (템플릿)
 - **Type Definitions**: `types/` directory (if exists) or inline in lib files
+
+## Environment Variable Management
+
+**중요:** 이 프로젝트는 `config.env` 단일 파일로 환경 변수를 관리합니다.
+
+### 파일 구조
+- `.env` → `config.env`의 심볼릭 링크 (Next.js 자동 로드용)
+- `config.env` → 실제 환경 변수 파일 (Git 무시)
+- `config.env.example` → 템플릿 (Git 추적)
+
+### 로딩 방식
+1. **Next.js (로컬 개발)**: `.env` 자동 로드 → 실제로는 `config.env` 읽음
+2. **Docker Compose**: `env_file: - config.env` 명시적 로드
+3. **Python 크롤러**: `load_dotenv()` → `.env` (→ `config.env`) 로드
+
+### 초기 설정
+```bash
+cp config.env.example config.env
+vi config.env  # 실제 API 키 입력
+ls -lah .env   # 심볼릭 링크 확인: .env -> config.env
+```
+
+**상세 가이드**: [docs/ENV_SETUP.md](docs/ENV_SETUP.md)
 
 ## Documentation
 
 - **Getting Started**: `docs/GETTING_STARTED.md`
+- **Environment Setup**: `docs/ENV_SETUP.md` - 환경 변수 관리 가이드 ⭐
+- **NAS Setup**: `docs/NAS_SETUP.md` - NAS 배포 가이드 (Docker Compose V2)
 - **Performance Guide**: `docs/PERFORMANCE.md`
-- **Development Policy**: `docs/DEVELOPMENT_POLICY.md`
-- **Quick Deploy**: `docs/QUICK_DEPLOY.md`
+- **Deployment**: `docs/DEPLOYMENT.md`
 - **Site Map**: `SITEMAP.md` (all pages and API routes)
 - **TODO Roadmap**: `TODO.md`
 - **Changelog**: `CHANGELOG.md`
+- **Security**: `SECURITY.md` - 보안 가이드

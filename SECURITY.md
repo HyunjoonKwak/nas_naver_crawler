@@ -2,17 +2,35 @@
 
 ## 중요 보안 사항
 
-### 1. 환경 변수 관리
+### 1. 환경 변수 관리 ⭐ 중요
+
+**이 프로젝트는 `config.env` 단일 파일로 환경 변수를 관리합니다.**
+
+`.env` 파일은 `config.env`를 가리키는 **심볼릭 링크**입니다.
 
 **절대 Git에 커밋하면 안 되는 파일:**
-- `.env`
-- `.env.local`
-- `config.env` (실제 키가 포함된 경우)
+- `config.env` - 실제 API 키, 비밀번호 포함 (Git 추적 제외됨)
+- `.env` - config.env의 심볼릭 링크 (Git 추적 제외됨)
 - 모든 비밀번호, API 키, 토큰이 포함된 파일
 
 **Git에 커밋해도 되는 파일:**
-- `.env.example` (플레이스홀더만 포함)
-- `config.env.example` (플레이스홀더만 포함)
+- `.env.example` - 플레이스홀더만 포함
+- `config.env.example` - 플레이스홀더만 포함 (config.env 템플릿)
+
+**올바른 설정 방법:**
+```bash
+# 1. 템플릿 복사
+cp config.env.example config.env
+
+# 2. 실제 API 키 및 비밀번호 입력
+vi config.env
+
+# 3. 심볼릭 링크 확인 (자동 생성되어 있음)
+ls -lah .env
+# lrwxr-xr-x  .env -> config.env
+```
+
+**상세 가이드:** [docs/ENV_SETUP.md](docs/ENV_SETUP.md)
 
 ### 2. 비밀번호 정책
 
@@ -33,13 +51,13 @@
 
 ### 3. NAS 배포 시 보안 체크리스트
 
-- [ ] `.env.local` 파일에 실제 비밀번호/API 키 설정
-- [ ] `docker-compose.dev.yml`의 환경 변수 확인
+- [ ] `config.env` 파일 생성 (`config.env.example` 복사)
 - [ ] PostgreSQL 비밀번호를 기본값에서 변경
-- [ ] NEXTAUTH_SECRET을 강력한 값으로 변경
-- [ ] INTERNAL_API_SECRET 설정
-- [ ] Naver Maps API 키 설정
-- [ ] 공공데이터포털 API 키 설정
+- [ ] NEXTAUTH_SECRET을 강력한 값으로 변경 (`openssl rand -base64 32`)
+- [ ] INTERNAL_API_SECRET 설정 (`openssl rand -base64 32`)
+- [ ] Naver Maps API 키 설정 (CLIENT_ID, CLIENT_SECRET)
+- [ ] 공공데이터포털 API 키 설정 (PUBLIC_DATA_SERVICE_KEY)
+- [ ] `config.env`가 Git에 추적되지 않는지 확인 (`git status`)
 
 ### 4. 이미 노출된 비밀 정보 처리
 
@@ -81,18 +99,24 @@
 git clone <repo_url>
 cd nas_naver_crawler
 
-# 2. 환경 변수 파일 생성
-cp .env.example .env
+# 2. config.env 파일 생성
 cp config.env.example config.env
 
-# 3. .env.local 파일 생성 (실제 비밀 정보)
-cat > .env.local << EOF
-POSTGRES_PASSWORD=your_strong_password
-NAVER_MAPS_CLIENT_ID=your_client_id
-NAVER_MAPS_CLIENT_SECRET=your_client_secret
-EOF
+# 3. 실제 비밀 정보 입력
+vi config.env
+# 필수 값 입력:
+# - POSTGRES_PASSWORD
+# - NEXTAUTH_SECRET
+# - INTERNAL_API_SECRET
+# - NAVER_MAPS_CLIENT_ID
+# - NAVER_MAPS_CLIENT_SECRET
+# - PUBLIC_DATA_SERVICE_KEY
 
-# 4. Docker Compose 실행
+# 4. 심볼릭 링크 확인
+ls -lah .env
+# .env -> config.env (이미 생성되어 있음)
+
+# 5. Docker Compose 실행
 docker-compose -f docker-compose.dev.yml up -d
 ```
 
@@ -120,6 +144,7 @@ git grep -E "['\"][A-Za-z0-9]{32,}['\"]"
 
 ## 참고 문서
 
-- [NAVER_API_SETUP.md](NAVER_API_SETUP.md) - Naver API 설정 가이드
-- [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md) - 배포 가이드
-- [.env.example](.env.example) - 환경 변수 예시
+- [docs/ENV_SETUP.md](docs/ENV_SETUP.md) - 환경 변수 관리 상세 가이드 ⭐
+- [docs/NAVER_API_SETUP.md](docs/NAVER_API_SETUP.md) - Naver API 설정 가이드
+- [docs/NAS_SETUP.md](docs/NAS_SETUP.md) - NAS 배포 가이드
+- [config.env.example](config.env.example) - 환경 변수 템플릿
