@@ -132,6 +132,27 @@ This is a **hybrid monorepo** combining TypeScript (Next.js) frontend/API and Py
 - Performance optimization: Numeric price columns (BigInt) for fast sorting
 - Location: `app/api/analytics/`, `lib/real-price-api.ts`
 
+#### Real-Price Data System (Government API Integration)
+- **Two separate APIs** with different implementations:
+  - `/api/real-price`: Standalone real-price page (uses `MOLIT_SERVICE_KEY`)
+  - `/api/real-price/complex`: Complex detail page integration (uses `PUBLIC_DATA_SERVICE_KEY`)
+- **Caching strategy**: PostgreSQL-based (30-day TTL), not Redis
+  - Table: `real_price_cache` (via Prisma model `RealPriceCache`)
+  - Stores entire region data (all apartments for lawdCd+dealYmd combination)
+  - Single cache entry can contain 500+ apartment records
+- **Name matching**: Fuzzy bidirectional matching to handle variations
+  - Example: "향촌현대5차" matches "향촌마을현대5차"
+  - Minimum length: 4 characters to prevent over-matching
+- **Geocoding integration**: Kakao Reverse Geocoding API
+  - Converts coordinates to lawdCd (법정동코드, 5-digit legal district code)
+  - Handles complex administrative divisions (e.g., "안양시 동안구")
+  - Location: `lib/dong-code.ts`, `lib/kakao-geocode.ts`
+- **Key files**:
+  - `app/api/real-price/complex/route.ts` - Complex detail integration
+  - `lib/real-price-api.ts` - Government API client
+  - `lib/real-price-cache.ts` - PostgreSQL cache layer
+  - `lib/dong-code.ts` - Legal district code mapping
+
 ### Database Schema Highlights
 
 **Core Models** (see `prisma/schema.prisma`):
@@ -317,6 +338,21 @@ vitest --coverage           # Coverage report
 - Check `docker-compose logs redis`
 - Verify `REDIS_URL=redis://redis:6379` in environment
 
+**Real-price data not showing / cache issues**:
+- Real-price data is cached in **PostgreSQL** (not Redis) in the `real_price_cache` table
+- Cache TTL: 30 days (see `RealPriceCache` model in `prisma/schema.prisma`)
+- To clear cache for specific region:
+  ```bash
+  docker exec -it naver-crawler-db psql -U crawler_user -d naver_crawler -c "DELETE FROM real_price_cache WHERE \"lawdCd\" = '41173';"
+  ```
+- To clear all real-price cache:
+  ```bash
+  docker exec -it naver-crawler-db psql -U crawler_user -d naver_crawler -c "DELETE FROM real_price_cache;"
+  ```
+- Note: Prisma model name is `RealPriceCache` but actual table name is `real_price_cache` (mapped via `@@map()`)
+- Cache stores entire region data (e.g., all apartments in 동안구), not individual apartments
+- Apartment name matching uses fuzzy logic (bidirectional includes) to handle variations
+
 ## Key Files Reference
 
 - **Main Application**: `app/page.tsx` (dashboard overview)
@@ -326,6 +362,12 @@ vitest --coverage           # Coverage report
 - **API Standards**: `lib/api-response.ts`, `lib/api-error.ts`
 - **Caching Logic**: `lib/redis-cache.ts`
 - **Scheduler**: `lib/scheduler.ts`
+- **Real-Price System**:
+  - `lib/real-price-api.ts` (Government API client)
+  - `lib/real-price-cache.ts` (PostgreSQL cache layer)
+  - `lib/dong-code.ts` (Legal district code mapping)
+  - `lib/kakao-geocode.ts` (Reverse geocoding)
+  - `app/api/real-price/complex/route.ts` (Complex detail API)
 - **Environment Variables**: `config.env` (실제 값, Git 무시), `config.env.example` (템플릿)
 - **Type Definitions**: `types/` directory (if exists) or inline in lib files
 
