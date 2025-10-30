@@ -30,6 +30,7 @@ interface AreaMapping {
 interface ComplexInfo {
   complexNo: string;
   complexName: string;
+  realPriceAptName: string | null; // 수동 매핑 아파트명
   beopjungdong: string | null;
   lawdCd: string;
 }
@@ -503,9 +504,16 @@ export default function RealPriceAnalysis({ complexNo }: RealPriceAnalysisProps)
             <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
               📊 실거래가 분석
             </h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
-              {data.complex.complexName} · {data.complex.beopjungdong || '법정동 정보 없음'}
-            </p>
+            <div className="flex items-center gap-2 mb-1">
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                {data.complex.complexName} · {data.complex.beopjungdong || '법정동 정보 없음'}
+              </p>
+              {data.complex.realPriceAptName && (
+                <span className="text-xs bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 px-2 py-0.5 rounded-full font-medium">
+                  🔧 수동 매핑: {data.complex.realPriceAptName}
+                </span>
+              )}
+            </div>
             <p className="text-xs text-blue-600 dark:text-blue-400">
               💡 실거래가는 전용면적 기준입니다. 매물정보의 공급면적과 다를 수 있습니다.
             </p>

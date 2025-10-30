@@ -59,6 +59,11 @@ export default function ComplexDetailPage() {
   // 지오코딩 재실행 상태
   const [isRegeocoding, setIsRegeocoding] = useState(false);
 
+  // 실거래가 아파트명 편집 상태
+  const [isEditingRealPriceAptName, setIsEditingRealPriceAptName] = useState(false);
+  const [realPriceAptName, setRealPriceAptName] = useState('');
+  const [isSavingRealPriceAptName, setIsSavingRealPriceAptName] = useState(false);
+
   // 필터 변경 시 페이지 초기화 (Hooks는 항상 같은 순서로 호출되어야 함)
   useEffect(() => {
     setCurrentPage(1);
@@ -81,6 +86,11 @@ export default function ComplexDetailPage() {
         console.log('Complex Data:', complexData);
         console.log('Articles:', complexData.articles);
         setData(complexData);
+
+        // 실거래가 아파트명 초기화
+        if (complexData.overview?.realPriceAptName) {
+          setRealPriceAptName(complexData.overview.realPriceAptName);
+        }
 
         // ✅ 자동 역지오코딩: 법정동 정보가 없으면 자동으로 역지오코딩 수행
         const overview = complexData.overview;
@@ -174,6 +184,50 @@ export default function ComplexDetailPage() {
       console.error('[Manual Geocoding] Error:', error);
     } finally {
       setIsRegeocoding(false);
+    }
+  };
+
+  // 실거래가 아파트명 저장 핸들러
+  const handleSaveRealPriceAptName = async () => {
+    const loadingToast = showLoading("실거래가 아파트명 저장 중...");
+    setIsSavingRealPriceAptName(true);
+
+    try {
+      const response = await fetch(`/api/complex/${complexNo}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          realPriceAptName: realPriceAptName.trim() || null
+        }),
+      });
+
+      const result = await response.json();
+      dismissToast(loadingToast);
+
+      if (result.success) {
+        showSuccess('실거래가 아파트명이 저장되었습니다.');
+        setIsEditingRealPriceAptName(false);
+
+        // UI 업데이트
+        setData(prev => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            overview: {
+              ...prev.overview,
+              realPriceAptName: result.complex.realPriceAptName,
+            }
+          };
+        });
+      } else {
+        showError(result.message || result.error || '저장 실패');
+      }
+    } catch (error: any) {
+      dismissToast(loadingToast);
+      showError(error.message || '저장 중 오류가 발생했습니다.');
+      console.error('[RealPriceAptName Save] Error:', error);
+    } finally {
+      setIsSavingRealPriceAptName(false);
     }
   };
 
@@ -466,6 +520,69 @@ export default function ComplexDetailPage() {
                       <span>🏠 주소: {overview.roadAddress || overview.jibunAddress || overview.address}</span>
                     </div>
                   )}
+
+                  {/* 실거래가 아파트명 (수동 매핑) */}
+                  <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+                    <div className="flex items-start gap-2">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                            📊 실거래가 API용 아파트명
+                          </span>
+                          {overview.realPriceAptName && (
+                            <span className="text-xs bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 px-2 py-0.5 rounded-full">
+                              수동 매핑
+                            </span>
+                          )}
+                        </div>
+                        {!isEditingRealPriceAptName ? (
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm text-gray-600 dark:text-gray-400">
+                              {overview.realPriceAptName || '(미설정 - 자동 매칭 사용 중)'}
+                            </span>
+                            <button
+                              onClick={() => {
+                                setIsEditingRealPriceAptName(true);
+                                setRealPriceAptName(overview.realPriceAptName || '');
+                              }}
+                              className="text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 underline"
+                            >
+                              {overview.realPriceAptName ? '수정' : '설정'}
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="text"
+                              value={realPriceAptName}
+                              onChange={(e) => setRealPriceAptName(e.target.value)}
+                              placeholder="예: 향촌마을현대5차"
+                              className="flex-1 px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                            />
+                            <button
+                              onClick={handleSaveRealPriceAptName}
+                              disabled={isSavingRealPriceAptName}
+                              className="px-3 py-1.5 text-sm bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 text-white rounded-lg transition-colors"
+                            >
+                              {isSavingRealPriceAptName ? '저장 중...' : '저장'}
+                            </button>
+                            <button
+                              onClick={() => {
+                                setIsEditingRealPriceAptName(false);
+                                setRealPriceAptName(overview.realPriceAptName || '');
+                              }}
+                              className="px-3 py-1.5 text-sm bg-gray-300 hover:bg-gray-400 dark:bg-gray-600 dark:hover:bg-gray-500 text-gray-700 dark:text-gray-200 rounded-lg transition-colors"
+                            >
+                              취소
+                            </button>
+                          </div>
+                        )}
+                        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                          💡 실거래가 페이지에서 표시되는 정확한 아파트명을 입력하세요. 미설정 시 자동 매칭을 사용합니다.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 {/* CSV 추가 정보 - 면적/가격 범위 */}
