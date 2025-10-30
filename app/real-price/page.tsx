@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "next/navigation";
@@ -13,7 +13,7 @@ import { AuthGuard } from "@/components/AuthGuard";
 import { Search, Loader2, TrendingUp, Home, Calendar, MapPin, ChevronDown, ChevronUp, Building2, X, Download } from "lucide-react";
 import { formatPrice } from "@/lib/price-format";
 import DongCodeSelector from "@/components/DongCodeSelector";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ScatterChart, Scatter, ZAxis, Area, ComposedChart } from 'recharts';
 
 interface RealPriceItem {
   aptName: string;
@@ -1071,6 +1071,151 @@ export default function RealPricePage() {
                   {/* 거래 목록 (확장 시) */}
                   {expandedApts.has(group.aptName) && (
                     <div className="border-t border-gray-200 dark:border-gray-700">
+                      {/* 가격 추세 차트 (테이블 위로 이동) */}
+                      {group.items.length > 1 && (
+                        <div className="px-6 py-6 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-gray-800 dark:to-gray-900">
+                          <h4 className="text-base font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                            <TrendingUp className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                            전용면적별 가격 추세
+                          </h4>
+
+                          {(() => {
+                            // 전용면적별 그룹핑 (±2평 범위로 묶기)
+                            const areaGroups = new Map<string, RealPriceItem[]>();
+                            const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
+
+                            group.items.forEach(item => {
+                              const pyeong = Math.round(item.areaPyeong); // 반올림
+                              const groupKey = `${pyeong}평형`;
+
+                              if (!areaGroups.has(groupKey)) {
+                                areaGroups.set(groupKey, []);
+                              }
+                              areaGroups.get(groupKey)!.push(item);
+                            });
+
+                            // 날짜별로 데이터 정리 (각 면적별로)
+                            const chartData: any[] = [];
+                            const allDates = [...new Set(group.items.map(item => item.dealDate))].sort();
+
+                            allDates.forEach(date => {
+                              const dataPoint: any = { date };
+
+                              Array.from(areaGroups.entries()).forEach(([areaKey, items], index) => {
+                                const itemsOnDate = items.filter(item => item.dealDate === date);
+
+                                if (itemsOnDate.length > 0) {
+                                  const prices = itemsOnDate.map(item => item.dealPrice / 10000);
+                                  dataPoint[`${areaKey}_min`] = Math.min(...prices);
+                                  dataPoint[`${areaKey}_max`] = Math.max(...prices);
+                                  dataPoint[`${areaKey}_avg`] = prices.reduce((a, b) => a + b, 0) / prices.length;
+                                  dataPoint[`${areaKey}_points`] = prices; // 모든 점
+                                }
+                              });
+
+                              chartData.push(dataPoint);
+                            });
+
+                            return (
+                              <>
+                                <ResponsiveContainer width="100%" height={400}>
+                                  <ComposedChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+                                    <CartesianGrid strokeDasharray="3 3" className="stroke-gray-300 dark:stroke-gray-600" />
+                                    <XAxis
+                                      dataKey="date"
+                                      className="text-xs fill-gray-600 dark:fill-gray-400"
+                                      tick={{ fontSize: 11 }}
+                                      angle={-45}
+                                      textAnchor="end"
+                                      height={80}
+                                    />
+                                    <YAxis
+                                      className="text-xs fill-gray-600 dark:fill-gray-400"
+                                      tick={{ fontSize: 11 }}
+                                      label={{ value: '만원', angle: -90, position: 'insideLeft', style: { fontSize: 12 } }}
+                                    />
+                                    <Tooltip
+                                      content={({ active, payload }) => {
+                                        if (!active || !payload || payload.length === 0) return null;
+
+                                        const data = payload[0].payload;
+                                        return (
+                                          <div className="bg-white dark:bg-gray-800 p-3 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
+                                            <p className="font-semibold text-sm mb-2">{data.date}</p>
+                                            {Array.from(areaGroups.keys()).map((areaKey, index) => {
+                                              const points = data[`${areaKey}_points`];
+                                              if (!points || points.length === 0) return null;
+
+                                              return (
+                                                <div key={areaKey} className="text-xs mb-1" style={{ color: colors[index % colors.length] }}>
+                                                  <strong>{areaKey}</strong>: {points.length}건
+                                                  <br />
+                                                  <span className="text-gray-600 dark:text-gray-400">
+                                                    {Math.min(...points).toLocaleString()}만원 ~ {Math.max(...points).toLocaleString()}만원
+                                                  </span>
+                                                </div>
+                                              );
+                                            })}
+                                          </div>
+                                        );
+                                      }}
+                                    />
+                                    <Legend
+                                      wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }}
+                                      formatter={(value) => value}
+                                    />
+
+                                    {/* 각 면적별로 영역(Area) + 평균선(Line) 그리기 */}
+                                    {Array.from(areaGroups.entries()).map(([areaKey, items], index) => {
+                                      const color = colors[index % colors.length];
+
+                                      return (
+                                        <React.Fragment key={areaKey}>
+                                          {/* 최소~최대 범위 영역 */}
+                                          <Area
+                                            type="monotone"
+                                            dataKey={`${areaKey}_max`}
+                                            stroke="none"
+                                            fill={color}
+                                            fillOpacity={0.1}
+                                            name={areaKey}
+                                          />
+                                          <Area
+                                            type="monotone"
+                                            dataKey={`${areaKey}_min`}
+                                            stroke="none"
+                                            fill="white"
+                                            fillOpacity={1}
+                                          />
+                                          {/* 평균 라인 */}
+                                          <Line
+                                            type="monotone"
+                                            dataKey={`${areaKey}_avg`}
+                                            stroke={color}
+                                            strokeWidth={2}
+                                            dot={{ r: 3, fill: color }}
+                                            activeDot={{ r: 5 }}
+                                            name={`${areaKey} (평균)`}
+                                          />
+                                        </React.Fragment>
+                                      );
+                                    })}
+                                  </ComposedChart>
+                                </ResponsiveContainer>
+                                <div className="mt-3 p-3 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                                  <p className="text-xs text-gray-700 dark:text-gray-300">
+                                    💡 <strong>차트 설명:</strong> 각 면적별로 색상이 다릅니다.
+                                    <span className="font-semibold"> 실선</span>은 평균 가격,
+                                    <span className="font-semibold"> 색칠된 영역</span>은 최저~최고 가격 범위를 나타냅니다.
+                                    같은 날짜에 여러 거래가 있으면 모두 범위에 포함됩니다.
+                                  </p>
+                                </div>
+                              </>
+                            );
+                          })()}
+                        </div>
+                      )}
+
                       <div className="overflow-x-auto">
                         <table className="w-full">
                           <thead className="bg-gray-50 dark:bg-gray-700">
@@ -1204,83 +1349,6 @@ export default function RealPricePage() {
                           </tbody>
                         </table>
                       </div>
-
-                      {/* 가격 추세 차트 */}
-                      {group.items.length > 1 && (
-                        <div className="px-6 py-4 bg-gray-50 dark:bg-gray-900/30 border-t border-gray-200 dark:border-gray-700">
-                          <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-                            <TrendingUp className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                            가격 추세
-                          </h4>
-                          <ResponsiveContainer width="100%" height={250}>
-                            <LineChart
-                              data={group.items
-                                .sort((a, b) => a.dealDate.localeCompare(b.dealDate))
-                                .map(item => ({
-                                  date: item.dealDate,
-                                  price: item.dealPrice / 10000, // 만원 단위
-                                  pricePerPyeong: item.pricePerPyeong / 10000,
-                                  area: item.areaPyeong,
-                                  floor: item.floor,
-                                }))}
-                              margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                            >
-                              <CartesianGrid strokeDasharray="3 3" className="stroke-gray-300 dark:stroke-gray-600" />
-                              <XAxis
-                                dataKey="date"
-                                className="text-xs fill-gray-600 dark:fill-gray-400"
-                                tick={{ fontSize: 12 }}
-                              />
-                              <YAxis
-                                className="text-xs fill-gray-600 dark:fill-gray-400"
-                                tick={{ fontSize: 12 }}
-                                label={{ value: '만원', angle: -90, position: 'insideLeft' }}
-                              />
-                              <Tooltip
-                                contentStyle={{
-                                  backgroundColor: 'rgba(255, 255, 255, 0.95)',
-                                  border: '1px solid #e5e7eb',
-                                  borderRadius: '8px',
-                                  padding: '8px 12px'
-                                }}
-                                formatter={(value: any, name: string) => {
-                                  if (name === 'price') return [`${value.toLocaleString()}만원`, '거래가'];
-                                  if (name === 'pricePerPyeong') return [`${value.toLocaleString()}만원`, '평당가'];
-                                  return [value, name];
-                                }}
-                                labelFormatter={(label) => `거래일: ${label}`}
-                              />
-                              <Legend
-                                wrapperStyle={{ fontSize: '12px' }}
-                                formatter={(value) => {
-                                  if (value === 'price') return '거래가';
-                                  if (value === 'pricePerPyeong') return '평당가';
-                                  return value;
-                                }}
-                              />
-                              <Line
-                                type="monotone"
-                                dataKey="price"
-                                stroke="#3b82f6"
-                                strokeWidth={2}
-                                dot={{ r: 4 }}
-                                activeDot={{ r: 6 }}
-                              />
-                              <Line
-                                type="monotone"
-                                dataKey="pricePerPyeong"
-                                stroke="#10b981"
-                                strokeWidth={2}
-                                dot={{ r: 4 }}
-                                activeDot={{ r: 6 }}
-                              />
-                            </LineChart>
-                          </ResponsiveContainer>
-                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 text-center">
-                            💡 차트는 거래일 순으로 정렬되어 있습니다. 각 점을 마우스로 가리키면 상세 정보를 확인할 수 있습니다.
-                          </p>
-                        </div>
-                      )}
                     </div>
                   )}
                 </div>
