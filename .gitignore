@@ -90,3 +90,4 @@ Thumbs.db
 
 # Husky
 .husky/_
+docker-compose-v2
