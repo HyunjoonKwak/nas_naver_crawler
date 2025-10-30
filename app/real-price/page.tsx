@@ -1128,6 +1128,9 @@ export default function RealPricePage() {
                             const chartData: any[] = [];
                             const allDates = [...new Set(group.items.map(item => item.dealDate))].sort();
 
+                            // Y축 범위 계산을 위한 전체 가격 수집
+                            let allPrices: number[] = [];
+
                             allDates.forEach(date => {
                               const dataPoint: any = { date };
 
@@ -1136,15 +1139,31 @@ export default function RealPricePage() {
 
                                 if (itemsOnDate.length > 0) {
                                   const prices = itemsOnDate.map(item => item.dealPrice / 10000);
-                                  dataPoint[`${areaKey}_min`] = Math.min(...prices);
-                                  dataPoint[`${areaKey}_max`] = Math.max(...prices);
-                                  dataPoint[`${areaKey}_avg`] = prices.reduce((a, b) => a + b, 0) / prices.length;
+                                  const min = Math.min(...prices);
+                                  const max = Math.max(...prices);
+                                  const avg = prices.reduce((a, b) => a + b, 0) / prices.length;
+
+                                  dataPoint[`${areaKey}_min`] = min;
+                                  dataPoint[`${areaKey}_max`] = max;
+                                  dataPoint[`${areaKey}_range`] = max - min; // stackId용: 범위 크기
+                                  dataPoint[`${areaKey}_avg`] = avg;
                                   dataPoint[`${areaKey}_points`] = prices; // 모든 점
+
+                                  allPrices.push(...prices);
                                 }
                               });
 
                               chartData.push(dataPoint);
                             });
+
+                            // Y축 범위 계산: 실제 데이터 기반 (여유 10% 추가)
+                            const minPrice = Math.min(...allPrices);
+                            const maxPrice = Math.max(...allPrices);
+                            const priceMargin = (maxPrice - minPrice) * 0.1;
+                            const yAxisDomain = [
+                              Math.floor(minPrice - priceMargin),
+                              Math.ceil(maxPrice + priceMargin)
+                            ];
 
                             return (
                               <>
@@ -1196,6 +1215,7 @@ export default function RealPricePage() {
                                       className="text-xs fill-gray-600 dark:fill-gray-400"
                                       tick={{ fontSize: 11 }}
                                       label={{ value: '만원', angle: -90, position: 'insideLeft', style: { fontSize: 12 } }}
+                                      domain={yAxisDomain}
                                     />
                                     <Tooltip
                                       content={({ active, payload }) => {
@@ -1238,7 +1258,8 @@ export default function RealPricePage() {
 
                                         return (
                                           <React.Fragment key={areaKey}>
-                                            {/* 최대~최소 범위 영역 (stackId로 영역 생성) */}
+                                            {/* 최소~최대 범위 영역 (stackId로 영역 생성) */}
+                                            {/* 1단계: 최소값까지 transparent로 채우기 */}
                                             <Area
                                               type="monotone"
                                               dataKey={`${areaKey}_min`}
@@ -1247,9 +1268,10 @@ export default function RealPricePage() {
                                               fill="transparent"
                                               name={`${areaKey} 최소`}
                                             />
+                                            {/* 2단계: 최소값 위에 (최대-최소) 범위를 색상으로 쌓기 */}
                                             <Area
                                               type="monotone"
-                                              dataKey={`${areaKey}_max`}
+                                              dataKey={`${areaKey}_range`}
                                               stackId={areaKey}
                                               stroke="none"
                                               fill={color}
