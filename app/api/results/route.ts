@@ -130,7 +130,27 @@ export async function GET(request: NextRequest) {
     const articles = await prisma.article.findMany({
       where,
       include: {
-        complex: true, // 단지 정보 포함
+        complex: {
+          select: {
+            id: true,
+            complexNo: true,
+            complexName: true,
+            realPriceAptName: true, // 실거래가 API용 아파트명
+            address: true,
+            roadAddress: true,
+            jibunAddress: true,
+            beopjungdong: true,
+            haengjeongdong: true,
+            latitude: true,
+            longitude: true,
+            totalHousehold: true,
+            totalDong: true,
+            pyeongs: true,
+            userId: true,
+            createdAt: true,
+            updatedAt: true,
+          }
+        }
       },
       orderBy: {
         createdAt: 'desc',
@@ -159,6 +179,7 @@ export async function GET(request: NextRequest) {
           overview: {
             complexNo: article.complex.complexNo,
             complexName: article.complex.complexName,
+            realPriceAptName: article.complex.realPriceAptName, // 실거래가 API용 아파트명
             totalHousehold: article.complex.totalHousehold || csvInfo?.totalHouseHoldCount,
             totalDong: article.complex.totalDong || csvInfo?.totalDongCount,
             location: {
