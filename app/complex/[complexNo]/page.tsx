@@ -18,6 +18,11 @@ const RealPriceAnalysis = dynamic(() => import("@/components/RealPriceAnalysis")
   ssr: false,
 });
 
+const RentPriceAnalysis = dynamic(() => import("@/components/RentPriceAnalysis"), {
+  loading: () => <div className="flex items-center justify-center py-20"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div></div>,
+  ssr: false,
+});
+
 interface ComplexData {
   overview: any;
   articles: any;
@@ -799,13 +804,26 @@ export default function ComplexDetailPage() {
               onClick={() => setActiveTab('realPrice')}
               className={`flex-1 px-6 py-4 text-center font-semibold transition-colors ${
                 activeTab === 'realPrice'
-                  ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-tr-xl'
+                  ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white'
                   : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
               }`}
             >
               <div className="flex items-center justify-center gap-2">
                 <span className="text-xl">📊</span>
-                <span>실거래가 분석</span>
+                <span>매매 실거래가</span>
+              </div>
+            </button>
+            <button
+              onClick={() => setActiveTab('rentPrice')}
+              className={`flex-1 px-6 py-4 text-center font-semibold transition-colors ${
+                activeTab === 'rentPrice'
+                  ? 'bg-gradient-to-r from-green-600 to-teal-600 text-white rounded-tr-xl'
+                  : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
+              }`}
+            >
+              <div className="flex items-center justify-center gap-2">
+                <span className="text-xl">🏘️</span>
+                <span>전월세 실거래가</span>
               </div>
             </button>
           </div>
@@ -1107,6 +1125,49 @@ export default function ComplexDetailPage() {
               </div>
 
               <RealPriceAnalysis complexNo={complexNo} />
+            </div>
+          )}
+
+          {/* 전월세 실거래가 분석 탭 */}
+          {activeTab === 'rentPrice' && (
+            <div>
+              {/* 지오코딩 재실행 버튼 */}
+              <div className="mb-4 p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-1">
+                      전월세 실거래가 데이터가 표시되지 않나요?
+                    </h3>
+                    <p className="text-xs text-gray-600 dark:text-gray-400">
+                      법정동 정보가 잘못되었을 수 있습니다. 지오코딩을 재실행하면 좌표 기반으로 정확한 법정동코드를 다시 설정합니다.
+                      {data?.overview?.lawdCd && (
+                        <span className="ml-2 font-mono text-green-600 dark:text-green-400">
+                          현재: {data.overview.lawdCd}
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                  <button
+                    onClick={handleRegeocoding}
+                    disabled={isRegeocoding}
+                    className="ml-4 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+                  >
+                    {isRegeocoding ? (
+                      <>
+                        <span className="animate-spin">🔄</span>
+                        <span>재실행 중...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>🗺️</span>
+                        <span>지오코딩 재실행</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              <RentPriceAnalysis complexNo={complexNo} />
             </div>
           )}
         </div>

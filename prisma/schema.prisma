@@ -587,6 +587,22 @@ model RealPriceCache {
   @@map("real_price_cache")
 }
 
+// 전월세 실거래가 캐시 테이블 (지역 단위 캐싱)
+model RentPriceCache {
+  id           String   @id @default(uuid())
+  lawdCd       String   // 법정동코드 (5자리)
+  dealYmd      String   // 거래 년월 (YYYYMM)
+  cachedData   Json     // 캐시된 전월세 데이터 - 해당 지역 전체 (ProcessedRentPrice[])
+  totalCount   Int      // 캐시된 데이터 건수
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  expiresAt    DateTime // 캐시 만료 시간 (30일 기본)
+
+  @@unique([lawdCd, dealYmd]) // 지역코드+기간 조합은 유일 (아파트별 X)
+  @@index([expiresAt]) // 만료된 캐시 정리용
+  @@map("rent_price_cache")
+}
+
 // 시스템 환경 변수 테이블 (config.env 읽기 전용 - 관리자 전용)
 model SystemEnvConfig {
   id          String   @id @default(uuid())
