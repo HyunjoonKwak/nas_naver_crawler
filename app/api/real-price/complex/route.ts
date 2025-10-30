@@ -209,6 +209,16 @@ export async function GET(request: NextRequest) {
         const filtered = monthData.filter(item => {
           const normalizedItemName = item.aptName.replace(/\s+/g, '').toLowerCase();
 
+          // 디버깅: 첫 번째 항목에서 매칭 로직 테스트
+          if (monthData.indexOf(item) === 0) {
+            console.log(`[Real Price Complex] 🔍 매칭 테스트:`);
+            console.log(`  - 검색어: "${normalizedComplexName}" (길이: ${normalizedComplexName.length})`);
+            console.log(`  - 첫번째 항목: "${normalizedItemName}" (길이: ${normalizedItemName.length})`);
+            console.log(`  - 정확 매칭: ${normalizedItemName === normalizedComplexName}`);
+            console.log(`  - includes (API→검색): ${normalizedItemName.includes(normalizedComplexName)}`);
+            console.log(`  - includes (검색→API): ${normalizedComplexName.includes(normalizedItemName)}`);
+          }
+
           // 1. 정확 매칭
           if (normalizedItemName === normalizedComplexName) {
             return true;
@@ -220,6 +230,7 @@ export async function GET(request: NextRequest) {
               normalizedComplexName.includes(normalizedItemName)) {
             // 하지만 너무 짧은 이름은 제외 (오매칭 방지)
             if (normalizedComplexName.length >= 4 && normalizedItemName.length >= 4) {
+              console.log(`[Real Price Complex] ✅ 부분 매칭 성공: "${item.aptName}"`);
               return true;
             }
           }
