@@ -71,6 +71,9 @@ export default function RealPricePage() {
   // 아파트별 매물 목록 정렬 상태 (key: aptName, value: {sortBy, sortOrder})
   const [itemSorts, setItemSorts] = useState<Record<string, {sortBy: 'dealDate' | 'area' | 'dong' | 'floor', sortOrder: 'asc' | 'desc'}>>({});
 
+  // 아파트별 차트 면적 필터 상태 (key: aptName, value: Set<면적키>)
+  const [chartAreaFilters, setChartAreaFilters] = useState<Record<string, Set<string>>>({});
+
   // 비교 기능
   const [selectedForComparison, setSelectedForComparison] = useState<Set<string>>(new Set());
   const [showComparisonModal, setShowComparisonModal] = useState(false);
@@ -1094,20 +1097,30 @@ export default function RealPricePage() {
                               areaGroups.get(groupKey)!.push(item);
                             });
 
-                            // 면적별 필터 상태 (초기값: 모두 선택)
-                            const [selectedAreas, setSelectedAreas] = React.useState<Set<string>>(
-                              new Set(Array.from(areaGroups.keys()))
-                            );
+                            // 이 아파트의 면적 필터 초기화 (아직 없으면)
+                            const aptKey = group.aptName;
+                            if (!chartAreaFilters[aptKey]) {
+                              setChartAreaFilters(prev => ({
+                                ...prev,
+                                [aptKey]: new Set(Array.from(areaGroups.keys()))
+                              }));
+                            }
+
+                            const selectedAreas = chartAreaFilters[aptKey] || new Set(Array.from(areaGroups.keys()));
 
                             const toggleArea = (areaKey: string) => {
-                              setSelectedAreas(prev => {
-                                const newSet = new Set(prev);
+                              setChartAreaFilters(prev => {
+                                const currentSet = prev[aptKey] || new Set(Array.from(areaGroups.keys()));
+                                const newSet = new Set(currentSet);
                                 if (newSet.has(areaKey)) {
                                   newSet.delete(areaKey);
                                 } else {
                                   newSet.add(areaKey);
                                 }
-                                return newSet;
+                                return {
+                                  ...prev,
+                                  [aptKey]: newSet
+                                };
                               });
                             };
 
