@@ -1239,6 +1239,24 @@ export default function RealPricePage() {
                                         if (!active || !payload || payload.length === 0) return null;
 
                                         const data = payload[0].payload;
+
+                                        const handleAreaClick = (areaKey: string) => {
+                                          // 해당 날짜와 면적의 첫 번째 거래건으로 스크롤
+                                          const date = data.date;
+                                          const area = parseInt(areaKey.replace('㎡', ''));
+                                          const itemId = `item-${group.aptName.replace(/\s+/g, '-')}-${date}-${area}-0`;
+                                          const element = document.getElementById(itemId);
+
+                                          if (element) {
+                                            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                            // 강조 효과
+                                            element.classList.add('bg-yellow-100', 'dark:bg-yellow-900/30');
+                                            setTimeout(() => {
+                                              element.classList.remove('bg-yellow-100', 'dark:bg-yellow-900/30');
+                                            }, 2000);
+                                          }
+                                        };
+
                                         return (
                                           <div className="bg-white dark:bg-gray-800 p-3 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
                                             <p className="font-semibold text-sm mb-2">{data.date}</p>
@@ -1249,8 +1267,13 @@ export default function RealPricePage() {
                                                 if (!points || points.length === 0) return null;
 
                                                 return (
-                                                  <div key={areaKey} className="text-xs mb-1" style={{ color: colors[index % colors.length] }}>
-                                                    <strong>{areaKey}</strong>: {points.length}건
+                                                  <div
+                                                    key={areaKey}
+                                                    className="text-xs mb-1 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 p-1 rounded transition-colors"
+                                                    style={{ color: colors[index % colors.length] }}
+                                                    onClick={() => handleAreaClick(areaKey)}
+                                                  >
+                                                    <strong>{areaKey}</strong>: {points.length}건 👆
                                                     <br />
                                                     <span className="text-gray-600 dark:text-gray-400">
                                                       {Math.min(...points).toLocaleString()}만원 ~ {Math.max(...points).toLocaleString()}만원
@@ -1258,6 +1281,9 @@ export default function RealPricePage() {
                                                   </div>
                                                 );
                                               })}
+                                            <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-2 border-t pt-1">
+                                              💡 클릭하면 해당 거래 목록으로 이동
+                                            </p>
                                           </div>
                                         );
                                       }}
@@ -1335,11 +1361,10 @@ export default function RealPricePage() {
                                 </ResponsiveContainer>
                                 <div className="mt-3 p-3 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
                                   <p className="text-xs text-gray-700 dark:text-gray-300">
-                                    💡 <strong>차트 설명:</strong> 각 면적별로 색상이 다릅니다.
-                                    <span className="font-semibold"> 굵은 실선</span>은 평균 가격,
-                                    <span className="font-semibold"> 점선</span>은 최대/최소 가격,
-                                    <span className="font-semibold"> 색칠된 영역</span>은 가격 범위를 나타냅니다.
-                                    체크박스로 원하는 면적만 필터링할 수 있습니다.
+                                    💡 <strong>차트 사용법:</strong><br />
+                                    • 각 면적별로 색상이 다릅니다 (<span className="font-semibold">굵은 실선</span>: 평균 가격, <span className="font-semibold">점선</span>: 최대/최소, <span className="font-semibold">영역</span>: 가격 범위)<br />
+                                    • 체크박스로 원하는 면적만 필터링 가능 (차트와 매물 목록 모두 적용)<br />
+                                    • 차트 위에 마우스를 올려 상세 정보 확인 후 <strong>클릭하면 해당 거래 목록으로 이동</strong>
                                   </p>
                                 </div>
                               </>
@@ -1418,8 +1443,32 @@ export default function RealPricePage() {
                             </tr>
                           </thead>
                           <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                            {getSortedItems(group.aptName, group.items).map((item, index) => (
-                              <tr key={index} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                            {(() => {
+                              // 차트 면적 필터 적용
+                              const aptKey = group.aptName;
+                              const selectedAreas = chartAreaFilters[aptKey];
+
+                              const filteredItems = getSortedItems(group.aptName, group.items).filter(item => {
+                                // 면적 필터가 설정되어 있으면 필터링
+                                if (selectedAreas && selectedAreas.size > 0) {
+                                  const sqm = Math.round(item.area);
+                                  const groupKey = `${sqm}㎡`;
+                                  return selectedAreas.has(groupKey);
+                                }
+                                return true;
+                              });
+
+                              return filteredItems.map((item, index) => {
+                                const itemId = `item-${group.aptName.replace(/\s+/g, '-')}-${item.dealDate}-${Math.round(item.area)}-${index}`;
+
+                                return (
+                                  <tr
+                                    key={index}
+                                    id={itemId}
+                                    className="hover:bg-gray-50 dark:hover:bg-gray-700 scroll-mt-32 transition-colors"
+                                    data-date={item.dealDate}
+                                    data-area={Math.round(item.area)}
+                                  >
                                 <td className="px-4 py-3 whitespace-nowrap">
                                   <div className="text-sm font-semibold text-blue-600 dark:text-blue-400">
                                     {item.dealPriceFormatted}
@@ -1477,7 +1526,9 @@ export default function RealPricePage() {
                                   </div>
                                 </td>
                               </tr>
-                            ))}
+                                );
+                              });
+                            })()}
                           </tbody>
                         </table>
                       </div>
