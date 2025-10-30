@@ -121,8 +121,16 @@ export async function GET(request: NextRequest) {
       const addr = doc.address;
       const roadAddr = doc.road_address;
 
+      // 디버깅: 응답 구조 확인
+      console.log('[Kakao Geocoding] 📋 응답 데이터:', JSON.stringify(doc, null, 2));
+
       // 법정동 코드 (10자리 → 5자리로 변환)
-      const fullLawdCd = addr.b_code; // 예: "4117310300"
+      const fullLawdCd = addr.b_code || '0000000000'; // 기본값 제공
+
+      if (!addr.b_code) {
+        console.warn('[Kakao Geocoding] ⚠️  b_code가 없습니다. 응답 구조 확인 필요');
+      }
+
       const lawdCd = fullLawdCd.substring(0, 5); // 시군구 5자리: "41173"
 
       // 주소 정보
