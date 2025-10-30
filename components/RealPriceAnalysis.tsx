@@ -187,7 +187,23 @@ export default function RealPriceAnalysis({ complexNo }: RealPriceAnalysisProps)
 
   // 차트 데이터 생성 (매매 데이터만 사용)
   const generateChartData = () => {
-    const areaGroups = getAreaGroups();
+    // 차트용 매매 데이터만 그룹화 (필터 무시)
+    const saleOnlyGroups = new Map<string, UnifiedTradeItem[]>();
+    tradeItems.forEach(item => {
+      // 매매 거래만 차트에 포함
+      if (item.tradeType !== '매매') {
+        return;
+      }
+
+      const pyeong = Math.floor(item.exclusiveArea / 3.3058);
+      const key = `${pyeong}평`;
+
+      if (!saleOnlyGroups.has(key)) {
+        saleOnlyGroups.set(key, []);
+      }
+      saleOnlyGroups.get(key)!.push(item);
+    });
+
     const monthMap = new Map<string, any>();
 
     // 최근 N개월 초기화
@@ -201,12 +217,8 @@ export default function RealPriceAnalysis({ complexNo }: RealPriceAnalysisProps)
     }
 
     // 평형별 데이터 집계 (매매 데이터만)
-    areaGroups.forEach((items, areaKey) => {
+    saleOnlyGroups.forEach((items, areaKey) => {
       items.forEach(item => {
-        // 매매 거래만 차트에 포함
-        if (item.tradeType !== '매매') {
-          return;
-        }
 
         const yearMonth = `${item.dealYear}${String(item.dealMonth).padStart(2, '0')}`;
         if (monthMap.has(yearMonth)) {
@@ -227,7 +239,7 @@ export default function RealPriceAnalysis({ complexNo }: RealPriceAnalysisProps)
 
     // 평형별 평균 계산
     monthMap.forEach((monthData, month) => {
-      areaGroups.forEach((_, areaKey) => {
+      saleOnlyGroups.forEach((_, areaKey) => {
         const prices = monthData[`${areaKey}_data`];
         if (prices && prices.length > 0) {
           monthData[`${areaKey}_avg`] = Math.round(prices.reduce((sum: number, val: number) => sum + val, 0) / prices.length);
@@ -240,7 +252,7 @@ export default function RealPriceAnalysis({ complexNo }: RealPriceAnalysisProps)
 
     // 추세선 계산
     const trendlines = new Map<string, { slope: number; intercept: number }>();
-    areaGroups.forEach((items, areaKey) => {
+    saleOnlyGroups.forEach((items, areaKey) => {
       const dataPoints = chartData
         .map((point, index) => ({
           x: index,
@@ -317,6 +329,33 @@ export default function RealPriceAnalysis({ complexNo }: RealPriceAnalysisProps)
     currentPage * itemsPerPage
   );
   const totalPages = Math.ceil(getSortedItems().length / itemsPerPage);
+
+  // Y축 가격 포맷팅 (가독성 좋은 단위로 표시)
+  const formatYAxisPrice = (value: number): string => {
+    const eok = Math.floor(value / 100000000); // 억
+    const man = Math.floor((value % 100000000) / 10000); // 만
+
+    if (eok > 0 && man > 0) {
+      // 5000만원 단위로 반올림
+      if (man >= 5000) {
+        return `${eok + 0.5}억`;
+      } else if (man >= 2500) {
+        return `${eok}.5억`;
+      } else {
+        return `${eok}억`;
+      }
+    } else if (eok > 0) {
+      return `${eok}억`;
+    } else if (man >= 1000) {
+      // 1000만원 이상: 1000만원 단위
+      return `${Math.round(man / 1000)}천만`;
+    } else if (man >= 100) {
+      // 100만원 이상: 100만원 단위
+      return `${Math.round(man / 100)}백만`;
+    } else {
+      return `${man}만`;
+    }
+  };
 
   const CHART_COLORS = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#14b8a6'];
   const chartData = generateChartData();
@@ -472,7 +511,7 @@ export default function RealPriceAnalysis({ complexNo }: RealPriceAnalysisProps)
               style={{ fontSize: '12px' }}
             />
             <YAxis
-              tickFormatter={(value) => `${Math.round(value / 10000)}억`}
+              tickFormatter={formatYAxisPrice}
               style={{ fontSize: '12px' }}
               domain={yAxisDomain}
             />
