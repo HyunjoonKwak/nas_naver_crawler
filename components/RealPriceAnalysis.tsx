@@ -729,11 +729,34 @@ export default function RealPriceAnalysis({ complexNo }: RealPriceAnalysisProps)
               });
             };
 
+            // 선형 회귀 함수 (추세선 계산)
+            const calculateTrendline = (dataPoints: { x: number; y: number }[]) => {
+              const n = dataPoints.length;
+              if (n === 0) return null;
+
+              let sumX = 0;
+              let sumY = 0;
+              let sumXY = 0;
+              let sumXX = 0;
+
+              dataPoints.forEach(point => {
+                sumX += point.x;
+                sumY += point.y;
+                sumXY += point.x * point.y;
+                sumXX += point.x * point.x;
+              });
+
+              const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
+              const intercept = (sumY - slope * sumX) / n;
+
+              return { slope, intercept };
+            };
+
             // 날짜별로 데이터 정리
             const allDates = [...new Set(data.items.map(item => item.dealDate))].sort();
             const chartData: any[] = [];
 
-            allDates.forEach(date => {
+            allDates.forEach((date, dateIndex) => {
               const dataPoint: any = { date };
 
               Array.from(areaGroups.entries()).forEach(([areaKey, items]) => {
@@ -754,6 +777,33 @@ export default function RealPriceAnalysis({ complexNo }: RealPriceAnalysisProps)
               });
 
               chartData.push(dataPoint);
+            });
+
+            // 평형별 추세선 계산
+            const trendlines = new Map<string, { slope: number; intercept: number }>();
+            Array.from(areaGroups.entries()).forEach(([areaKey, items]) => {
+              const dataPoints: { x: number; y: number }[] = [];
+
+              chartData.forEach((point, index) => {
+                if (point[`${areaKey}_avg`] !== undefined) {
+                  dataPoints.push({
+                    x: index,
+                    y: point[`${areaKey}_avg`]
+                  });
+                }
+              });
+
+              const trendline = calculateTrendline(dataPoints);
+              if (trendline) {
+                trendlines.set(areaKey, trendline);
+              }
+            });
+
+            // 차트 데이터에 추세선 값 추가
+            chartData.forEach((point, index) => {
+              Array.from(trendlines.entries()).forEach(([areaKey, trendline]) => {
+                point[`${areaKey}_trend`] = trendline.slope * index + trendline.intercept;
+              });
             });
 
             // Y축 범위 계산: 선택된 평형만의 가격 범위 (여유 15% 추가)
@@ -964,6 +1014,18 @@ export default function RealPriceAnalysis({ complexNo }: RealPriceAnalysisProps)
                           activeDot={{ r: 6 }}
                           name={`${areaKey} 평균`}
                         />
+
+                        {/* 추세선 */}
+                        <Line
+                          type="monotone"
+                          dataKey={`${areaKey}_trend`}
+                          stroke={color}
+                          strokeWidth={2}
+                          strokeDasharray="3 3"
+                          dot={false}
+                          name={`${areaKey} 추세`}
+                          strokeOpacity={0.6}
+                        />
                         </React.Fragment>
                       );
                     })}
@@ -978,7 +1040,9 @@ export default function RealPriceAnalysis({ complexNo }: RealPriceAnalysisProps)
           <div className="mt-4 p-3 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
             <p className="text-xs text-gray-700 dark:text-gray-300">
               💡 <strong>차트 사용법:</strong><br />
-              • 각 평형별로 색상이 다릅니다 (<span className="font-semibold">굵은 실선</span>: 평균 가격, <span className="font-semibold">점선</span>: 최대/최소, <span className="font-semibold">영역</span>: 가격 범위)<br />
+              • 각 평형별로 색상이 다릅니다<br />
+              • <span className="font-semibold">굵은 실선</span>: 평균 가격 | <span className="font-semibold">가는 점선</span>: 최대/최소 | <span className="font-semibold">영역</span>: 가격 범위 | <span className="font-semibold">중간 점선</span>: 추세선<br />
+              • <strong>추세선</strong>은 선형 회귀를 통해 전체적인 가격 상승/하락 추세를 보여줍니다<br />
               • <strong>체크박스로 원하는 평형만 선택</strong>하여 차트와 데이터를 필터링할 수 있습니다<br />
               • 평형별 실거래가 통계에서 카드를 클릭하면 해당 평형만 필터링됩니다<br />
               • 거래일별로 최저가~최고가 범위와 평균 가격을 확인할 수 있습니다
