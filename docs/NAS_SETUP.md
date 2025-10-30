@@ -61,6 +61,49 @@ source ~/.bashrc
 docker-compose -f docker-compose.dev.yml restart web
 ```
 
+---
+
+## 환경 변수 설정 (최초 1회 필수!)
+
+### Naver Maps API 키 설정
+
+`docker-compose.dev.yml` 파일을 **NAS에서 직접** 수정하세요:
+
+```bash
+cd /volume1/code_work/nas_naver_crawler
+
+# 파일 편집
+vi docker-compose.dev.yml
+```
+
+**수정할 부분** (69-71줄 주석 해제):
+```yaml
+# Before (주석 상태)
+# - NAVER_MAPS_CLIENT_ID=your_client_id
+# - NAVER_MAPS_CLIENT_SECRET=your_client_secret
+
+# After (주석 해제하고 실제 키 입력)
+- NAVER_MAPS_CLIENT_ID=실제_클라이언트_ID
+- NAVER_MAPS_CLIENT_SECRET=실제_시크릿_키
+```
+
+**⚠️ 중요**:
+- 이 파일 변경사항은 **Git에 커밋하지 마세요!**
+- NAS에서만 수정하고 사용하세요.
+
+### 컨테이너 재시작 (환경 변수 적용)
+
+```bash
+# 재시작
+./docker-compose-v2 -f docker-compose.dev.yml down
+./docker-compose-v2 -f docker-compose.dev.yml up -d
+
+# 환경 변수 확인
+docker exec naver-crawler-web env | grep NAVER
+```
+
+---
+
 ## Git Pull & 배포 워크플로우
 
 ### 코드 업데이트 후 배포
@@ -68,20 +111,38 @@ docker-compose -f docker-compose.dev.yml restart web
 ```bash
 cd /volume1/code_work/nas_naver_crawler
 
-# 1. Git pull
+# 1. 로컬 변경사항 임시 저장 (API 키 보호)
+git stash
+
+# 2. Git pull
 git pull origin main
 
-# 2. 웹 컨테이너 재시작 (3초!)
+# 3. 로컬 변경사항 복구 (API 키 복원)
+git stash pop
+
+# 4. API 키가 그대로 있는지 확인
+grep "NAVER_MAPS_CLIENT_ID" docker-compose.dev.yml
+
+# 5. 웹 컨테이너 재시작 (3초!)
 ./docker-compose-v2 -f docker-compose.dev.yml restart web
 
-# 3. 로그 확인
+# 6. 로그 확인
 ./docker-compose-v2 -f docker-compose.dev.yml logs -f web
+```
+
+**충돌이 발생하면**:
+```bash
+# 충돌 해결 후 API 키 다시 입력
+vi docker-compose.dev.yml
+# (69-71줄에 API 키 추가)
+
+./docker-compose-v2 -f docker-compose.dev.yml restart web
 ```
 
 ### 환경 변수 변경 후 배포
 
 ```bash
-# 1. config.env 또는 .env.local 수정
+# 1. config.env 수정
 vi config.env
 
 # 2. 컨테이너 재생성 (환경 변수 적용)
