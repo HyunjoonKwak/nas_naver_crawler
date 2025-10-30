@@ -165,30 +165,29 @@ export function extractSggCodeFromAddress(address: string): string | null {
   const data = loadDongCodeData();
   const normalized = address.replace(/\s+/g, '').toLowerCase();
 
-  // 1순위: 읍면동까지 포함된 가장 구체적인 주소
-  for (const entry of data) {
-    const fullAddr = entry.dongName.replace(/\s+/g, '').toLowerCase();
-    if (normalized.includes(fullAddr)) {
-      return entry.sggCode;
-    }
-  }
+  // ⚠️ 중요: 법정동과 행정동이 다를 수 있으므로 시군구까지만 매칭!
+  // 예: SGIS 행정동 "봉명동" ≠ 법정동 "봉명1동", "봉명2동"
 
-  // 2순위: 시군구까지만
+  // 1순위: 시도 + 시군구 정확히 일치 (가장 안전)
   for (const entry of data) {
     const sggAddr = `${entry.sido}${entry.sigungu}`.replace(/\s+/g, '').toLowerCase();
     if (normalized.includes(sggAddr)) {
+      console.log(`[DongCode] 시군구 매칭 성공: ${entry.sido} ${entry.sigungu} -> ${entry.sggCode}`);
       return entry.sggCode;
     }
   }
 
-  // 3순위: 시군구명만으로 검색
+  // 2순위: 시군구명만으로 검색 (시도명이 없을 때)
   for (const entry of data) {
     const sggOnly = entry.sigungu.replace(/\s+/g, '').toLowerCase();
     if (sggOnly && normalized.includes(sggOnly)) {
+      console.log(`[DongCode] 시군구명 매칭 성공: ${entry.sigungu} -> ${entry.sggCode}`);
       return entry.sggCode;
     }
   }
 
+  // 읍면동까지 포함된 검색은 제거 (행정동/법정동 불일치 문제)
+  console.warn(`[DongCode] 매칭 실패: ${address}`);
   return null;
 }
 
@@ -248,6 +247,40 @@ export function getDongNameByCode(sggCode: string): string | null {
 
   // 시군구명만 반환 (예: "서울특별시 강남구")
   return `${entry.sido} ${entry.sigungu}`;
+}
+
+/**
+ * 법정동코드로 법정동명 조회 (읍면동까지 포함)
+ *
+ * @param sggCode 5자리 시군구코드
+ * @returns 법정동명 (예: "청운동", "봉명1동") 또는 null
+ */
+export function getBeopjungdongNameByCode(sggCode: string): string | null {
+  const data = loadDongCodeData();
+
+  // 해당 시군구에 속하는 법정동 찾기 (첫 번째 매칭된 법정동 반환)
+  const entry = data.find(e => e.sggCode === sggCode && e.dongOnly);
+
+  if (!entry) return null;
+
+  return entry.dongOnly; // "청운동", "봉명1동" 등
+}
+
+/**
+ * 법정동코드로 전체 법정동명 조회 (시도 + 시군구 + 읍면동)
+ *
+ * @param sggCode 5자리 시군구코드
+ * @returns 전체 법정동명 (예: "서울특별시 종로구 청운동") 또는 null
+ */
+export function getFullBeopjungdongByCode(sggCode: string): string | null {
+  const data = loadDongCodeData();
+
+  // 해당 시군구에 속하는 법정동 찾기 (첫 번째 매칭된 법정동 반환)
+  const entry = data.find(e => e.sggCode === sggCode && e.dongOnly);
+
+  if (!entry) return null;
+
+  return entry.dongName; // "서울특별시 종로구 청운동" 전체 주소
 }
 
 /**
