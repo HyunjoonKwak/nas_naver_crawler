@@ -4,7 +4,7 @@
  *
  * 쿼리 파라미터:
  * - complexNo: 네이버 단지 번호 (필수)
- * - months: 조회할 개월 수 (선택, 기본: 3, 최대: 12)
+ * - months: 조회할 개월 수 (선택, 기본: 3)
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -99,7 +99,7 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const complexNo = searchParams.get('complexNo');
     const monthsParam = searchParams.get('months');
-    const months = monthsParam ? Math.min(parseInt(monthsParam, 10), 12) : 3;
+    const months = monthsParam ? parseInt(monthsParam, 10) : 3;
 
     // 필수 파라미터 검증
     if (!complexNo) {
