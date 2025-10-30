@@ -30,6 +30,7 @@ model Complex {
   sigunguCode    String?   // 시군구 코드 (SGIS)
   dongCode       String?   // 읍면동 코드 (SGIS)
   lawdCd         String?   // 법정동코드 (5자리, 공공데이터 API용)
+  realPriceAptName String? // 실거래가 API용 아파트명 (수동 매핑, 예: "향촌마을현대5차")
   pyeongs        Json?     // 평형별 타입 정보
   userId         String    // 생성한 사용자 ID
   user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)

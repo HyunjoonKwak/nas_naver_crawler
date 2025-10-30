@@ -119,6 +119,7 @@ export async function GET(request: NextRequest) {
       select: {
         complexNo: true,
         complexName: true,
+        realPriceAptName: true, // 실거래가 API용 수동 매핑 이름
         beopjungdong: true,
         address: true,
         lawdCd: true, // 저장된 법정동코드 (5자리)
@@ -205,9 +206,11 @@ export async function GET(request: NextRequest) {
         }
 
         // 메모리에서 아파트명 필터링 (유사도 매칭)
-        const normalizedComplexName = complex.complexName.replace(/\s+/g, '').toLowerCase();
+        // realPriceAptName이 설정되어 있으면 우선 사용 (수동 매핑)
+        const searchName = complex.realPriceAptName || complex.complexName;
+        const normalizedComplexName = searchName.replace(/\s+/g, '').toLowerCase();
 
-        console.log(`[Real Price Complex] Filtering for: "${complex.complexName}" (normalized: "${normalizedComplexName}")`);
+        console.log(`[Real Price Complex] Filtering for: "${searchName}" (normalized: "${normalizedComplexName}")${complex.realPriceAptName ? ' [MANUAL MAPPING]' : ''}`);
         console.log(`[Real Price Complex] Total cached items for ${dealYmd}: ${monthData.length}`);
 
         // 디버깅: 전체 아파트 이름 출력 (최대 100개)
@@ -268,8 +271,8 @@ export async function GET(request: NextRequest) {
             return true;
           }
 
-          // 3. 토큰 기반 매칭 (순서 무관)
-          // "향촌현대5차" vs "향촌마을현대5차" → 공통 토큰: 향촌, 현대, 5차
+          // 3. 토큰 기반 매칭 (순서 무관, 엄격한 조건)
+          // "향촌현대5차" vs "향촌마을현대5차" → 공통 토큰: 향촌, 현대, 5
           const extractTokens = (str: string) => {
             // 한글, 숫자, 영문을 토큰으로 분리
             const tokens: string[] = [];
@@ -294,18 +297,18 @@ export async function GET(request: NextRequest) {
             )
           );
 
-          if (allSearchTokensFound && searchTokens.length >= 2) {
+          // 토큰 매칭 조건 강화:
+          // 1. 모든 검색어 토큰이 매칭되어야 함
+          // 2. 검색어 토큰이 3개 이상이어야 함 (예: ["향촌", "현대", "5"])
+          // 3. 또는 검색어 토큰이 2개이고 둘 다 3글자 이상인 경우 (예: ["평촌푸르지오", "래미안"])
+          const isValidTokenMatch = allSearchTokensFound && (
+            searchTokens.length >= 3 ||
+            (searchTokens.length === 2 && searchTokens.every(t => t.length >= 3))
+          );
+
+          if (isValidTokenMatch) {
             console.log(`[Real Price Complex] ✅ 토큰 매칭: "${item.aptName}" (검색: [${searchTokens.join(', ')}], API: [${itemTokens.join(', ')}])`);
             return true;
-          }
-
-          // 4. 부분 문자열 매칭 (최후의 수단)
-          if (normalizedItemName.includes(normalizedComplexName) ||
-              normalizedComplexName.includes(normalizedItemName)) {
-            if (normalizedComplexName.length >= 5) { // 5글자 이상만 (오매칭 방지)
-              console.log(`[Real Price Complex] ✅ 부분 문자열 매칭: "${item.aptName}"`);
-              return true;
-            }
           }
 
           return false;
@@ -360,6 +363,7 @@ export async function GET(request: NextRequest) {
         complex: {
           complexNo: complex.complexNo,
           complexName: complex.complexName,
+          realPriceAptName: complex.realPriceAptName, // 수동 매핑 이름 (있는 경우)
           beopjungdong: complex.beopjungdong,
           lawdCd,
         },
