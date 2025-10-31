@@ -1,26 +1,25 @@
-import { NextResponse } from 'next/server';
 import { exec } from 'child_process';
 import { promisify } from 'util';
-import fs from 'fs/promises';
-import path from 'path';
 import { prisma } from '@/lib/prisma';
 import { requireAuth } from '@/lib/auth-utils';
+import { ApiResponseHelper } from '@/lib/api-response';
+import { createLogger } from '@/lib/logger';
 
 const execAsync = promisify(exec);
+const logger = createLogger('STATUS');
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export const GET = ApiResponseHelper.handler(async () => {
+  // 인증 확인 (선택적 - 실패해도 계속 진행)
+  let isAuthenticated = false;
   try {
-    // 인증 확인 (선택적 - 실패해도 계속 진행)
-    let isAuthenticated = false;
-    try {
-      await requireAuth();
-      isAuthenticated = true;
-    } catch (error: any) {
-      // 인증 실패 시 기본 정보만 제공
-      isAuthenticated = false;
-    }
+    await requireAuth();
+    isAuthenticated = true;
+  } catch (error: any) {
+    // 인증 실패 시 기본 정보만 제공
+    isAuthenticated = false;
+  }
 
     const baseDir = process.env.NODE_ENV === 'production' ? '/app' : process.cwd();
     
@@ -100,29 +99,23 @@ export async function GET() {
       console.error('Failed to fetch current crawl:', error);
     }
 
-    return NextResponse.json({
-      isAuthenticated,
-      crawler: {
-        scriptExists: crawlerExists,
-        playwrightReady: playwrightReady,
-        ready: crawlerExists && playwrightReady,
-      },
-      data: {
-        crawledFilesCount: crawledDataCount,
-      },
-      crawledDataCount,
-      favoritesCount: isAuthenticated ? favoritesCount : null,
-      crawledDataSize,
-      status: (crawlerExists && playwrightReady) ? 'ready' : 'not_ready',
-      currentCrawl: isAuthenticated ? currentCrawl : null, // 인증된 사용자만 크롤링 정보 제공
-    });
+  logger.info('Status checked', { isAuthenticated, crawlerExists, playwrightReady });
 
-  } catch (error: any) {
-    console.error('Status check error:', error);
-    return NextResponse.json(
-      { error: '상태 확인 중 오류가 발생했습니다.', details: error.message },
-      { status: 500 }
-    );
-  }
-}
+  return ApiResponseHelper.success({
+    isAuthenticated,
+    crawler: {
+      scriptExists: crawlerExists,
+      playwrightReady: playwrightReady,
+      ready: crawlerExists && playwrightReady,
+    },
+    data: {
+      crawledFilesCount: crawledDataCount,
+    },
+    crawledDataCount,
+    favoritesCount: isAuthenticated ? favoritesCount : null,
+    crawledDataSize,
+    status: (crawlerExists && playwrightReady) ? 'ready' : 'not_ready',
+    currentCrawl: isAuthenticated ? currentCrawl : null, // 인증된 사용자만 크롤링 정보 제공
+  });
+});
 

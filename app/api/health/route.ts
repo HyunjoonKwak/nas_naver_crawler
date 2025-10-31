@@ -1,69 +1,56 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { createLogger } from '@/lib/logger';
+import { ApiResponseHelper } from '@/lib/api-response';
 
 const logger = createLogger('HEALTH');
 
 /**
  * 헬스체크 엔드포인트
- * 
+ *
  * 시스템 구성 요소의 상태를 확인합니다:
  * - 데이터베이스 연결
  * - Redis 연결 (있는 경우)
  * - 디스크 공간
- * 
+ *
  * GET /api/health
  */
-export async function GET() {
+export const GET = ApiResponseHelper.handler(async () => {
   const startTime = Date.now();
-  
-  try {
-    const checks = {
-      database: await checkDatabase(),
-      redis: await checkRedis(),
-      disk: await checkDiskSpace(),
-      uptime: process.uptime(),
-    };
 
-    const allHealthy = Object.values(checks).every(
-      check => typeof check === 'number' || check.status === 'ok'
-    );
+  const checks = {
+    database: await checkDatabase(),
+    redis: await checkRedis(),
+    disk: await checkDiskSpace(),
+    uptime: process.uptime(),
+  };
 
-    const responseTime = Date.now() - startTime;
+  const allHealthy = Object.values(checks).every(
+    check => typeof check === 'number' || check.status === 'ok'
+  );
 
-    const response = {
-      status: allHealthy ? 'healthy' : 'degraded',
-      timestamp: new Date().toISOString(),
-      version: process.env.npm_package_version || '1.0.0',
-      environment: process.env.NODE_ENV || 'development',
-      checks,
-      responseTime,
-    };
+  const responseTime = Date.now() - startTime;
 
-    if (!allHealthy) {
-      logger.warn('Health check degraded', response);
-    }
+  const response = {
+    status: allHealthy ? 'healthy' : 'degraded',
+    timestamp: new Date().toISOString(),
+    version: process.env.npm_package_version || '1.0.0',
+    environment: process.env.NODE_ENV || 'development',
+    checks,
+    responseTime,
+  };
 
-    return NextResponse.json(response, {
-      status: allHealthy ? 200 : 503,
-      headers: {
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-      },
-    });
-
-  } catch (error: any) {
-    logger.error('Health check failed', { error });
-
-    return NextResponse.json(
-      {
-        status: 'unhealthy',
-        timestamp: new Date().toISOString(),
-        error: error instanceof Error ? error.message : 'Unknown error',
-      },
-      { status: 503 }
-    );
+  if (!allHealthy) {
+    logger.warn('Health check degraded', response);
   }
-}
+
+  return NextResponse.json(response, {
+    status: allHealthy ? 200 : 503,
+    headers: {
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+    },
+  });
+});
 
 /**
  * 데이터베이스 연결 확인
