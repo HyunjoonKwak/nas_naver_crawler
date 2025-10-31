@@ -7,8 +7,8 @@
  * - 기존 DB 데이터와 병합
  */
 
-import { prisma } from '@/lib/prisma';
 import { createLogger } from '@/lib/logger';
+import { complexRepository } from '@/repositories';
 
 const logger = createLogger('COMPLEX_PROCESSOR');
 
@@ -108,19 +108,8 @@ export async function mergeExistingGeoData(
 ): Promise<number> {
   const complexNos = complexes.map(c => c.complexNo);
 
-  // DB에서 기존 단지의 법정동 정보 조회
-  const existingComplexes = await prisma.complex.findMany({
-    where: { complexNo: { in: complexNos } },
-    select: {
-      complexNo: true,
-      beopjungdong: true,
-      haengjeongdong: true,
-      sidoCode: true,
-      sigunguCode: true,
-      dongCode: true,
-      lawdCd: true,
-    },
-  });
+  // DB에서 기존 단지의 지오코딩 정보 조회 (repository 사용)
+  const existingComplexes = await complexRepository.getExistingGeoData(complexNos);
 
   // Map으로 빠른 조회
   const existingDataMap = new Map(
@@ -241,44 +230,23 @@ export async function enrichWithGeocode(
 export async function upsertComplexes(
   complexes: ComplexUpsertData[]
 ): Promise<Map<string, string>> {
-  const complexNoToIdMap = new Map<string, string>();
-
   logger.info('Starting complex upsert', {
     totalCount: complexes.length,
   });
 
-  for (const complex of complexes) {
-    try {
-      const upserted = await prisma.complex.upsert({
-        where: { complexNo: complex.complexNo },
-        update: {
-          complexName: complex.complexName,
-          totalHousehold: complex.totalHousehold,
-          totalDong: complex.totalDong,
-          latitude: complex.latitude,
-          longitude: complex.longitude,
-          address: complex.address,
-          roadAddress: complex.roadAddress,
-          jibunAddress: complex.jibunAddress,
-          beopjungdong: complex.beopjungdong,
-          haengjeongdong: complex.haengjeongdong,
-          sidoCode: complex.sidoCode,
-          sigunguCode: complex.sigunguCode,
-          dongCode: complex.dongCode,
-          lawdCd: complex.lawdCd,
-          pyeongs: complex.pyeongs,
-        },
-        create: complex,
-      });
+  // ComplexUpsertData를 Prisma.ComplexCreateInput으로 변환
+  const complexCreateInputs = complexes.map(c => ({
+    ...c,
+    pyeongs: c.pyeongs as any, // JSON 타입
+  })) as any;
 
-      complexNoToIdMap.set(complex.complexNo, upserted.id);
-    } catch (error: any) {
-      logger.error('Failed to upsert complex', {
-        complexNo: complex.complexNo,
-        error: error.message,
-      });
-    }
-  }
+  // repository의 upsertMany 사용
+  const upsertedComplexes = await complexRepository.upsertMany(complexCreateInputs);
+
+  // complexNo -> id 매핑 생성
+  const complexNoToIdMap = new Map<string, string>(
+    upsertedComplexes.map(c => [c.complexNo, c.id])
+  );
 
   logger.info('Complex upsert completed', {
     totalCount: complexes.length,

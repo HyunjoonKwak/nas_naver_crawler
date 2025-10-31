@@ -8,8 +8,8 @@
  * - 알림 로그 저장
  */
 
-import { prisma } from '@/lib/prisma';
 import { createLogger } from '@/lib/logger';
+import { complexRepository } from '@/repositories';
 import {
   detectArticleChanges,
   filterChangesForAlerts,
@@ -45,13 +45,11 @@ export async function sendAlertsForChanges(
   const errors: string[] = [];
 
   try {
-    // 성능 최적화: 배치로 단지 정보 조회 (N+1 쿼리 방지)
-    const complexInfos = await prisma.complex.findMany({
-      where: { complexNo: { in: complexNos } },
-      include: {
-        articles: true,
-      },
-    });
+    // 성능 최적화: 배치로 단지 정보 조회 (N+1 쿼리 방지) - repository 사용
+    const complexInfos = await complexRepository.findManyByComplexNos(
+      complexNos,
+      true // includeArticles
+    );
 
     const complexMap = new Map(complexInfos.map(c => [c.complexNo, c]));
 

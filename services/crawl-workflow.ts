@@ -8,11 +8,12 @@
  * - 스케줄 정보 업데이트
  */
 
-import { prisma } from '@/lib/prisma';
 import { createLogger } from '@/lib/logger';
+import { crawlHistoryRepository } from '@/repositories';
 import { deleteCache } from '@/lib/redis-cache';
 import { eventBroadcaster } from '@/lib/eventBroadcaster';
 import { calculateDynamicTimeout } from '@/lib/timeoutCalculator';
+import { prisma } from '@/lib/prisma';
 import { executePythonCrawler } from './crawler-executor';
 import { saveCrawlResultsToDB } from './crawl-db-service';
 import { sendAlertsForChanges } from './alert-service';
@@ -46,20 +47,19 @@ async function createCrawlHistory(
   userId: string,
   scheduleId: string | null
 ): Promise<void> {
-  await prisma.crawlHistory.create({
-    data: {
-      id: crawlId,
-      complexNos: complexNos,
-      totalComplexes: complexNos.length,
-      successCount: 0,
-      errorCount: 0,
-      totalArticles: 0,
-      duration: 0,
-      status: 'pending',
-      currentStep: 'Initializing',
-      userId,
-      scheduleId,
-    },
+  // repository의 create 사용
+  await crawlHistoryRepository.create({
+    id: crawlId,
+    complexNos: complexNos,
+    totalComplexes: complexNos.length,
+    successCount: 0,
+    errorCount: 0,
+    totalArticles: 0,
+    duration: 0,
+    status: 'pending',
+    currentStep: 'Initializing',
+    userId,
+    scheduleId,
   });
 
   logger.info('Crawl history created', {
@@ -84,10 +84,8 @@ async function updateCrawlHistory(
     currentStep: string;
   }>
 ): Promise<void> {
-  await prisma.crawlHistory.update({
-    where: { id: crawlId },
-    data,
-  });
+  // repository의 update 사용
+  await crawlHistoryRepository.update(crawlId, data);
 }
 
 /**

@@ -7,8 +7,8 @@
  * - 진행 상황 업데이트
  */
 
-import { prisma } from '@/lib/prisma';
 import { createLogger } from '@/lib/logger';
+import { crawlHistoryRepository, articleRepository } from '@/repositories';
 import { CrawlDbResult } from './types';
 import { loadLatestCrawlData } from './crawl-file-reader';
 import {
@@ -37,10 +37,7 @@ export interface SaveCrawlOptions {
  */
 async function updateCrawlStep(crawlId: string, step: string): Promise<void> {
   try {
-    await prisma.crawlHistory.update({
-      where: { id: crawlId },
-      data: { currentStep: step },
-    });
+    await crawlHistoryRepository.update(crawlId, { currentStep: step });
   } catch (error: any) {
     logger.warn('Failed to update crawl step', {
       crawlId,
@@ -134,25 +131,20 @@ export async function saveCrawlResultsToDB(
     // 7. 매물 DB 저장 (Batch Delete + Create)
     await updateCrawlStep(crawlId, 'Saving article data');
 
-    // 기존 매물 삭제
+    // 기존 매물 삭제 (repository 사용)
     const complexIds = Array.from(complexNoToIdMap.values());
-    await prisma.article.deleteMany({
-      where: { complexId: { in: complexIds } },
-    });
+    await articleRepository.deleteByComplexIds(complexIds);
 
     logger.info('Deleted old articles', { complexIds: complexIds.length });
 
-    // 새 매물 삽입 (배치)
+    // 새 매물 삽입 (repository 사용)
     if (articles.length > 0) {
       // Prisma의 createMany는 최대 1000개까지만 지원하므로 chunk로 분할
       const BATCH_SIZE = 1000;
       for (let i = 0; i < articles.length; i += BATCH_SIZE) {
         const batch = articles.slice(i, i + BATCH_SIZE);
 
-        await prisma.article.createMany({
-          data: batch,
-          skipDuplicates: true,
-        });
+        await articleRepository.createMany(batch);
 
         logger.debug('Inserted article batch', {
           batchIndex: Math.floor(i / BATCH_SIZE) + 1,
