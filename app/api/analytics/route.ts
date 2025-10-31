@@ -7,119 +7,115 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAuth, getAccessibleUserIds } from '@/lib/auth-utils';
+import { ApiResponseHelper } from '@/lib/api-response';
+import { ApiError, ErrorType } from '@/lib/api-error';
+import { createLogger } from '@/lib/logger';
+
+const logger = createLogger('API_ANALYTICS');
 
 export const dynamic = 'force-dynamic';
 
 /**
  * GET /api/analytics - 단지 분석 데이터 조회 (사용자 권한 확인)
  */
-export async function GET(request: NextRequest) {
-  try {
-    // 사용자 인증 확인
-    const currentUser = await requireAuth();
-    const accessibleUserIds = await getAccessibleUserIds(currentUser.id, currentUser.role);
+export const GET = ApiResponseHelper.handler(async (request: NextRequest) => {
+  // 사용자 인증 확인
+  const currentUser = await requireAuth();
+  const accessibleUserIds = await getAccessibleUserIds(currentUser.id, currentUser.role);
 
-    const { searchParams } = new URL(request.url);
-    const complexNosParam = searchParams.get('complexNos');
-    const mode = searchParams.get('mode') || 'single';
-    const startDate = searchParams.get('startDate');
-    const endDate = searchParams.get('endDate');
-    const tradeTypes = searchParams.get('tradeTypes')?.split(',');
+  const { searchParams } = new URL(request.url);
+  const complexNosParam = searchParams.get('complexNos');
+  const mode = searchParams.get('mode') || 'single';
+  const startDate = searchParams.get('startDate');
+  const endDate = searchParams.get('endDate');
+  const tradeTypes = searchParams.get('tradeTypes')?.split(',');
 
-    if (!complexNosParam) {
-      return NextResponse.json(
-        { success: false, error: 'complexNos parameter is required' },
-        { status: 400 }
-      );
-    }
+  if (!complexNosParam) {
+    throw new ApiError(ErrorType.VALIDATION, 'complexNos parameter is required', 400);
+  }
 
-    const complexNos = complexNosParam.split(',');
+  const complexNos = complexNosParam.split(',');
 
-    console.log('[ANALYTICS] Request:', {
-      complexNos,
-      mode,
-      startDate,
-      endDate,
-      tradeTypes,
-      userId: currentUser.id,
-      role: currentUser.role,
-    });
+  logger.info('Analytics request', {
+    complexNos,
+    mode,
+    startDate,
+    endDate,
+    tradeTypes,
+    userId: currentUser.id,
+    role: currentUser.role,
+  });
 
-    // 데이터베이스에서 단지 및 매물 정보 조회 (사용자 필터링 적용)
-    const complexes = await prisma.complex.findMany({
-      where: {
-        complexNo: {
-          in: complexNos,
+  // 데이터베이스에서 단지 및 매물 정보 조회 (사용자 필터링 적용)
+  const complexes = await prisma.complex.findMany({
+    where: {
+      complexNo: {
+        in: complexNos,
+      },
+      userId: {
+        in: accessibleUserIds, // 사용자 권한 확인
+      },
+    },
+    include: {
+      articles: {
+        where: {
+          ...(tradeTypes && tradeTypes.length > 0 ? { tradeTypeName: { in: tradeTypes } } : {}),
+          ...(startDate ? { articleConfirmYmd: { gte: startDate } } : {}),
+          ...(endDate ? { articleConfirmYmd: { lte: endDate } } : {}),
         },
-        userId: {
-          in: accessibleUserIds, // 사용자 권한 확인
+        orderBy: {
+          articleConfirmYmd: 'desc',
         },
       },
-      include: {
-        articles: {
-          where: {
-            ...(tradeTypes && tradeTypes.length > 0 ? { tradeTypeName: { in: tradeTypes } } : {}),
-            ...(startDate ? { articleConfirmYmd: { gte: startDate } } : {}),
-            ...(endDate ? { articleConfirmYmd: { lte: endDate } } : {}),
-          },
-          orderBy: {
-            articleConfirmYmd: 'desc',
-          },
-        },
-      },
-    });
+    },
+  });
 
-    console.log('[ANALYTICS] Found complexes:', complexes.length);
-    console.log('[ANALYTICS] Articles by complex:', complexes.map(c => ({
+  logger.info('Complexes found for analytics', {
+    count: complexes.length,
+    articlesByComplex: complexes.map(c => ({
       complexNo: c.complexNo,
       complexName: c.complexName,
       articleCount: c.articles.length
-    })));
+    }))
+  });
 
-    if (complexes.length === 0) {
-      // 사용 가능한 단지 목록 조회
-      const availableComplexes = await prisma.complex.findMany({
-        select: {
-          complexNo: true,
-          complexName: true,
-          _count: {
-            select: { articles: true },
-          },
+  if (complexes.length === 0) {
+    // 사용 가능한 단지 목록 조회
+    const availableComplexes = await prisma.complex.findMany({
+      select: {
+        complexNo: true,
+        complexName: true,
+        _count: {
+          select: { articles: true },
         },
-      });
-
-      console.log('[ANALYTICS] Available complexes:', availableComplexes);
-
-      return NextResponse.json({
-        success: false,
-        error: `Selected complex(es) not found in database. Please crawl these complexes first.`,
-        availableComplexes: availableComplexes.map(c => ({
-          complexNo: c.complexNo,
-          complexName: c.complexName,
-          articleCount: c._count.articles,
-        })),
-        requestedComplexes: complexNos,
-      }, { status: 404 });
-    }
-
-    if (mode === 'single') {
-      // 단일 단지 분석
-      return getSingleAnalysis(complexes[0], tradeTypes);
-    } else {
-      // 다중 단지 비교
-      return getCompareAnalysis(complexes, tradeTypes);
-    }
-  } catch (error: any) {
-    console.error('[ANALYTICS] Error:', error);
-    return NextResponse.json(
-      {
-        success: false,
-        error: error.message || 'Failed to fetch analytics',
       },
-      { status: 500 }
-    );
+    });
+
+    logger.warn('No complexes found for analytics', {
+      requestedComplexes: complexNos,
+      availableCount: availableComplexes.length
+    });
+
+    return NextResponse.json({
+      success: false,
+      error: `Selected complex(es) not found in database. Please crawl these complexes first.`,
+      availableComplexes: availableComplexes.map(c => ({
+        complexNo: c.complexNo,
+        complexName: c.complexName,
+        articleCount: c._count.articles,
+      })),
+      requestedComplexes: complexNos,
+    }, { status: 404 });
   }
-}
+
+  if (mode === 'single') {
+    // 단일 단지 분석
+    return getSingleAnalysis(complexes[0], tradeTypes);
+  } else {
+    // 다중 단지 비교
+    return getCompareAnalysis(complexes, tradeTypes);
+  }
+});
 
 /**
  * 단일 단지 심층 분석
@@ -135,7 +131,7 @@ function getSingleAnalysis(complex: any, tradeTypes?: string[]) {
   // 데이터베이스에서 조회한 articles 배열
   const articles = complex.articles || [];
 
-  console.log('[ANALYTICS] Extracted articles:', {
+  logger.debug('Extracted articles for single analysis', {
     length: articles.length,
     isArray: Array.isArray(articles),
     firstArticle: articles[0] ? Object.keys(articles[0]).slice(0, 5) : 'none',
