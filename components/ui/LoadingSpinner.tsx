@@ -2,7 +2,7 @@
 
 interface LoadingSpinnerProps {
   size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
-  color?: 'blue' | 'white' | 'gray' | 'green' | 'red';
+  color?: 'blue' | 'white' | 'gray' | 'green' | 'red' | 'cyan-600' | 'emerald-600' | 'rose-600';
   text?: string;
   fullScreen?: boolean;
 }
@@ -21,6 +21,9 @@ const colorClasses = {
   gray: 'border-gray-600',
   green: 'border-green-600',
   red: 'border-red-600',
+  'cyan-600': 'border-cyan-600',
+  'emerald-600': 'border-emerald-600',
+  'rose-600': 'border-rose-600',
 };
 
 export function LoadingSpinner({

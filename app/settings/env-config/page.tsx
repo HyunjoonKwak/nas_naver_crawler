@@ -242,7 +242,7 @@ export default function EnvConfigPage() {
     : configs.filter(c => c.category === selectedCategory);
 
   // 관리자 권한 체크
-  if (session?.user?.role !== "ADMIN") {
+  if ((session?.user as any)?.role !== "ADMIN") {
     return (
       <AuthGuard>
         <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">

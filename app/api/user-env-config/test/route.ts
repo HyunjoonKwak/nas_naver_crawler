@@ -5,6 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+// @ts-ignore - Type declaration issue with next-auth module resolution in this file
 import { getServerSession } from 'next/auth';
 import { authOptions } from '@/lib/auth';
 

@@ -328,7 +328,7 @@ export const Navigation = () => {
                       <div className="absolute right-0 top-full mt-2 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50">
                         <div className="py-2">
                           {link.submenu
-                            .filter((subItem: any) => !subItem.adminOnly || session?.user?.role === 'ADMIN')
+                            .filter((subItem: any) => !subItem.adminOnly || (session?.user as any)?.role === 'ADMIN')
                             .map((subItem: any) => {
                             const SubIcon = subItem.icon;
                             return (
@@ -712,7 +712,7 @@ export const Navigation = () => {
                       {isOpen && (
                         <div className="mt-1 ml-4 space-y-1">
                           {link.submenu
-                            .filter((subItem: any) => !subItem.adminOnly || session?.user?.role === 'ADMIN')
+                            .filter((subItem: any) => !subItem.adminOnly || (session?.user as any)?.role === 'ADMIN')
                             .map((subItem: any) => {
                             const SubIcon = subItem.icon;
                             return (

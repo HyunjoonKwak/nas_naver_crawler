@@ -1,26 +1,28 @@
 import toast from 'react-hot-toast';
+import { ReactNode } from 'react';
 
 /**
  * Toast 유틸리티 함수 모음
  */
 
-export const showSuccess = (message: string) => {
-  return toast.success(message, {
-    duration: 3000,
+export const showSuccess = (message: string | ReactNode, options?: { duration?: number }) => {
+  return toast.success(message as any, {
+    duration: options?.duration || 3000,
     position: 'top-right',
   });
 };
 
-export const showError = (message: string) => {
-  return toast.error(message, {
-    duration: 4000,
+export const showError = (message: string | ReactNode, options?: { duration?: number }) => {
+  return toast.error(message as any, {
+    duration: options?.duration || 4000,
     position: 'top-right',
   });
 };
 
-export const showLoading = (message: string) => {
-  return toast.loading(message, {
+export const showLoading = (message: string | ReactNode, options?: { duration?: number }) => {
+  return toast.loading(message as any, {
     position: 'top-right',
+    ...(options?.duration && { duration: options.duration }),
   });
 };
 
@@ -84,8 +86,8 @@ export const showCustom = (
  * 토스트 닫기
  * @param toastId 토스트 ID (showLoading 등에서 반환된 값)
  */
-export const dismissToast = (toastId: string) => {
-  toast.dismiss(toastId);
+export const dismissToast = (toastId: string | number) => {
+  toast.dismiss(toastId as string);
 };
 
 /**

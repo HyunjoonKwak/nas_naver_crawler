@@ -28,6 +28,7 @@
  * ```
  */
 
+import * as React from 'react';
 import { createLogger } from './logger';
 import {
   showLoading as toastShowLoading,
@@ -86,9 +87,9 @@ export interface FetchResult<T = any> {
  * 토스트 함수 타입 (외부에서 주입)
  */
 export interface ToastFunctions {
-  showLoading: (message: string) => string | number;
-  showSuccess: (message: string) => void;
-  showError: (message: string) => void;
+  showLoading: (message: string | React.ReactNode, options?: { duration?: number }) => string | number;
+  showSuccess: (message: string | React.ReactNode, options?: { duration?: number }) => void;
+  showError: (message: string | React.ReactNode, options?: { duration?: number }) => void;
   dismissToast: (id: string | number) => void;
 }
 

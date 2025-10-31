@@ -26,7 +26,7 @@ export async function GET(
     const { id } = params;
 
     // 환경 변수 조회
-    const config = await prisma.envConfig.findUnique({
+    const config = await prisma.systemEnvConfig.findUnique({
       where: { id },
     });
 

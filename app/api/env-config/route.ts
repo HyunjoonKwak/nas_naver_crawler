@@ -24,10 +24,9 @@ export async function GET(request: NextRequest) {
     const category = searchParams.get('category');
 
     // 환경 변수 조회
-    const configs = await prisma.envConfig.findMany({
+    const configs = await prisma.systemEnvConfig.findMany({
       where: {
         ...(category && { category }),
-        isActive: true,
       },
       orderBy: [
         { category: 'asc' },
@@ -36,7 +35,7 @@ export async function GET(request: NextRequest) {
     });
 
     // 값 마스킹 (민감 정보)
-    const maskedConfigs = configs.map(config => ({
+    const maskedConfigs = configs.map((config: any) => ({
       ...config,
       value: config.isSecret ? maskValue(decrypt(config.value)) : decrypt(config.value),
       _originalValue: undefined, // 원본 값 숨김
@@ -83,7 +82,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 중복 확인
-    const existing = await prisma.envConfig.findUnique({
+    const existing = await prisma.systemEnvConfig.findUnique({
       where: { key },
     });
 
@@ -98,7 +97,7 @@ export async function POST(request: NextRequest) {
     const encryptedValue = encrypt(value);
 
     // 환경 변수 생성
-    const config = await prisma.envConfig.create({
+    const config = await prisma.systemEnvConfig.create({
       data: {
         key,
         value: encryptedValue,
@@ -106,7 +105,6 @@ export async function POST(request: NextRequest) {
         description: description || null,
         category,
         isSecret: isSecret !== undefined ? isSecret : true,
-        updatedBy: session.user.id,
       },
     });
 
@@ -154,7 +152,7 @@ export async function PUT(request: NextRequest) {
     }
 
     // 기존 설정 확인
-    const existing = await prisma.envConfig.findUnique({
+    const existing = await prisma.systemEnvConfig.findUnique({
       where: { id },
     });
 
@@ -166,9 +164,7 @@ export async function PUT(request: NextRequest) {
     }
 
     // 업데이트 데이터 준비
-    const updateData: any = {
-      updatedBy: session.user.id,
-    };
+    const updateData: any = {};
 
     if (value !== undefined) {
       updateData.value = encrypt(value);
@@ -176,10 +172,9 @@ export async function PUT(request: NextRequest) {
     if (displayName !== undefined) updateData.displayName = displayName;
     if (description !== undefined) updateData.description = description;
     if (isSecret !== undefined) updateData.isSecret = isSecret;
-    if (isActive !== undefined) updateData.isActive = isActive;
 
     // 환경 변수 업데이트
-    const config = await prisma.envConfig.update({
+    const config = await prisma.systemEnvConfig.update({
       where: { id },
       data: updateData,
     });
@@ -228,7 +223,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     // 환경 변수 삭제
-    await prisma.envConfig.delete({
+    await prisma.systemEnvConfig.delete({
       where: { id },
     });
 

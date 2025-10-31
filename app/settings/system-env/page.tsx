@@ -80,7 +80,7 @@ export default function SystemEnvPage() {
   };
 
   // 관리자 권한 확인
-  if (session?.user?.role !== "ADMIN") {
+  if ((session?.user as any)?.role !== "ADMIN") {
     return (
       <AuthGuard>
         <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
