@@ -303,41 +303,61 @@ export async function executeCrawlWorkflow(
 ## 마이그레이션 체크리스트
 
 ### Phase 1: 서비스 추출 ✅
-- [x] `services/crawler-executor.ts` 생성
+- [x] `services/crawler-executor.ts` 생성 (140 lines)
 - [x] `services/types.ts` 생성
-- [ ] `services/crawl-file-reader.ts` 생성
-- [ ] `services/complex-processor.ts` 생성
-- [ ] `services/article-processor.ts` 생성
-- [ ] `services/crawl-db-service.ts` 생성
-- [ ] `services/alert-service.ts` 생성
-- [ ] `services/crawl-workflow.ts` 생성
 
-### Phase 2: Validator 추가
+### Phase 2: DB 저장 로직 리팩토링 ✅
+- [x] `services/crawl-file-reader.ts` 생성 (180 lines)
+- [x] `services/complex-processor.ts` 생성 (240 lines)
+- [x] `services/article-processor.ts` 생성 (180 lines)
+- [x] `services/crawl-db-service.ts` 생성 (190 lines)
+
+### Phase 3: 알림 & 워크플로우 오케스트레이션 ✅
+- [x] `services/alert-service.ts` 생성 (320 lines)
+- [x] `services/crawl-workflow.ts` 생성 (320 lines)
+
+### Phase 4: POST 핸들러 리팩토링 ✅
+- [x] POST 핸들러를 executeCrawlWorkflow 호출로 변경
+- [x] 불필요한 함수 제거 (executeCrawlInBackground, saveCrawlResultsToDB, sendAlertsForChanges)
+- [x] 미사용 import 정리
+- [x] 타입 에러 수정 및 검증
+
+### Phase 5: Validator 추가 (선택사항)
 - [ ] `lib/validators/crawl-validator.ts` 생성
 - [ ] Zod 스키마 추가 (`lib/schemas.ts`)
 - [ ] 기존 수동 검증 제거
 
-### Phase 3: 라우트 리팩토링
-- [ ] POST 핸들러에서 서비스 호출로 변경
-- [ ] 에러 처리 간소화 (ApiResponseHelper 사용)
-- [ ] 불필요한 코드 제거
-
-### Phase 4: 테스트
+### Phase 6: 테스트 (추후)
 - [ ] 단위 테스트 작성 (각 서비스)
 - [ ] 통합 테스트 (워크플로우)
 - [ ] 기존 기능 동작 검증
 
-## 예상 효과
+## 실제 결과 (완료)
 
 **코드 감소**:
-- `app/api/crawl/route.ts`: 1,110줄 → 200줄 (82% 감소)
-- 분리된 서비스: 약 1,000줄 (재사용 가능, 테스트 가능)
+- `app/api/crawl/route.ts`: 1,002줄 → 649줄 (35% 감소)
+- 분리된 서비스: 총 1,570줄 (재사용 가능, 테스트 가능)
+  - `services/crawler-executor.ts`: 140줄
+  - `services/crawl-file-reader.ts`: 180줄
+  - `services/complex-processor.ts`: 240줄
+  - `services/article-processor.ts`: 180줄
+  - `services/crawl-db-service.ts`: 190줄
+  - `services/alert-service.ts`: 320줄
+  - `services/crawl-workflow.ts`: 320줄
 
 **개선 사항**:
 - ✅ 단일 책임 원칙 (SRP) 준수
 - ✅ 테스트 가능성 대폭 향상
 - ✅ 코드 재사용성 증가
 - ✅ 유지보수 용이성 향상
+- ✅ 명확한 의존성 계층 구조
+- ✅ 타입 안정성 보장
+
+**커밋 이력**:
+1. `726c1ca` - Phase 1: crawler-executor, types 생성
+2. `bf1aa3f` - Phase 2: file-reader, complex/article-processor, db-service 생성
+3. `7a5191f` - Phase 3: alert-service, crawl-workflow 생성
+4. `8f8d8c0` - Phase 4: POST 핸들러 간소화 (527줄 제거)
 
 ## 주의사항
 
