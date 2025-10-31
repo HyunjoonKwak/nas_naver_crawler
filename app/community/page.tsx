@@ -6,8 +6,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Navigation } from "@/components/Navigation";
 import { MobileNavigation } from "@/components/MobileNavigation";
-import { LoadingSpinner } from "@/components/LoadingSpinner";
-import { EmptyState } from "@/components/EmptyState";
+import { LoadingSpinner } from "@/components";
+import { EmptyState } from "@/components";
 import { AuthGuard } from "@/components/AuthGuard";
 import { showError } from "@/lib/toast";
 
@@ -249,7 +249,7 @@ export default function CommunityPage() {
 
           {/* Posts List */}
           {isLoading ? (
-            <LoadingSpinner message="게시글을 불러오는 중..." />
+            <LoadingSpinner text="게시글을 불러오는 중..." />
           ) : posts.length === 0 ? (
             <EmptyState
               icon="📝"

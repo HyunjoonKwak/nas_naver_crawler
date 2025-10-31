@@ -7,7 +7,7 @@ import dynamicImport from "next/dynamic";
 import Link from "next/link";
 import { Navigation } from "@/components/Navigation";
 import { MobileNavigation } from "@/components/MobileNavigation";
-import { LoadingSpinner } from "@/components/LoadingSpinner";
+import { LoadingSpinner } from "@/components";
 import { ThemeToggle } from "@/components/ui";
 import { showSuccess, showError, showLoading, dismissToast } from "@/lib/toast";
 import { useCrawlEvents } from "@/hooks/useCrawlEvents";
@@ -15,12 +15,12 @@ import { AuthGuard } from "@/components/AuthGuard";
 
 // 무거운 차트 컴포넌트를 동적 로딩 (코드 스플리팅)
 const SingleAnalysis = dynamicImport(() => import("./SingleAnalysis").then(mod => ({ default: mod.SingleAnalysis })), {
-  loading: () => <LoadingSpinner message="차트를 불러오는 중..." />,
+  loading: () => <LoadingSpinner text="차트를 불러오는 중..." />,
   ssr: false,
 });
 
 const CompareAnalysis = dynamicImport(() => import("./CompareAnalysis").then(mod => ({ default: mod.CompareAnalysis })), {
-  loading: () => <LoadingSpinner message="비교 차트를 불러오는 중..." />,
+  loading: () => <LoadingSpinner text="비교 차트를 불러오는 중..." />,
   ssr: false,
 });
 
@@ -460,7 +460,7 @@ export default function AnalyticsPage() {
 
         {/* 분석 결과 */}
         {loading ? (
-          <LoadingSpinner message="분석 중..." />
+          <LoadingSpinner text="분석 중..." />
         ) : mode === "single" ? (
           <SingleAnalysis analyticsData={analyticsData} tradeTypes={tradeTypes} />
         ) : (

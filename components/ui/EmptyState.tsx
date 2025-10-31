@@ -3,10 +3,10 @@
 import { ReactNode } from 'react';
 
 interface EmptyStateProps {
-  icon?: ReactNode;
+  icon?: ReactNode | string; // Support string emoji or ReactNode
   title: string;
   description?: string;
-  action?: {
+  action?: ReactNode | { // Support both old (ReactNode) and new ({ label, onClick }) API
     label: string;
     onClick: () => void;
   };
@@ -28,10 +28,27 @@ export function EmptyState({
   action,
   className = '',
 }: EmptyStateProps) {
+  // Handle string icon (emoji) - wrap in larger div for old API compatibility
+  const iconElement = typeof icon === 'string' ? (
+    <div className="text-7xl mb-4">{icon}</div>
+  ) : (
+    icon || defaultIcons.default
+  );
+
+  // Handle action - support both ReactNode and object API
+  const actionElement = action && typeof action === 'object' && 'label' in action ? (
+    <button
+      onClick={action.onClick}
+      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+    >
+      {action.label}
+    </button>
+  ) : action;
+
   return (
     <div className={`flex flex-col items-center justify-center py-12 px-4 text-center ${className}`}>
       <div className="mb-4">
-        {icon || defaultIcons.default}
+        {iconElement}
       </div>
       <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
         {title}
@@ -41,13 +58,10 @@ export function EmptyState({
           {description}
         </p>
       )}
-      {action && (
-        <button
-          onClick={action.onClick}
-          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-        >
-          {action.label}
-        </button>
+      {actionElement && (
+        <div className="mt-6">
+          {actionElement}
+        </div>
       )}
     </div>
   );

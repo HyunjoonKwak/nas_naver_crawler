@@ -1,7 +1,6 @@
 import { ReactNode } from 'react';
 import { PageLayout } from './PageLayout';
-import { LoadingSpinner } from '@/components/LoadingSpinner';
-import { EmptyState } from '@/components/EmptyState';
+import { LoadingSpinner, EmptyState } from '@/components';
 
 interface ListPageLayoutProps {
   /**
@@ -119,7 +118,7 @@ export const ListPageLayout = ({
 
       {/* 리스트 콘텐츠 */}
       {loading ? (
-        <LoadingSpinner message={loadingMessage} />
+        <LoadingSpinner text={loadingMessage} />
       ) : isEmpty ? (
         <EmptyState
           icon={emptyIcon}

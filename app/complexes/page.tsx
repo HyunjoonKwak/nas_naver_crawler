@@ -6,8 +6,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { Navigation } from "@/components/Navigation";
 import { MobileNavigation } from "@/components/MobileNavigation";
-import { LoadingSpinner } from "@/components/LoadingSpinner";
-import { EmptyState } from "@/components/EmptyState";
+import { LoadingSpinner } from "@/components";
+import { EmptyState } from "@/components";
 import { ThemeToggle, Dialog } from "@/components/ui";
 import { GroupManagement } from "@/components/GroupManagement";
 import { ComplexSortFilter } from "@/components/ComplexSortFilter";
@@ -1219,7 +1219,7 @@ export default function ComplexesPage() {
 
         {/* Complex Cards/List */}
         {loading ? (
-          <LoadingSpinner message="단지 목록을 불러오는 중..." />
+          <LoadingSpinner text="단지 목록을 불러오는 중..." />
         ) : complexes.length === 0 ? (
           <EmptyState
             icon="📭"

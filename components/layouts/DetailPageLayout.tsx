@@ -2,7 +2,7 @@ import { ReactNode } from 'react';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import { PageLayout } from './PageLayout';
-import { LoadingSpinner } from '@/components/LoadingSpinner';
+import { LoadingSpinner } from '@/components';
 import { Card } from '@/lib/design-system';
 
 interface DetailPageLayoutProps {
@@ -133,7 +133,7 @@ export const DetailPageLayout = ({
   );
 
   const mainContent = loading ? (
-    <LoadingSpinner message={loadingMessage} />
+    <LoadingSpinner text={loadingMessage} />
   ) : sidebar ? (
     // 2열 레이아웃 (메인 + 사이드바)
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

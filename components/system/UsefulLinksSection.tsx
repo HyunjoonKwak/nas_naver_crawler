@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { LoadingSpinner } from "@/components/LoadingSpinner";
-import { EmptyState } from "@/components/EmptyState";
+import { LoadingSpinner } from "@/components";
+import { EmptyState } from "@/components";
 import { useApiCall } from "@/hooks/useApiCall";
 
 export const UsefulLinksSection = () => {

@@ -4,8 +4,8 @@ import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { Navigation } from "@/components/Navigation";
 import { MobileNavigation } from "@/components/MobileNavigation";
-import { LoadingSpinner } from "@/components/LoadingSpinner";
-import { EmptyState } from "@/components/EmptyState";
+import { LoadingSpinner } from "@/components";
+import { EmptyState } from "@/components";
 import { AuthGuard } from "@/components/AuthGuard";
 import { showSuccess, showError, showLoading, dismissToast } from "@/lib/toast";
 import { Bell, Plus, Edit, Trash2, ChevronDown, ChevronUp } from "lucide-react";
@@ -309,7 +309,7 @@ export default function AlertsPage() {
 
           {/* 알림 목록 */}
           {loading ? (
-            <LoadingSpinner message="알림 목록을 불러오는 중..." />
+            <LoadingSpinner text="알림 목록을 불러오는 중..." />
           ) : alerts.length === 0 ? (
             <EmptyState
               icon="🔔"
