@@ -29,15 +29,13 @@ export interface ArticleStats {
 }
 
 /**
- * 크롤링 실행 옵션
+ * 크롤링 워크플로우 실행 옵션
  */
 export interface CrawlExecutionOptions {
   crawlId: string;
   complexNos: string[];
   userId: string;
   scheduleId?: string | null;
-  baseDir: string;
-  timeout: number;
 }
 
 /**

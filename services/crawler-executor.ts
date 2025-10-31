@@ -109,7 +109,7 @@ export async function executePythonCrawler(
         });
         resolve({
           success: false,
-          exitCode: code,
+          exitCode: code || 1,
           error: `Python crawler exited with code ${code}`,
           duration,
         });

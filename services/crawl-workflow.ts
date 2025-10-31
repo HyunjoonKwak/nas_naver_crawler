@@ -50,6 +50,11 @@ async function createCrawlHistory(
     data: {
       id: crawlId,
       complexNos: complexNos,
+      totalComplexes: complexNos.length,
+      successCount: 0,
+      errorCount: 0,
+      totalArticles: 0,
+      duration: 0,
       status: 'pending',
       currentStep: 'Initializing',
       userId,
@@ -210,7 +215,7 @@ export async function executeCrawlWorkflow(
     await createCrawlHistory(crawlId, complexNos, userId, scheduleId || null);
 
     // 2. 타임아웃 계산
-    const timeout = calculateDynamicTimeout(complexNos.length);
+    const timeout = await calculateDynamicTimeout(complexNos.length);
 
     // 3. Python 크롤러 실행
     await updateCrawlHistory(crawlId, {

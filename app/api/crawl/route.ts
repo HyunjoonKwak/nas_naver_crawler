@@ -1,28 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { spawn } from 'child_process';
 import { prisma } from '@/lib/prisma';
 import { requireAuth } from '@/lib/auth-utils';
 import { rateLimit, rateLimitPresets } from '@/lib/rate-limit';
 import { createLogger } from '@/lib/logger';
-import { deleteCache } from '@/lib/redis-cache';
 import { parsePriceToWonBigInt } from '@/lib/price-utils';
 import fs from 'fs/promises';
 import path from 'path';
-import {
-  detectArticleChanges,
-  filterChangesForAlerts,
-  getComplexInfo,
-  saveNotificationLog,
-} from '@/lib/article-tracker';
-import {
-  sendDiscordNotification,
-  createNewArticleEmbed,
-  createDeletedArticleEmbed,
-  createPriceChangedEmbed,
-  createCrawlSummaryEmbed,
-} from '@/lib/discord';
 import { eventBroadcaster } from '@/lib/eventBroadcaster';
-import { calculateDynamicTimeout } from '@/lib/timeoutCalculator';
+import { sendDiscordNotification, createCrawlSummaryEmbed } from '@/lib/discord';
 
 const logger = createLogger('CRAWL');
 
@@ -32,214 +17,16 @@ export const dynamic = 'force-dynamic';
 let currentCrawlId: string | null = null;
 let isCurrentlyCrawling: boolean = false;
 
-// 백그라운드에서 크롤링 실행하는 함수 (스케줄 실행용)
-async function executeCrawlInBackground(
-  crawlId: string,
-  complexNosArray: string[],
-  complexNos: string,
-  baseDir: string,
-  dynamicTimeout: number,
-  userId: string,
-  scheduleId?: string | null
-) {
-  const startTime = Date.now();
+/**
+ * NOTE: executeCrawlInBackground, saveCrawlResultsToDB, and sendAlertsForChanges
+ * have been extracted to services/:
+ * - services/crawler-executor.ts
+ * - services/crawl-db-service.ts
+ * - services/alert-service.ts
+ * - services/crawl-workflow.ts (orchestration)
+ */
 
-  try {
-    // Python 크롤러 실행
-    await new Promise<void>((resolve, reject) => {
-      const pythonProcess = spawn('python3', [
-        '-u',  // unbuffered output
-        `${baseDir}/logic/nas_playwright_crawler.py`,
-        complexNos,
-        crawlId
-      ], {
-        cwd: baseDir,
-        env: process.env,
-      });
-
-      let hasOutput = false;
-
-      // stdout 실시간 출력
-      pythonProcess.stdout.on('data', (data) => {
-        const output = data.toString();
-        if (!hasOutput) {
-          console.log('=== Python Crawler Output ===');
-          hasOutput = true;
-        }
-        process.stdout.write(output);
-      });
-
-      // stderr 실시간 출력
-      pythonProcess.stderr.on('data', (data) => {
-        process.stderr.write(data.toString());
-      });
-
-      // 프로세스 종료 처리
-      pythonProcess.on('close', (code) => {
-        if (code === 0) {
-          resolve();
-        } else {
-          reject(new Error(`Python crawler exited with code ${code}`));
-        }
-      });
-
-      // 프로세스 에러 처리
-      pythonProcess.on('error', (error) => {
-        reject(error);
-      });
-
-      // 타임아웃 설정
-      const timeoutId = setTimeout(() => {
-        pythonProcess.kill('SIGTERM');
-        reject(new Error('Crawler timeout'));
-      }, dynamicTimeout);
-
-      // 프로세스 종료 시 타임아웃 클리어
-      pythonProcess.on('close', () => {
-        clearTimeout(timeoutId);
-      });
-    });
-
-    await prisma.crawlHistory.update({
-      where: { id: crawlId },
-      data: {
-        currentStep: 'Crawling completed',
-      },
-    });
-
-    // 크롤링 결과를 DB에 저장
-    logger.info('Saving results to database');
-    const dbResult = await saveCrawlResultsToDB(crawlId, complexNosArray, userId);
-
-    const duration = Date.now() - startTime;
-    const status = dbResult.errors.length > 0 ? 'partial' : 'success';
-
-    // 최종 히스토리 업데이트
-    await prisma.crawlHistory.update({
-      where: { id: crawlId },
-      data: {
-        successCount: dbResult.totalComplexes,
-        errorCount: complexNosArray.length - dbResult.totalComplexes,
-        totalArticles: dbResult.totalArticles,
-        duration: Math.floor(duration / 1000),
-        status,
-        errorMessage: dbResult.errors.length > 0 ? dbResult.errors.join(', ') : null,
-        currentStep: 'Completed',
-      },
-    });
-
-    // 스케줄 정보 업데이트 및 로그 저장
-    if (scheduleId) {
-      await prisma.schedule.update({
-        where: { id: scheduleId },
-        data: {
-          lastRun: new Date(),
-        },
-      }).catch((error) => {
-        logger.error('Failed to update schedule info', { scheduleId, error: error.message });
-      });
-
-      // 스케줄 실행 로그 저장
-      await prisma.scheduleLog.create({
-        data: {
-          scheduleId,
-          status: status === 'success' ? 'success' : 'failed',
-          duration: Math.floor(duration / 1000), // 초 단위
-          articlesCount: dbResult.totalArticles,
-          errorMessage: dbResult.errors.length > 0 ? dbResult.errors.slice(0, 3).join(', ') : null,
-        },
-      }).catch((error) => {
-        logger.error('Failed to save schedule log', { scheduleId, error: error.message });
-      });
-    }
-
-    // 크롤링 완료 알림
-    eventBroadcaster.notifyCrawlComplete(crawlId, dbResult.totalArticles);
-
-    // ✅ 캐시 무효화 (크롤링된 단지 관련 캐시 삭제)
-    await deleteCache('complex:*');
-    await deleteCache('analytics:*');
-    await deleteCache('article:*');
-    console.log('[Cache] Invalidated all complex-related caches');
-
-    logger.info('Background crawl completed', {
-      crawlId,
-      complexes: dbResult.totalComplexes,
-      articles: dbResult.totalArticles,
-      status
-    });
-
-    // 알림 발송
-    await sendAlertsForChanges(complexNosArray).catch((error) => {
-      logger.error('Failed to send alerts', error);
-    });
-
-    // 스케줄 크롤링 완료 알림 (스케줄에서 실행된 경우에만)
-    if (scheduleId) {
-      await sendScheduleCrawlCompleteNotification(scheduleId, dbResult, duration).catch((error) => {
-        logger.error('Failed to send schedule completion notification', error);
-      });
-    }
-
-    // 🔓 백그라운드 크롤링 완료 - 플래그 해제
-    isCurrentlyCrawling = false;
-    logger.info('Background crawl lock released', { crawlId });
-
-  } catch (error: any) {
-    logger.error('Background crawl error', { crawlId, error: error.message });
-
-    const duration = Date.now() - startTime;
-
-    // 에러 히스토리 업데이트
-    await prisma.crawlHistory.update({
-      where: { id: crawlId },
-      data: {
-        duration: Math.floor(duration / 1000),
-        status: 'failed',
-        errorMessage: error.message,
-        currentStep: 'Failed',
-      },
-    }).catch((historyError) => {
-      logger.error('Failed to update error history', historyError);
-    });
-
-    // 스케줄 정보 업데이트 및 실패 로그 저장
-    if (scheduleId) {
-      await prisma.schedule.update({
-        where: { id: scheduleId },
-        data: {
-          lastRun: new Date(),
-        },
-      }).catch((error) => {
-        logger.error('Failed to update schedule info on error', { scheduleId, error: error.message });
-      });
-
-      // 스케줄 실패 로그 저장
-      await prisma.scheduleLog.create({
-        data: {
-          scheduleId,
-          status: 'failed',
-          duration: Math.floor(duration / 1000), // 초 단위
-          articlesCount: 0,
-          errorMessage: error.message,
-        },
-      }).catch((logError) => {
-        logger.error('Failed to save schedule error log', { scheduleId, error: logError.message });
-      });
-    }
-
-    // 🔓 백그라운드 크롤링 실패 - 플래그 해제
-    isCurrentlyCrawling = false;
-    logger.warn('Background crawl lock released due to error', { crawlId });
-
-    // 크롤링 실패 알림
-    eventBroadcaster.notifyCrawlFailed(crawlId, error.message);
-  } finally {
-    currentCrawlId = null;
-  }
-}
-
-// 크롤링 결과를 DB에 저장하는 함수 (Batch Insert 방식)
+// Legacy function retained for sendScheduleCrawlCompleteNotification compatibility
 async function saveCrawlResultsToDB(crawlId: string, complexNos: string[], userId: string) {
   const baseDir = process.env.NODE_ENV === 'production' ? '/app' : process.cwd();
   const crawledDataDir = path.join(baseDir, 'crawled_data');
@@ -568,161 +355,6 @@ async function saveCrawlResultsToDB(crawlId: string, complexNos: string[], userI
   return { totalArticles, totalComplexes, errors };
 }
 
-// 알림 발송 함수 (비동기 최적화)
-async function sendAlertsForChanges(complexNos: string[]) {
-  console.log('🔔 Checking for alerts...');
-
-  // 🚀 성능 최적화: 배치로 단지 정보 조회
-  const complexInfos = await prisma.complex.findMany({
-    where: { complexNo: { in: complexNos } },
-    include: {
-      articles: true, // 매물도 함께 조회 (N+1 쿼리 방지)
-    },
-  });
-
-  const complexMap = new Map(complexInfos.map(c => [c.complexNo, c]));
-
-  for (const complexNo of complexNos) {
-    try {
-      // 1. 현재 매물 데이터 조회 (이미 로드됨)
-      const complexInfo = complexMap.get(complexNo);
-      if (!complexInfo) {
-        console.log(`Complex not found: ${complexNo}`);
-        continue;
-      }
-
-      const currentArticles = complexInfo.articles;
-
-      // 2. 변경사항 감지
-      const changes = await detectArticleChanges(complexNo, currentArticles);
-
-      console.log(`📊 Changes for ${complexInfo.complexName}:`, {
-        new: changes.newArticles.length,
-        deleted: changes.deletedArticles.length,
-        priceChanged: changes.priceChangedArticles.length,
-      });
-
-      // 변경사항이 없으면 스킵
-      if (
-        changes.newArticles.length === 0 &&
-        changes.deletedArticles.length === 0 &&
-        changes.priceChangedArticles.length === 0
-      ) {
-        console.log(`No changes for ${complexInfo.complexName}, skipping alerts`);
-        continue;
-      }
-
-      // 3. 알림 조건에 맞는 변경사항 필터링
-      const alertTargets = await filterChangesForAlerts(complexNo, changes);
-
-      if (alertTargets.length === 0) {
-        console.log(`No active alerts for ${complexInfo.complexName}`);
-        continue;
-      }
-
-      console.log(`📬 Sending alerts to ${alertTargets.length} alert(s)`);
-
-      // 4. 각 알림에 대해 Discord 웹훅 전송
-      for (const target of alertTargets) {
-        if (!target.alert.webhookUrl) {
-          console.log(`No webhook URL for alert: ${target.alert.name}`);
-          continue;
-        }
-
-        try {
-          const embeds: any[] = [];
-
-          // 신규 매물 알림
-          for (const article of target.newArticles) {
-            embeds.push(
-              createNewArticleEmbed(article, complexInfo.complexName, complexNo)
-            );
-          }
-
-          // 삭제된 매물 알림
-          for (const article of target.deletedArticles) {
-            embeds.push(
-              createDeletedArticleEmbed(article, complexInfo.complexName, complexNo)
-            );
-          }
-
-          // 가격 변동 알림
-          for (const { old: oldArticle, new: newArticle } of target.priceChangedArticles) {
-            embeds.push(
-              createPriceChangedEmbed(
-                oldArticle,
-                newArticle,
-                complexInfo.complexName,
-                complexNo
-              )
-            );
-          }
-
-          // 요약 임베드 추가
-          embeds.push(
-            createCrawlSummaryEmbed({
-              complexName: complexInfo.complexName,
-              complexNo,
-              newCount: target.newArticles.length,
-              deletedCount: target.deletedArticles.length,
-              priceChangedCount: target.priceChangedArticles.length,
-              totalArticles: currentArticles.length,
-              duration: 0, // 크롤링 시간은 여기선 불필요
-            })
-          );
-
-          // Discord로 전송 (한 번에 최대 10개 embed)
-          for (let i = 0; i < embeds.length; i += 10) {
-            const batch = embeds.slice(i, i + 10);
-
-            const result = await sendDiscordNotification(target.alert.webhookUrl, {
-              username: '네이버 부동산 크롤러',
-              content:
-                i === 0
-                  ? `🔔 **${target.alert.name}** 알림\n${complexInfo.complexName}에 변경사항이 있습니다!`
-                  : undefined,
-              embeds: batch,
-            });
-
-            // 알림 로그 저장
-            await saveNotificationLog(
-              target.alertId,
-              'webhook',
-              result.success ? 'sent' : 'failed',
-              result.success
-                ? `Sent ${batch.length} notifications`
-                : result.error || 'Unknown error'
-            );
-
-            if (!result.success) {
-              console.error(`Failed to send alert: ${result.error}`);
-            } else {
-              console.log(`✅ Sent ${batch.length} notification(s) for alert: ${target.alert.name}`);
-            }
-
-            // Discord API 속도 제한 방지
-            if (i + 10 < embeds.length) {
-              await new Promise((resolve) => setTimeout(resolve, 1000));
-            }
-          }
-        } catch (error: any) {
-          console.error(`Failed to send alert for ${target.alert.name}:`, error);
-          await saveNotificationLog(
-            target.alertId,
-            'webhook',
-            'failed',
-            error.message || 'Unknown error'
-          );
-        }
-      }
-    } catch (error: any) {
-      console.error(`Failed to process alerts for ${complexNo}:`, error);
-    }
-  }
-
-  console.log('✅ Alert processing completed');
-}
-
 export async function POST(request: NextRequest) {
   const startTime = Date.now();
   let crawlId: string | null = null;
@@ -797,61 +429,38 @@ export async function POST(request: NextRequest) {
 
     const complexNos = complexNosArray.join(',');
 
-    // 1. 크롤링 히스토리 생성 (진행 중 상태)
-    const crawlHistory = await prisma.crawlHistory.create({
-      data: {
-        complexNos: complexNosArray,
-        totalComplexes: complexNosArray.length,
-        successCount: 0,
-        errorCount: 0,
-        totalArticles: 0,
-        duration: 0,
-        initiator,
-        scheduleId,
-        scheduleName,
-        status: 'crawling',
-        currentStep: 'Starting crawler',
-        processedArticles: 0,
-        processedComplexes: 0,
-        userId: currentUser.id, // 크롤링 실행한 사용자 ID
-      },
-    });
-
-    crawlId = crawlHistory.id;
+    // Generate unique crawl ID
+    crawlId = `crawl_${Date.now()}_${Math.random().toString(36).substring(7)}`;
     currentCrawlId = crawlId;
     isCurrentlyCrawling = true; // 🔒 크롤링 시작 플래그 설정
 
     // 🔔 실시간 알림: 크롤링 시작
     eventBroadcaster.notifyCrawlStart(crawlId, complexNosArray.length);
 
-    // 2. Python 크롤러 실행 (crawl_id 전달, -u 플래그로 unbuffered 출력)
-    const baseDir = process.env.NODE_ENV === 'production' ? '/app' : process.cwd();
-    const command = `python3 -u ${baseDir}/logic/nas_playwright_crawler.py "${complexNos}" "${crawlId}"`;
-
-    logger.info('Starting crawler', { crawlId, complexNos: complexNosArray.length });
-
-    // 동적 타임아웃 계산
-    const dynamicTimeout = await calculateDynamicTimeout(complexNosArray.length);
-    logger.info('Dynamic timeout calculated', {
-      seconds: Math.floor(dynamicTimeout / 1000),
-      minutes: Math.floor(dynamicTimeout / 60000)
-    });
-
-    await prisma.crawlHistory.update({
-      where: { id: crawlId },
-      data: {
-        currentStep: `Crawling ${complexNosArray.length} complexes`,
-      },
-    });
+    logger.info('Starting crawler workflow', { crawlId, complexNos: complexNosArray.length });
 
     // 스케줄 실행인 경우: crawlId만 반환하고 백그라운드에서 크롤링 실행
     if (initiator === 'schedule') {
       console.log(`📤 Returning crawlId immediately for schedule execution: ${crawlId}`);
 
+      // Import workflow service
+      const { executeCrawlWorkflow } = await import('@/services/crawl-workflow');
+
       // 백그라운드에서 크롤링 실행 (await 없이)
-      executeCrawlInBackground(crawlId, complexNosArray, complexNos, baseDir, dynamicTimeout, currentUser.id, scheduleId)
+      executeCrawlWorkflow({
+        crawlId,
+        complexNos: complexNosArray,
+        userId: currentUser.id,
+        scheduleId: scheduleId || null,
+      })
+        .then(() => {
+          currentCrawlId = null;
+          isCurrentlyCrawling = false;
+        })
         .catch((error) => {
           logger.error('Background crawl failed', { crawlId, error: error.message });
+          currentCrawlId = null;
+          isCurrentlyCrawling = false;
         });
 
       // 즉시 crawlId 반환
@@ -862,117 +471,32 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Python 크롤러를 spawn으로 실행 (실시간 로그 출력)
-    await new Promise<void>((resolve, reject) => {
-      const pythonProcess = spawn('python3', [
-        '-u',  // unbuffered output
-        `${baseDir}/logic/nas_playwright_crawler.py`,
-        complexNos,
-        crawlId
-      ], {
-        cwd: baseDir,
-        env: process.env,
-      });
+    // Import workflow service
+    const { executeCrawlWorkflow } = await import('@/services/crawl-workflow');
 
-      let hasOutput = false;
-
-      // stdout 실시간 출력
-      pythonProcess.stdout.on('data', (data) => {
-        const output = data.toString();
-        if (!hasOutput) {
-          console.log('=== Python Crawler Output ===');
-          hasOutput = true;
-        }
-        process.stdout.write(output);  // 실시간 출력
-      });
-
-      // stderr 실시간 출력
-      pythonProcess.stderr.on('data', (data) => {
-        const output = data.toString();
-        process.stderr.write(output);  // 실시간 에러 출력
-      });
-
-      // 프로세스 종료 처리
-      pythonProcess.on('close', (code) => {
-        if (code === 0) {
-          resolve();
-        } else {
-          reject(new Error(`Python crawler exited with code ${code}`));
-        }
-      });
-
-      // 프로세스 에러 처리
-      pythonProcess.on('error', (error) => {
-        reject(error);
-      });
-
-      // 타임아웃 설정
-      const timeoutId = setTimeout(() => {
-        pythonProcess.kill('SIGTERM');
-        reject(new Error('Crawler timeout'));
-      }, dynamicTimeout);
-
-      // 프로세스 종료 시 타임아웃 클리어
-      pythonProcess.on('close', () => {
-        clearTimeout(timeoutId);
-      });
-    });
-
-    await prisma.crawlHistory.update({
-      where: { id: crawlId },
-      data: {
-        currentStep: 'Crawling completed',
-      },
-    });
-
-    // 3. 크롤링 결과를 DB에 저장 (Batch Insert)
-    logger.info('Saving results to database');
-    const dbResult = await saveCrawlResultsToDB(crawlId, complexNosArray, currentUser.id);
-
-    const duration = Date.now() - startTime;
-    const status = dbResult.errors.length > 0 ? 'partial' : 'success';
-
-    // 4. 최종 히스토리 업데이트
-    await prisma.crawlHistory.update({
-      where: { id: crawlId },
-      data: {
-        successCount: dbResult.totalComplexes,
-        errorCount: complexNosArray.length - dbResult.totalComplexes,
-        totalArticles: dbResult.totalArticles,
-        duration: Math.floor(duration / 1000), // 초 단위
-        status,
-        errorMessage: dbResult.errors.length > 0 ? dbResult.errors.join(', ') : null,
-        currentStep: 'Completed',
-      },
+    // Execute complete crawl workflow
+    const result = await executeCrawlWorkflow({
+      crawlId,
+      complexNos: complexNosArray,
+      userId: currentUser.id,
+      scheduleId: scheduleId || null,
     });
 
     currentCrawlId = null;
     isCurrentlyCrawling = false; // 🔓 크롤링 완료 플래그 해제
 
-    // 🔔 실시간 알림: 크롤링 완료
-    eventBroadcaster.notifyCrawlComplete(crawlId, dbResult.totalArticles);
-
-    logger.info('Crawl completed and saved to DB', {
-      complexes: dbResult.totalComplexes,
-      articles: dbResult.totalArticles,
-      durationSeconds: Math.floor(duration / 1000),
-      status
-    });
-
-    // 5. 알림 발송 (비동기로 실행하여 응답 지연 방지)
-    sendAlertsForChanges(complexNosArray).catch((error) => {
-      logger.error('Failed to send alerts', error);
-    });
-
     return NextResponse.json({
-      success: true,
-      message: '크롤링이 완료되고 데이터베이스에 저장되었습니다.',
-      crawlId,
+      success: result.success,
+      message: result.success
+        ? '크롤링이 완료되고 데이터베이스에 저장되었습니다.'
+        : '크롤링 중 일부 오류가 발생했습니다.',
+      crawlId: result.crawlId,
       data: {
-        complexes: dbResult.totalComplexes,
-        articles: dbResult.totalArticles,
-        duration: Math.floor(duration / 1000),
-        errors: dbResult.errors,
+        complexes: result.totalComplexes,
+        articles: result.totalArticles,
+        duration: Math.floor(result.duration / 1000),
+        errors: result.errors,
+        status: result.status,
       },
     });
 
