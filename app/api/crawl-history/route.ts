@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAuth, getAccessibleUserIds } from '@/lib/auth-utils';
 import { ApiResponseHelper } from '@/lib/api-response';
+import { createLogger } from '@/lib/logger';
+
+const logger = createLogger('API_CRAWL_HISTORY');
 
 export const dynamic = 'force-dynamic';
 
@@ -19,6 +22,13 @@ export const GET = ApiResponseHelper.handler(async () => {
     },
     orderBy: { createdAt: 'desc' },
     take: 100, // 최근 100개만 조회
+  });
+
+  logger.info('Crawl history fetched', {
+    userId: currentUser.id,
+    role: currentUser.role,
+    count: history.length,
+    accessibleUsers: accessibleUserIds.length
   });
 
   return ApiResponseHelper.success({
