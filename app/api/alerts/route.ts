@@ -7,6 +7,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAuth } from '@/lib/auth-utils';
+import { validateRequest } from '@/lib/validation';
+import { createAlertSchema } from '@/lib/schemas';
 
 export const dynamic = 'force-dynamic';
 
@@ -81,7 +83,11 @@ export async function POST(request: NextRequest) {
     // 사용자 인증 확인
     const currentUser = await requireAuth();
 
-    const body = await request.json();
+    // Zod 스키마로 입력 검증
+    const validation = await validateRequest(request, createAlertSchema);
+    if (!validation.success) {
+      return validation.response;
+    }
 
     const {
       name,
@@ -95,44 +101,22 @@ export async function POST(request: NextRequest) {
       notifyBrowser,
       notifyWebhook,
       webhookUrl,
-    } = body;
-
-    // 필수 필드 검증
-    if (!name || !complexIds || complexIds.length === 0) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Name and at least one complex are required',
-        },
-        { status: 400 }
-      );
-    }
-
-    // 웹훅 알림이 활성화된 경우 URL 필수
-    if (notifyWebhook && !webhookUrl) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Webhook URL is required when webhook notification is enabled',
-        },
-        { status: 400 }
-      );
-    }
+    } = validation.data;
 
     // 알림 생성
     const alert = await prisma.alert.create({
       data: {
         name,
         complexIds,
-        tradeTypes: tradeTypes || [],
-        minPrice: minPrice || null,
-        maxPrice: maxPrice || null,
-        minArea: minArea || null,
-        maxArea: maxArea || null,
-        notifyEmail: notifyEmail || false,
-        notifyBrowser: notifyBrowser || true,
-        notifyWebhook: notifyWebhook || false,
-        webhookUrl: webhookUrl || null,
+        tradeTypes,
+        minPrice,
+        maxPrice,
+        minArea,
+        maxArea,
+        notifyEmail,
+        notifyBrowser,
+        notifyWebhook,
+        webhookUrl,
         isActive: true,
         userId: currentUser.id,
       },

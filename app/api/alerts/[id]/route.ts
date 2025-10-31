@@ -8,6 +8,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from '@/lib/auth-utils';
+import { validateRequest } from '@/lib/validation';
+import { updateAlertSchema } from '@/lib/schemas';
 
 export const dynamic = 'force-dynamic';
 
@@ -91,51 +93,20 @@ export async function PUT(
     // 사용자 인증 확인
     const currentUser = await requireAuth();
 
-    const body = await request.json();
-
-    const {
-      name,
-      complexIds,
-      tradeTypes,
-      minPrice,
-      maxPrice,
-      minArea,
-      maxArea,
-      notifyEmail,
-      notifyBrowser,
-      notifyWebhook,
-      webhookUrl,
-    } = body;
-
-    // 웹훅 알림이 활성화된 경우 URL 필수
-    if (notifyWebhook && !webhookUrl) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Webhook URL is required when webhook notification is enabled',
-        },
-        { status: 400 }
-      );
+    // Zod 스키마로 입력 검증
+    const validation = await validateRequest(request, updateAlertSchema);
+    if (!validation.success) {
+      return validation.response;
     }
+
+    const updateData = validation.data;
 
     const alert = await prisma.alert.update({
       where: {
         id: params.id,
         userId: currentUser.id,
       },
-      data: {
-        name,
-        complexIds,
-        tradeTypes: tradeTypes || [],
-        minPrice: minPrice || null,
-        maxPrice: maxPrice || null,
-        minArea: minArea || null,
-        maxArea: maxArea || null,
-        notifyEmail: notifyEmail || false,
-        notifyBrowser: notifyBrowser || true,
-        notifyWebhook: notifyWebhook || false,
-        webhookUrl: webhookUrl || null,
-      },
+      data: updateData,
     });
 
     return NextResponse.json({
@@ -165,28 +136,13 @@ export async function PATCH(
     // 사용자 인증 확인
     const currentUser = await requireAuth();
 
-    const body = await request.json();
-    const { isActive, complexIds } = body;
-
-    // 업데이트할 데이터 구성
-    const updateData: any = {};
-
-    if (typeof isActive === 'boolean') {
-      updateData.isActive = isActive;
+    // Zod 스키마로 입력 검증 (PATCH는 updateAlertSchema 사용)
+    const validation = await validateRequest(request, updateAlertSchema);
+    if (!validation.success) {
+      return validation.response;
     }
 
-    if (Array.isArray(complexIds)) {
-      if (complexIds.length === 0) {
-        return NextResponse.json(
-          {
-            success: false,
-            error: 'At least one complex is required',
-          },
-          { status: 400 }
-        );
-      }
-      updateData.complexIds = complexIds;
-    }
+    const updateData = validation.data;
 
     // 업데이트할 필드가 없으면 에러
     if (Object.keys(updateData).length === 0) {
