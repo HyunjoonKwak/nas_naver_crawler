@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAuth } from '@/lib/auth-utils';
 import { rateLimit, rateLimitPresets } from '@/lib/rate-limit';
+import { ApiResponseHelper } from '@/lib/api-response';
+import { ApiError, ErrorType } from '@/lib/api-error';
 import { createLogger } from '@/lib/logger';
 import { parsePriceToWonBigInt } from '@/lib/price-utils';
 import fs from 'fs/promises';
@@ -365,12 +367,11 @@ export async function POST(request: NextRequest) {
       logger.warn('Crawl request rejected: Another crawl is already in progress', {
         currentCrawlId,
       });
-      return NextResponse.json(
-        {
-          error: '이미 크롤링이 진행 중입니다. 완료 후 다시 시도해주세요.',
-          currentCrawlId,
-        },
-        { status: 409 } // 409 Conflict
+      throw new ApiError(
+        ErrorType.VALIDATION,
+        '이미 크롤링이 진행 중입니다. 완료 후 다시 시도해주세요.',
+        409,
+        { currentCrawlId }
       );
     }
 
@@ -394,34 +395,25 @@ export async function POST(request: NextRequest) {
     } = body;
 
     // 사용자 인증 확인 (내부 호출이 아닌 경우)
-    let currentUser;
-    if (isInternalCall) {
-      // 내부 호출: body에서 전달된 userId 사용
-      if (!requestUserId) {
-        return NextResponse.json(
-          { error: 'Internal call requires userId' },
-          { status: 400 }
-        );
-      }
-      const user = await prisma.user.findUnique({ where: { id: requestUserId } });
-      if (!user) {
-        return NextResponse.json(
-          { error: 'User not found' },
-          { status: 404 }
-        );
-      }
-      currentUser = { id: user.id, email: user.email, name: user.name, role: user.role };
-    } else {
-      // 외부 호출: 세션 인증 필요
-      currentUser = await requireAuth();
+  let currentUser;
+  if (isInternalCall) {
+    // 내부 호출: body에서 전달된 userId 사용
+    if (!requestUserId) {
+      throw new ApiError(ErrorType.VALIDATION, 'Internal call requires userId', 400);
     }
+    const user = await prisma.user.findUnique({ where: { id: requestUserId } });
+    if (!user) {
+      throw new ApiError(ErrorType.NOT_FOUND, 'User not found', 404);
+    }
+    currentUser = { id: user.id, email: user.email, name: user.name, role: user.role };
+  } else {
+    // 외부 호출: 세션 인증 필요
+    currentUser = await requireAuth();
+  }
 
-    if (!complexNumbers || complexNumbers.length === 0) {
-      return NextResponse.json(
-        { error: '단지 번호를 입력해주세요.' },
-        { status: 400 }
-      );
-    }
+  if (!complexNumbers || complexNumbers.length === 0) {
+    throw new ApiError(ErrorType.VALIDATION, '단지 번호를 입력해주세요.', 400);
+  }
 
     const complexNosArray = Array.isArray(complexNumbers)
       ? complexNumbers
@@ -527,6 +519,19 @@ export async function POST(request: NextRequest) {
     currentCrawlId = null;
     isCurrentlyCrawling = false; // 🔓 에러 발생 시에도 플래그 해제
 
+    // ApiError인 경우 해당 상태 코드와 메시지 사용
+    if (error instanceof ApiError) {
+      return NextResponse.json(
+        {
+          error: error.message,
+          details: error.details,
+          crawlId,
+        },
+        { status: error.statusCode }
+      );
+    }
+
+    // 일반 에러인 경우 500 반환
     return NextResponse.json(
       {
         error: '크롤링 중 오류가 발생했습니다.',
@@ -624,11 +629,12 @@ async function sendScheduleCrawlCompleteNotification(
   }
 }
 
-export async function GET() {
-  return NextResponse.json({
+export const GET = ApiResponseHelper.handler(async () => {
+  logger.info('GET /api/crawl called (method not allowed)');
+  return ApiResponseHelper.success({
     message: 'POST 요청을 사용해주세요.',
     example: {
       complexNumbers: ['22065', '12345']
     }
   });
-}
+});

@@ -2,19 +2,20 @@ import { NextResponse } from 'next/server';
 import { promises as fs } from 'fs';
 import path from 'path';
 import { requireAuth } from '@/lib/auth-utils';
+import { ApiResponseHelper } from '@/lib/api-response';
+import { ApiError, ErrorType } from '@/lib/api-error';
+import { createLogger } from '@/lib/logger';
+
+const logger = createLogger('CSV');
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(request: Request) {
-  try {
-    // ADMIN만 파일 뷰어 접근 가능
-    const currentUser = await requireAuth();
-    if (currentUser.role !== 'ADMIN') {
-      return NextResponse.json(
-        { error: '관리자만 파일 뷰어에 접근할 수 있습니다.' },
-        { status: 403 }
-      );
-    }
+export const GET = ApiResponseHelper.handler(async (request: Request) => {
+  // ADMIN만 파일 뷰어 접근 가능
+  const currentUser = await requireAuth();
+  if (currentUser.role !== 'ADMIN') {
+    throw new ApiError(ErrorType.AUTHORIZATION, '관리자만 파일 뷰어에 접근할 수 있습니다.', 403);
+  }
 
     const { searchParams } = new URL(request.url);
     const filename = searchParams.get('filename');
@@ -190,10 +191,7 @@ export async function GET(request: Request) {
           });
         }
       } catch (error: any) {
-        return NextResponse.json(
-          { error: '파일을 찾을 수 없습니다.' },
-          { status: 404 }
-        );
+        throw new ApiError(ErrorType.NOT_FOUND, '파일을 찾을 수 없습니다.', 404);
       }
     }
 
@@ -261,54 +259,41 @@ export async function GET(request: Request) {
       new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
 
-    return NextResponse.json({ csvFiles: csvFileInfos, jsonFiles: jsonFileInfos });
-  } catch (error: any) {
-    console.error('Files read error:', error);
-    return NextResponse.json(
-      { error: '파일을 읽는 중 오류가 발생했습니다.', details: error.message },
-      { status: 500 }
-    );
+  logger.info('CSV/JSON files retrieved', {
+    csvCount: csvFileInfos.length,
+    jsonCount: jsonFileInfos.length,
+    userId: currentUser.id
+  });
+
+  return NextResponse.json({ csvFiles: csvFileInfos, jsonFiles: jsonFileInfos });
+});
+
+export const DELETE = ApiResponseHelper.handler(async (request: Request) => {
+  // ADMIN만 파일 삭제 가능
+  const currentUser = await requireAuth();
+  if (currentUser.role !== 'ADMIN') {
+    throw new ApiError(ErrorType.AUTHORIZATION, '관리자만 파일을 삭제할 수 있습니다.', 403);
   }
-}
 
-export async function DELETE(request: Request) {
-  try {
-    // ADMIN만 파일 삭제 가능
-    const currentUser = await requireAuth();
-    if (currentUser.role !== 'ADMIN') {
-      return NextResponse.json(
-        { error: '관리자만 파일을 삭제할 수 있습니다.' },
-        { status: 403 }
-      );
-    }
+  const { filename } = await request.json();
 
-    const { filename } = await request.json();
-
-    if (!filename || (!filename.endsWith('.csv') && !filename.endsWith('.json'))) {
-      return NextResponse.json(
-        { error: '유효하지 않은 파일명입니다.' },
-        { status: 400 }
-      );
-    }
-
-    if (filename === 'favorites.json') {
-      return NextResponse.json(
-        { error: '선호단지 파일은 삭제할 수 없습니다.' },
-        { status: 403 }
-      );
-    }
-
-    const baseDir = process.env.NODE_ENV === 'production' ? '/app' : process.cwd();
-    const filePath = path.join(baseDir, 'crawled_data', filename);
-
-    await fs.unlink(filePath);
-
-    return NextResponse.json({ success: true, message: '파일이 삭제되었습니다.' });
-  } catch (error: any) {
-    console.error('File delete error:', error);
-    return NextResponse.json(
-      { error: '파일 삭제 중 오류가 발생했습니다.', details: error.message },
-      { status: 500 }
-    );
+  if (!filename || (!filename.endsWith('.csv') && !filename.endsWith('.json'))) {
+    throw new ApiError(ErrorType.VALIDATION, '유효하지 않은 파일명입니다.', 400);
   }
-}
+
+  if (filename === 'favorites.json') {
+    throw new ApiError(ErrorType.AUTHORIZATION, '선호단지 파일은 삭제할 수 없습니다.', 403);
+  }
+
+  const baseDir = process.env.NODE_ENV === 'production' ? '/app' : process.cwd();
+  const filePath = path.join(baseDir, 'crawled_data', filename);
+
+  await fs.unlink(filePath);
+
+  logger.info('File deleted', { filename, userId: currentUser.id });
+
+  return ApiResponseHelper.success(
+    { success: true, message: '파일이 삭제되었습니다.' },
+    '파일이 삭제되었습니다.'
+  );
+});
