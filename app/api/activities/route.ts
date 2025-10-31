@@ -1,21 +1,25 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { getServerSession } from 'next-auth';
 import type { Session } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { ApiResponseHelper } from '@/lib/api-response';
+import { ApiError, ErrorType } from '@/lib/api-error';
+import { createLogger } from '@/lib/logger';
+
+const logger = createLogger('ACTIVITIES');
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(request: NextRequest) {
-  try {
-    const session = await getServerSession(authOptions) as Session | null;
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+export const GET = ApiResponseHelper.handler(async (request: NextRequest) => {
+  const session = await getServerSession(authOptions) as Session | null;
+  if (!session?.user) {
+    throw new ApiError(ErrorType.AUTHENTICATION, 'Unauthorized', 401);
+  }
 
-    const searchParams = request.nextUrl.searchParams;
-    const limit = parseInt(searchParams.get('limit') || '10');
-    const userId = (session.user as any).id;
+  const searchParams = request.nextUrl.searchParams;
+  const limit = parseInt(searchParams.get('limit') || '10');
+  const userId = (session.user as any).id;
 
     // 최근 활동 조합: 크롤링 히스토리, 즐겨찾기 추가/삭제
     const activities = [];
@@ -65,17 +69,12 @@ export async function GET(request: NextRequest) {
       }))
     );
 
-    // 타임스탬프로 정렬하고 limit 적용
-    const sortedActivities = activities
-      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-      .slice(0, limit);
+  // 타임스탬프로 정렬하고 limit 적용
+  const sortedActivities = activities
+    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+    .slice(0, limit);
 
-    return NextResponse.json({ activities: sortedActivities });
-  } catch (error: any) {
-    console.error('Failed to fetch activities:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch activities', activities: [] },
-      { status: 500 }
-    );
-  }
-}
+  logger.info('Activities fetched', { userId, count: sortedActivities.length });
+
+  return ApiResponseHelper.success({ activities: sortedActivities });
+});
