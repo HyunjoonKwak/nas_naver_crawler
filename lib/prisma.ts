@@ -33,11 +33,17 @@ if (process.env.SKIP_ENV_VALIDATION !== 'true') {
   });
 }
 
-// Graceful shutdown
+// Graceful shutdown (중복 등록 방지)
 if (typeof window === 'undefined') {
-  process.on('beforeExit', async () => {
+  // 기존 리스너 제거 후 등록 (메모리 누수 방지)
+  const cleanupHandler = async () => {
     await prisma.$disconnect();
-  });
+  };
+
+  // beforeExit 리스너를 한 번만 등록 (중복 방지)
+  if (!globalForPrisma.prisma) {
+    process.on('beforeExit', cleanupHandler);
+  }
 }
 
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma

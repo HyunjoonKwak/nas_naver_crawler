@@ -94,14 +94,26 @@ class NASNaverRealEstateCrawler:
                     database_url = database_url.replace('localhost', 'db').replace('127.0.0.1', 'db')
                     print(f"[DB] Docker 환경 감지 - 호스트를 'db'로 변경")
 
-            # psycopg2는 schema 파라미터를 지원하지 않으므로 제거
-            if 'schema=' in database_url:
+            # psycopg2는 Prisma 전용 파라미터를 지원하지 않으므로 제거
+            if '?' in database_url:
                 from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
                 parsed = urlparse(database_url)
                 # 쿼리 파라미터 파싱
                 query_params = parse_qs(parsed.query)
-                # schema 파라미터 제거
-                query_params.pop('schema', None)
+
+                # psycopg2가 인식하지 못하는 Prisma 전용 파라미터 제거
+                prisma_only_params = [
+                    'schema',           # Prisma schema
+                    'connection_limit', # Prisma connection pool
+                    'pool_timeout',     # Prisma pool timeout
+                    'connect_timeout'   # Prisma connect timeout
+                ]
+                removed_params = []
+                for param in prisma_only_params:
+                    if param in query_params:
+                        query_params.pop(param)
+                        removed_params.append(param)
+
                 # 새로운 쿼리 문자열 생성
                 new_query = urlencode(query_params, doseq=True)
                 # URL 재조립
@@ -113,7 +125,11 @@ class NASNaverRealEstateCrawler:
                     new_query,
                     parsed.fragment
                 ))
-                print(f"[DB] schema 파라미터 제거 (psycopg2 호환)")
+
+                if removed_params:
+                    print(f"[DB] Prisma 전용 파라미터 제거 (psycopg2 호환): {', '.join(removed_params)}")
+                else:
+                    print(f"[DB] URL 파싱 완료 (제거할 파라미터 없음)")
 
             self.db_conn = psycopg2.connect(database_url)
             print(f"[DB] PostgreSQL 연결 성공")

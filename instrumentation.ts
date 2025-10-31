@@ -12,6 +12,11 @@ export async function register() {
 
   // 서버 환경에서만 실행
   if (process.env.NEXT_RUNTIME === 'nodejs') {
+    // EventEmitter 메모리 누수 방지: MaxListeners 증가
+    // SSE, 크롤러, Prisma 등 여러 모듈에서 beforeExit 리스너를 등록하므로
+    // 기본값 10개로는 부족할 수 있음
+    process.setMaxListeners(20);
+    console.log('⚙️  EventEmitter MaxListeners set to 20');
     const { loadAllSchedules } = await import('@/lib/scheduler');
 
     console.log('🚀 Server starting - Initializing schedulers...');
