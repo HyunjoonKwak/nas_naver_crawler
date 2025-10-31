@@ -7,20 +7,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAuth } from '@/lib/auth-utils';
+import { formatPriceFromWon } from '@/lib/price-utils';
 
 export const dynamic = 'force-dynamic';
-
-// ✅ 추가: 가격 포맷팅 헬퍼 함수
-function formatPriceFromWon(won: bigint | number | null): string {
-  if (!won) return '-';
-  const wonNum = typeof won === 'bigint' ? Number(won) : won;
-  const eok = Math.floor(wonNum / 100000000);
-  const man = Math.floor((wonNum % 100000000) / 10000);
-  
-  if (eok > 0 && man > 0) return `${eok}억 ${man.toLocaleString()}`;
-  if (eok > 0) return `${eok}억`;
-  return `${man.toLocaleString()}`;
-}
 
 export async function GET(request: NextRequest) {
   try {

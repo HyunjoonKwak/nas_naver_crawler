@@ -1,40 +1,15 @@
 #!/usr/bin/env ts-node
 /**
  * 기존 매물 데이터의 문자열 가격을 숫자 컬럼으로 마이그레이션
- * 
+ *
  * 실행 방법:
  * npx ts-node scripts/migrate-existing-prices.ts
  */
 
 import { PrismaClient } from '@prisma/client';
+import { parsePriceToWonBigInt } from '../lib/price-utils';
 
 const prisma = new PrismaClient();
-
-/**
- * 가격 문자열을 원 단위 BigInt로 변환
- * 예: "7억 6,000" → 760000000n
- */
-function parsePriceToWon(priceStr: string): bigint | null {
-  if (!priceStr || priceStr === '-') return null;
-  
-  const cleanStr = priceStr.replace(/\s+/g, '');
-  const eokMatch = cleanStr.match(/(\d+)억/);
-  const manMatch = cleanStr.match(/억?([\d,]+)/);
-  
-  const eok = eokMatch ? parseInt(eokMatch[1]) : 0;
-  let man = 0;
-  
-  if (manMatch) {
-    man = parseInt(manMatch[1].replace(/,/g, ''));
-  } else {
-    const onlyNumber = cleanStr.match(/^([\d,]+)$/);
-    if (onlyNumber) {
-      man = parseInt(onlyNumber[1].replace(/,/g, ''));
-    }
-  }
-  
-  return BigInt(eok * 100000000 + man * 10000);
-}
 
 async function migratePrices() {
   console.log('🔄 Starting price migration...\n');
@@ -88,8 +63,8 @@ async function migratePrices() {
       try {
         await prisma.$transaction(
           articles.map(article => {
-            const dealWon = parsePriceToWon(article.dealOrWarrantPrc);
-            const rentWon = article.rentPrc ? parsePriceToWon(article.rentPrc) : null;
+            const dealWon = parsePriceToWonBigInt(article.dealOrWarrantPrc);
+            const rentWon = article.rentPrc ? parsePriceToWonBigInt(article.rentPrc) : null;
             
             return prisma.article.update({
               where: { id: article.id },

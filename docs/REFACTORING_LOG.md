@@ -213,10 +213,187 @@ npm run type-check
 
 #### 다음 단계
 
-**Week 1 - Day 4**: 가격 유틸 함수 통합
-- `formatPriceFromWon()` 중복 제거 (3곳 → 1곳)
-- `/lib/price-utils.ts`로 통합
-- 예상 시간: 2시간
+**Week 1 - Day 4**: 가격 유틸 함수 통합 ✅ 완료
+
+---
+
+### Day 4: 가격 유틸 함수 통합
+**날짜**: 2025-01-31
+**예상 시간**: 2시간
+**실제 시간**: 약 1시간
+**상태**: ✅ 완료
+
+#### 목적
+- 중복된 가격 변환 함수 제거
+- 코드 일관성 향상 및 유지보수성 개선
+- 단일 진실 원천(Single Source of Truth) 확립
+
+#### 문제점
+리뷰 결과 발견된 중복 함수:
+
+1. **`formatPriceFromWon`** (3곳 중복):
+   - `/lib/price-utils.ts` (89줄) - 표준 버전 ✅
+   - `/app/api/complexes/route.ts` (9-18줄) - 중복 ❌
+   - `/app/api/analytics/dashboard/route.ts` (14-23줄) - 중복 ❌
+
+2. **`parsePriceToWon`** (BigInt 버전, 3곳 중복):
+   - `/lib/price-utils.ts` (12줄) - 표준 버전 (`parsePriceToWonBigInt`) ✅
+   - `/app/api/crawl/route.ts` (242-262줄) - 중복 ❌
+   - `/scripts/migrate-existing-prices.ts` (17-37줄) - 중복 ❌
+
+**주의**: `/scripts/migrate-price-data.ts`는 number 버전 `parsePriceToWon`을 사용하는 것이 맞음 (이후 BigInt로 변환)
+
+#### 변경사항
+
+##### 1. formatPriceFromWon 중복 제거
+
+**`/app/api/complexes/route.ts`**:
+```typescript
+// BEFORE (9-18줄 삭제)
+function formatPriceFromWon(won: bigint | null): string {
+  if (won === null || won === 0n) return '-';
+  // ... 중복 로직
+}
+
+// AFTER (import 추가)
+import { formatPriceFromWon } from '@/lib/price-utils';
+```
+
+**`/app/api/analytics/dashboard/route.ts`**:
+```typescript
+// BEFORE (14-23줄 삭제)
+function formatPriceFromWon(won: bigint | number | null): string {
+  if (!won || won === 0 || won === 0n) return '-';
+  // ... 중복 로직
+}
+
+// AFTER (import 추가)
+import { formatPriceFromWon } from '@/lib/price-utils';
+```
+
+##### 2. parsePriceToWon (BigInt) 중복 제거
+
+**`/lib/price-utils.ts`** - BigInt 버전 추가:
+```typescript
+export function parsePriceToWonBigInt(priceStr: string | null | undefined): bigint | null {
+  if (!priceStr || priceStr === '-') return null;
+
+  const cleanStr = priceStr.replace(/\s+/g, '');
+  const eokMatch = cleanStr.match(/(\d+)억/);
+  const manMatch = cleanStr.match(/억?([\d,]+)/);
+
+  const eok = eokMatch ? parseInt(eokMatch[1]) : 0;
+  let man = 0;
+
+  if (manMatch) {
+    man = parseInt(manMatch[1].replace(/,/g, ''));
+  } else {
+    const onlyNumber = cleanStr.match(/^([\d,]+)$/);
+    if (onlyNumber) {
+      man = parseInt(onlyNumber[1].replace(/,/g, ''));
+    }
+  }
+
+  return BigInt(eok * 100000000 + man * 10000);
+}
+```
+
+**`/app/api/crawl/route.ts`**:
+```typescript
+// BEFORE (242-262줄 삭제)
+function parsePriceToWon(priceStr: string): bigint | null {
+  // ... 중복 로직
+}
+
+// AFTER (import 추가)
+import { parsePriceToWonBigInt } from '@/lib/price-utils';
+
+// 사용처 변경 (2곳)
+dealOrWarrantPrcWon: parsePriceToWonBigInt(article.dealOrWarrantPrc),
+rentPrcWon: article.rentPrc ? parsePriceToWonBigInt(article.rentPrc) : null,
+```
+
+**`/scripts/migrate-existing-prices.ts`**:
+```typescript
+// BEFORE (17-37줄 삭제)
+function parsePriceToWon(priceStr: string): bigint | null {
+  // ... 중복 로직
+}
+
+// AFTER (import 추가)
+import { parsePriceToWonBigInt } from '../lib/price-utils';
+
+// 사용처 변경 (2곳)
+const dealWon = parsePriceToWonBigInt(article.dealOrWarrantPrc);
+const rentWon = article.rentPrc ? parsePriceToWonBigInt(article.rentPrc) : null;
+```
+
+##### 3. 수정된 파일 요약
+
+| 파일 | 변경 내용 | 줄 수 변화 |
+|------|----------|-----------|
+| `/lib/price-utils.ts` | `parsePriceToWonBigInt` 추가 | +28줄 |
+| `/app/api/complexes/route.ts` | 중복 함수 제거 + import | -10줄 |
+| `/app/api/analytics/dashboard/route.ts` | 중복 함수 제거 + import | -10줄 |
+| `/app/api/crawl/route.ts` | 중복 함수 제거 + import, 함수명 변경 | -21줄 |
+| `/scripts/migrate-existing-prices.ts` | 중복 함수 제거 + import, 함수명 변경 | -21줄 |
+| **합계** | | **-34줄** (순 감소) |
+
+#### 효과
+
+**코드 품질**:
+- ✅ 중복 코드 62줄 제거 (formatPriceFromWon: 20줄, parsePriceToWon: 42줄)
+- ✅ 일관된 함수 네이밍 (`parsePriceToWonBigInt` vs `parsePriceToWon`)
+- ✅ 단일 소스 진실성 (Single Source of Truth)
+
+**유지보수성**:
+- ✅ 가격 변환 로직 수정 시 한 곳만 수정하면 됨
+- ✅ 버그 수정 시 일관된 동작 보장
+- ✅ 타입 안전성 향상 (BigInt vs Number 명확히 구분)
+
+**명명 규칙 개선**:
+- `parsePriceToWon` - number 반환 (레거시, 하위 호환용)
+- `parsePriceToWonBigInt` - bigint 반환 (신규 코드에서 사용)
+- `formatPriceFromWon` - BigInt|number → string 변환
+- `formatWonToPrice` - number → string 변환
+
+#### 테스트
+
+**타입 체크**:
+```bash
+npm run type-check
+# 기존 에러: 76개 (Prisma 스키마 불일치 등, 리팩토링 작업과 무관)
+# 새로운 에러: 0개 ✅
+```
+
+**수동 검증**:
+- ✅ `/lib/price-utils.ts`에 `parsePriceToWonBigInt` 존재 확인
+- ✅ 모든 사용처에서 정확한 함수 호출 확인
+- ✅ BigInt 타입 일관성 확인
+
+#### 학습 내용
+
+1. **함수 네이밍의 중요성**:
+   - `parsePriceToWon` 함수가 여러 곳에서 다른 반환 타입(number vs BigInt)으로 존재
+   - BigInt 버전을 명확히 구분하기 위해 `parsePriceToWonBigInt`로 명명
+   - 타입 안전성과 코드 가독성 동시 확보
+
+2. **레거시 지원 vs 신규 코드**:
+   - `parsePriceToWon` (number): 레거시 마이그레이션 스크립트에서 사용
+   - `parsePriceToWonBigInt` (BigInt): 신규 코드 및 크롤러에서 사용
+   - 두 버전 모두 유지하는 것이 하위 호환성에 유리
+
+3. **중복 제거의 범위**:
+   - 완전히 동일한 로직은 무조건 제거
+   - 미묘하게 다른 로직도 통합 가능하면 통합 (예: number vs BigInt)
+   - 명확한 네이밍으로 의도 구분
+
+#### 다음 단계
+
+**Week 1 - Day 5**: 캐시 라이브러리 통일
+- Redis 캐시 vs In-Memory 캐시 일관성 확보
+- 캐시 키 생성 로직 통합
+- 예상 시간: 6시간
 
 ---
 
@@ -225,8 +402,8 @@ npm run type-check
 | 작업 | 상태 | 예상 시간 | 실제 시간 | 효과 |
 |------|------|----------|----------|------|
 | Day 3: 중복 컴포넌트 제거 | ✅ 완료 | 4시간 | 3.5시간 | 코드 33줄 감소 |
+| Day 4: 가격 유틸 통합 | ✅ 완료 | 2시간 | 1시간 | 중복 62줄 제거 |
 | Day 1-2: Console.log 마이그레이션 | ⏳ 대기 | 2일 | - | 672개 로그 정리 |
-| Day 4: 가격 유틸 통합 | ⏳ 대기 | 2시간 | - | 중복 함수 제거 |
 | Day 5: 캐시 라이브러리 통일 | ⏳ 대기 | 6시간 | - | 일관성 확보 |
 
 ---

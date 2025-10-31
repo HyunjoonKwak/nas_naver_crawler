@@ -5,6 +5,7 @@ import { requireAuth } from '@/lib/auth-utils';
 import { rateLimit, rateLimitPresets } from '@/lib/rate-limit';
 import { createLogger } from '@/lib/logger';
 import { deleteCache } from '@/lib/redis-cache';
+import { parsePriceToWonBigInt } from '@/lib/price-utils';
 import fs from 'fs/promises';
 import path from 'path';
 import {
@@ -236,29 +237,6 @@ async function executeCrawlInBackground(
   } finally {
     currentCrawlId = null;
   }
-}
-
-// ✅ 추가: 가격 문자열을 BigInt로 변환하는 헬퍼 함수
-function parsePriceToWon(priceStr: string): bigint | null {
-  if (!priceStr || priceStr === '-') return null;
-  
-  const cleanStr = priceStr.replace(/\s+/g, '');
-  const eokMatch = cleanStr.match(/(\d+)억/);
-  const manMatch = cleanStr.match(/억?([\d,]+)/);
-  
-  const eok = eokMatch ? parseInt(eokMatch[1]) : 0;
-  let man = 0;
-  
-  if (manMatch) {
-    man = parseInt(manMatch[1].replace(/,/g, ''));
-  } else {
-    const onlyNumber = cleanStr.match(/^([\d,]+)$/);
-    if (onlyNumber) {
-      man = parseInt(onlyNumber[1].replace(/,/g, ''));
-    }
-  }
-  
-  return BigInt(eok * 100000000 + man * 10000);
 }
 
 // 크롤링 결과를 DB에 저장하는 함수 (Batch Insert 방식)
@@ -507,8 +485,8 @@ async function saveCrawlResultsToDB(crawlId: string, complexNos: string[], userI
           dealOrWarrantPrc: article.dealOrWarrantPrc,
           rentPrc: article.rentPrc,
           // ✅ 추가: 숫자 가격 컬럼 (성능 최적화용)
-          dealOrWarrantPrcWon: parsePriceToWon(article.dealOrWarrantPrc),
-          rentPrcWon: article.rentPrc ? parsePriceToWon(article.rentPrc) : null,
+          dealOrWarrantPrcWon: parsePriceToWonBigInt(article.dealOrWarrantPrc),
+          rentPrcWon: article.rentPrc ? parsePriceToWonBigInt(article.rentPrc) : null,
           area1: parseFloat(article.area1) || 0,
           area2: article.area2 ? parseFloat(article.area2) : null,
           floorInfo: article.floorInfo,
