@@ -6,10 +6,36 @@
  */
 
 /**
+ * 가격 문자열을 BigInt로 변환
+ * 예: "3억 5,000" → 350000000n (원 단위)
+ */
+export function parsePriceToWonBigInt(priceStr: string | null | undefined): bigint | null {
+  if (!priceStr || priceStr === '-') return null;
+
+  const cleanStr = priceStr.replace(/\s+/g, '');
+  const eokMatch = cleanStr.match(/(\d+)억/);
+  const manMatch = cleanStr.match(/억?([\d,]+)/);
+
+  const eok = eokMatch ? parseInt(eokMatch[1]) : 0;
+  let man = 0;
+
+  if (manMatch) {
+    man = parseInt(manMatch[1].replace(/,/g, ''));
+  } else {
+    const onlyNumber = cleanStr.match(/^([\d,]+)$/);
+    if (onlyNumber) {
+      man = parseInt(onlyNumber[1].replace(/,/g, ''));
+    }
+  }
+
+  return BigInt(eok * 100000000 + man * 10000);
+}
+
+/**
  * 가격 문자열을 숫자로 변환 (레거시)
  * 예: "3억 5,000" → 350000000 (원 단위)
- * 
- * @deprecated 새 코드는 parsePriceToWon (BigInt) 사용 권장
+ *
+ * @deprecated 새 코드는 parsePriceToWonBigInt 사용 권장
  */
 export function parsePriceToWon(priceStr: string | null | undefined): number {
   if (!priceStr || priceStr === '-') return 0;
