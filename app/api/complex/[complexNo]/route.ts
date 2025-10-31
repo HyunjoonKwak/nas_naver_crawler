@@ -6,50 +6,50 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAuth } from '@/lib/auth-utils';
+import { ApiResponseHelper } from '@/lib/api-response';
+import { ApiError, ErrorType } from '@/lib/api-error';
+import { createLogger } from '@/lib/logger';
 import { z } from 'zod';
+
+const logger = createLogger('COMPLEX_DETAIL');
 
 const updateComplexSchema = z.object({
   realPriceAptName: z.string().optional().nullable(),
 });
 
-export async function PATCH(
+export const PATCH = ApiResponseHelper.handler(async (
   request: NextRequest,
   { params }: { params: { complexNo: string } }
-) {
-  try {
-    const currentUser = await requireAuth();
-    const { complexNo } = params;
+) => {
+  const currentUser = await requireAuth();
+  const { complexNo } = params;
 
-    // 단지 조회 및 권한 확인
-    const complex = await prisma.complex.findUnique({
-      where: { complexNo },
-    });
+  // 단지 조회 및 권한 확인
+  const complex = await prisma.complex.findUnique({
+    where: { complexNo },
+  });
 
-    if (!complex) {
-      return NextResponse.json(
-        { error: '단지를 찾을 수 없습니다.' },
-        { status: 404 }
-      );
-    }
+  if (!complex) {
+    throw new ApiError(ErrorType.NOT_FOUND, '단지를 찾을 수 없습니다.', 404);
+  }
 
-    // 권한 확인: 본인이 생성한 단지만 수정 가능
-    if (complex.userId !== currentUser.id) {
-      return NextResponse.json(
-        { error: '본인이 생성한 단지만 수정할 수 있습니다.' },
-        { status: 403 }
-      );
-    }
+  // 권한 확인: 본인이 생성한 단지만 수정 가능
+  if (complex.userId !== currentUser.id) {
+    throw new ApiError(ErrorType.AUTHORIZATION, '본인이 생성한 단지만 수정할 수 있습니다.', 403);
+  }
 
-    // 요청 본문 검증
-    const body = await request.json();
-    const validationResult = updateComplexSchema.safeParse(body);
+  // 요청 본문 검증
+  const body = await request.json();
+  const validationResult = updateComplexSchema.safeParse(body);
 
-    if (!validationResult.success) {
-      return NextResponse.json(
-        { error: '잘못된 요청 형식입니다.', details: validationResult.error.errors },
-        { status: 400 }
-      );
-    }
+  if (!validationResult.success) {
+    throw new ApiError(
+      ErrorType.VALIDATION,
+      '잘못된 요청 형식입니다.',
+      400,
+      validationResult.error.errors
+    );
+  }
 
     const { realPriceAptName } = validationResult.data;
 
@@ -66,23 +66,16 @@ export async function PATCH(
       },
     });
 
-    console.log('[API_COMPLEX_UPDATE] 단지 정보 업데이트:', {
-      complexNo,
-      complexName: complex.complexName,
-      realPriceAptName: updatedComplex.realPriceAptName,
-      userId: currentUser.id,
-    });
+  logger.info('Complex info updated', {
+    complexNo,
+    complexName: complex.complexName,
+    realPriceAptName: updatedComplex.realPriceAptName,
+    userId: currentUser.id,
+  });
 
-    return NextResponse.json({
-      success: true,
-      message: '단지 정보가 업데이트되었습니다.',
-      complex: updatedComplex,
-    });
-  } catch (error: any) {
-    console.error('[API_COMPLEX_UPDATE] PATCH error:', error);
-    return NextResponse.json(
-      { error: '단지 정보 업데이트 중 오류가 발생했습니다.', details: error.message },
-      { status: 500 }
-    );
-  }
-}
+  return ApiResponseHelper.success({
+    success: true,
+    message: '단지 정보가 업데이트되었습니다.',
+    complex: updatedComplex,
+  }, '단지 정보가 업데이트되었습니다.');
+});

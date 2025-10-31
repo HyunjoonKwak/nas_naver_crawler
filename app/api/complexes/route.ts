@@ -3,37 +3,40 @@ import { prisma } from '@/lib/prisma';
 import { requireAuth, getComplexWhereCondition } from '@/lib/auth-utils';
 import { getCached, CacheKeys, CacheTTL } from '@/lib/redis-cache';
 import { formatPriceFromWon } from '@/lib/price-utils';
+import { ApiResponseHelper } from '@/lib/api-response';
+import { ApiError, ErrorType } from '@/lib/api-error';
+import { createLogger } from '@/lib/logger';
+
+const logger = createLogger('COMPLEXES');
 
 export const dynamic = 'force-dynamic';
 
 // 단지 목록 조회 및 검색
-export async function GET(request: NextRequest) {
-  try {
-    // 사용자 인증 확인
-    const currentUser = await requireAuth();
+export const GET = ApiResponseHelper.handler(async (request: NextRequest) => {
+  // 사용자 인증 확인
+  const currentUser = await requireAuth();
 
-    const { searchParams } = new URL(request.url);
-    
-    // ✅ 캐싱 적용 (5분 캐시) - 데이터만 캐싱, Response는 항상 새로 생성
-    const cacheKey = CacheKeys.complex.list(currentUser.id, searchParams.toString());
+  const { searchParams } = new URL(request.url);
 
-    const data = await getCached(
-      cacheKey,
-      CacheTTL.medium,
-      async () => {
-        return await fetchComplexListData(currentUser, searchParams);
-      }
-    );
+  // ✅ 캐싱 적용 (5분 캐시) - 데이터만 캐싱, Response는 항상 새로 생성
+  const cacheKey = CacheKeys.complex.list(currentUser.id, searchParams.toString());
 
-    return NextResponse.json(data);
-  } catch (error: any) {
-    console.error('Complexes fetch error:', error);
-    return NextResponse.json(
-      { error: '단지 조회 중 오류가 발생했습니다.', details: error.message },
-      { status: 500 }
-    );
-  }
-}
+  const data = await getCached(
+    cacheKey,
+    CacheTTL.medium,
+    async () => {
+      return await fetchComplexListData(currentUser, searchParams);
+    }
+  );
+
+  logger.info('Complex list fetched', {
+    userId: currentUser.id,
+    count: data.complexes?.length || 0,
+    search: searchParams.get('search')
+  });
+
+  return NextResponse.json(data);
+});
 
 // ✅ 리팩토링: 캐싱을 위해 로직 분리 (데이터만 반환, Response 객체 반환 안함)
 async function fetchComplexListData(currentUser: any, searchParams: URLSearchParams) {
@@ -247,48 +250,41 @@ async function fetchComplexListData(currentUser: any, searchParams: URLSearchPar
 }
 
 // 특정 단지 상세 조회
-export async function POST(request: NextRequest) {
-  try {
-    // 사용자 인증 확인
-    const currentUser = await requireAuth();
+export const POST = ApiResponseHelper.handler(async (request: NextRequest) => {
+  // 사용자 인증 확인
+  const currentUser = await requireAuth();
 
-    const body = await request.json();
-    const { complexNo } = body;
+  const body = await request.json();
+  const { complexNo } = body;
 
-    if (!complexNo) {
-      return NextResponse.json(
-        { error: 'complexNo가 필요합니다.' },
-        { status: 400 }
-      );
-    }
+  if (!complexNo) {
+    throw new ApiError(ErrorType.VALIDATION, 'complexNo가 필요합니다.', 400);
+  }
 
-    // 사용자 권한 기반 where 조건
-    const userWhereCondition = await getComplexWhereCondition(currentUser);
+  // 사용자 권한 기반 where 조건
+  const userWhereCondition = await getComplexWhereCondition(currentUser);
 
-    // 단지 조회 (권한 체크 포함)
-    const complex = await prisma.complex.findFirst({
-      where: {
-        complexNo,
-        ...userWhereCondition,
+  // 단지 조회 (권한 체크 포함)
+  const complex = await prisma.complex.findFirst({
+    where: {
+      complexNo,
+      ...userWhereCondition,
+    },
+    include: {
+      articles: {
+        orderBy: { createdAt: 'desc' },
+        take: 100, // 최근 100개 매물
       },
-      include: {
-        articles: {
-          orderBy: { createdAt: 'desc' },
-          take: 100, // 최근 100개 매물
-        },
-        favorites: true,
-        _count: {
-          select: { articles: true },
-        },
+      favorites: true,
+      _count: {
+        select: { articles: true },
       },
-    });
+    },
+  });
 
-    if (!complex) {
-      return NextResponse.json(
-        { error: '단지를 찾을 수 없습니다.' },
-        { status: 404 }
-      );
-    }
+  if (!complex) {
+    throw new ApiError(ErrorType.NOT_FOUND, '단지를 찾을 수 없습니다.', 404);
+  }
 
     // 매물 통계
     const articleStats = {
@@ -338,11 +334,9 @@ export async function POST(request: NextRequest) {
       stats: articleStats,
     });
 
-  } catch (error: any) {
-    console.error('Complex detail fetch error:', error);
-    return NextResponse.json(
-      { error: '단지 상세 조회 중 오류가 발생했습니다.', details: error.message },
-      { status: 500 }
-    );
-  }
-}
+  logger.info('Complex detail fetched', {
+    userId: currentUser.id,
+    complexNo,
+    articleCount: complex?.articles?.length || 0
+  });
+});
