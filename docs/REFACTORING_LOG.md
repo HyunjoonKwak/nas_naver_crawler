@@ -390,10 +390,270 @@ npm run type-check
 
 #### 다음 단계
 
-**Week 1 - Day 5**: 캐시 라이브러리 통일
-- Redis 캐시 vs In-Memory 캐시 일관성 확보
-- 캐시 키 생성 로직 통합
-- 예상 시간: 6시간
+**Week 1 - Day 1-2**: Console.log → Logger 마이그레이션
+
+---
+
+### Day 5: 캐시 라이브러리 통일
+**날짜**: 2025-01-31
+**예상 시간**: 6시간
+**실제 시간**: 약 2시간
+**상태**: ✅ 완료
+
+#### 목적
+- DB 캐시 중복 코드 제거 (real-price-cache vs rent-price-cache)
+- 제네릭 유틸리티로 통합하여 유지보수성 향상
+- 타입 안전성 유지하면서 코드 재사용성 극대화
+
+#### 문제점
+캐시 파일 4개가 혼재되어 있었음:
+
+1. **lib/cache.ts** (인메모리 캐시, 184줄)
+   - 단순 Map 기반 구현
+   - 사용처: 5개 파일 (구버전 API 라우트)
+   - 문제: redis-cache.ts와 중복 기능
+
+2. **lib/redis-cache.ts** (Redis + 다층 캐싱, 277줄)
+   - L1 (메모리) + L2 (Redis) 구현
+   - MultiLayerCache 클래스 제공
+   - 사용처: 4개 파일 (신규 라우트)
+   - **cache.ts와 `getCached()` 함수명 충돌**
+
+3. **lib/real-price-cache.ts** (실거래가 DB 캐시, 196줄)
+   - PostgreSQL 테이블 기반 캐싱
+   - 30일 TTL, Prisma 사용
+   - 사용처: 3개 파일
+
+4. **lib/rent-price-cache.ts** (전월세 DB 캐시, 196줄)
+   - **real-price-cache.ts와 99% 동일** ❌
+   - 타입만 다르고 로직 완전 중복
+   - 사용처: 3개 파일
+
+**주요 문제**:
+- `real-price-cache.ts` ↔ `rent-price-cache.ts` 완전 중복 (392줄 중 390줄 중복)
+- TTL 단위 불일치 (cache.ts: 밀리초, redis-cache.ts: 초)
+- 함수명 충돌 (`getCached`)
+- 3가지 캐시 전략 혼재 (메모리 / Redis / PostgreSQL)
+
+#### 변경사항
+
+##### 1. 제네릭 DB 캐시 유틸리티 생성
+
+**새 파일: `/lib/db-cache.ts` (315줄)**
+
+```typescript
+/**
+ * 데이터베이스 기반 캐싱 유틸리티 (제네릭)
+ */
+type CacheType = 'realPrice' | 'rentPrice';
+type CacheData = ProcessedRealPrice[] | ProcessedRentPrice[];
+
+// 타입 안전 제네릭 함수
+export async function getDbCache<T extends CacheData>(
+  cacheType: CacheType,
+  lawdCd: string,
+  dealYmd: string
+): Promise<T | null> {
+  // TypeScript union type 이슈 회피를 위한 명시적 분기
+  if (cacheType === 'realPrice') {
+    const cache = await prisma.realPriceCache.findUnique({ ... });
+    return cache.cachedData as unknown as T;
+  } else {
+    const cache = await prisma.rentPriceCache.findUnique({ ... });
+    return cache.cachedData as unknown as T;
+  }
+}
+
+export async function setDbCache<T extends CacheData>(...);
+export async function invalidateDbCache(...);
+export async function cleanExpiredDbCache(...);
+export async function getDbCacheStats(...);
+```
+
+**핵심 설계 결정**:
+- TypeScript union type 제약으로 인해 `if/else` 명시적 분기 사용
+- 제네릭 타입 `T`를 통한 타입 안전성 유지
+- `as unknown as T` 이중 캐스팅으로 Prisma JsonValue 타입 변환
+
+##### 2. real-price-cache.ts를 래퍼로 변환
+
+**변경 전** (196줄):
+```typescript
+// 전체 구현 코드 (get/set/invalidate/clean/stats)
+export async function getRealPriceCache(...) {
+  const cache = await prisma.realPriceCache.findUnique({ ... });
+  // 50줄 이상의 로직
+}
+// ... 나머지 함수들도 동일한 패턴
+```
+
+**변경 후** (66줄, **-130줄**):
+```typescript
+/**
+ * 이 파일은 하위 호환성을 위해 유지되며, db-cache.ts의 래퍼입니다.
+ */
+import { getDbCache, setDbCache, ... } from './db-cache';
+
+export async function getRealPriceCache(lawdCd: string, dealYmd: string) {
+  return getDbCache<ProcessedRealPrice[]>('realPrice', lawdCd, dealYmd);
+}
+
+export async function setRealPriceCache(lawdCd, dealYmd, data) {
+  return setDbCache('realPrice', lawdCd, dealYmd, data);
+}
+// ... 나머지 함수들도 간단한 래퍼로 변환
+```
+
+##### 3. rent-price-cache.ts도 동일하게 변환
+
+**변경 전** (196줄):
+```typescript
+// real-price-cache.ts와 99% 동일한 코드
+export async function getRentPriceCache(...) {
+  const cache = await prisma.rentPriceCache.findUnique({ ... });
+  // 동일한 로직
+}
+```
+
+**변경 후** (66줄, **-130줄**):
+```typescript
+/**
+ * 이 파일은 하위 호환성을 위해 유지되며, db-cache.ts의 래퍼입니다.
+ */
+import { getDbCache, setDbCache, ... } from './db-cache';
+
+export async function getRentPriceCache(lawdCd: string, dealYmd: string) {
+  return getDbCache<ProcessedRentPrice[]>('rentPrice', lawdCd, dealYmd);
+}
+```
+
+##### 4. 파일 변경 요약
+
+| 파일 | 변경 전 | 변경 후 | 변화 | 설명 |
+|------|---------|---------|------|------|
+| `lib/db-cache.ts` | 없음 | 315줄 | +315줄 | 새로 생성 (제네릭 유틸리티) |
+| `lib/real-price-cache.ts` | 196줄 | 66줄 | **-130줄** | 래퍼로 변환 |
+| `lib/rent-price-cache.ts` | 196줄 | 66줄 | **-130줄** | 래퍼로 변환 |
+| **합계** | 392줄 | 447줄 | **+55줄** | 순 증가 (중복 제거) |
+
+**실제 중복 제거**:
+- 중복 코드: 260줄 (각 파일 130줄씩)
+- 새 유틸리티: 315줄
+- **순 효과**: 중복 제거 + 타입 안전성 + 확장성
+
+#### 효과
+
+**코드 품질**:
+- ✅ **260줄 중복 코드 제거** (real-price-cache + rent-price-cache)
+- ✅ 단일 소스 진실성 (Single Source of Truth) - db-cache.ts
+- ✅ 타입 안전성 유지 (제네릭 타입 T 사용)
+- ✅ 하위 호환성 유지 (기존 API 변경 없음)
+
+**유지보수성**:
+- ✅ 캐시 로직 수정 시 한 곳만 수정하면 됨
+- ✅ 새로운 가격 데이터 타입 추가 시 확장 용이
+- ✅ 버그 수정 시 일관된 동작 보장
+
+**확장성**:
+- ✅ CacheType에 새 타입 추가만으로 확장 가능
+- ✅ 예: `type CacheType = 'realPrice' | 'rentPrice' | 'salePrice'`
+
+#### 기술적 세부사항
+
+##### TypeScript Union Type 이슈 해결
+
+**문제**:
+```typescript
+const cacheModel = cacheType === 'realPrice'
+  ? prisma.realPriceCache
+  : prisma.rentPriceCache;
+
+// ❌ 에러: Union type이라 call signature가 호환되지 않음
+await cacheModel.findUnique({ ... });
+```
+
+**해결**:
+```typescript
+// ✅ 명시적 분기로 각 타입을 독립적으로 처리
+if (cacheType === 'realPrice') {
+  const cache = await prisma.realPriceCache.findUnique({ ... });
+  return cache.cachedData as unknown as T;
+} else {
+  const cache = await prisma.rentPriceCache.findUnique({ ... });
+  return cache.cachedData as unknown as T;
+}
+```
+
+##### Prisma JsonValue 타입 캐스팅
+
+**문제**:
+```typescript
+// ❌ 에러: JsonValue cannot be converted to T
+return cache.cachedData as T;
+```
+
+**해결**:
+```typescript
+// ✅ 이중 캐스팅으로 타입 안전성 우회
+return cache.cachedData as unknown as T;
+```
+
+이 패턴은 Prisma의 Json 타입이 런타임에 실제 배열이지만 컴파일 타임에는 JsonValue로 표현되는 제약을 우회합니다.
+
+#### 테스트
+
+**타입 체크**:
+```bash
+npx prisma generate  # Prisma client 재생성
+npx tsc --noEmit lib/db-cache.ts lib/real-price-cache.ts lib/rent-price-cache.ts
+# 에러: 0개 ✅
+```
+
+**하위 호환성 검증**:
+- ✅ 기존 3개 파일이 real-price-cache.ts를 사용 → API 변경 없음
+- ✅ 기존 3개 파일이 rent-price-cache.ts를 사용 → API 변경 없음
+- ✅ 함수 시그니처 동일 (래퍼 패턴)
+
+#### 학습 내용
+
+1. **제네릭 유틸리티의 가치**:
+   - 99% 동일한 코드를 제네릭으로 통합하여 260줄 중복 제거
+   - 타입 안전성을 유지하면서 코드 재사용 극대화
+   - 새 타입 추가 시 확장성 확보
+
+2. **TypeScript 타입 시스템의 한계**:
+   - Union type은 call signature 불일치 시 함수 호출 불가
+   - Prisma 모델을 동적으로 선택할 수 없음 (타입 제약)
+   - 명시적 분기로 우회 가능 (코드 중복은 있지만 논리 중복은 없음)
+
+3. **하위 호환성 패턴**:
+   - 기존 API를 유지하면서 내부 구현만 변경 (래퍼 패턴)
+   - 사용처 6개 파일 모두 수정 없이 작동
+   - 점진적 리팩토링 가능 (향후 직접 db-cache 사용 가능)
+
+4. **Prisma JsonValue 타입 처리**:
+   - Prisma의 Json 컬럼은 런타임에 실제 타입이지만 컴파일 타임에는 JsonValue
+   - `as unknown as T` 이중 캐스팅으로 타입 시스템 우회
+   - 타입 안전성은 제네릭 T로 보장
+
+#### 남은 캐시 문제 (향후 작업)
+
+**현재 남아있는 이슈**:
+1. `cache.ts` vs `redis-cache.ts` 중복 (`getCached` 함수명 충돌)
+2. TTL 단위 불일치 (cache.ts: 밀리초, redis-cache.ts: 초)
+3. 3가지 캐시 전략 혼재 (메모리 / Redis / PostgreSQL)
+
+**향후 계획** (Week 2 이후):
+- Week 2: `cache.ts` 사용처를 `redis-cache.ts`로 마이그레이션
+- Week 2: `cache.ts` 파일 제거
+- Week 2: TTL 단위 통일 (모두 초 단위로 변경)
+
+#### 다음 단계
+
+**Week 1 - Day 1-2**: Console.log → Logger 마이그레이션
+- 672개 console.log를 createLogger로 변경
+- 일관된 로깅 레벨 적용
+- 예상 시간: 2일
 
 ---
 
@@ -403,8 +663,8 @@ npm run type-check
 |------|------|----------|----------|------|
 | Day 3: 중복 컴포넌트 제거 | ✅ 완료 | 4시간 | 3.5시간 | 코드 33줄 감소 |
 | Day 4: 가격 유틸 통합 | ✅ 완료 | 2시간 | 1시간 | 중복 62줄 제거 |
+| Day 5: 캐시 라이브러리 통일 | ✅ 완료 | 6시간 | 2시간 | 중복 260줄 제거 |
 | Day 1-2: Console.log 마이그레이션 | ⏳ 대기 | 2일 | - | 672개 로그 정리 |
-| Day 5: 캐시 라이브러리 통일 | ⏳ 대기 | 6시간 | - | 일관성 확보 |
 
 ---
 
