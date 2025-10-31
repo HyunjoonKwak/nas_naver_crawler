@@ -12,13 +12,13 @@ interface PriceData {
 
 interface PriceChartProps {
   complexNo: string;
-  tradeType?: 'A1' | 'B1' | 'B2' | 'all';
+  tradeType?: 'A1' | 'B1' | 'B2';
   period?: 7 | 14 | 30 | 90;
 }
 
 export function PriceChart({
   complexNo,
-  tradeType = 'all',
+  tradeType = 'A1', // 기본값: 매매
   period = 30
 }: PriceChartProps) {
   const [data, setData] = useState<PriceData[]>([]);
@@ -131,7 +131,7 @@ export function PriceChart({
     <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
       <div className="flex items-center justify-between mb-6">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-          가격 추이
+          {tradeType === 'A1' ? '매매' : tradeType === 'B1' ? '전세' : '월세'} 가격 추이
         </h3>
         <div className="flex gap-2">
           <select
@@ -139,7 +139,6 @@ export function PriceChart({
             onChange={(e) => fetchPriceData()}
             className="px-3 py-1.5 text-sm bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500"
           >
-            <option value="all">전체</option>
             <option value="A1">매매</option>
             <option value="B1">전세</option>
             <option value="B2">월세</option>

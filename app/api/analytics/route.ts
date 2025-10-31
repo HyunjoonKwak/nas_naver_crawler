@@ -176,9 +176,9 @@ function getSingleAnalysis(complex: any, tradeTypes?: string[]) {
     maxPrice: Math.max(...prices),
   };
 
-  // ✅ 개선: 가격 추이 데이터 (숫자 컬럼 사용)
+  // ✅ 개선: 가격 추이 데이터 (숫자 컬럼 사용) - 매매만
   const priceByArea = articles
-    .filter((a: any) => a.area1 && a.dealOrWarrantPrcWon)
+    .filter((a: any) => a.area1 && a.dealOrWarrantPrcWon && a.tradeTypeName === '매매')
     .reduce((acc: any, article: any) => {
       const pyeong = Math.round(article.area1 * 0.3025);
       const price = Number(article.dealOrWarrantPrcWon) / 10000; // 원 → 만원
@@ -195,28 +195,32 @@ function getSingleAnalysis(complex: any, tradeTypes?: string[]) {
     }, {}),
   }];
 
-  // ✅ 개선: 통계 요약 (숫자 컬럼 사용)
+  // ✅ 개선: 통계 요약 (숫자 컬럼 사용) - 매매만
   const allPrices = articles
-    .filter((a: any) => a.dealOrWarrantPrcWon)
+    .filter((a: any) => a.dealOrWarrantPrcWon && a.tradeTypeName === '매매')
     .map((a: any) => Number(a.dealOrWarrantPrcWon) / 10000); // 원 → 만원
 
   const sortedPrices = [...allPrices].sort((a, b) => a - b);
-  const avgPrice = Math.round(allPrices.reduce((sum: number, p: number) => sum + p, 0) / allPrices.length);
-  const medianPrice = sortedPrices[Math.floor(sortedPrices.length / 2)];
-  const minPrice = Math.min(...allPrices);
-  const maxPrice = Math.max(...allPrices);
+  const avgPrice = allPrices.length > 0
+    ? Math.round(allPrices.reduce((sum: number, p: number) => sum + p, 0) / allPrices.length)
+    : 0;
+  const medianPrice = allPrices.length > 0 ? sortedPrices[Math.floor(sortedPrices.length / 2)] : 0;
+  const minPrice = allPrices.length > 0 ? Math.min(...allPrices) : 0;
+  const maxPrice = allPrices.length > 0 ? Math.max(...allPrices) : 0;
 
-  // 평당 평균가 계산 - 전체
+  // 평당 평균가 계산 - 매매만
   // ✅ 개선: 평당 가격 (숫자 컬럼 사용)
-  const avgPricePerPyeong = Math.round(
-    articles
-      .filter((a: any) => a.area1 && a.dealOrWarrantPrcWon)
-      .reduce((sum: number, a: any) => {
-        const pyeong = a.area1 * 0.3025;
-        const price = Number(a.dealOrWarrantPrcWon) / 10000; // 원 → 만원
-        return sum + price / pyeong;
-      }, 0) / articles.length
-  );
+  const saleArticles = articles.filter((a: any) => a.area1 && a.dealOrWarrantPrcWon && a.tradeTypeName === '매매');
+  const avgPricePerPyeong = saleArticles.length > 0
+    ? Math.round(
+        saleArticles
+          .reduce((sum: number, a: any) => {
+            const pyeong = a.area1 * 0.3025;
+            const price = Number(a.dealOrWarrantPrcWon) / 10000; // 원 → 만원
+            return sum + price / pyeong;
+          }, 0) / saleArticles.length
+      )
+    : 0;
 
   // 5. 평형별 + 거래유형별 통계 계산
   const articlesByAreaAndType = articles
@@ -360,23 +364,25 @@ function getCompareAnalysis(complexes: any[], tradeTypes?: string[]) {
     // 데이터베이스에서 조회한 articles 배열
     const articles = complex.articles || [];
 
-    // ✅ 개선: 가격 데이터 (숫자 컬럼 사용)
+    // ✅ 개선: 가격 데이터 (숫자 컬럼 사용) - 매매만
     const allPrices = articles
-      .filter((a: any) => a.dealOrWarrantPrcWon)
+      .filter((a: any) => a.dealOrWarrantPrcWon && a.tradeTypeName === '매매')
       .map((a: any) => Number(a.dealOrWarrantPrcWon) / 10000); // 원 → 만원
 
     const avgPrice = allPrices.length > 0
       ? Math.round(allPrices.reduce((sum: number, p: number) => sum + p, 0) / allPrices.length)
       : 0;
 
-    // ✅ 개선: 평당 가격 (숫자 컬럼 사용)
-    const avgPricePerPyeong = articles
-      .filter((a: any) => a.area1 && a.dealOrWarrantPrcWon)
-      .reduce((sum: number, a: any) => {
-        const pyeong = a.area1 * 0.3025;
-        const price = Number(a.dealOrWarrantPrcWon) / 10000; // 원 → 만원
-        return sum + price / pyeong;
-      }, 0) / (articles.length || 1);
+    // ✅ 개선: 평당 가격 (숫자 컬럼 사용) - 매매만
+    const saleArticles = articles.filter((a: any) => a.area1 && a.dealOrWarrantPrcWon && a.tradeTypeName === '매매');
+    const avgPricePerPyeong = saleArticles.length > 0
+      ? saleArticles
+          .reduce((sum: number, a: any) => {
+            const pyeong = a.area1 * 0.3025;
+            const price = Number(a.dealOrWarrantPrcWon) / 10000; // 원 → 만원
+            return sum + price / pyeong;
+          }, 0) / saleArticles.length
+      : 0;
 
     // 거래유형별 개수
     const tradeTypeCounts = articles.reduce((acc: any, a: any) => {
