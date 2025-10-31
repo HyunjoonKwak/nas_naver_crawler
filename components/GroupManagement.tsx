@@ -79,7 +79,8 @@ export function GroupManagement({ selectedGroupId, onGroupSelect, onGroupsChange
       const response = await fetch('/api/groups');
       const data = await response.json();
       if (data.success) {
-        setGroups(data.groups || []);
+        // ApiResponseHelper.success()는 { success: true, data: {...} } 구조로 반환
+        setGroups(data.data?.groups || []);
       }
     } catch (error: any) {
       console.error('그룹 조회 오류:', error);

@@ -82,9 +82,10 @@ export default function AlertsPage() {
       const data = await response.json();
 
       if (response.ok && data.success) {
-        setAlerts(data.alerts || []);
+        // ApiResponseHelper.success()는 { success: true, data: {...} } 구조로 반환
+        setAlerts(data.data?.alerts || []);
       } else {
-        showError(data.error || '알림 목록 조회 실패');
+        showError(data.error?.message || data.error || '알림 목록 조회 실패');
       }
     } catch (error: any) {
       console.error('Failed to fetch alerts:', error);

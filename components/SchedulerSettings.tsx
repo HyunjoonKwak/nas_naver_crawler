@@ -84,14 +84,15 @@ export function SchedulerSettings() {
       setLoading(true);
 
       // 스케줄 목록 조회
-      const schedulesResult = await fetchGet<{ schedules: Schedule[] }>("/api/schedules");
-      setSchedules(schedulesResult.data?.schedules || []);
+      // ApiResponseHelper.success()는 { success: true, data: {...} } 구조로 반환
+      const schedulesResult = await fetchGet<{ success: true; data: { schedules: Schedule[] } }>("/api/schedules");
+      setSchedules(schedulesResult.data?.data?.schedules || []);
 
-      // 단지 목록 조회 (관심단지)
+      // 단지 목록 조회 (관심단지) - 직접 { favorites: [...] } 반환
       const favResult = await fetchGet<{ favorites: any[] }>("/api/favorites");
       const favoriteComplexes = favResult.data?.favorites || [];
 
-      // 단지 상세 정보 조회
+      // 단지 상세 정보 조회 - 직접 { results: [...] } 반환
       const complexResult = await fetchGet<{ results: any[] }>("/api/results");
       const results = complexResult.data?.results || [];
 

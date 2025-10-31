@@ -45,7 +45,8 @@ export function ComplexGroupBadges({ complexId, complexName, groups, onGroupsCha
       const response = await fetch('/api/groups');
       const data = await response.json();
       if (data.success) {
-        setAllGroups(data.groups || []);
+        // ApiResponseHelper.success()는 { success: true, data: {...} } 구조로 반환
+        setAllGroups(data.data?.groups || []);
       }
     } catch (error: any) {
       console.error('그룹 조회 오류:', error);

@@ -40,7 +40,12 @@ export default function CrawlerHistory({ refresh }: CrawlerHistoryProps) {
     try {
       const response = await fetch('/api/crawl-history');
       const data = await response.json();
-      setHistory(data.history || []);
+      // ApiResponseHelper.success()는 { success: true, data: {...} } 구조로 반환
+      if (data.success) {
+        setHistory(data.data?.history || []);
+      } else {
+        setHistory(data.history || []); // 이전 구조 fallback
+      }
     } catch (error: any) {
       console.error('Failed to fetch crawl history:', error);
     } finally {

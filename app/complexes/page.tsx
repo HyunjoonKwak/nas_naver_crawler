@@ -333,20 +333,33 @@ export default function ComplexesPage() {
       const response = await fetch(`/api/complex?${params.toString()}`);
       const data = await response.json();
 
+      // API 에러 응답 처리
+      if (!response.ok || !data.success) {
+        console.error('[CLIENT_FETCH] API 에러:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: data.error || data,
+        });
+        throw new Error(data.error?.message || '단지 목록을 불러오는데 실패했습니다.');
+      }
+
       // 전체 단지 개수 가져오기 (필터 없이)
       if (!selectedGroupId) {
         // 필터 없을 때는 현재 결과가 전체
-        setTotalComplexCount(data.complexes?.length || 0);
+        setTotalComplexCount(data.data?.complexes?.length || 0);
       } else {
         // 필터 있을 때는 별도로 전체 조회
         const totalResponse = await fetch('/api/complex');
         const totalData = await totalResponse.json();
-        setTotalComplexCount(totalData.complexes?.length || 0);
+        if (totalResponse.ok && totalData.success) {
+          setTotalComplexCount(totalData.data?.complexes?.length || 0);
+        }
       }
 
-      const favorites = (data.complexes || []).filter((c: any) => c.isFavorite);
+      const complexes = data.data?.complexes || [];
+      const favorites = complexes.filter((c: any) => c.isFavorite);
       console.log('[CLIENT_FETCH] 단지목록 조회 완료:', {
-        total: data.complexes?.length || 0,
+        total: complexes.length,
         favorites: favorites.length,
         groupFilter: selectedGroupId || 'all',
         sortBy,
@@ -358,7 +371,7 @@ export default function ComplexesPage() {
         }))
       });
 
-      setComplexes(data.complexes || []);
+      setComplexes(complexes);
       // 그룹 목록도 새로고침 (그룹 카운트 업데이트를 위해)
       setGroupRefreshTrigger(prev => prev + 1);
     } catch (error: any) {
