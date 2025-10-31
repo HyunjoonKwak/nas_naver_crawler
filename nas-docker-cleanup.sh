@@ -3,10 +3,13 @@
 ###############################################################################
 # NAS Docker 정리 스크립트
 # 사용법: ./nas-docker-cleanup.sh
-# 설명: NAS의 Docker 이미지, 컨테이너, 볼륨을 안전하게 정리합니다.
+# 설명: NAS의 Docker 이미지, 컨테이너, 볼륨 및 프로젝트 파일을 정리합니다.
 ###############################################################################
 
 set -e
+
+# NAS Docker 루트 디렉토리 (환경에 맞게 수정)
+DOCKER_ROOT="/volume1/docker"
 
 # 색상
 RED='\033[0;31m'
@@ -36,7 +39,7 @@ if ! docker ps &> /dev/null; then
 fi
 
 # 현재 상태 분석
-echo -e "${BLUE}[1/4]${NC} 현재 Docker 상태 분석 중..."
+echo -e "${BLUE}[1/5]${NC} 현재 Docker 상태 분석 중..."
 echo ""
 
 RUNNING=$(docker ps -q | wc -l)
@@ -55,12 +58,40 @@ echo ""
 docker system df
 echo ""
 
+# Docker 루트 디렉토리 점검
+echo -e "${BLUE}[2/5]${NC} Docker 루트 디렉토리 점검 중..."
+echo ""
+
+if [ -d "$DOCKER_ROOT" ]; then
+    echo "  📁 Docker 루트: $DOCKER_ROOT"
+    echo ""
+
+    # 프로젝트별 디스크 사용량
+    echo "  프로젝트별 디스크 사용량:"
+    du -sh $DOCKER_ROOT/*/ 2>/dev/null | sort -hr | head -10
+    echo ""
+
+    # 큰 로그 파일 찾기 (10MB 이상)
+    echo "  📝 큰 로그 파일 (10MB 이상):"
+    find $DOCKER_ROOT -name "*.log" -size +10M -exec ls -lh {} \; 2>/dev/null | awk '{print "    " $9 " (" $5 ")"}' | head -10
+
+    # 임시 파일 찾기
+    TEMP_COUNT=$(find $DOCKER_ROOT -name "*.tmp" -o -name "*~" -o -name ".DS_Store" 2>/dev/null | wc -l)
+    echo ""
+    echo "  🗑️  임시 파일: ${TEMP_COUNT}개"
+
+else
+    echo "  ⚠️  Docker 루트 디렉토리를 찾을 수 없습니다: $DOCKER_ROOT"
+    echo "  → Docker 정리만 진행합니다."
+fi
+echo ""
+
 # 정리 모드 선택
-echo -e "${BLUE}[2/4]${NC} 정리 모드 선택"
+echo -e "${BLUE}[3/5]${NC} 정리 모드 선택"
 echo ""
 echo -e "${GREEN}1)${NC} 안전 정리 (Dangling 이미지 + 중지된 컨테이너)"
-echo -e "${YELLOW}2)${NC} 일반 정리 (안전 정리 + 미사용 이미지)"
-echo -e "${RED}3)${NC} 전체 정리 (일반 정리 + 미사용 볼륨 + 빌드 캐시)"
+echo -e "${YELLOW}2)${NC} 일반 정리 (안전 정리 + 미사용 이미지 + 임시 파일)"
+echo -e "${RED}3)${NC} 전체 정리 (일반 정리 + 미사용 볼륨 + 빌드 캐시 + 큰 로그 파일)"
 echo ""
 
 read -p "선택 [1-3]: " -n 1 -r MODE
@@ -73,7 +104,7 @@ if [[ ! $MODE =~ ^[1-3]$ ]]; then
 fi
 
 # 최종 확인
-echo -e "${BLUE}[3/4]${NC} 최종 확인"
+echo -e "${BLUE}[4/5]${NC} 최종 확인"
 echo ""
 echo -e "${YELLOW}⚠️  주의: 삭제된 데이터는 복구할 수 없습니다!${NC}"
 echo ""
@@ -88,7 +119,7 @@ fi
 
 # 정리 실행
 echo ""
-echo -e "${BLUE}[4/4]${NC} Docker 정리 실행 중..."
+echo -e "${BLUE}[5/5]${NC} 정리 실행 중..."
 echo ""
 
 case $MODE in
@@ -103,20 +134,49 @@ case $MODE in
         ;;
     2)
         # 일반 정리
-        echo "  [1/4] 미사용 이미지 삭제..."
+        echo "  [1/5] 미사용 이미지 삭제..."
         docker image prune -a -f
-        echo "  [2/4] 중지된 컨테이너 삭제..."
+        echo "  [2/5] 중지된 컨테이너 삭제..."
         docker container prune -f
-        echo "  [3/4] 미사용 네트워크 삭제..."
+        echo "  [3/5] 미사용 네트워크 삭제..."
         docker network prune -f
-        echo "  [4/4] 빌드 캐시 삭제..."
+        echo "  [4/5] 빌드 캐시 삭제..."
         docker builder prune -f
+
+        # 프로젝트 임시 파일 정리
+        if [ -d "$DOCKER_ROOT" ]; then
+            echo "  [5/5] 임시 파일 정리..."
+            DELETED=0
+            DELETED=$(find $DOCKER_ROOT -name "*.tmp" -o -name "*~" -o -name ".DS_Store" 2>/dev/null -exec rm -f {} \; -print | wc -l)
+            echo "      → ${DELETED}개 파일 삭제됨"
+        fi
         ;;
     3)
         # 전체 정리
-        echo "  전체 시스템 정리 중..."
+        echo "  [1/6] Docker 전체 시스템 정리..."
         docker system prune -a -f --volumes
+        echo "  [2/6] 빌드 캐시 전체 삭제..."
         docker builder prune -a -f
+
+        # 프로젝트 파일 정리
+        if [ -d "$DOCKER_ROOT" ]; then
+            echo "  [3/6] 임시 파일 정리..."
+            DELETED=$(find $DOCKER_ROOT -name "*.tmp" -o -name "*~" -o -name ".DS_Store" 2>/dev/null -exec rm -f {} \; -print | wc -l)
+            echo "      → ${DELETED}개 파일 삭제됨"
+
+            echo "  [4/6] 오래된 로그 파일 정리 (30일 이상)..."
+            OLD_LOGS=$(find $DOCKER_ROOT -name "*.log" -mtime +30 2>/dev/null -exec rm -f {} \; -print | wc -l)
+            echo "      → ${OLD_LOGS}개 로그 파일 삭제됨"
+
+            echo "  [5/6] 큰 로그 파일 압축 (100MB 이상)..."
+            find $DOCKER_ROOT -name "*.log" -size +100M 2>/dev/null | while read file; do
+                gzip "$file" 2>/dev/null && echo "      → 압축: $file.gz"
+            done
+
+            echo "  [6/6] 빈 디렉토리 정리..."
+            EMPTY_DIRS=$(find $DOCKER_ROOT -type d -empty 2>/dev/null -delete -print | wc -l)
+            echo "      → ${EMPTY_DIRS}개 빈 디렉토리 삭제됨"
+        fi
         ;;
 esac
 
