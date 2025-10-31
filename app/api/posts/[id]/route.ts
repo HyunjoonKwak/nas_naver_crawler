@@ -8,19 +8,23 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAuth } from '@/lib/auth-utils';
+import { ApiResponseHelper } from '@/lib/api-response';
+import { ApiError, ErrorType } from '@/lib/api-error';
+import { createLogger } from '@/lib/logger';
+
+const logger = createLogger('POSTS_ID');
 
 export const dynamic = 'force-dynamic';
 
 /**
  * GET /api/posts/[id] - 게시글 상세 조회
  */
-export async function GET(
+export const GET = ApiResponseHelper.handler(async (
   request: NextRequest,
   { params }: { params: { id: string } }
-) {
-  try {
-    const { id } = params;
-    const currentUser = await requireAuth();
+) => {
+  const { id } = params;
+  const currentUser = await requireAuth();
 
     // 조회수 증가 여부 확인 (쿼리 파라미터로 제어)
     const url = new URL(request.url);
@@ -102,73 +106,46 @@ export async function GET(
       });
     });
 
-    if (!post || post.isDeleted) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Post not found',
-        },
-        { status: 404 }
-      );
-    }
-
-    return NextResponse.json({
-      success: true,
-      post,
-    });
-  } catch (error: any) {
-    console.error('Failed to fetch post:', error);
-    return NextResponse.json(
-      {
-        success: false,
-        error: error.message || 'Failed to fetch post',
-      },
-      { status: 500 }
-    );
+  if (!post || post.isDeleted) {
+    throw new ApiError(ErrorType.NOT_FOUND, 'Post not found', 404);
   }
-}
+
+  logger.info('Post fetched', { postId: id, userId: currentUser.id });
+
+  return NextResponse.json({
+    success: true,
+    post,
+  });
+});
 
 /**
  * PATCH /api/posts/[id] - 게시글 수정
  */
-export async function PATCH(
+export const PATCH = ApiResponseHelper.handler(async (
   request: NextRequest,
   { params }: { params: { id: string } }
-) {
-  try {
-    const currentUser = await requireAuth();
-    const { id } = params;
-    const body = await request.json();
-    const { title, content, isResolved, isPinned } = body;
+) => {
+  const currentUser = await requireAuth();
+  const { id } = params;
+  const body = await request.json();
+  const { title, content, isResolved, isPinned } = body;
 
-    // 게시글 존재 확인 및 권한 체크
-    const existingPost = await prisma.post.findUnique({
-      where: { id },
-    });
+  // 게시글 존재 확인 및 권한 체크
+  const existingPost = await prisma.post.findUnique({
+    where: { id },
+  });
 
-    if (!existingPost || existingPost.isDeleted) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Post not found',
-        },
-        { status: 404 }
-      );
-    }
+  if (!existingPost || existingPost.isDeleted) {
+    throw new ApiError(ErrorType.NOT_FOUND, 'Post not found', 404);
+  }
 
-    // 작성자 본인 또는 관리자만 수정 가능
-    if (
-      existingPost.authorId !== currentUser.id &&
-      currentUser.role !== 'ADMIN'
-    ) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'You do not have permission to edit this post',
-        },
-        { status: 403 }
-      );
-    }
+  // 작성자 본인 또는 관리자만 수정 가능
+  if (
+    existingPost.authorId !== currentUser.id &&
+    currentUser.role !== 'ADMIN'
+  ) {
+    throw new ApiError(ErrorType.AUTHORIZATION, 'You do not have permission to edit this post', 403);
+  }
 
     // 게시글 수정
     const updateData: any = {};
@@ -199,82 +176,53 @@ export async function PATCH(
       },
     });
 
-    return NextResponse.json({
-      success: true,
-      post,
-    });
-  } catch (error: any) {
-    console.error('Failed to update post:', error);
-    return NextResponse.json(
-      {
-        success: false,
-        error: error.message || 'Failed to update post',
-      },
-      { status: 500 }
-    );
-  }
-}
+  logger.info('Post updated', { postId: id, userId: currentUser.id });
+
+  return NextResponse.json({
+    success: true,
+    post,
+  });
+});
 
 /**
  * DELETE /api/posts/[id] - 게시글 삭제 (Soft Delete)
  */
-export async function DELETE(
+export const DELETE = ApiResponseHelper.handler(async (
   request: NextRequest,
   { params }: { params: { id: string } }
-) {
-  try {
-    const currentUser = await requireAuth();
-    const { id } = params;
+) => {
+  const currentUser = await requireAuth();
+  const { id } = params;
 
-    // 게시글 존재 확인 및 권한 체크
-    const existingPost = await prisma.post.findUnique({
-      where: { id },
-    });
+  // 게시글 존재 확인 및 권한 체크
+  const existingPost = await prisma.post.findUnique({
+    where: { id },
+  });
 
-    if (!existingPost || existingPost.isDeleted) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Post not found',
-        },
-        { status: 404 }
-      );
-    }
-
-    // 작성자 본인 또는 관리자만 삭제 가능
-    if (
-      existingPost.authorId !== currentUser.id &&
-      currentUser.role !== 'ADMIN'
-    ) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'You do not have permission to delete this post',
-        },
-        { status: 403 }
-      );
-    }
-
-    // Soft Delete
-    await prisma.post.update({
-      where: { id },
-      data: {
-        isDeleted: true,
-      },
-    });
-
-    return NextResponse.json({
-      success: true,
-      message: 'Post deleted successfully',
-    });
-  } catch (error: any) {
-    console.error('Failed to delete post:', error);
-    return NextResponse.json(
-      {
-        success: false,
-        error: error.message || 'Failed to delete post',
-      },
-      { status: 500 }
-    );
+  if (!existingPost || existingPost.isDeleted) {
+    throw new ApiError(ErrorType.NOT_FOUND, 'Post not found', 404);
   }
-}
+
+  // 작성자 본인 또는 관리자만 삭제 가능
+  if (
+    existingPost.authorId !== currentUser.id &&
+    currentUser.role !== 'ADMIN'
+  ) {
+    throw new ApiError(ErrorType.AUTHORIZATION, 'You do not have permission to delete this post', 403);
+  }
+
+  // Soft Delete
+  await prisma.post.update({
+    where: { id },
+    data: {
+      isDeleted: true,
+    },
+  });
+
+  logger.info('Post deleted (soft)', { postId: id, userId: currentUser.id });
+
+  return ApiResponseHelper.success({
+    success: true,
+    message: 'Post deleted successfully',
+  }, 'Post deleted successfully');
+});
