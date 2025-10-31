@@ -7,15 +7,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAuth } from '@/lib/auth-utils';
+import { ApiResponseHelper } from '@/lib/api-response';
+import { ApiError, ErrorType } from '@/lib/api-error';
+import { createLogger } from '@/lib/logger';
+
+const logger = createLogger('API_NOTIFICATIONS');
 
 export const dynamic = 'force-dynamic';
 
 /**
  * GET /api/notifications - 알림 목록 조회
  */
-export async function GET(request: NextRequest) {
-  try {
-    const currentUser = await requireAuth();
+export const GET = ApiResponseHelper.handler(async (request: NextRequest) => {
+  const currentUser = await requireAuth();
 
     const { searchParams } = new URL(request.url);
     const unreadOnly = searchParams.get('unreadOnly') === 'true';
@@ -58,213 +62,133 @@ export async function GET(request: NextRequest) {
           isRead: false,
         },
       }),
-    ]);
+  ]);
 
-    return NextResponse.json({
-      success: true,
-      notifications,
-      unreadCount,
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages: Math.ceil(total / limit),
-      },
-    });
-  } catch (error: any) {
-    // 인증 오류인 경우 401 반환 (로그 출력 안 함 - 정상적인 케이스)
-    if (error.message?.includes('로그인') || error.message?.includes('승인') || error.message?.includes('비활성화')) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: error.message,
-        },
-        { status: 401 }
-      );
-    }
+  logger.info('Notifications fetched', {
+    userId: currentUser.id,
+    count: notifications.length,
+    unreadCount,
+    page
+  });
 
-    // 인증 외 실제 오류인 경우에만 로그 출력
-    console.error('Failed to fetch notifications:', error);
-
-    // 데이터베이스 연결 오류인 경우 재연결 시도
-    if (error.code === 'P1001' || error.message?.includes("Can't reach database")) {
-      try {
-        await prisma.$connect();
-        console.log('Database reconnected successfully');
-      } catch (reconnectError: any) {
-        console.error('Failed to reconnect to database:', reconnectError);
-      }
-    }
-
-    return NextResponse.json(
-      {
-        success: false,
-        error: error.message || 'Failed to fetch notifications',
-      },
-      { status: 500 }
-    );
-  }
-}
+  return ApiResponseHelper.success({
+    success: true,
+    notifications,
+    unreadCount,
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+    },
+  });
+});
 
 /**
  * PATCH /api/notifications - 알림 읽음 처리
  */
-export async function PATCH(request: NextRequest) {
-  try {
-    const currentUser = await requireAuth();
-    const body = await request.json();
-    const { notificationId, markAllAsRead } = body;
+export const PATCH = ApiResponseHelper.handler(async (request: NextRequest) => {
+  const currentUser = await requireAuth();
+  const body = await request.json();
+  const { notificationId, markAllAsRead } = body;
 
-    if (markAllAsRead) {
-      // 모든 알림 읽음 처리
-      await prisma.notification.updateMany({
-        where: {
-          userId: currentUser.id,
-          isRead: false,
-        },
-        data: {
-          isRead: true,
-        },
-      });
-
-      return NextResponse.json({
-        success: true,
-        message: 'All notifications marked as read',
-      });
-    } else if (notificationId) {
-      // 특정 알림 읽음 처리
-      const notification = await prisma.notification.findUnique({
-        where: { id: notificationId },
-      });
-
-      if (!notification) {
-        return NextResponse.json(
-          {
-            success: false,
-            error: 'Notification not found',
-          },
-          { status: 404 }
-        );
-      }
-
-      // 본인 알림만 처리 가능
-      if (notification.userId !== currentUser.id) {
-        return NextResponse.json(
-          {
-            success: false,
-            error: 'You do not have permission to mark this notification as read',
-          },
-          { status: 403 }
-        );
-      }
-
-      await prisma.notification.update({
-        where: { id: notificationId },
-        data: {
-          isRead: true,
-        },
-      });
-
-      return NextResponse.json({
-        success: true,
-        message: 'Notification marked as read',
-      });
-    } else {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Either notificationId or markAllAsRead must be provided',
-        },
-        { status: 400 }
-      );
-    }
-  } catch (error: any) {
-    console.error('Failed to mark notification as read:', error);
-    return NextResponse.json(
-      {
-        success: false,
-        error: error.message || 'Failed to mark notification as read',
+  if (markAllAsRead) {
+    // 모든 알림 읽음 처리
+    const result = await prisma.notification.updateMany({
+      where: {
+        userId: currentUser.id,
+        isRead: false,
       },
-      { status: 500 }
-    );
+      data: {
+        isRead: true,
+      },
+    });
+
+    logger.info('All notifications marked as read', { userId: currentUser.id, count: result.count });
+
+    return ApiResponseHelper.success({
+      success: true,
+    }, 'All notifications marked as read');
+  } else if (notificationId) {
+    // 특정 알림 읽음 처리
+    const notification = await prisma.notification.findUnique({
+      where: { id: notificationId },
+    });
+
+    if (!notification) {
+      throw new ApiError(ErrorType.NOT_FOUND, 'Notification not found', 404);
+    }
+
+    // 본인 알림만 처리 가능
+    if (notification.userId !== currentUser.id) {
+      throw new ApiError(ErrorType.AUTHORIZATION, 'You do not have permission to mark this notification as read', 403);
+    }
+
+    await prisma.notification.update({
+      where: { id: notificationId },
+      data: {
+        isRead: true,
+      },
+    });
+
+    logger.info('Notification marked as read', { userId: currentUser.id, notificationId });
+
+    return ApiResponseHelper.success({
+      success: true,
+    }, 'Notification marked as read');
+  } else {
+    throw new ApiError(ErrorType.VALIDATION, 'Either notificationId or markAllAsRead must be provided', 400);
   }
-}
+});
 
 /**
  * DELETE /api/notifications - 알림 삭제
  */
-export async function DELETE(request: NextRequest) {
-  try {
-    const currentUser = await requireAuth();
-    const { searchParams } = new URL(request.url);
-    const notificationId = searchParams.get('id');
-    const deleteAll = searchParams.get('deleteAll') === 'true';
+export const DELETE = ApiResponseHelper.handler(async (request: NextRequest) => {
+  const currentUser = await requireAuth();
+  const { searchParams } = new URL(request.url);
+  const notificationId = searchParams.get('id');
+  const deleteAll = searchParams.get('deleteAll') === 'true';
 
-    if (deleteAll) {
-      // 읽은 알림 모두 삭제
-      await prisma.notification.deleteMany({
-        where: {
-          userId: currentUser.id,
-          isRead: true,
-        },
-      });
-
-      return NextResponse.json({
-        success: true,
-        message: 'All read notifications deleted',
-      });
-    } else if (notificationId) {
-      // 특정 알림 삭제
-      const notification = await prisma.notification.findUnique({
-        where: { id: notificationId },
-      });
-
-      if (!notification) {
-        return NextResponse.json(
-          {
-            success: false,
-            error: 'Notification not found',
-          },
-          { status: 404 }
-        );
-      }
-
-      // 본인 알림만 삭제 가능
-      if (notification.userId !== currentUser.id) {
-        return NextResponse.json(
-          {
-            success: false,
-            error: 'You do not have permission to delete this notification',
-          },
-          { status: 403 }
-        );
-      }
-
-      await prisma.notification.delete({
-        where: { id: notificationId },
-      });
-
-      return NextResponse.json({
-        success: true,
-        message: 'Notification deleted',
-      });
-    } else {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Either notificationId or deleteAll must be provided',
-        },
-        { status: 400 }
-      );
-    }
-  } catch (error: any) {
-    console.error('Failed to delete notification:', error);
-    return NextResponse.json(
-      {
-        success: false,
-        error: error.message || 'Failed to delete notification',
+  if (deleteAll) {
+    // 읽은 알림 모두 삭제
+    const result = await prisma.notification.deleteMany({
+      where: {
+        userId: currentUser.id,
+        isRead: true,
       },
-      { status: 500 }
-    );
+    });
+
+    logger.info('All read notifications deleted', { userId: currentUser.id, count: result.count });
+
+    return ApiResponseHelper.success({
+      success: true,
+    }, 'All read notifications deleted');
+  } else if (notificationId) {
+    // 특정 알림 삭제
+    const notification = await prisma.notification.findUnique({
+      where: { id: notificationId },
+    });
+
+    if (!notification) {
+      throw new ApiError(ErrorType.NOT_FOUND, 'Notification not found', 404);
+    }
+
+    // 본인 알림만 삭제 가능
+    if (notification.userId !== currentUser.id) {
+      throw new ApiError(ErrorType.AUTHORIZATION, 'You do not have permission to delete this notification', 403);
+    }
+
+    await prisma.notification.delete({
+      where: { id: notificationId },
+    });
+
+    logger.info('Notification deleted', { userId: currentUser.id, notificationId });
+
+    return ApiResponseHelper.success({
+      success: true,
+    }, 'Notification deleted');
+  } else {
+    throw new ApiError(ErrorType.VALIDATION, 'Either notificationId or deleteAll must be provided', 400);
   }
-}
+});
