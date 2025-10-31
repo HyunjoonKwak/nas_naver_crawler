@@ -1,4 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { ApiResponseHelper } from '@/lib/api-response';
+import { ApiError, ErrorType } from '@/lib/api-error';
+import { createLogger } from '@/lib/logger';
+
+const logger = createLogger('API_REAL_PRICE');
 
 // TODO: 공공데이터포털 API 연동 시 실제 구현
 // API URL: http://openapi.molit.go.kr/OpenAPI_ToolInstallPackage/service/rest/RTMSOBJSvc/getRTMSDataSvcAptTradeDev
@@ -106,34 +111,35 @@ function generateMockData(complexNo: string): {
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(request: NextRequest) {
-  try {
-    const { searchParams } = new URL(request.url);
-    const complexNo = searchParams.get('complexNo');
-    const complexName = searchParams.get('complexName');
-    const lawdCd = searchParams.get('lawdCd');  // 법정동코드 (5자리)
-    const period = searchParams.get('period') || '6m'; // 1m, 3m, 6m, 1y
-    const useMock = searchParams.get('mock') === 'true';  // 강제 Mock 모드
+export const GET = ApiResponseHelper.handler(async (request: NextRequest) => {
+  const { searchParams } = new URL(request.url);
+  const complexNo = searchParams.get('complexNo');
+  const complexName = searchParams.get('complexName');
+  const lawdCd = searchParams.get('lawdCd');  // 법정동코드 (5자리)
+  const period = searchParams.get('period') || '6m'; // 1m, 3m, 6m, 1y
+  const useMock = searchParams.get('mock') === 'true';  // 강제 Mock 모드
 
-    if (!complexNo) {
-      return NextResponse.json(
-        { error: 'complexNo is required' },
-        { status: 400 }
-      );
-    }
+  if (!complexNo) {
+    throw new ApiError(ErrorType.VALIDATION, 'complexNo is required', 400);
+  }
 
-    // 환경 변수에서 서비스 키 가져오기
-    const serviceKey = process.env.MOLIT_SERVICE_KEY;
+  // 환경 변수에서 서비스 키 가져오기
+  const serviceKey = process.env.MOLIT_SERVICE_KEY;
 
-    // API 키가 없거나, Mock 모드 강제, 또는 필요한 파라미터 부족 시 Mock 데이터 사용
-    if (!serviceKey || useMock || !complexName || !lawdCd) {
-      console.log('[Real Price API] Mock 데이터 사용');
-      console.log('[Real Price API]   사유:',
-        !serviceKey ? 'API 키 없음' :
-        useMock ? '강제 Mock 모드' :
-        !complexName ? '단지명 없음' :
-        !lawdCd ? '법정동코드 없음' : '알 수 없음'
-      );
+  // API 키가 없거나, Mock 모드 강제, 또는 필요한 파라미터 부족 시 Mock 데이터 사용
+  if (!serviceKey || useMock || !complexName || !lawdCd) {
+    const reason = !serviceKey ? 'API 키 없음' :
+                   useMock ? '강제 Mock 모드' :
+                   !complexName ? '단지명 없음' :
+                   !lawdCd ? '법정동코드 없음' : '알 수 없음';
+
+    logger.info('Using mock data for real price', {
+      complexNo,
+      reason,
+      hasServiceKey: !!serviceKey,
+      hasComplexName: !!complexName,
+      hasLawdCd: !!lawdCd
+    });
 
       const mockData = generateMockData(complexNo);
 
@@ -249,19 +255,7 @@ export async function GET(request: NextRequest) {
         fallback: true
       });
     }
-
-  } catch (error: any) {
-    console.error('[Real Price API] ❌ 전체 오류:', error);
-    return NextResponse.json(
-      {
-        success: false,
-        error: 'Failed to fetch real price data',
-        details: error.message
-      },
-      { status: 500 }
-    );
-  }
-}
+});
 
 // 공공데이터포털 API 연동 함수
 async function fetchFromPublicAPI(
@@ -345,11 +339,11 @@ async function fetchFromPublicAPI(
       });
     }
 
-    console.log('[MOLIT API] ✅ 조회 완료:', items.length, '건');
+    logger.info('MOLIT API fetch completed', { count: items.length });
     return items;
 
   } catch (error: any) {
-    console.error('[MOLIT API] ❌ 오류:', error.message);
+    logger.error('MOLIT API error', { error: error.message });
     throw error;
   }
 }
@@ -375,7 +369,7 @@ async function fetchMultipleMonths(
       // API 호출 간 딜레이 (초당 요청 제한 고려)
       await new Promise(resolve => setTimeout(resolve, 300));
     } catch (error: any) {
-      console.warn(`[MOLIT API] ${dealYmd} 조회 실패:`, error.message);
+      logger.warn('MOLIT API month fetch failed', { dealYmd, error: error.message });
       // 한 달 실패해도 계속 진행
     }
   }
