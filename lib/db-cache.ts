@@ -9,8 +9,11 @@
  */
 
 import { prisma } from './prisma';
+import { createLogger } from './logger';
 import type { ProcessedRealPrice } from './real-price-api';
 import type { ProcessedRentPrice } from './rent-price-api';
+
+const logger = createLogger('DB_CACHE');
 
 const CACHE_TTL_DAYS = 30;
 
@@ -47,13 +50,17 @@ export async function getDbCache<T extends CacheData>(
       });
 
       if (!cache) {
-        console.log(`[${getCacheLabel(cacheType)}] MISS: ${lawdCd}-${dealYmd}`);
+        logger.debug(`${getCacheLabel(cacheType)} MISS`, { lawdCd, dealYmd });
         return null;
       }
 
       // 만료 확인
       if (new Date() > cache.expiresAt) {
-        console.log(`[${getCacheLabel(cacheType)}] EXPIRED: ${lawdCd}-${dealYmd} (expired at ${cache.expiresAt.toISOString()})`);
+        logger.debug(`${getCacheLabel(cacheType)} EXPIRED`, {
+          lawdCd,
+          dealYmd,
+          expiresAt: cache.expiresAt.toISOString()
+        });
         // 만료된 캐시 삭제 (비동기)
         prisma.realPriceCache.delete({
           where: { lawdCd_dealYmd: { lawdCd, dealYmd } }
@@ -61,7 +68,12 @@ export async function getDbCache<T extends CacheData>(
         return null;
       }
 
-      console.log(`[${getCacheLabel(cacheType)}] HIT: ${lawdCd}-${dealYmd} (${cache.totalCount} items, cached ${Math.floor((Date.now() - cache.createdAt.getTime()) / 1000 / 60)} minutes ago)`);
+      logger.debug(`${getCacheLabel(cacheType)} HIT`, {
+        lawdCd,
+        dealYmd,
+        totalCount: cache.totalCount,
+        cachedMinutesAgo: Math.floor((Date.now() - cache.createdAt.getTime()) / 1000 / 60)
+      });
       return cache.cachedData as unknown as T;
     } else {
       const cache = await prisma.rentPriceCache.findUnique({
@@ -71,13 +83,17 @@ export async function getDbCache<T extends CacheData>(
       });
 
       if (!cache) {
-        console.log(`[${getCacheLabel(cacheType)}] MISS: ${lawdCd}-${dealYmd}`);
+        logger.debug(`${getCacheLabel(cacheType)} MISS`, { lawdCd, dealYmd });
         return null;
       }
 
       // 만료 확인
       if (new Date() > cache.expiresAt) {
-        console.log(`[${getCacheLabel(cacheType)}] EXPIRED: ${lawdCd}-${dealYmd} (expired at ${cache.expiresAt.toISOString()})`);
+        logger.debug(`${getCacheLabel(cacheType)} EXPIRED`, {
+          lawdCd,
+          dealYmd,
+          expiresAt: cache.expiresAt.toISOString()
+        });
         // 만료된 캐시 삭제 (비동기)
         prisma.rentPriceCache.delete({
           where: { lawdCd_dealYmd: { lawdCd, dealYmd } }
@@ -85,12 +101,21 @@ export async function getDbCache<T extends CacheData>(
         return null;
       }
 
-      console.log(`[${getCacheLabel(cacheType)}] HIT: ${lawdCd}-${dealYmd} (${cache.totalCount} items, cached ${Math.floor((Date.now() - cache.createdAt.getTime()) / 1000 / 60)} minutes ago)`);
+      logger.debug(`${getCacheLabel(cacheType)} HIT`, {
+        lawdCd,
+        dealYmd,
+        totalCount: cache.totalCount,
+        cachedMinutesAgo: Math.floor((Date.now() - cache.createdAt.getTime()) / 1000 / 60)
+      });
       return cache.cachedData as unknown as T;
     }
   } catch (error) {
     // 캐시 조회 실패는 치명적이지 않음 (API 폴백)
-    console.error(`[${getCacheLabel(cacheType)}] Read error:`, error instanceof Error ? error.message : 'Unknown error');
+    logger.error(`${getCacheLabel(cacheType)} Read error`, {
+      error,
+      lawdCd,
+      dealYmd
+    });
     return null;
   }
 }
@@ -153,10 +178,19 @@ export async function setDbCache<T extends CacheData>(
       });
     }
 
-    console.log(`[${getCacheLabel(cacheType)}] SET: ${lawdCd}-${dealYmd} (${data.length} items, TTL: ${CACHE_TTL_DAYS} days)`);
+    logger.info(`${getCacheLabel(cacheType)} SET`, {
+      lawdCd,
+      dealYmd,
+      itemCount: data.length,
+      ttlDays: CACHE_TTL_DAYS
+    });
   } catch (error) {
     // 캐시 저장 실패는 로그만 남기고 서비스는 계속
-    console.error(`[${getCacheLabel(cacheType)}] Write error:`, error instanceof Error ? error.message : 'Unknown error');
+    logger.error(`${getCacheLabel(cacheType)} Write error`, {
+      error,
+      lawdCd,
+      dealYmd
+    });
   }
 }
 
@@ -186,10 +220,14 @@ export async function invalidateDbCache(
         },
       });
     }
-    console.log(`[${getCacheLabel(cacheType)}] INVALIDATED: ${lawdCd}-${dealYmd}`);
+    logger.info(`${getCacheLabel(cacheType)} INVALIDATED`, { lawdCd, dealYmd });
   } catch (error) {
     // 캐시가 없을 수도 있음 (무시)
-    console.error(`[${getCacheLabel(cacheType)}] Invalidation error:`, error instanceof Error ? error.message : 'Unknown error');
+    logger.warn(`${getCacheLabel(cacheType)} Invalidation error`, {
+      error,
+      lawdCd,
+      dealYmd
+    });
   }
 }
 
@@ -218,12 +256,14 @@ export async function cleanExpiredDbCache(cacheType: CacheType): Promise<number>
         });
 
     if (result.count > 0) {
-      console.log(`[${getCacheLabel(cacheType)}] Cleaned ${result.count} expired entries`);
+      logger.info(`${getCacheLabel(cacheType)} Cleaned expired entries`, {
+        count: result.count
+      });
     }
 
     return result.count;
   } catch (error) {
-    console.error(`[${getCacheLabel(cacheType)}] Clean error:`, error instanceof Error ? error.message : 'Unknown error');
+    logger.error(`${getCacheLabel(cacheType)} Clean error`, { error });
     return 0;
   }
 }
@@ -295,7 +335,7 @@ export async function getDbCacheStats(cacheType: CacheType): Promise<{
       };
     }
   } catch (error) {
-    console.error(`[${getCacheLabel(cacheType)}] Stats error:`, error instanceof Error ? error.message : 'Unknown error');
+    logger.error(`${getCacheLabel(cacheType)} Stats error`, { error });
     return {
       totalEntries: 0,
       totalItems: 0,
