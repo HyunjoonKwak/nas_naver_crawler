@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { extractSggCodeFromGeocode } from '@/lib/dong-code';
+import { ApiResponseHelper } from '@/lib/api-response';
+import { ApiError, ErrorType } from '@/lib/api-error';
+import { createLogger } from '@/lib/logger';
+
+const logger = createLogger('API_GEOCODE');
 
 // Kakao Reverse Geocoding 응답 구조
 interface KakaoReverseGeocodeResponse {
@@ -56,93 +61,80 @@ interface AddressInfo {
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(request: NextRequest) {
-  try {
-    const { searchParams } = new URL(request.url);
-    const latitude = searchParams.get('latitude');
-    const longitude = searchParams.get('longitude');
+export const GET = ApiResponseHelper.handler(async (request: NextRequest) => {
+  const { searchParams } = new URL(request.url);
+  const latitude = searchParams.get('latitude');
+  const longitude = searchParams.get('longitude');
 
-    if (!latitude || !longitude) {
-      return NextResponse.json(
-        { error: '위도(latitude)와 경도(longitude)가 필요합니다.' },
-        { status: 400 }
-      );
-    }
+  if (!latitude || !longitude) {
+    throw new ApiError(ErrorType.VALIDATION, '위도(latitude)와 경도(longitude)가 필요합니다.', 400);
+  }
 
-    // 환경 변수에서 Kakao REST API 키 가져오기
-    const kakaoApiKey = process.env.KAKAO_REST_API_KEY;
+  // 환경 변수에서 Kakao REST API 키 가져오기
+  const kakaoApiKey = process.env.KAKAO_REST_API_KEY;
 
-    if (!kakaoApiKey) {
-      return NextResponse.json(
-        {
-          error: 'Kakao REST API 키가 설정되지 않았습니다.',
-          message: 'config.env 파일에서 KAKAO_REST_API_KEY를 설정해주세요.'
-        },
-        { status: 500 }
-      );
-    }
+  if (!kakaoApiKey) {
+    throw new ApiError(
+      ErrorType.INTERNAL,
+      'Kakao REST API 키가 설정되지 않았습니다. config.env 파일에서 KAKAO_REST_API_KEY를 설정해주세요.',
+      500
+    );
+  }
 
-    // Kakao Reverse Geocoding API 호출
-    const apiUrl = `https://dapi.kakao.com/v2/local/geo/coord2address.json?x=${longitude}&y=${latitude}`;
+  // Kakao Reverse Geocoding API 호출
+  const apiUrl = `https://dapi.kakao.com/v2/local/geo/coord2address.json?x=${longitude}&y=${latitude}`;
 
-    console.log(`[Kakao Geocoding] 🗺️  Reverse Geocoding 호출 시작`);
-    console.log(`[Kakao Geocoding]   좌표: ${latitude}, ${longitude}`);
+  logger.info('Reverse geocoding request', { latitude, longitude });
 
-    const response = await fetch(apiUrl, {
-      headers: {
-        'Authorization': `KakaoAK ${kakaoApiKey}`,
-      },
-      cache: 'no-store',
+  const response = await fetch(apiUrl, {
+    headers: {
+      'Authorization': `KakaoAK ${kakaoApiKey}`,
+    },
+    cache: 'no-store',
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    logger.error('Kakao API error', { status: response.status, response: errorText });
+    throw new ApiError(
+      ErrorType.EXTERNAL_API,
+      `Kakao Reverse Geocoding API 호출 실패: ${errorText}`,
+      response.status
+    );
+  }
+
+  const data: KakaoReverseGeocodeResponse = await response.json();
+
+  logger.info('Kakao API response received', { resultCount: data.documents?.length || 0 });
+
+  // 결과 파싱
+  const addressInfo: AddressInfo = {};
+
+  if (data.documents && data.documents.length > 0) {
+    const doc = data.documents[0];
+    const addr = doc.address;
+    const roadAddr = doc.road_address;
+
+    logger.debug('Kakao response data', { document: doc });
+
+    // Kakao API는 b_code를 제공하지 않으므로 dong-code.ts 유틸리티 사용
+    const lawdCd = extractSggCodeFromGeocode({
+      sido: addr.region_1depth_name,
+      sigungu: addr.region_2depth_name,
+      dong: addr.region_3depth_name,
+      fullAddress: addr.address_name
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('[Kakao Geocoding] ❌ API 오류:', response.status);
-      console.error('[Kakao Geocoding]   응답:', errorText);
-      return NextResponse.json(
-        {
-          error: 'Kakao Reverse Geocoding API 호출 실패',
-          status: response.status,
-          details: errorText
-        },
-        { status: response.status }
-      );
-    }
-
-    const data: KakaoReverseGeocodeResponse = await response.json();
-
-    console.log(`[Kakao Geocoding] ✅ API 응답 수신`);
-    console.log(`[Kakao Geocoding]   결과 개수: ${data.documents?.length || 0}`);
-
-    // 결과 파싱
-    const addressInfo: AddressInfo = {};
-
-    if (data.documents && data.documents.length > 0) {
-      const doc = data.documents[0];
-      const addr = doc.address;
-      const roadAddr = doc.road_address;
-
-      // 디버깅: 응답 구조 확인
-      console.log('[Kakao Geocoding] 📋 응답 데이터:', JSON.stringify(doc, null, 2));
-
-      // Kakao API는 b_code를 제공하지 않으므로 dong-code.ts 유틸리티 사용
-      const lawdCd = extractSggCodeFromGeocode({
+    if (!lawdCd) {
+      logger.warn('Lawdong code matching failed', {
         sido: addr.region_1depth_name,
         sigungu: addr.region_2depth_name,
         dong: addr.region_3depth_name,
         fullAddress: addr.address_name
       });
-
-      if (!lawdCd) {
-        console.warn('[Kakao Geocoding] ⚠️  법정동코드 매칭 실패:', {
-          sido: addr.region_1depth_name,
-          sigungu: addr.region_2depth_name,
-          dong: addr.region_3depth_name,
-          fullAddress: addr.address_name
-        });
-      } else {
-        console.log('[Kakao Geocoding] ✅ 법정동코드 매칭 성공:', lawdCd);
-      }
+    } else {
+      logger.info('Lawdong code matched', { lawdCd });
+    }
 
       const fullLawdCd = lawdCd ? `${lawdCd}00000` : '0000000000'; // 5자리 → 10자리 확장
 
@@ -169,37 +161,32 @@ export async function GET(request: NextRequest) {
         addressInfo.roadAddress = roadAddr.address_name;
       }
 
-      // 전체 주소 (지번 주소 사용)
-      addressInfo.fullAddress = addr.address_name;
+    // 전체 주소 (지번 주소 사용)
+    addressInfo.fullAddress = addr.address_name;
 
-      console.log('[Kakao Geocoding] 🎯 변환 성공:');
-      console.log('[Kakao Geocoding]   시도:', addressInfo.sido, `(${addressInfo.sidoCode})`);
-      console.log('[Kakao Geocoding]   시군구:', addressInfo.sigungu, `(${addressInfo.sigunguCode})`);
-      console.log('[Kakao Geocoding]   법정동:', addressInfo.beopjungdong, `(${addressInfo.dongCode})`);
-      console.log('[Kakao Geocoding]   행정동:', addressInfo.haengjeongdong);
-      console.log('[Kakao Geocoding]   법정동코드(5자리):', addressInfo.lawdCd);
-      console.log('[Kakao Geocoding]   법정동코드(10자리):', fullLawdCd);
-      console.log('[Kakao Geocoding]   지번주소:', addressInfo.jibunAddress);
-      console.log('[Kakao Geocoding]   도로명주소:', addressInfo.roadAddress || '(없음)');
-    } else {
-      console.warn('[Kakao Geocoding] ⚠️  결과가 없습니다 (좌표에 해당하는 주소를 찾을 수 없음)');
-      addressInfo.fullAddress = '주소 정보 없음';
-    }
-
-    return NextResponse.json({
-      success: true,
-      coordinates: {
-        latitude: parseFloat(latitude),
-        longitude: parseFloat(longitude),
-      },
-      data: addressInfo,
+    logger.info('Geocoding conversion successful', {
+      sido: addressInfo.sido,
+      sidoCode: addressInfo.sidoCode,
+      sigungu: addressInfo.sigungu,
+      sigunguCode: addressInfo.sigunguCode,
+      beopjungdong: addressInfo.beopjungdong,
+      dongCode: addressInfo.dongCode,
+      haengjeongdong: addressInfo.haengjeongdong,
+      lawdCd: addressInfo.lawdCd,
+      jibunAddress: addressInfo.jibunAddress,
+      roadAddress: addressInfo.roadAddress || '(없음)'
     });
-
-  } catch (error: any) {
-    console.error('[Kakao Geocoding] ❌ 오류:', error);
-    return NextResponse.json(
-      { error: '역지오코딩 처리 중 오류가 발생했습니다.', details: error.message },
-      { status: 500 }
-    );
+  } else {
+    logger.warn('No geocoding results found', { latitude, longitude });
+    addressInfo.fullAddress = '주소 정보 없음';
   }
-}
+
+  return ApiResponseHelper.success({
+    success: true,
+    coordinates: {
+      latitude: parseFloat(latitude),
+      longitude: parseFloat(longitude),
+    },
+    data: addressInfo,
+  });
+});
