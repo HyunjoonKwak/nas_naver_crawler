@@ -6,6 +6,7 @@ import { Bell } from "lucide-react";
 import { Dialog } from "@/components/ui";
 import { showSuccess, showError, showLoading, dismissToast } from "@/lib/toast";
 import { useCrawlEvents } from "@/hooks/useCrawlEvents";
+import { fetchGet, fetchPost, fetchPut, fetchPatch, fetchDelete } from "@/lib/fetch-client";
 
 interface Schedule {
   id: string;
@@ -83,19 +84,16 @@ export function SchedulerSettings() {
       setLoading(true);
 
       // 스케줄 목록 조회
-      const schedulesResponse = await fetch("/api/schedules");
-      const schedulesData = await schedulesResponse.json();
-      setSchedules(schedulesData.schedules || []);
+      const schedulesResult = await fetchGet<{ schedules: Schedule[] }>("/api/schedules");
+      setSchedules(schedulesResult.data?.schedules || []);
 
       // 단지 목록 조회 (관심단지)
-      const favResponse = await fetch("/api/favorites");
-      const favData = await favResponse.json();
-      const favoriteComplexes = favData.favorites || [];
+      const favResult = await fetchGet<{ favorites: any[] }>("/api/favorites");
+      const favoriteComplexes = favResult.data?.favorites || [];
 
       // 단지 상세 정보 조회
-      const complexResponse = await fetch("/api/results");
-      const complexData = await complexResponse.json();
-      const results = complexData.results || [];
+      const complexResult = await fetchGet<{ results: any[] }>("/api/results");
+      const results = complexResult.data?.results || [];
 
       const complexList = favoriteComplexes.map((fav: any) => {
         const result = results.find((r: any) => r.overview?.complexNo === fav.complexNo);
@@ -183,7 +181,6 @@ export function SchedulerSettings() {
 
     const cronExpr = buildCronExpr(formData.selectedDays, formData.selectedHour, formData.selectedMinute);
 
-    const loadingToast = showLoading(editingSchedule ? "스케줄 수정 중..." : "스케줄 생성 중...");
     try {
       const payload = {
         name: formData.name,
@@ -192,53 +189,46 @@ export function SchedulerSettings() {
         cronExpr: cronExpr,
       };
 
-      const url = editingSchedule ? `/api/schedules/${editingSchedule.id}` : "/api/schedules";
-      const method = editingSchedule ? "PUT" : "POST";
+      const result = editingSchedule
+        ? await fetchPut(`/api/schedules/${editingSchedule.id}`, payload, {
+            showLoading: true,
+            loadingMessage: "스케줄 저장 중...",
+            showSuccess: true,
+            successMessage: "스케줄이 수정되었습니다!",
+          })
+        : await fetchPost("/api/schedules", payload, {
+            showLoading: true,
+            loadingMessage: "스케줄 저장 중...",
+            showSuccess: true,
+            successMessage: "스케줄이 생성되었습니다!",
+          });
 
-      const response = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      dismissToast(loadingToast);
-
-      if (response.ok) {
-        showSuccess(editingSchedule ? "스케줄이 수정되었습니다!" : "스케줄이 생성되었습니다!");
+      if (result.ok) {
         handleCloseModal();
         fetchData();
-      } else {
-        const data = await response.json();
-        showError(data.error || "스케줄 저장에 실패했습니다.");
       }
     } catch (error: any) {
-      dismissToast(loadingToast);
       console.error("Failed to save schedule:", error);
-      showError("스케줄 저장 중 오류가 발생했습니다.");
     }
   };
 
   const handleToggleActive = async (schedule: Schedule) => {
-    const loadingToast = showLoading("스케줄 상태 변경 중...");
     try {
-      const response = await fetch(`/api/schedules/${schedule.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ isActive: !schedule.isActive }),
-      });
+      const result = await fetchPatch(`/api/schedules/${schedule.id}`,
+        { isActive: !schedule.isActive },
+        {
+          showLoading: true,
+          loadingMessage: "스케줄 상태 변경 중...",
+          showSuccess: true,
+          successMessage: schedule.isActive ? "스케줄이 비활성화되었습니다." : "스케줄이 활성화되었습니다.",
+        }
+      );
 
-      dismissToast(loadingToast);
-
-      if (response.ok) {
-        showSuccess(schedule.isActive ? "스케줄이 비활성화되었습니다." : "스케줄이 활성화되었습니다.");
+      if (result.ok) {
         fetchData();
-      } else {
-        showError("스케줄 상태 변경에 실패했습니다.");
       }
     } catch (error: any) {
-      dismissToast(loadingToast);
       console.error("Failed to toggle schedule:", error);
-      showError("스케줄 상태 변경 중 오류가 발생했습니다.");
     }
   };
 
@@ -249,24 +239,19 @@ export function SchedulerSettings() {
   const confirmDeleteSchedule = async () => {
     if (!deleteScheduleDialog.id) return;
 
-    const loadingToast = showLoading("스케줄 삭제 중...");
     try {
-      const response = await fetch(`/api/schedules?id=${deleteScheduleDialog.id}`, {
-        method: "DELETE",
+      const result = await fetchDelete(`/api/schedules?id=${deleteScheduleDialog.id}`, {
+        showLoading: true,
+        loadingMessage: "스케줄 삭제 중...",
+        showSuccess: true,
+        successMessage: "스케줄이 삭제되었습니다.",
       });
 
-      dismissToast(loadingToast);
-
-      if (response.ok) {
-        showSuccess("스케줄이 삭제되었습니다.");
+      if (result.ok) {
         fetchData();
-      } else {
-        showError("스케줄 삭제에 실패했습니다.");
       }
     } catch (error: any) {
-      dismissToast(loadingToast);
       console.error("Failed to delete schedule:", error);
-      showError("스케줄 삭제 중 오류가 발생했습니다.");
     } finally {
       setDeleteScheduleDialog({ isOpen: false, id: null });
     }
@@ -279,25 +264,19 @@ export function SchedulerSettings() {
   const confirmRunNow = async () => {
     if (!runNowDialog.id) return;
 
-    const loadingToast = showLoading("스케줄 실행 중...");
     try {
       setRunningScheduleId(runNowDialog.id);
-      const response = await fetch(`/api/schedules/${runNowDialog.id}/run`, {
-        method: "POST",
+      const result = await fetchPost(`/api/schedules/${runNowDialog.id}/run`, undefined, {
+        showLoading: true,
+        loadingMessage: "스케줄 실행 중...",
+        showSuccess: false, // SSE 이벤트에서 토스트를 표시하므로 여기서는 표시하지 않음
       });
 
-      dismissToast(loadingToast);
-
-      if (response.ok) {
-        // SSE 이벤트에서 토스트를 표시하므로 여기서는 표시하지 않음
+      if (result.ok) {
         await fetchData();
-      } else {
-        showError("스케줄 실행에 실패했습니다.");
       }
     } catch (error: any) {
-      dismissToast(loadingToast);
       console.error("Failed to run schedule:", error);
-      showError("스케줄 실행 중 오류가 발생했습니다.");
     } finally {
       setRunningScheduleId(null);
       setRunNowDialog({ isOpen: false, id: null });
