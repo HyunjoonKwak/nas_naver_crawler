@@ -9,9 +9,23 @@ export interface CrawlDbResult {
   totalArticles: number;
   totalComplexes: number;
   errors: string[];
-  newArticles?: number;
-  updatedArticles?: number;
-  deletedArticles?: number;
+}
+
+/**
+ * 크롤링 파일 읽기 결과
+ */
+export interface CrawlFileResult {
+  data: any[];
+  errors: string[];
+}
+
+/**
+ * 매물 통계
+ */
+export interface ArticleStats {
+  total: number;
+  byTradeType: Record<string, number>;
+  byRealEstateType: Record<string, number>;
 }
 
 /**
