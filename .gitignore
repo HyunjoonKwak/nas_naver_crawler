@@ -74,6 +74,8 @@ logs/
 # Database
 *.db
 *.db-journal
+*.sql
+backup_*.sql
 prisma/migrations/*.sql
 !prisma/migrations/migration_lock.toml
 
@@ -81,8 +83,13 @@ prisma/migrations/*.sql
 crawled_data/
 crawled_data_test/
 
+# Uploads
+public/uploads/
+
 # Docker
 *.env.docker
+docker-compose
+requirements_temp.txt
 
 # IDE
 .vscode/

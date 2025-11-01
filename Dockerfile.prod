@@ -102,7 +102,8 @@ RUN --mount=type=cache,target=/root/.npm \
 
 # Prisma 파일 복사 및 클라이언트 생성
 COPY prisma ./prisma
-RUN npx prisma generate
+# package.json의 prisma 버전 사용 (npx 대신)
+RUN npm exec prisma generate
 
 # 소스 코드 복사
 COPY app ./app
@@ -141,7 +142,8 @@ COPY instrumentation.ts next.config.js tsconfig.json tailwind.config.js postcss.
 COPY package.json package-lock.json* ./
 
 # Prisma 클라이언트 생성 (프로덕션용)
-RUN npx prisma generate
+# package.json의 prisma 버전 사용 (npx 대신)
+RUN npm exec prisma generate
 
 # 필요한 디렉토리 생성
 RUN mkdir -p crawled_data logs && \
