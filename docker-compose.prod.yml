@@ -1,0 +1,114 @@
+services:
+  # PostgreSQL 데이터베이스
+  db:
+    image: postgres:16-alpine
+    container_name: naver-crawler-db
+    restart: unless-stopped
+
+    environment:
+      - POSTGRES_DB=naver_crawler
+      - POSTGRES_USER=crawler_user
+      - POSTGRES_PASSWORD=crawler_pass_2025
+      - POSTGRES_INITDB_ARGS=--encoding=UTF-8
+
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+    ports:
+      - "5434:5432"
+
+    networks:
+      - crawler-network
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U crawler_user -d naver_crawler"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # Redis 캐시 서버
+  redis:
+    image: redis:7-alpine
+    container_name: naver-crawler-redis
+    restart: unless-stopped
+
+    ports:
+      - "6379:6379"
+
+    networks:
+      - crawler-network
+
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+    volumes:
+      - redis_data:/data
+
+    command: redis-server --appendonly yes
+
+  # Next.js 웹 애플리케이션 (프로덕션 모드)
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
+    container_name: naver-crawler-web
+    restart: unless-stopped
+
+    env_file:
+      - config.env
+
+    environment:
+      - PYTHONUNBUFFERED=1
+      - DATABASE_URL=postgresql://crawler_user:crawler_pass_2025@db:5432/naver_crawler?schema=public&connection_limit=20&pool_timeout=30&connect_timeout=10
+      - REDIS_URL=redis://redis:6379
+      - NODE_ENV=production
+      # ⚠️ NAS 배포 시: Naver Maps API 키 추가 필요 (docs/NAVER_API_SETUP.md 참조)
+
+    # 프로덕션 모드 - 데이터 디렉토리만 마운트 (소스 코드는 이미지에 포함)
+    volumes:
+      # === 데이터 저장 (NAS) ===
+      - ./crawled_data:/app/crawled_data
+      - ./logs:/app/logs
+
+      # === Python 크롤러 (런타임 업데이트 가능하도록) ===
+      - ./logic:/app/logic
+
+    ports:
+      - "3000:3000"
+
+    networks:
+      - crawler-network
+
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+    mem_limit: 4g
+    memswap_limit: 4g
+    # Chromium은 메모리를 많이 사용 (1.5-2GB)
+    # 2GB 제한 시 스왑 발생 → 초기화 120초 (디스크 I/O 병목)
+
+    shm_size: 2gb
+    # Chromium 공유 메모리 증설 (기본 64MB는 부족)
+    # --disable-dev-shm-usage 옵션과 함께 사용하면 속도 개선
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  crawler-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:

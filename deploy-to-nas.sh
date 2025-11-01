@@ -116,28 +116,29 @@ fi
 
 if [ "$ENVIRONMENT" = "prod" ]; then
     # ========================================
-    # 프로덕션 배포 (빌드 포함)
+    # 프로덕션 배포 (최적화 빌드)
     # ========================================
-    log_warn "⚠️  현재 프로덕션 전용 Dockerfile이 없습니다"
-    log_warn "⚠️  개발 모드로 빌드합니다 (Hot Reload 포함)"
-    log_info "Step 3: 개발 모드로 완전 재빌드 시작..."
+    log_info "Step 3: 프로덕션 환경 배포 시작..."
 
     # 3-1. 기존 컨테이너 중지
     log_info "기존 컨테이너 중지 중..."
-    docker-compose down || true
+    docker-compose -f docker-compose.prod.yml down || true
     log_success "컨테이너 중지 완료"
 
-    # 3-2. 이미지 빌드 (개발 모드)
-    log_info "Docker 이미지 빌드 중... (시간이 걸릴 수 있습니다)"
-    docker-compose build --no-cache
-    log_success "이미지 빌드 완료"
+    # 3-2. 프로덕션 이미지 빌드
+    log_info "프로덕션 이미지 빌드 중... (10~15분 소요)"
+    log_info "  - Next.js 최적화 빌드 (npm run build)"
+    log_info "  - 프로덕션 의존성만 설치"
+    log_info "  - Hot Reload 비활성화"
+    docker-compose -f docker-compose.prod.yml build --no-cache
+    log_success "프로덕션 이미지 빌드 완료"
 
     # 3-3. 컨테이너 시작
     log_info "컨테이너 시작 중..."
-    docker-compose up -d
+    docker-compose -f docker-compose.prod.yml up -d
     log_success "컨테이너 시작 완료"
 
-    log_warn "참고: 프로덕션 최적화를 원하면 Dockerfile.prod를 생성하세요"
+    log_success "✨ 프로덕션 모드로 배포 완료 (최적화됨)"
 
 else
     # ========================================
@@ -158,14 +159,23 @@ log_info "Step 4: 배포 상태 확인 중..."
 
 sleep 3  # 컨테이너 시작 대기
 
-# 컨테이너 상태 체크
-CONTAINER_STATUS=$(docker-compose ps web | grep -i "up" | wc -l)
+# 컨테이너 상태 체크 (환경별 compose 파일 사용)
+if [ "$ENVIRONMENT" = "prod" ]; then
+    CONTAINER_STATUS=$(docker-compose -f docker-compose.prod.yml ps web | grep -i "up" | wc -l)
+else
+    CONTAINER_STATUS=$(docker-compose ps web | grep -i "up" | wc -l)
+fi
+
 if [ "$CONTAINER_STATUS" -gt 0 ]; then
     log_success "웹 컨테이너 정상 실행 중"
 else
     log_error "웹 컨테이너가 실행되지 않았습니다"
     log_info "로그 확인:"
-    docker-compose logs --tail=50 web
+    if [ "$ENVIRONMENT" = "prod" ]; then
+        docker-compose -f docker-compose.prod.yml logs --tail=50 web
+    else
+        docker-compose logs --tail=50 web
+    fi
     exit 1
 fi
 
