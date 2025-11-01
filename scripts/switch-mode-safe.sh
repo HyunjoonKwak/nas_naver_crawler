@@ -35,14 +35,22 @@ log_cyan() {
 
 # 현재 실행 중인 모드 감지
 detect_current_mode() {
-    # 프로덕션 컨테이너 확인
-    if docker-compose -f docker-compose.prod.yml ps | grep -q "Up"; then
+    # 실행 중인 웹 컨테이너가 있는지 확인
+    if ! docker ps --filter "name=naver-crawler-web" --filter "status=running" | grep -q "naver-crawler-web"; then
+        echo "none"
+        return
+    fi
+
+    # 컨테이너 내부 NODE_ENV 확인 (가장 정확한 방법)
+    NODE_ENV=$(docker exec naver-crawler-web env 2>/dev/null | grep "^NODE_ENV=" | cut -d'=' -f2 | tr -d '\r')
+
+    if [ "$NODE_ENV" = "production" ]; then
         echo "prod"
-    # 개발 컨테이너 확인
-    elif docker-compose -f docker-compose.yml ps | grep -q "Up"; then
+    elif [ "$NODE_ENV" = "development" ]; then
         echo "dev"
     else
-        echo "none"
+        # NODE_ENV가 없거나 다른 값이면 docker-compose.yml 기본 사용 (개발 모드)
+        echo "dev"
     fi
 }
 
