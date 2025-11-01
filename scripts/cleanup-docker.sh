@@ -1,155 +1,197 @@
 #!/bin/bash
 
-# Docker 리소스 정리 스크립트
-# 사용법: bash scripts/cleanup-docker.sh
+###############################################################################
+# NAS Docker 정리 스크립트
+# 사용법: ./nas-docker-cleanup.sh
+# 설명: NAS의 Docker 이미지, 컨테이너, 볼륨 및 프로젝트 파일을 정리합니다.
+###############################################################################
 
 set -e
 
-echo "========================================"
-echo "  Docker 리소스 확인 및 정리 스크립트"
-echo "========================================"
-echo ""
+# NAS Docker 루트 디렉토리 (환경에 맞게 수정)
+DOCKER_ROOT="/volume1/docker"
 
-# 색상 정의
+# 색상
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+CYAN='\033[0;36m'
+NC='\033[0m'
 
-# 1. 현재 실행 중인 컨테이너 확인
-echo -e "${BLUE}[1단계] 실행 중인 컨테이너 확인${NC}"
-echo "========================================"
-docker ps --format "table {{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}"
-echo ""
+echo -e "${CYAN}"
+cat << "EOF"
+╔═══════════════════════════════════════════════════════════╗
+║          NAS Docker 정리 스크립트                          ║
+╚═══════════════════════════════════════════════════════════╝
+EOF
+echo -e "${NC}"
 
-# 2. 중지된 컨테이너 확인
-echo -e "${BLUE}[2단계] 중지된 컨테이너 확인${NC}"
-echo "========================================"
-STOPPED_CONTAINERS=$(docker ps -a -f status=exited --format "{{.Names}}")
-if [ -z "$STOPPED_CONTAINERS" ]; then
-  echo "중지된 컨테이너 없음"
-else
-  docker ps -a -f status=exited --format "table {{.Names}}\t{{.Image}}\t{{.Status}}"
+# Docker 확인
+if ! command -v docker &> /dev/null; then
+    echo -e "${RED}[ERROR]${NC} Docker가 설치되어 있지 않습니다!"
+    exit 1
 fi
+
+if ! docker ps &> /dev/null; then
+    echo -e "${RED}[ERROR]${NC} Docker 실행 권한이 없습니다. sudo로 실행하세요."
+    exit 1
+fi
+
+# 현재 상태 분석
+echo -e "${BLUE}[1/5]${NC} 현재 Docker 상태 분석 중..."
 echo ""
 
-# 3. Docker 네트워크 확인
-echo -e "${BLUE}[3단계] Docker 네트워크 확인${NC}"
-echo "========================================"
-docker network ls --format "table {{.Name}}\t{{.Driver}}\t{{.Scope}}"
+RUNNING=$(docker ps -q | wc -l)
+STOPPED=$(docker ps -a -f status=exited -q | wc -l)
+IMAGES=$(docker images -q | wc -l)
+DANGLING=$(docker images -f "dangling=true" -q | wc -l)
+VOLUMES=$(docker volume ls -q | wc -l)
+
+echo "  실행 중인 컨테이너: ${RUNNING}개"
+echo "  중지된 컨테이너: ${STOPPED}개"
+echo "  전체 이미지: ${IMAGES}개"
+echo "  Dangling 이미지: ${DANGLING}개"
+echo "  볼륨: ${VOLUMES}개"
 echo ""
 
-# 4. Docker 볼륨 확인
-echo -e "${BLUE}[4단계] Docker 볼륨 확인${NC}"
-echo "========================================"
-docker volume ls --format "table {{.Name}}\t{{.Driver}}\t{{.Mountpoint}}"
-echo ""
-
-# 5. 이미지 확인
-echo -e "${BLUE}[5단계] Docker 이미지 확인${NC}"
-echo "========================================"
-docker images --format "table {{.Repository}}\t{{.Tag}}\t{{.Size}}\t{{.CreatedAt}}"
-echo ""
-
-# 6. 디스크 사용량 확인
-echo -e "${BLUE}[6단계] Docker 디스크 사용량${NC}"
-echo "========================================"
 docker system df
 echo ""
 
-echo -e "${YELLOW}========================================${NC}"
-echo -e "${YELLOW}  정리 옵션${NC}"
-echo -e "${YELLOW}========================================${NC}"
-echo ""
-echo "다음 명령어들을 복사해서 실행하세요:"
+# Docker 루트 디렉토리 점검
+echo -e "${BLUE}[2/5]${NC} Docker 루트 디렉토리 점검 중..."
 echo ""
 
-# naver-crawler 관련만 정리
-echo -e "${GREEN}# Option 1: naver-crawler 프로젝트만 정리 (권장)${NC}"
-echo "docker-compose down                    # 현재 프로젝트 컨테이너 중지 및 삭제"
-echo "docker volume rm nas_naver_crawler_postgres_data nas_naver_crawler_crawled_data nas_naver_crawler_logs 2>/dev/null || true"
-echo "docker network rm nas_naver_crawler_crawler-network 2>/dev/null || true"
-echo ""
+if [ -d "$DOCKER_ROOT" ]; then
+    echo "  📁 Docker 루트: $DOCKER_ROOT"
+    echo ""
 
-# 중지된 컨테이너만 정리
-echo -e "${GREEN}# Option 2: 중지된 컨테이너만 모두 삭제${NC}"
-echo "docker container prune -f              # 중지된 컨테이너 모두 삭제"
-echo ""
+    # 프로젝트별 디스크 사용량
+    echo "  프로젝트별 디스크 사용량:"
+    du -sh $DOCKER_ROOT/*/ 2>/dev/null | sort -hr | head -10
+    echo ""
 
-# 사용하지 않는 리소스 모두 정리
-echo -e "${GREEN}# Option 3: 사용하지 않는 모든 리소스 정리 (신중!)${NC}"
-echo "docker system prune -a --volumes -f    # 사용하지 않는 이미지, 볼륨, 네트워크 모두 삭제"
-echo ""
+    # 큰 로그 파일 찾기 (10MB 이상)
+    echo "  📝 큰 로그 파일 (10MB 이상):"
+    find $DOCKER_ROOT -name "*.log" -size +10M -exec ls -lh {} \; 2>/dev/null | awk '{print "    " $9 " (" $5 ")"}' | head -10
 
-# 개별 삭제 명령어
-echo -e "${GREEN}# Option 4: 개별 삭제 (특정 컨테이너/볼륨/네트워크)${NC}"
-echo "# 컨테이너 삭제:"
-if [ ! -z "$STOPPED_CONTAINERS" ]; then
-  for container in $STOPPED_CONTAINERS; do
-    echo "docker rm $container"
-  done
+    # 임시 파일 찾기
+    TEMP_COUNT=$(find $DOCKER_ROOT -name "*.tmp" -o -name "*~" -o -name ".DS_Store" 2>/dev/null | wc -l)
+    echo ""
+    echo "  🗑️  임시 파일: ${TEMP_COUNT}개"
+
 else
-  echo "# (중지된 컨테이너 없음)"
+    echo "  ⚠️  Docker 루트 디렉토리를 찾을 수 없습니다: $DOCKER_ROOT"
+    echo "  → Docker 정리만 진행합니다."
 fi
 echo ""
 
-echo "# 볼륨 삭제 (사용되지 않는 볼륨):"
-echo "docker volume ls -q | xargs -r docker volume rm 2>/dev/null || echo '볼륨이 사용 중입니다'"
+# 정리 모드 선택
+echo -e "${BLUE}[3/5]${NC} 정리 모드 선택"
+echo ""
+echo -e "${GREEN}1)${NC} 안전 정리 (Dangling 이미지 + 중지된 컨테이너)"
+echo -e "${YELLOW}2)${NC} 일반 정리 (안전 정리 + 미사용 이미지 + 임시 파일)"
+echo -e "${RED}3)${NC} 전체 정리 (일반 정리 + 미사용 볼륨 + 빌드 캐시 + 큰 로그 파일)"
 echo ""
 
-echo "# 네트워크 삭제 (사용되지 않는 네트워크):"
-echo "docker network prune -f"
+read -p "선택 [1-3]: " -n 1 -r MODE
+echo ""
 echo ""
 
-echo -e "${RED}⚠️  주의사항:${NC}"
-echo "1. 실행 중인 컨테이너는 먼저 중지해야 삭제할 수 있습니다"
-echo "2. 볼륨 삭제 시 저장된 데이터가 모두 삭제됩니다 (복구 불가)"
-echo "3. 다른 프로젝트의 Docker 리소스는 건드리지 마세요"
-echo "4. 확실하지 않으면 Option 1 (프로젝트별 정리)을 사용하세요"
+if [[ ! $MODE =~ ^[1-3]$ ]]; then
+    echo -e "${RED}[ERROR]${NC} 잘못된 선택입니다."
+    exit 1
+fi
+
+# 최종 확인
+echo -e "${BLUE}[4/5]${NC} 최종 확인"
+echo ""
+echo -e "${YELLOW}⚠️  주의: 삭제된 데이터는 복구할 수 없습니다!${NC}"
 echo ""
 
-# 특정 패턴의 리소스 찾기
-echo -e "${BLUE}========================================${NC}"
-echo -e "${BLUE}  프로젝트별 리소스 찾기${NC}"
-echo -e "${BLUE}========================================${NC}"
+read -p "정말 정리하시겠습니까? [y/N]: " -n 1 -r
 echo ""
 
-echo "# naver-crawler 관련 컨테이너:"
-docker ps -a --filter "name=naver-crawler" --format "table {{.Names}}\t{{.Status}}" 2>/dev/null || echo "없음"
+if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+    echo -e "${BLUE}[INFO]${NC} 취소되었습니다."
+    exit 0
+fi
+
+# 정리 실행
+echo ""
+echo -e "${BLUE}[5/5]${NC} 정리 실행 중..."
 echo ""
 
-echo "# naver-crawler 관련 볼륨:"
-docker volume ls --filter "name=nas_naver_crawler" --format "table {{.Name}}" 2>/dev/null || echo "없음"
+case $MODE in
+    1)
+        # 안전 정리
+        echo "  [1/3] Dangling 이미지 삭제..."
+        docker image prune -f
+        echo "  [2/3] 중지된 컨테이너 삭제..."
+        docker container prune -f
+        echo "  [3/3] 미사용 네트워크 삭제..."
+        docker network prune -f
+        ;;
+    2)
+        # 일반 정리
+        echo "  [1/5] 미사용 이미지 삭제..."
+        docker image prune -a -f
+        echo "  [2/5] 중지된 컨테이너 삭제..."
+        docker container prune -f
+        echo "  [3/5] 미사용 네트워크 삭제..."
+        docker network prune -f
+        echo "  [4/5] 빌드 캐시 삭제..."
+        docker builder prune -f
+
+        # 프로젝트 임시 파일 정리
+        if [ -d "$DOCKER_ROOT" ]; then
+            echo "  [5/5] 임시 파일 정리..."
+            DELETED=0
+            DELETED=$(find $DOCKER_ROOT -name "*.tmp" -o -name "*~" -o -name ".DS_Store" 2>/dev/null -exec rm -f {} \; -print | wc -l)
+            echo "      → ${DELETED}개 파일 삭제됨"
+        fi
+        ;;
+    3)
+        # 전체 정리
+        echo "  [1/6] Docker 전체 시스템 정리..."
+        docker system prune -a -f --volumes
+        echo "  [2/6] 빌드 캐시 전체 삭제..."
+        docker builder prune -a -f
+
+        # 프로젝트 파일 정리
+        if [ -d "$DOCKER_ROOT" ]; then
+            echo "  [3/6] 임시 파일 정리..."
+            DELETED=$(find $DOCKER_ROOT -name "*.tmp" -o -name "*~" -o -name ".DS_Store" 2>/dev/null -exec rm -f {} \; -print | wc -l)
+            echo "      → ${DELETED}개 파일 삭제됨"
+
+            echo "  [4/6] 오래된 로그 파일 정리 (30일 이상)..."
+            OLD_LOGS=$(find $DOCKER_ROOT -name "*.log" -mtime +30 2>/dev/null -exec rm -f {} \; -print | wc -l)
+            echo "      → ${OLD_LOGS}개 로그 파일 삭제됨"
+
+            echo "  [5/6] 큰 로그 파일 압축 (100MB 이상)..."
+            find $DOCKER_ROOT -name "*.log" -size +100M 2>/dev/null | while read file; do
+                gzip "$file" 2>/dev/null && echo "      → 압축: $file.gz"
+            done
+
+            echo "  [6/6] 빈 디렉토리 정리..."
+            EMPTY_DIRS=$(find $DOCKER_ROOT -type d -empty 2>/dev/null -delete -print | wc -l)
+            echo "      → ${EMPTY_DIRS}개 빈 디렉토리 삭제됨"
+        fi
+        ;;
+esac
+
+echo ""
+echo -e "${GREEN}✅ 정리 완료!${NC}"
 echo ""
 
-echo "# naver-crawler 관련 네트워크:"
-docker network ls --filter "name=nas_naver_crawler" --format "table {{.Name}}" 2>/dev/null || echo "없음"
+# 정리 후 상태
+echo -e "${BLUE}정리 후 상태:${NC}"
+docker system df
+
+echo ""
+echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo -e "${GREEN}✨ Docker 정리가 완료되었습니다!${NC}"
+echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
 
-echo -e "${GREEN}========================================${NC}"
-echo -e "${GREEN}  추천 정리 순서${NC}"
-echo -e "${GREEN}========================================${NC}"
-echo ""
-echo "1. 먼저 현재 디렉토리 확인:"
-echo "   pwd  # /volume1/code_work/nas_naver_crawler 인지 확인"
-echo ""
-echo "2. 현재 프로젝트 컨테이너 중지:"
-echo "   docker-compose down"
-echo ""
-echo "3. 이전 프로젝트 리소스 확인 후 삭제:"
-echo "   # 중지된 컨테이너 모두 삭제"
-echo "   docker container prune -f"
-echo ""
-echo "   # 사용하지 않는 볼륨 삭제 (주의: 데이터 손실)"
-echo "   docker volume prune -f"
-echo ""
-echo "   # 사용하지 않는 네트워크 삭제"
-echo "   docker network prune -f"
-echo ""
-echo "   # 사용하지 않는 이미지 삭제"
-echo "   docker image prune -a -f"
-echo ""
-echo "4. 현재 프로젝트 재시작:"
-echo "   docker-compose up -d"
-echo ""
+exit 0
