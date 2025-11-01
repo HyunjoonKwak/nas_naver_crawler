@@ -71,59 +71,52 @@
 
 ---
 
-### **cleanup-root.sh** (루트 폴더 정리) ⭐ NEW
-루트 폴더의 불필요한 파일을 정리합니다.
+### **cleanup-nas.sh** (NAS 통합 정리) ⭐ NEW
+프로젝트 폴더, Docker 시스템, 시스템 로그를 통합 정리합니다.
 
 **사용법**:
 ```bash
-# 안전 모드 (확인만, 삭제 안 함)
-./scripts/cleanup-root.sh
+# 대화형 모드 (권장)
+./scripts/cleanup-nas.sh
 
-# 실제 삭제 모드
-./scripts/cleanup-root.sh --clean
+# 자동 모드 (레벨 2 실행)
+./scripts/cleanup-nas.sh --auto
+
+# 특정 레벨 실행
+./scripts/cleanup-nas.sh --level 3
 ```
 
+**정리 레벨**:
+- **레벨 1 (안전)**: 프로젝트 빌드 캐시 + Docker 안전 정리
+  - `.next/`, `tsconfig.tsbuildinfo`
+  - `*.backup`, `*_backup/` 폴더
+  - Dangling 이미지, 중지된 컨테이너
+
+- **레벨 2 (일반)** 🎯 권장: 레벨 1 + 미사용 이미지 + 임시 파일
+  - 레벨 1 항목 전체
+  - `.DS_Store`, `*.tmp`, `*~`, `*.swp`
+  - Docker 미사용 이미지, 빌드 캐시
+
+- **레벨 3 (전체)** ⚠️ 주의: 레벨 2 + 볼륨 + 로그 + 전체 캐시
+  - 레벨 2 항목 전체
+  - Docker 미사용 볼륨 (데이터 손실 가능)
+  - 오래된 로그 (30일+), 큰 로그 압축 (100MB+)
+  - 빈 디렉토리
+
 **기능**:
-- **빌드 캐시**: `.next/` (185MB), `tsconfig.tsbuildinfo` 정리
-- **백업 파일**: `*.backup`, `.production_backup/`, `*_backup/` 삭제
-- **macOS 메타데이터**: `.DS_Store` 자동 정리
-- **임시 파일**: `*.tmp`, `*~`, `*.swp` 삭제
-- **큰 파일 감지**: 10MB 이상 Git 미추적 파일 찾기
-- **디스크 통계**: Top 10 폴더 사용량
+- **프로젝트 정리**: 빌드 캐시, 백업 파일, 임시 파일
+- **Docker 정리**: 이미지, 컨테이너, 볼륨, 빌드 캐시
+- **시스템 정리**: 로그 파일, 임시 디렉토리
+- **디스크 분석**: 사용량 통계, Top 5 프로젝트
+- **실행 로그**: `/tmp/cleanup-nas-YYYYMMDD-HHMMSS.log`
 
 **언제 사용**:
-- 주간 정기 유지보수 (금요일 권장)
-- Git pull 전 (불필요한 파일 제거)
-- 배포 전 정리
-- 디스크 공간 확보
+- 디스크 공간 부족 시 (`/dev/md0` 91%+)
+- 주간 정기 유지보수 (레벨 2)
+- 월간 전체 정리 (레벨 3)
+- Docker 빌드 실패 시
 
 **관련 문서**: [docs/ROOT_FOLDER_MANAGEMENT.md](../docs/ROOT_FOLDER_MANAGEMENT.md)
-
----
-
-### **cleanup-docker.sh** (Docker 정리)
-NAS의 Docker 리소스를 종합적으로 정리합니다.
-
-**사용법**:
-```bash
-./scripts/cleanup-docker.sh
-```
-
-**기능**:
-- **Docker 상태 분석**: 컨테이너, 이미지, 볼륨, 네트워크 현황
-- **루트 디렉토리 점검**: `/volume1/docker` 디스크 사용량 분석
-- **3단계 정리 모드**:
-  1. 안전 정리 (Dangling 이미지 + 중지된 컨테이너)
-  2. 일반 정리 (미사용 이미지 + 임시 파일)
-  3. 전체 정리 (미사용 볼륨 + 빌드 캐시 + 큰 로그 파일)
-- **로그 파일 관리**: 오래된 로그 삭제, 큰 로그 압축
-- **임시 파일 정리**: *.tmp, *~, .DS_Store 제거
-
-**언제 사용**:
-- 디스크 공간 부족 시 (ENOSPC 에러)
-- Docker 빌드 실패 시
-- 정기 유지보수 (월 1회 권장)
-- 로그 파일이 과도하게 쌓였을 때
 
 ---
 
@@ -313,7 +306,7 @@ npx ts-node scripts/geocode-existing-complexes.ts
 | 카테고리 | 스크립트 | 빈도 |
 |---------|---------|------|
 | **배포/운영** | check-mode.sh ⭐, switch-mode-safe.sh | 자주 |
-| **유지보수** | cleanup-root.sh ⭐, cleanup-docker.sh, fix-nas-docker-compose.sh | 주간/가끔 |
+| **유지보수** | cleanup-nas.sh ⭐ (통합), fix-nas-docker-compose.sh | 주간/월간 |
 | **테스트** | npm test (단위 테스트), test-db.ts (DB 연결), verify-perf-improve.sh (성능) | 자주/가끔 |
 | **마이그레이션** | migrate-existing-prices.ts, geocode-existing-complexes.ts | 일회성 |
 | **참고용** | fix-created-at.sql | 일회성 |
