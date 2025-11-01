@@ -126,11 +126,17 @@ FROM base AS production
 COPY logic ./logic
 COPY config.env ./
 
-# 프로덕션 의존성만 복사
+# 프로덕션 의존성 복사 (dependencies 스테이지에서)
 COPY --from=dependencies /app/node_modules ./node_modules
+
+# Builder 스테이지에서 생성된 파일들 복사
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/prisma ./prisma
+
+# Builder에서 생성된 Prisma 클라이언트 복사 (node_modules/@prisma/client에 생성됨)
+COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=builder /app/node_modules/@prisma/client ./node_modules/@prisma/client
 
 # Next.js 파일 복사
 COPY app ./app
@@ -141,9 +147,9 @@ COPY scripts ./scripts
 COPY instrumentation.ts next.config.js tsconfig.json tailwind.config.js postcss.config.js ./
 COPY package.json package-lock.json* ./
 
-# Prisma 클라이언트 생성 (프로덕션용)
-# package.json의 prisma 버전 사용 (npx 대신)
-RUN npm exec prisma generate
+# Prisma 클라이언트는 builder 스테이지에서 이미 생성됨
+# node_modules/@prisma/client가 dependencies 스테이지의 node_modules에 포함되어 있음
+# 추가 생성 불필요 (prisma CLI가 devDependency이므로 production에서 사용 불가)
 
 # 필요한 디렉토리 생성
 RUN mkdir -p crawled_data logs && \
