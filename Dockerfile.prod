@@ -81,7 +81,7 @@ FROM base AS dependencies
 
 COPY package.json package-lock.json* ./
 RUN --mount=type=cache,target=/root/.npm \
-    npm ci --only=production && \
+    npm ci --only=production --legacy-peer-deps && \
     npm cache clean --force
 
 # ============================================
@@ -92,7 +92,7 @@ FROM base AS builder
 # 의존성 설치 (devDependencies 포함)
 COPY package.json package-lock.json* ./
 RUN --mount=type=cache,target=/root/.npm \
-    npm ci
+    npm ci --legacy-peer-deps
 
 # Prisma 파일 복사 및 클라이언트 생성
 COPY prisma ./prisma
