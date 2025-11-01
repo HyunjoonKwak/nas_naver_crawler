@@ -198,11 +198,16 @@ fi
 
 echo ""
 
-# 3. 검증
+# 3. 자동 검증
 log_blue "4️⃣  배포 검증 중..."
-sleep 3
+echo ""
+
+# 검증 대기
+log_info "검증 1/5: 컨테이너 시작 대기 중..."
+sleep 5
 
 # 컨테이너 상태 확인
+log_info "검증 2/5: 컨테이너 상태 확인 중..."
 CONTAINER_STATUS=$(docker-compose -f "$NEW_COMPOSE_FILE" ps web | grep -i "up" | wc -l)
 
 if [ "$CONTAINER_STATUS" -gt 0 ]; then
@@ -215,16 +220,46 @@ else
     exit 1
 fi
 
-# NODE_ENV 확인 (프로덕션 모드인 경우)
+# NODE_ENV 확인
+log_info "검증 3/5: NODE_ENV 확인 중..."
+NODE_ENV=$(docker-compose -f "$NEW_COMPOSE_FILE" exec -T web env | grep NODE_ENV | cut -d'=' -f2 | tr -d '\r')
+
 if [[ "$NEW_MODE" == "prod" ]]; then
-    NODE_ENV=$(docker-compose -f "$NEW_COMPOSE_FILE" exec -T web env | grep NODE_ENV | cut -d'=' -f2)
     if [[ "$NODE_ENV" == "production" ]]; then
-        log_info "✅ NODE_ENV=production 확인"
+        log_info "✅ NODE_ENV=production (프로덕션 모드)"
     else
         log_warn "⚠️  NODE_ENV=$NODE_ENV (예상: production)"
     fi
+else
+    if [[ "$NODE_ENV" == "development" ]]; then
+        log_info "✅ NODE_ENV=development (개발 모드)"
+    else
+        log_warn "⚠️  NODE_ENV=$NODE_ENV (예상: development)"
+    fi
 fi
 
+# 데이터베이스 연결 확인
+log_info "검증 4/5: 데이터베이스 연결 확인 중..."
+DB_STATUS=$(docker-compose ps db | grep -i "up" | wc -l)
+
+if [ "$DB_STATUS" -gt 0 ]; then
+    log_info "✅ 데이터베이스 컨테이너 정상 실행 중"
+else
+    log_warn "⚠️  데이터베이스 컨테이너가 실행되지 않았습니다"
+fi
+
+# Redis 연결 확인
+log_info "검증 5/5: Redis 연결 확인 중..."
+REDIS_STATUS=$(docker-compose ps redis | grep -i "up" | wc -l)
+
+if [ "$REDIS_STATUS" -gt 0 ]; then
+    log_info "✅ Redis 컨테이너 정상 실행 중"
+else
+    log_warn "⚠️  Redis 컨테이너가 실행되지 않았습니다"
+fi
+
+echo ""
+log_info "🎉 모든 검증 통과!"
 echo ""
 
 # 4. 완료

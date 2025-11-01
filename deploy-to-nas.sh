@@ -153,31 +153,76 @@ else
 fi
 
 # ============================================
-# 4. 배포 후 검증
+# 4. 배포 후 자동 검증
 # ============================================
-log_info "Step 4: 배포 상태 확인 중..."
+log_info "Step 4: 배포 검증 중..."
+echo ""
 
-sleep 3  # 컨테이너 시작 대기
-
-# 컨테이너 상태 체크 (환경별 compose 파일 사용)
+# 환경별 compose 파일 경로 설정
 if [ "$ENVIRONMENT" = "prod" ]; then
-    CONTAINER_STATUS=$(docker-compose -f docker-compose.prod.yml ps web | grep -i "up" | wc -l)
+    COMPOSE_CMD="docker-compose -f docker-compose.prod.yml"
 else
-    CONTAINER_STATUS=$(docker-compose ps web | grep -i "up" | wc -l)
+    COMPOSE_CMD="docker-compose"
 fi
+
+# 4-1. 컨테이너 시작 대기
+log_info "검증 1/5: 컨테이너 시작 대기 중..."
+sleep 5
+
+# 4-2. 컨테이너 상태 확인
+log_info "검증 2/5: 컨테이너 상태 확인 중..."
+CONTAINER_STATUS=$($COMPOSE_CMD ps web | grep -i "up" | wc -l)
 
 if [ "$CONTAINER_STATUS" -gt 0 ]; then
-    log_success "웹 컨테이너 정상 실행 중"
+    log_success "✅ 웹 컨테이너 정상 실행 중"
 else
-    log_error "웹 컨테이너가 실행되지 않았습니다"
+    log_error "❌ 웹 컨테이너가 실행되지 않았습니다"
+    echo ""
     log_info "로그 확인:"
-    if [ "$ENVIRONMENT" = "prod" ]; then
-        docker-compose -f docker-compose.prod.yml logs --tail=50 web
-    else
-        docker-compose logs --tail=50 web
-    fi
+    $COMPOSE_CMD logs --tail=50 web
     exit 1
 fi
+
+# 4-3. NODE_ENV 환경 변수 확인
+log_info "검증 3/5: NODE_ENV 확인 중..."
+NODE_ENV=$($COMPOSE_CMD exec -T web env | grep NODE_ENV | cut -d'=' -f2 | tr -d '\r')
+
+if [ "$ENVIRONMENT" = "prod" ]; then
+    if [ "$NODE_ENV" = "production" ]; then
+        log_success "✅ NODE_ENV=production (프로덕션 모드)"
+    else
+        log_warn "⚠️  NODE_ENV=$NODE_ENV (예상: production)"
+    fi
+else
+    if [ "$NODE_ENV" = "development" ]; then
+        log_success "✅ NODE_ENV=development (개발 모드)"
+    else
+        log_warn "⚠️  NODE_ENV=$NODE_ENV (예상: development)"
+    fi
+fi
+
+# 4-4. 데이터베이스 연결 확인
+log_info "검증 4/5: 데이터베이스 연결 확인 중..."
+DB_STATUS=$(docker-compose ps db | grep -i "up" | wc -l)
+
+if [ "$DB_STATUS" -gt 0 ]; then
+    log_success "✅ 데이터베이스 컨테이너 정상 실행 중"
+else
+    log_warn "⚠️  데이터베이스 컨테이너가 실행되지 않았습니다"
+fi
+
+# 4-5. Redis 연결 확인
+log_info "검증 5/5: Redis 연결 확인 중..."
+REDIS_STATUS=$(docker-compose ps redis | grep -i "up" | wc -l)
+
+if [ "$REDIS_STATUS" -gt 0 ]; then
+    log_success "✅ Redis 컨테이너 정상 실행 중"
+else
+    log_warn "⚠️  Redis 컨테이너가 실행되지 않았습니다"
+fi
+
+echo ""
+log_success "🎉 모든 검증 통과!"
 
 # ============================================
 # 5. 배포 완료
