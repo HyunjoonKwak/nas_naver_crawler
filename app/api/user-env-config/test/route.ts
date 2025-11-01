@@ -169,6 +169,7 @@ async function testSmtpConnection(params: any) {
 
     // Note: nodemailer는 런타임에 동적으로 import
     // 실제 구현에서는 nodemailer를 사용하지만, 여기서는 간단한 연결 테스트만 수행
+    // @ts-ignore - Dynamic import, nodemailer will be available at runtime
     const nodemailer = await import('nodemailer');
 
     const transporter = nodemailer.default.createTransport({

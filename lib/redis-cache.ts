@@ -120,17 +120,46 @@ export async function setCache<T>(key: string, value: T, ttl: number): Promise<v
 
 /**
  * 캐시 삭제 (패턴 지원)
+ * SCAN을 사용하여 프로덕션 환경에서 안전하게 동작
  */
 export async function deleteCache(pattern: string): Promise<number> {
   try {
     const client = await getRedisClient();
     if (!client) return 0;
 
-    const keys = await client.keys(pattern);
-    if (keys.length === 0) return 0;
+    let cursor = 0;
+    let deletedCount = 0;
+    const keysToDelete: string[] = [];
 
-    await client.del(keys);
-    return keys.length;
+    // SCAN을 사용하여 패턴 매칭 (O(N)이지만 blocking하지 않음)
+    do {
+      const reply = await client.scan(cursor, {
+        MATCH: pattern,
+        COUNT: 100, // 한 번에 100개씩 처리
+      });
+
+      cursor = reply.cursor;
+
+      if (reply.keys.length > 0) {
+        keysToDelete.push(...reply.keys);
+      }
+
+      // 1000개씩 배치 삭제 (메모리 효율)
+      if (keysToDelete.length >= 1000) {
+        await client.del(keysToDelete);
+        deletedCount += keysToDelete.length;
+        keysToDelete.length = 0; // 배열 비우기
+      }
+    } while (cursor !== 0);
+
+    // 남은 키 삭제
+    if (keysToDelete.length > 0) {
+      await client.del(keysToDelete);
+      deletedCount += keysToDelete.length;
+    }
+
+    console.log(`[Cache] Deleted ${deletedCount} keys matching pattern: ${pattern}`);
+    return deletedCount;
   } catch (error: any) {
     console.error('[Cache] Delete error:', error);
     return 0;
@@ -214,16 +243,29 @@ class MultiLayerCache {
 
   /**
    * L1 & L2 동시 삭제
+   * 패턴 매칭을 통해 관련된 모든 캐시 제거
    */
   async delete(pattern: string): Promise<void> {
     // L1: 메모리 캐시 패턴 매칭
+    const keysToDelete: string[] = [];
     for (const [key] of this.memoryCache.entries()) {
-      if (key.includes(pattern) || key.startsWith(pattern)) {
-        this.memoryCache.delete(key);
+      // 와일드카드 패턴 지원 (simple implementation)
+      const regexPattern = pattern.replace(/\*/g, '.*');
+      const regex = new RegExp(`^${regexPattern}$`);
+
+      if (regex.test(key)) {
+        keysToDelete.push(key);
       }
     }
 
-    // L2: Redis
+    // 메모리에서 삭제
+    keysToDelete.forEach(key => this.memoryCache.delete(key));
+
+    if (keysToDelete.length > 0) {
+      console.log(`[Cache L1] Deleted ${keysToDelete.length} keys from memory`);
+    }
+
+    // L2: Redis (SCAN 사용)
     await deleteCache(pattern);
   }
 

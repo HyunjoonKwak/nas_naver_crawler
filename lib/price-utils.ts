@@ -14,14 +14,16 @@ export function parsePriceToWonBigInt(priceStr: string | null | undefined): bigi
 
   const cleanStr = priceStr.replace(/\s+/g, '');
   const eokMatch = cleanStr.match(/(\d+)억/);
-  const manMatch = cleanStr.match(/억?([\d,]+)/);
 
   const eok = eokMatch ? parseInt(eokMatch[1]) : 0;
   let man = 0;
 
+  // "억" 뒤의 숫자 추출
+  const manMatch = cleanStr.match(/억([\d,]+)/);
   if (manMatch) {
     man = parseInt(manMatch[1].replace(/,/g, ''));
-  } else {
+  } else if (!eokMatch) {
+    // "억"이 없는 경우: 순수 숫자만 (예: "8,500" = 8500만원)
     const onlyNumber = cleanStr.match(/^([\d,]+)$/);
     if (onlyNumber) {
       man = parseInt(onlyNumber[1].replace(/,/g, ''));
