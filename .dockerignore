@@ -14,18 +14,19 @@ node_modules
 .env.*.local
 
 # 데이터 디렉토리
-crawled_data/*
-crawled_data_test/*
-logs/*
-logs_test/*
+crawled_data
+crawled_data_test
+logs
+logs_test
 
-# 문서
+# 문서 (프로덕션 빌드에는 불필요)
 *.md
+!CLAUDE.md
 README*.md
-docs/
+docs
 
-# 스크립트 (manage.sh 등)
-*.sh
+# 루트 스크립트만 제외 (디렉토리 내부 파일은 유지)
+/*.sh
 
 # OS
 .DS_Store
@@ -40,14 +41,16 @@ Thumbs.db
 # 로그
 *.log
 
-# 테스트
+# 테스트 (프로덕션 빌드에는 불필요)
 __tests__
 *.test.ts
+*.test.tsx
 *.test.js
-coverage/
+*.test.jsx
+coverage
 
 # 기타
 .playwright-mcp
 .husky
 .cache
-tmp/
+tmp
