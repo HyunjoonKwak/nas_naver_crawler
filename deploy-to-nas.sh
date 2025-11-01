@@ -1,17 +1,19 @@
 #!/bin/bash
 # =============================================================================
-# NAS 배포 자동화 스크립트 (v2.11.0)
+# NAS 배포 자동화 스크립트 (v2.12.0)
 # =============================================================================
 # 사용법:
 #   ./deploy-to-nas.sh [환경]
 #
 # 예시:
+#   ./deploy-to-nas.sh          # 자동 감지 (현재 실행 중인 모드로 배포)
 #   ./deploy-to-nas.sh dev      # 개발 환경 배포 (빠른 재시작)
 #   ./deploy-to-nas.sh prod     # 프로덕션 환경 배포 (빌드 포함)
 #
 # 참고:
 #   - NAS에서 실행하거나 로컬에서 NAS로 배포할 때 사용
 #   - config.env 파일이 이미 설정되어 있어야 함
+#   - 인자 없이 실행 시 현재 실행 중인 모드 자동 감지
 # =============================================================================
 
 set -e  # 에러 발생 시 즉시 종료
@@ -21,10 +23,8 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
+CYAN='\033[0;36m'
 NC='\033[0m' # No Color
-
-# 환경 변수 (기본값: dev)
-ENVIRONMENT="${1:-dev}"
 
 # 로그 함수
 log_info() {
@@ -43,11 +43,67 @@ log_error() {
     echo -e "${RED}❌ $1${NC}"
 }
 
+log_cyan() {
+    echo -e "${CYAN}$1${NC}"
+}
+
+# 현재 실행 중인 모드 감지
+detect_current_mode() {
+    # 프로덕션 컨테이너 확인
+    if docker-compose -f docker-compose.prod.yml ps 2>/dev/null | grep -q "Up"; then
+        echo "prod"
+    # 개발 컨테이너 확인
+    elif docker-compose ps 2>/dev/null | grep -q "Up"; then
+        echo "dev"
+    else
+        echo "none"
+    fi
+}
+
+# 환경 변수 설정
+if [ -z "$1" ]; then
+    # 인자 없음 → 자동 감지
+    CURRENT_MODE=$(detect_current_mode)
+
+    if [ "$CURRENT_MODE" = "none" ]; then
+        log_warn "실행 중인 컨테이너가 없습니다."
+        echo ""
+        echo "어떤 모드로 배포하시겠습니까?"
+        echo "  1) dev  - 개발 모드 (Hot Reload, 3초)"
+        echo "  2) prod - 프로덕션 모드 (최적화, 10~15분)"
+        echo ""
+        read -p "선택 (1-2): " mode_choice
+
+        case $mode_choice in
+            1)
+                ENVIRONMENT="dev"
+                ;;
+            2)
+                ENVIRONMENT="prod"
+                ;;
+            *)
+                log_error "잘못된 선택입니다."
+                exit 1
+                ;;
+        esac
+    else
+        ENVIRONMENT="$CURRENT_MODE"
+        log_cyan "🔍 자동 감지: 현재 ${ENVIRONMENT} 모드 실행 중"
+    fi
+else
+    # 인자 있음 → 명시적 지정
+    ENVIRONMENT="$1"
+fi
+
 # 헤더 출력
 echo ""
 echo "======================================================================"
-echo "  NAS 배포 스크립트 v2.11.0"
-echo "  환경: $ENVIRONMENT"
+echo "  NAS 배포 스크립트 v2.12.0"
+if [ -z "$1" ]; then
+    echo "  모드: 자동 감지 → $ENVIRONMENT"
+else
+    echo "  모드: $ENVIRONMENT (명시적 지정)"
+fi
 echo "  시작 시간: $(date '+%Y-%m-%d %H:%M:%S')"
 echo "======================================================================"
 echo ""
