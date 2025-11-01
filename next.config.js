@@ -49,6 +49,12 @@ const nextConfig = {
       };
     }
 
+    // 경로 별칭 명시적 설정 (Docker 환경 호환성)
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      '@': __dirname,
+    };
+
     return config;
   },
 
