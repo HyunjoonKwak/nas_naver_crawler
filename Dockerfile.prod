@@ -102,8 +102,8 @@ RUN --mount=type=cache,target=/root/.npm \
 
 # Prisma 파일 복사 및 클라이언트 생성
 COPY prisma ./prisma
-# npm run script 사용 (package.json에 정의된 prisma 사용)
-RUN npm run prisma:generate
+# node_modules에 설치된 prisma CLI를 직접 실행
+RUN node_modules/.bin/prisma generate
 
 # 소스 코드 복사
 COPY app ./app
