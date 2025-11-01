@@ -15,6 +15,7 @@ htmlcov/
 .next/
 out/
 build/
+*.tsbuildinfo
 
 # Production
 dist/
@@ -22,6 +23,12 @@ dist/
 # Misc
 .DS_Store
 *.pem
+*.backup
+
+# Temporary backups
+.production_backup/
+.dev_backup/
+*_backup/
 
 # Debug
 npm-debug.log*

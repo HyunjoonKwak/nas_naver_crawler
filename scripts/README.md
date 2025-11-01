@@ -71,6 +71,36 @@
 
 ---
 
+### **cleanup-root.sh** (루트 폴더 정리) ⭐ NEW
+루트 폴더의 불필요한 파일을 정리합니다.
+
+**사용법**:
+```bash
+# 안전 모드 (확인만, 삭제 안 함)
+./scripts/cleanup-root.sh
+
+# 실제 삭제 모드
+./scripts/cleanup-root.sh --clean
+```
+
+**기능**:
+- **빌드 캐시**: `.next/` (185MB), `tsconfig.tsbuildinfo` 정리
+- **백업 파일**: `*.backup`, `.production_backup/`, `*_backup/` 삭제
+- **macOS 메타데이터**: `.DS_Store` 자동 정리
+- **임시 파일**: `*.tmp`, `*~`, `*.swp` 삭제
+- **큰 파일 감지**: 10MB 이상 Git 미추적 파일 찾기
+- **디스크 통계**: Top 10 폴더 사용량
+
+**언제 사용**:
+- 주간 정기 유지보수 (금요일 권장)
+- Git pull 전 (불필요한 파일 제거)
+- 배포 전 정리
+- 디스크 공간 확보
+
+**관련 문서**: [docs/ROOT_FOLDER_MANAGEMENT.md](../docs/ROOT_FOLDER_MANAGEMENT.md)
+
+---
+
 ### **cleanup-docker.sh** (Docker 정리)
 NAS의 Docker 리소스를 종합적으로 정리합니다.
 
@@ -283,7 +313,7 @@ npx ts-node scripts/geocode-existing-complexes.ts
 | 카테고리 | 스크립트 | 빈도 |
 |---------|---------|------|
 | **배포/운영** | check-mode.sh ⭐, switch-mode-safe.sh | 자주 |
-| **유지보수** | cleanup-docker.sh, fix-nas-docker-compose.sh | 가끔 |
+| **유지보수** | cleanup-root.sh ⭐, cleanup-docker.sh, fix-nas-docker-compose.sh | 주간/가끔 |
 | **테스트** | npm test (단위 테스트), test-db.ts (DB 연결), verify-perf-improve.sh (성능) | 자주/가끔 |
 | **마이그레이션** | migrate-existing-prices.ts, geocode-existing-complexes.ts | 일회성 |
 | **참고용** | fix-created-at.sql | 일회성 |
