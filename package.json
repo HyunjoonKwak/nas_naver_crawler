@@ -48,7 +48,8 @@
     "redis": "^4.6.12",
     "xml2js": "^0.6.2",
     "zod": "^3.22.4",
-    "prisma": "^5.7.1"
+    "prisma": "^5.7.1",
+    "https-proxy-agent": "^7.0.2"
   },
   "devDependencies": {
     "@next/bundle-analyzer": "^14.0.4",
