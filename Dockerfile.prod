@@ -116,8 +116,10 @@ COPY instrumentation.ts next.config.js tsconfig.json tailwind.config.js postcss.
 
 # 디버깅: 복사된 파일 확인
 RUN echo "=== Checking copied files ===" && \
-    ls -la components/ | head -10 && \
-    ls -la lib/ | head -10 && \
+    echo "Total files in components: $(ls components/ | wc -l)" && \
+    echo "Total files in lib: $(ls lib/ | wc -l)" && \
+    ls components/ | grep -i navigation && \
+    ls lib/ | grep -i toast && \
     echo "=== Files check done ==="
 
 # Next.js 프로덕션 빌드
