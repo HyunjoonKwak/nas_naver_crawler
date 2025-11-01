@@ -51,6 +51,31 @@ declare module 'next-auth' {
   export default function NextAuth(options: NextAuthOptions): any;
 }
 
+/**
+ * next-auth/next 모듈에도 동일한 타입 확장 적용
+ */
+declare module 'next-auth/next' {
+  interface Session {
+    user: {
+      id: string;
+      email: string;
+      name: string;
+      role: 'ADMIN' | 'FAMILY' | 'GUEST';
+      image?: string | null;
+    };
+  }
+
+  interface User {
+    id: string;
+    email: string;
+    name: string;
+    role: 'ADMIN' | 'FAMILY' | 'GUEST';
+    image?: string | null;
+  }
+
+  export function getServerSession(...args: any[]): Promise<Session | null>;
+}
+
 declare module 'next-auth/jwt' {
   /**
    * JWT 타입 확장

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
+import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { invalidateRealPriceCache } from '@/lib/real-price-cache';
 import { invalidateRentPriceCache } from '@/lib/rent-price-cache';

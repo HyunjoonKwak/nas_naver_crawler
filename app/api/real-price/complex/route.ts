@@ -10,7 +10,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getRealPriceApiClient } from '@/lib/real-price-api';
 import { getRealPriceCache, setRealPriceCache } from '@/lib/real-price-cache';
-import { getServerSession } from 'next-auth';
+import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { extractSggCodeFromAddress, findSggCodeByName } from '@/lib/dong-code';
