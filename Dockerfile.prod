@@ -114,6 +114,7 @@ COPY lib ./lib
 COPY services ./services
 COPY repositories ./repositories
 COPY scripts ./scripts
+COPY types ./types
 COPY instrumentation.ts next.config.js tsconfig.json tailwind.config.js postcss.config.js ./
 
 # 디버깅: 복사된 파일 확인
@@ -156,6 +157,7 @@ COPY lib ./lib
 COPY services ./services
 COPY repositories ./repositories
 COPY scripts ./scripts
+COPY types ./types
 COPY instrumentation.ts next.config.js tsconfig.json tailwind.config.js postcss.config.js ./
 COPY package.json package-lock.json* ./
 
