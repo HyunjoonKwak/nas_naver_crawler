@@ -79,6 +79,9 @@ RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
 # ============================================
 FROM base AS dependencies
 
+# CI 환경 변수 설정 (prepare 스크립트 건너뛰기)
+ENV CI=true
+
 COPY package.json package-lock.json* ./
 RUN --mount=type=cache,target=/root/.npm \
     npm ci --only=production --legacy-peer-deps && \
@@ -88,6 +91,9 @@ RUN --mount=type=cache,target=/root/.npm \
 # Builder Stage (Next.js 빌드)
 # ============================================
 FROM base AS builder
+
+# CI 환경 변수 설정 (prepare 스크립트 건너뛰기)
+ENV CI=true
 
 # 의존성 설치 (devDependencies 포함)
 COPY package.json package-lock.json* ./

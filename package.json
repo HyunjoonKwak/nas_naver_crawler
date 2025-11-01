@@ -10,7 +10,8 @@
     "type-check": "tsc --noEmit",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,css,md}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,css,md}\"",
-    "prepare": "husky install",
+    "prepare": "node -e \"try { require('husky').install() } catch (e) { if (e.code !== 'MODULE_NOT_FOUND') throw e }\"",
+    "postinstall": "npm run prepare",
     "test": "vitest",
     "test:coverage": "vitest --coverage",
     "analyze": "ANALYZE=true next build"

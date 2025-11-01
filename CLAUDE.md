@@ -222,15 +222,23 @@ where: {
 }
 ```
 
-**Caching Pattern**:
+**Caching Pattern (3-Tier Strategy)**:
 ```typescript
+// L1+L2 Cache (Redis + Memory) - For frequently accessed data
 import { getCached, CacheKeys, CacheTTL } from '@/lib/redis-cache';
 
 const data = await getCached(
   CacheKeys.complex.list(userId, params),
-  CacheTTL.medium,
+  CacheTTL.medium,  // 5-30min
   async () => await prisma.complex.findMany({ ... })
 );
+
+// PostgreSQL Cache - For government API data (30-day TTL)
+// Used ONLY for real-price data, not general caching
+// See: lib/real-price-cache.ts
+const cachedData = await prisma.realPriceCache.findUnique({
+  where: { lawdCd_dealYmd: { lawdCd, dealYmd } }
+});
 ```
 
 **Error Handling**:
@@ -241,6 +249,26 @@ import { ApiError } from '@/lib/api-error';
 if (!resource) {
   throw new ApiError('Resource not found', 404, 'NOT_FOUND');
 }
+```
+
+**Python Subprocess Integration** (Next.js → Python):
+```typescript
+// Spawn Python crawler from Next.js API route
+import { spawn } from 'child_process';
+
+const pythonProcess = spawn('python3', [
+  'logic/nas_playwright_crawler.py',
+  '--complex-no', complexNo
+]);
+
+// Handle stdout/stderr
+pythonProcess.stdout.on('data', (data) => {
+  console.log(`[Crawler] ${data}`);
+});
+
+// Update database from Python side
+// Python writes to CrawlHistory table directly
+// Next.js polls database for progress updates
 ```
 
 ### File Organization
@@ -274,6 +302,46 @@ if (!resource) {
 
 6. **Session Isolation**: Test/production environments use separate `NEXTAUTH_SECRET` values to prevent session conflicts. Never share secrets across environments.
 
+### Common Development Workflows
+
+**Adding a new API endpoint:**
+1. Create `app/api/[feature]/route.ts`
+2. Import `apiResponse`, `apiError` from `@/lib/api-response`
+3. Add Zod schema for request validation
+4. Use Prisma for database queries with `include` for relations
+5. Implement caching with `getCached` if data changes infrequently
+6. Write tests in `__tests__/api/[feature].test.ts`
+7. Run `npm run type-check` before committing
+
+**Adding a new page:**
+1. Create `app/[page-name]/page.tsx` (Server Component by default)
+2. Fetch data directly from Prisma in Server Components
+3. Use Client Components (`'use client'`) only for interactivity
+4. Add page to navigation in `components/Navigation.tsx`
+5. Update `SITEMAP.md` with new route
+
+**Modifying database schema:**
+1. Edit `prisma/schema.prisma`
+2. Run `npx prisma generate` to update Prisma Client
+3. Run `npx prisma migrate dev --name descriptive_name`
+4. Update affected TypeScript files
+5. Run `npm run type-check` to catch type errors
+6. Restart dev server if types don't update
+
+**Adding a new React component:**
+1. Create in `components/` directory (flat structure, no nesting)
+2. Use PascalCase naming (e.g., `ComplexCard.tsx`)
+3. Extract shared UI patterns to primitives (`BaseModal`, `LoadingSpinner`)
+4. Use `'use client'` directive only if component needs interactivity
+5. Keep components focused - extract hooks to separate files if complex
+
+**Debugging crawler issues:**
+1. Check logs: `docker-compose logs -f web | grep "Crawler"`
+2. Verify scroll behavior: Look for "스크롤" (scroll) messages
+3. Check database: Inspect `CrawlHistory` table for status/errors
+4. Test locally: `python3 logic/nas_playwright_crawler.py --complex-no 22065`
+5. Review performance: `./scripts/verify-perf-improve.sh`
+
 ## Testing Strategy
 
 **Test Structure**:
@@ -284,14 +352,62 @@ if (!resource) {
 **Running Tests**:
 ```bash
 npm test                    # All tests
+npm run test:coverage       # With coverage report
+vitest run __tests__/lib/api-error.test.ts  # Single test file
 vitest --ui                 # Interactive UI
-vitest --coverage           # Coverage report
 ```
 
-**Test Patterns**:
-- Mock Prisma with `vi.mock('@/lib/prisma')`
-- Use `@testing-library/react` for component tests
-- API tests should mock database calls
+**Test Patterns Used in This Codebase**:
+
+```typescript
+// 1. API Response Helper Tests (lib/api-response.test.ts)
+import { apiResponse, apiError } from '@/lib/api-response';
+
+test('apiResponse formats correctly', () => {
+  const response = apiResponse({ id: 1 }, 'Success', 200);
+  expect(response.status).toBe(200);
+  expect(response.body).toMatchObject({
+    success: true,
+    data: { id: 1 },
+    message: 'Success'
+  });
+});
+
+// 2. Redis Cache Tests (lib/redis-cache.test.ts)
+import { getCached, CacheKeys, CacheTTL } from '@/lib/redis-cache';
+
+vi.mock('redis', () => ({
+  createClient: () => ({
+    get: vi.fn(),
+    set: vi.fn(),
+    del: vi.fn(),
+  })
+}));
+
+// 3. Scheduler Tests (lib/scheduler.test.ts)
+import { scheduleJob } from '@/lib/scheduler';
+
+vi.mock('node-cron', () => ({
+  schedule: vi.fn()
+}));
+
+// 4. Health Check API Tests (app/api/health/route.test.ts)
+import { GET } from '@/app/api/health/route';
+
+test('health endpoint returns OK', async () => {
+  const response = await GET();
+  const data = await response.json();
+  expect(data.status).toBe('ok');
+});
+```
+
+**Key Testing Practices**:
+- Mock external dependencies (Redis, Prisma, node-cron)
+- Test both success and error cases
+- Verify API response format matches `apiResponse`/`apiError` structure
+- Use `vi.mock()` for module-level mocks
+- Test cache behavior (hit/miss scenarios)
+- Verify error handling with `ApiError` class
 
 ## Performance Optimization
 
@@ -405,3 +521,50 @@ ls -lah .env   # 심볼릭 링크 확인: .env -> config.env
 - **TODO Roadmap**: `TODO.md`
 - **Changelog**: `CHANGELOG.md`
 - **Security**: `SECURITY.md` - 보안 가이드
+
+## Quick Reference
+
+**Most Common Tasks:**
+
+```bash
+# Development cycle
+npm run type-check              # Check TypeScript errors
+npm run lint                    # Check linting issues
+npm test                        # Run all tests
+docker-compose restart web      # Apply code changes (dev mode)
+
+# Database operations
+npx prisma generate            # After schema changes
+npx prisma migrate dev         # Create migration
+npx prisma studio              # Open database GUI
+
+# Debugging
+docker-compose logs -f web     # Watch all logs
+docker-compose logs -f web | grep "Crawler"  # Filter crawler logs
+docker exec -it naver-crawler-db psql -U crawler_user -d naver_crawler
+
+# Cache operations
+# Clear Redis cache: Connect to Redis and run FLUSHDB (use with caution)
+docker exec -it naver-crawler-redis redis-cli FLUSHDB
+
+# Clear real-price PostgreSQL cache
+docker exec -it naver-crawler-db psql -U crawler_user -d naver_crawler \
+  -c "DELETE FROM real_price_cache;"
+```
+
+**Common Code Locations:**
+- Authentication logic: `lib/auth.ts`
+- Caching helpers: `lib/redis-cache.ts`
+- API utilities: `lib/api-response.ts`, `lib/api-error.ts`
+- Database client: `lib/prisma.ts`
+- Crawler entry point: `logic/nas_playwright_crawler.py`
+- Environment validation: `lib/env.ts`
+- Scheduler logic: `lib/scheduler.ts`
+
+**When Things Go Wrong:**
+1. **Type errors after schema change**: Run `npx prisma generate` and restart IDE
+2. **Stale Next.js cache**: Delete `.next` directory and rebuild
+3. **Database connection errors**: Check `config.env` has correct `DATABASE_URL`
+4. **Cache not working**: Verify Redis is running: `docker-compose ps redis`
+5. **Crawler timeout**: Check `CrawlHistory` table for error messages
+6. **Session issues**: Clear browser cookies or check `NEXTAUTH_SECRET` in `config.env`
