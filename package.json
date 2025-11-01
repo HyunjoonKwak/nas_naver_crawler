@@ -62,10 +62,8 @@
     "@testing-library/jest-dom": "^6.1.5",
     "@testing-library/react": "^14.1.2",
     "@testing-library/user-event": "^14.5.1",
-    "@types/node": "^20",
     "@types/node-cron": "^3.0.11",
     "@types/nodemailer": "^7.0.3",
-    "@types/react": "^18",
     "@types/react-dom": "^18",
     "@types/xml2js": "^0.4.14",
     "@typescript-eslint/eslint-plugin": "^6.15.0",
@@ -79,7 +77,6 @@
     "jsdom": "^23.0.1",
     "lint-staged": "^15.2.0",
     "prettier": "^3.1.1",
-    "typescript": "^5",
     "vitest": "^1.1.0"
   }
 }
