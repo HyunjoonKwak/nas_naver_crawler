@@ -105,6 +105,10 @@ COPY prisma ./prisma
 # prisma는 이제 dependencies에 있으므로 직접 실행 가능
 RUN npx prisma generate
 
+# 빌드 타임 환경 변수 (Next.js 빌드에서 필요)
+# 실제 DB 연결은 필요 없고, Prisma 클라이언트 초기화만 가능하면 됨
+ENV DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy?schema=public"
+
 # 소스 코드 복사
 COPY app ./app
 COPY components ./components
