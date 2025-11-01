@@ -1,9 +1,10 @@
 /** @type {import('next').NextConfig} */
 
 // 번들 분석 도구 (npm run analyze로 실행)
-const withBundleAnalyzer = require('@next/bundle-analyzer')({
-  enabled: process.env.ANALYZE === 'true',
-});
+// devDependency이므로 ANALYZE=true일 때만 require (프로덕션 빌드에서는 skip)
+const withBundleAnalyzer = process.env.ANALYZE === 'true'
+  ? require('@next/bundle-analyzer')({ enabled: true })
+  : (config) => config;
 
 const nextConfig = {
   // Strict Mode 활성화 (개발 시 문제 조기 발견)
