@@ -118,14 +118,16 @@ if [ "$ENVIRONMENT" = "prod" ]; then
     # ========================================
     # 프로덕션 배포 (빌드 포함)
     # ========================================
-    log_info "Step 3: 프로덕션 환경 배포 시작..."
+    log_warn "⚠️  현재 프로덕션 전용 Dockerfile이 없습니다"
+    log_warn "⚠️  개발 모드로 빌드합니다 (Hot Reload 포함)"
+    log_info "Step 3: 개발 모드로 완전 재빌드 시작..."
 
     # 3-1. 기존 컨테이너 중지
     log_info "기존 컨테이너 중지 중..."
     docker-compose down || true
     log_success "컨테이너 중지 완료"
 
-    # 3-2. 이미지 빌드
+    # 3-2. 이미지 빌드 (개발 모드)
     log_info "Docker 이미지 빌드 중... (시간이 걸릴 수 있습니다)"
     docker-compose build --no-cache
     log_success "이미지 빌드 완료"
@@ -135,6 +137,8 @@ if [ "$ENVIRONMENT" = "prod" ]; then
     docker-compose up -d
     log_success "컨테이너 시작 완료"
 
+    log_warn "참고: 프로덕션 최적화를 원하면 Dockerfile.prod를 생성하세요"
+
 else
     # ========================================
     # 개발 환경 배포 (Hot Reload)
@@ -143,7 +147,7 @@ else
 
     # 3-1. 컨테이너 재시작만 (3초 완료!)
     log_info "컨테이너 재시작 중..."
-    docker-compose -f docker-compose.dev.yml restart web
+    docker-compose restart web
     log_success "컨테이너 재시작 완료 (Hot Reload 활성화)"
 fi
 
